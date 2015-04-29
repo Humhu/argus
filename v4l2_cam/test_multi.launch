@@ -1,0 +1,79 @@
+<launch>
+  <node pkg="nodelet" type="nodelet" name="camera_threadpool"  args="manager" output="screen">
+    <param name="num_worker_threads" value="10" />
+  </node>
+  
+  <node pkg="resource_management" type="resource_manager" name="resource_manager" output="screen">
+    <rosparam>
+      num_request_threads: 10
+      resources:
+        usb_bandwidth:
+          available: 250
+          max: 250
+          min: 0
+    </rosparam>
+  </node>
+
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video1" />
+    <arg name="camera_name" value="pseye_000" />
+    <arg name="name" value="camera0" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video2" />
+    <arg name="camera_name" value="pseye_001" />
+    <arg name="name" value="camera1" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video3" />
+    <arg name="camera_name" value="pseye_002" />
+    <arg name="name" value="camera2" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video4" />
+    <arg name="camera_name" value="pseye_003" />
+    <arg name="name" value="camera3" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video5" />
+    <arg name="camera_name" value="pseye_004" />
+    <arg name="name" value="camera4" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+    <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video6" />
+    <arg name="camera_name" value="pseye_005" />
+    <arg name="name" value="camera5" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video7" />
+    <arg name="camera_name" value="pseye_006" />
+    <arg name="name" value="camera6" />
+    <arg name="manager_name" value="camera_threadpool" />
+    <arg name="resource_name" value="resource_manager" />
+  </include>
+  
+  <node pkg="v4l2_cam" type="camera_manager" name="camera_manager" output="screen">
+    <rosparam>
+      cameras: [camera0, camera1, camera2, camera3, camera4, camera5, camera6]
+    </rosparam>
+  </node>
+  
+</launch>

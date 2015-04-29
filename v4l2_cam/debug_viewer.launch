@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="image_view" type="image_view" name="viewer" launch-prefix="xterm -e gdb">
+	<remap from="image" to="/camera/image_raw" />
+  </node>
+</launch>

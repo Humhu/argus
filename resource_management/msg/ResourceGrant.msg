@@ -1,0 +1,2 @@
+string resourceName
+uint32 amountGranted

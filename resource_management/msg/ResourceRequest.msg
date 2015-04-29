@@ -1,0 +1,3 @@
+string resourceName
+uint32 nominalQuantity
+uint32 minimumQuantity
