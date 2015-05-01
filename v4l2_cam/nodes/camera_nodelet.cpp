@@ -16,13 +16,13 @@ namespace v4l2_cam
 		CameraNodelet() {}
 		~CameraNodelet() {}
 		
-		void Spin()
-		{
-			while( ros::ok() )
-			{
-				driver->Process();
-			}
-		}
+// 		void Spin()
+// 		{
+// 			while( ros::ok() )
+// 			{
+// 				driver->Process();
+// 			}
+// 		}
 		
 	private:
 		
@@ -33,7 +33,7 @@ namespace v4l2_cam
 		{
 			driver = boost::make_shared<DriverNode>(
 				getMTNodeHandle(), getMTPrivateNodeHandle() );
-			worker = boost::thread( boost::bind( &CameraNodelet::Spin, this ) );
+// 			worker = boost::thread( boost::bind( &CameraNodelet::Spin, this ) );
 		}
 		
 	};

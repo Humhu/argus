@@ -11,10 +11,6 @@ int main( int argc, char** argv )
 	
 	v4l2_cam::DriverNode node( nh, ph );
 	
-	while( ros::ok() )
-	{
-		node.Process();
-		ros::spinOnce();
-	}
+	ros::spin();
 	return 0;
 }

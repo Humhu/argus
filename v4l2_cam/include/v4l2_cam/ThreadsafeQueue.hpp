@@ -1,223 +1,149 @@
-/** \file ThreadsafeQueue.hpp Implementation for ThreadsafeQueue */
+#ifndef _THREADSAFE_QUEUE_H_
+#define _THREADSAFE_QUEUE_H_
 
-template <class T>
-ThreadsafeQueue<T>::ThreadsafeQueue( size_t _maxSize, QueuePolicy _policy ) :
-	maxSize( _maxSize ), policy( _policy ), hasContents( mutex ), isEmpty( mutex ) {};
+#include <memory>
+#include <deque>
 
-template <class T>
-T& ThreadsafeQueue<T>::back() {
-	WriteLock lock(mutex);
-	return back( lock );
-}
+#include <boost/thread/thread.hpp>
+#include <boost/thread/locks.hpp>
 
-template <class T>
-T &ThreadsafeQueue<T>::front() {
-	WriteLock lock(mutex);
-	return front( lock );
-}
+namespace v4l2_cam {
+	
+	template <class T, template<typename,typename> class Container = std::deque >
+	/*! \class ThreadsafeContainer ThreadsafeQueue.h
+	* \brief is a mutex-wrapped container. */
+	class ThreadsafeQueue {
+	public:
 
-template <class T>
-const T& ThreadsafeQueue<T>::back() const {
-	WriteLock lock(mutex);
-	return items.back();
-}
+		typedef T DataType;
+		typedef Container<T, typename std::allocator<T> > ContainerType;
 
-template <class T>
-const T &ThreadsafeQueue<T>::front() const {
-	WriteLock lock(mutex);
-	return items.front();
-}
+		ThreadsafeQueue( size_t initSize )
+			: items( initSize ) {}
 
-template <class T>
-void ThreadsafeQueue<T>::push_back(T &item) {
-	WriteLock lock(mutex);
-	push_back( item, lock );
-}
-
-template <class T>
-void ThreadsafeQueue<T>::push_front(T &item) {
-	WriteLock lock(mutex);
-	push_front( item, lock );
-}
-
-template <class T>
-void ThreadsafeQueue<T>::pop_back() {
-	WriteLock lock(mutex);
-	pop_back( lock );
-}
-
-template <class T>
-void ThreadsafeQueue<T>::pop_front() {
-	WriteLock lock(mutex);
-	pop_front( lock );
-}
-
-template <class T>
-size_t ThreadsafeQueue<T>::size() const {
-	ReadLock lock(mutex);
-	return items.size();
-}
-
-template <class T>
-bool ThreadsafeQueue<T>::empty() const{
-	ReadLock lock(mutex);
-	return items.empty();
-}
-
-template <class T>
-void ThreadsafeQueue<T>::clear() {
-	WriteLock lock(mutex);
-	items.clear();
-}
-
-template <class T>
-void ThreadsafeQueue<T>::Wait() {
-	WriteLock lock(mutex);
-	while( items.empty() ) {
-		hasContents.Wait(lock);
-	}
-}
-
-template <class T>
-void ThreadsafeQueue<T>::WaitEmpty() {
-	WriteLock lock(mutex);
-	WaitEmpty( lock );
-}
-
-template <class T>
-T ThreadsafeQueue<T>::DequeueFront() {
-	WriteLock lock(mutex);
-	T t = front( lock );
-	pop_front( lock );
-	return t;
-}
-
-template <class T>
-T ThreadsafeQueue<T>::DequeueBack() {
-	WriteLock lock(mutex);
-	T t = back( lock );
-	pop_back( lock );
-	return t;
-}
-
-template <class T>
-T ThreadsafeQueue<T>::WaitFront() {
-	WriteLock lock(mutex);
-	Wait( lock );
-	T t = front( lock );
-	pop_front( lock );
-	return t;
-}
-
-template <class T>
-T ThreadsafeQueue<T>::WaitBack() {
-	WriteLock lock(mutex);
-	Wait( lock );
-	T t = back( lock );
-	pop_back( lock );
-	return t;
-}
-
-template <class T>
-T& ThreadsafeQueue<T>::back( WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-	return items.back();
-}
-
-template <class T>
-T& ThreadsafeQueue<T>::front( WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-	return items.front();
-}
-
-template <class T>
-void ThreadsafeQueue<T>::push_back( T& item, WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-
-	hasContents.NotifyAll();
-
-	// If we can push, push it
-	if( maxSize == 0 || items.size() < maxSize ) {
-		items.push_back( item );
-		return;
-	}
-
-	// Else we have to check the policy
-	switch( policy ) {
-		case KeepHead:
-			// We keep the head and do nothing
-			break;
-
-		case KeepTail:
-			// Get rid of the head and push it on
-			items.pop_front();
-			items.push_back( item );
-			break;
-	}
-}
-
-template <class T>
-void ThreadsafeQueue<T>::push_front( T& item, WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-
-	hasContents.NotifyAll();
-
-	if( maxSize == 0 || items.size() < maxSize ) {
-		items.push_front( item );
-		return;
-	}
-
-	switch( policy ) {
-		case KeepHead:
-			// Get rid of the tail and push it on
-			items.pop_back();
+		void PushFront( const T& item )
+		{
+			Lock lock( mutex );
 			items.push_front( item );
-			break;
+			hasContents.notify_one();
+		}
+		
+		void PushBack( const T& item)
+		{
+			Lock lock( mutex );
+			items.push_back( item );
+			hasContents.notify_one();
+		}
+		
+		void WaitPopFront( T& item )
+		{
+			Lock lock( mutex );
+			while( items.empty() )
+			{
+				hasContents.wait( lock );
+			}
+			item = items.front();
+			items.pop_front();
+			
+			if( items.empty() )
+			{
+				isEmpty.notify_all();
+			}
+		}
+		
+		void WaitPopBack( T& item )
+		{
+			Lock lock( mutex );
+			while( items.empty() )
+			{
+				hasContents.wait( lock );
+			}
+			item = items.back();
+			items.pop_back();	
+			
+			if( items.empty() )
+			{
+				isEmpty.notify_all();
+			}
+		}
+		
+		bool TryPopFront( T& item )
+		{
+			Lock lock( mutex );
+			if( items.empty() )
+			{
+				return false;
+			}
+			item = items.front();
+			items.pop_front();
+			
+			if( items.empty() )
+			{
+				isEmpty.notify_all();
+			}
+			return true;
+		}
+		
+		void TryPopBack( T& item )
+		{
+			Lock lock( mutex );
+			while( items.empty() )
+			{
+				return false;
+			}
+			item = items.back();
+			items.pop_back();	
+			
+			if( items.empty() )
+			{
+				isEmpty.notify_all();
+			}
+			return true;
+		}
+		
+		size_t Size() const
+		{
+			Lock lock( mutex );
+			return items.size();
+		}
+		
+		bool IsEmpty() const
+		{
+			return Size() == 0;
+		}
+		
+		void Clear()
+		{
+			Lock lock( mutex );
+			items.clear();
+			isEmpty.notify_all();
+		}
 
-		case KeepTail:
-			// We keep the tail and do nothing
-			break;
-	}
+		/*! \brief Wait for this queue to be empty. */
+		void WaitEmpty()
+		{
+			Lock lock( mutex );
+			while( !items.empty() )
+			{
+				isEmpty.wait( lock );
+			}
+			
+		}
+
+	protected:
+
+		typedef boost::mutex Mutex;
+		typedef boost::unique_lock<Mutex> Lock;
+		typedef boost::condition_variable ConditionVariable;
+		
+		mutable Mutex mutex;
+
+		ContainerType items;
+		ConditionVariable hasContents;
+		ConditionVariable isEmpty;
+
+	};
+
 }
 
-template <class T>
-void ThreadsafeQueue<T>::pop_back( WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-	items.pop_back();
-
-	if( items.empty() ) {
-		isEmpty.NotifyAll();
-	}
-}
-
-template <class T>
-void ThreadsafeQueue<T>::pop_front( WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-	items.pop_front();
-
-	if( items.empty() ) {
-		isEmpty.NotifyAll();
-	}
-}
-
-template <class T>
-void ThreadsafeQueue<T>::Wait( WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-	while( items.empty() ) {
-		hasContents.Wait( lock );
-	}
-}
-
-template <class T>
-void ThreadsafeQueue<T>::WaitEmpty( WriteLock& lock ) {
-	CheckExternalLock( mutex, lock );
-	while( !items.empty() ) {
-		isEmpty.Wait( lock );
-	}
-}
-
-template <class T>
-typename ThreadsafeQueue<T>::ContainerType ThreadsafeQueue<T>::GetContents() const {
-	return items;
-}
-
+#endif //_THREADSAFE_QUEUE_H_

@@ -26,7 +26,7 @@ namespace v4l2_cam
 		it( privHandle ), 
 		cameraInfoManager( std::make_shared<InfoManager>( privHandle ) ),
 		frameCounter( 0 ),
-		mode( STREAM_OFF )
+		streaming( false )
 	{
 
 		// Name uniquely IDs camera and validates calibration file
@@ -64,6 +64,9 @@ namespace v4l2_cam
 		{
 			std::vector<int> frameResolution;
 			privHandle.getParam( "frame_resolution", frameResolution );
+			if( frameResolution.size() < 2 ) {
+				throw std::runtime_error( "Frame resolution must be 2 integers." );
+			}
 			frameWidth = frameResolution[0];
 			frameHeight = frameResolution[1];
 		}
@@ -115,41 +118,56 @@ namespace v4l2_cam
 		privHandle.param( "pub_buff_size", rosBufferSize, 1 );
 		it_pub = it.advertiseCamera( "image_raw", rosBufferSize );
 		
+		// Set up publisher
+		processWorker = boost::thread( boost::bind( &DriverNode::Process, this ) );
+
 		bool streamOnStart;
 		privHandle.param( "stream_on_start", streamOnStart, false );
 		if( streamOnStart )
 		{
-			AcquireResources();
-			driver.SetStreaming( true );
-			mode = STREAM_CONTINUOUS;
+			StartStreaming();
 		}
-
+		
 	}
 	
 	DriverNode::~DriverNode()
 	{
-		if( driver.IsOpen() )
-		{
-			driver.Close();
-			RelinquishResources();
-		}
+		StopStreaming();
+		processWorker.interrupt();
+	}
+	
+	void DriverNode::StartStreaming()
+	{
+		if( streaming.load( boost::memory_order_relaxed ) ) { return; }
+		streaming.store( true, boost::memory_order_relaxed );
+		AcquireResources();
+		driver.SetStreaming( true );
+		blocked.notify_all();
+	}
+	
+	void DriverNode::StopStreaming()
+	{
+		streaming.store( false, boost::memory_order_relaxed );
+		driver.SetStreaming( false );
+		RelinquishResources();
 	}
 	
 	bool DriverNode::SetStreamingService( v4l2_cam::SetStreaming::Request& req,
 										  v4l2_cam::SetStreaming::Response& res )
 	{
+		Lock lock( mutex );
+
+		remainingToStream = req.numFramesToStream;
+
 		if( req.enableStreaming )
 		{
-			AcquireResources();
+			StartStreaming();
 		}
 		else
 		{
-			RelinquishResources();
+			StopStreaming();
 		}
-		driver.SetStreaming( req.enableStreaming );
-
-		boost::unique_lock<boost::shared_mutex> lock( mutex );
-		remainingToStream = req.numFramesToStream;
+		
 		
 		return true;
 	}
@@ -190,43 +208,48 @@ namespace v4l2_cam
 	
 	void DriverNode::Process()
 	{
-		// TODO Make this not a busy spin
-		if( !driver.IsOpen() || !driver.IsStreaming() ) { return; }
-		
-		cv::Mat frame = driver.GetFrame();
-		if( frame.empty() )
-		{
-			ROS_WARN( "Received empty frame from device." );
-		}
-		
-		boost::unique_lock<boost::shared_mutex> lock( mutex );
-
-		// remainingToStream equaling 0 here means stream continuously
-		if( remainingToStream > 0 )
-		{
-			remainingToStream--;
-			if( remainingToStream == 0 )
-			{
-				driver.SetStreaming( false );
-				RelinquishResources();
-			}
-		}
-		
-		// Populate message headers
+		cv::Mat frame;
 		std_msgs::Header header;
- 		header.frame_id = "0";
-		header.stamp = ros::Time::now(); // TODO Configure ROS time or wall time
-		header.seq = frameCounter++;
-				
-		// TODO Verify cameraInfoManager matches current device settings
- 		cameraInfo->header = header;
+		header.frame_id = "0";
+		
+		while( true )
+		{
+			Lock lock( mutex );
+			while( !streaming.load( boost::memory_order_relaxed ) )
+			{
+				blocked.wait( lock );
+			}
 			
-		cv_bridge::CvImage img( header, "bgr8", frame );
-		
-		it_pub.publish( img.toImageMsg(), cameraInfo );
-		
-		// TODO Topic diagnostics
-		//topic_diagnostics_.tick( header.stamp );
+			frame = driver.GetFrame();
+			if( frame.empty() )
+			{
+				ROS_WARN( "Received empty frame from device." );
+			}
+
+			// remainingToStream equaling 0 here means stream continuously
+			if( remainingToStream > 0 )
+			{
+				remainingToStream--;
+				if( remainingToStream == 0 )
+				{
+					StopStreaming();
+				}
+			}
+			
+				// Populate message headers
+			header.stamp = ros::Time::now(); // TODO Configure ROS time or wall time
+			header.seq = frameCounter++;
+					
+			// TODO Verify cameraInfoManager matches current device settings
+			cameraInfo->header = header;
+				
+			cv_bridge::CvImage img( header, "bgr8", frame );
+			
+			it_pub.publish( img.toImageMsg(), cameraInfo );
+			
+			// TODO Topic diagnostics
+			//topic_diagnostics_.tick( header.stamp );
+		}
 	}
 	
 }

@@ -1,24 +1,15 @@
 <launch>
-  <arg name="name" />
   <arg name="device_path" />
   <arg name="camera_name" />
-  <arg name="manager_name" />
-  <arg name="resource_name" />
-  <node pkg="nodelet" type="nodelet" name="$(arg name)"
-        args="load v4l2_cam/camera_nodelet $(arg manager_name)" output="screen">
+  <arg name="name" />
+  <node pkg="v4l2_cam" type="camera_node" name="$(arg name)" output="screen">
     <param name="camera_name" value="$(arg camera_name)" />
     <param name="device_path" value="$(arg device_path)" />
-    <param name="resource_manager" value="$(arg resource_name)" />
     <rosparam>
-      frame_resolution: [320, 240]
+      frame_resolution: [160, 120]
       frame_rate: 120
-      stream_on_start: false
-      
-      resources:
-        usb_bandwidth:
-          nominal: 250
-          minimum: 250
-      
+      stream_on_start: true
+
       controls:
         horizontal_flip:
           id: 9963796

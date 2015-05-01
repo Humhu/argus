@@ -28,7 +28,7 @@ namespace v4l2_cam
 
 	void CameraDriver::Open( const std::string& devPath, ReadMode m ) 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 
 		devicePath = devPath;
 		readMode = m;
@@ -55,13 +55,13 @@ namespace v4l2_cam
 
 	bool CameraDriver::IsOpen() const
 	{
-		ReadLock lock(mutex);
+		Lock lock(mutex);
 		return isOpen;
 	}
 
 	void CameraDriver::Close() 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		if( camFD == -1 ) { return; }
 		
 		if( isStreaming )
@@ -78,13 +78,13 @@ namespace v4l2_cam
 
 	bool CameraDriver::IsStreaming() const
 	{
-		ReadLock lock(mutex);
+		Lock lock(mutex);
 		return isStreaming;
 	}
 	
 	CameraCapabilities CameraDriver::ReadCapabilities() 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 
 		// Populate the capabilities struct using a V4L2 call
 		v4l2_capability caps;
@@ -98,7 +98,7 @@ namespace v4l2_cam
 	
 	std::vector<OutputSpecification> CameraDriver::ReadOutputSpecifications()
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		
 		std::vector<OutputSpecification> specs;
 		
@@ -125,7 +125,7 @@ namespace v4l2_cam
 	
 	std::vector<ControlSpecification> CameraDriver::ReadControlSpecifications() 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		
 		std::vector<ControlSpecification> specs;
 		
@@ -147,7 +147,7 @@ namespace v4l2_cam
 	
 	int CameraDriver::ReadControl( unsigned int id )
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		
 		v4l2_control query;
 		zero_struct( query );
@@ -162,7 +162,7 @@ namespace v4l2_cam
 	
 	void CameraDriver::SetControl( unsigned int id, int value )
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		
 		v4l2_control query;
 		query.id = id;
@@ -175,7 +175,7 @@ namespace v4l2_cam
 		
 	}
 	
-	std::vector<v4l2_fmtdesc> CameraDriver::EnumerateFormats( WriteLock& lock ) 
+	std::vector<v4l2_fmtdesc> CameraDriver::EnumerateFormats( Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 		
@@ -199,7 +199,7 @@ namespace v4l2_cam
 	}
 	
 	std::vector<v4l2_frmsizeenum> CameraDriver::EnumerateFrameSizes( const v4l2_fmtdesc& format,
-																	 WriteLock& lock ) 
+																	 Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 		
@@ -224,7 +224,7 @@ namespace v4l2_cam
 	}
 	
 	std::vector<v4l2_frmivalenum> CameraDriver::EnumerateFrameIntervals( const v4l2_frmsizeenum& size,
-																		 WriteLock& lock ) 
+																		 Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 		
@@ -251,7 +251,7 @@ namespace v4l2_cam
 
 	OutputSpecification CameraDriver::ReadCurrentOutputSpecification() 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		
 		// Read the output format
 		v4l2_format retFormat;
@@ -276,7 +276,7 @@ namespace v4l2_cam
 	
 	void CameraDriver::SetOutputSpecification( const OutputSpecification& spec ) 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		
 		// Set the output format
 		v4l2_format retFormat = spec.GetFormatStruct();
@@ -298,7 +298,7 @@ namespace v4l2_cam
 
 	size_t CameraDriver::AllocateBuffers( size_t numBuffs ) 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 
 		// If buffers are already allocated, we have to first free them
 		if( buffersAllocated )
@@ -369,7 +369,7 @@ namespace v4l2_cam
 
 	}
 
-	void CameraDriver::FreeBuffers( WriteLock& lock ) 
+	void CameraDriver::FreeBuffers( Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 		
@@ -398,7 +398,7 @@ namespace v4l2_cam
 	}
 
 
-	void CameraDriver::EnqueueBuffers( WriteLock& lock ) 
+	void CameraDriver::EnqueueBuffers( Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 
@@ -418,7 +418,7 @@ namespace v4l2_cam
 		}
 	}
 
-	OutputSpecification CameraDriver::QueryCurrentOutputSpecification( WriteLock& lock ) 
+	OutputSpecification CameraDriver::QueryCurrentOutputSpecification( Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 		v4l2_format format;
@@ -441,11 +441,11 @@ namespace v4l2_cam
 
 	void CameraDriver::SetStreaming( bool stream ) 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 		SetStreaming(stream, lock);
 	}
 
-	void CameraDriver::SetStreaming( bool stream, WriteLock& lock ) 
+	void CameraDriver::SetStreaming( bool stream, Lock& lock ) 
 	{
 		CheckExternalLock( mutex, lock );
 
@@ -480,10 +480,9 @@ namespace v4l2_cam
 
 	cv::Mat CameraDriver::GetFrame() 
 	{
-		WriteLock lock(mutex);
+		Lock lock(mutex);
 
-		cv::Mat imbuff;
-		
+		imbuff = cv::Mat();
 		if( !isOpen || !isStreaming ) 
 		{
 			return imbuff;
@@ -556,7 +555,7 @@ namespace v4l2_cam
 		
 	}
 	
-	void CameraDriver::CheckExternalLock( Mutex& m, WriteLock& lock ) 
+	void CameraDriver::CheckExternalLock( Mutex& m, Lock& lock ) 
 	{
 		if(!lock.owns_lock() || lock.mutex() != &m) {
 			throw std::runtime_error( "Lock error: Wrong lock given!" );

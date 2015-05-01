@@ -104,8 +104,7 @@ namespace v4l2_cam
 		};
 
 		typedef boost::shared_mutex Mutex;
-		typedef boost::unique_lock<Mutex> WriteLock;
-        typedef boost::shared_lock<Mutex> ReadLock;
+		typedef boost::unique_lock<Mutex> Lock;
 		
 		mutable Mutex mutex;
 		
@@ -116,30 +115,33 @@ namespace v4l2_cam
 		std::string devicePath;
 		ReadMode readMode;
 		
+		// Output buffer
+		cv::Mat imbuff;
+		
 		OutputSpecification currentOutputSpec;
 
 		// All the current buffer information structs
 		std::vector<BufferInfo> bufferRegistry;
 
-		std::vector<v4l2_fmtdesc> EnumerateFormats( WriteLock& lock );
-		std::vector<v4l2_frmsizeenum> EnumerateFrameSizes( const v4l2_fmtdesc& format, WriteLock& lock  );
-		std::vector<v4l2_frmivalenum> EnumerateFrameIntervals( const v4l2_frmsizeenum& size, WriteLock& lock  );
+		std::vector<v4l2_fmtdesc> EnumerateFormats( Lock& lock );
+		std::vector<v4l2_frmsizeenum> EnumerateFrameSizes( const v4l2_fmtdesc& format, Lock& lock  );
+		std::vector<v4l2_frmivalenum> EnumerateFrameIntervals( const v4l2_frmsizeenum& size, Lock& lock  );
 
-		void SetStreaming( bool stream, WriteLock& lock );
+		void SetStreaming( bool stream, Lock& lock );
 
 		/*! \brief Enqueues all unenqueued buffers. */
-		void EnqueueBuffers( WriteLock& lock );
+		void EnqueueBuffers( Lock& lock );
 
 		/*! \brief Frees all buffers. */
-		void FreeBuffers( WriteLock& lock );
+		void FreeBuffers( Lock& lock );
 
-		OutputSpecification QueryCurrentOutputSpecification( WriteLock& lock );
+		OutputSpecification QueryCurrentOutputSpecification( Lock& lock );
 
 		/*! \brief Wraps v4l2_ioctl to retry on busy. Returns -1 on failure due to
 		 * the ioctl failing or retries exceeded. */
 		int retry_ioctl( int fd, int request, void* argp, unsigned int maxRetries=10 );
 
-		void CheckExternalLock( Mutex& m, WriteLock& lock );
+		void CheckExternalLock( Mutex& m, Lock& lock );
 		
 	};
 

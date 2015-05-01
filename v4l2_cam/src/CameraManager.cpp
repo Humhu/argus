@@ -37,7 +37,7 @@ namespace v4l2_cam
 		CameraRegistration registration;
 		registration.name = cameraName;
 		registration.setStreamingClient = 
-			nodeHandle.serviceClient<SetStreaming>( cameraName + "/set_streaming", false );
+			nodeHandle.serviceClient<SetStreaming>( cameraName + "/set_streaming", true );
 		registry.push_back( registration );
 	}
 	
@@ -52,6 +52,17 @@ namespace v4l2_cam
 								  v4l2_cam::CycleCameras::Response& res )
 	{
 
+		BOOST_FOREACH( CameraRegistration& registration, registry )
+		{
+			if( !registration.setStreamingClient.isValid() )
+			{
+				ROS_WARN_STREAM( "Lost connection to camera " << registration.name
+					<< ". Attempting to reconnect..." );
+				registration.setStreamingClient = 
+					nodeHandle.serviceClient<SetStreaming>( registration.name + "/set_streaming", true );
+			}
+		}
+		
 		SetStreaming srv;
 		BOOST_FOREACH( const CameraRegistration& registration, registry )
 		{
