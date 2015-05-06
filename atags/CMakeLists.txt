@@ -65,7 +65,7 @@ include_directories( include
 add_library( atags
 	src/AtagDetector.cpp
 )
-add_dependencies( atags atags_gencfg )
+add_dependencies( atags ${atags_EXPORTED_TARGETS} )
 target_link_libraries( atags
 	${apriltags_LIBRARIES}
 	${Boost_LIBRARIES}
@@ -81,7 +81,7 @@ target_link_libraries( atags
 # )
 	
 add_executable( atag_detector_node nodes/atag_detector_node.cpp )
-add_dependencies( atag_detector_node atags_gencfg )
+add_dependencies( atag_detector_node ${atags_EXPORTED_TARGETS} )
 target_link_libraries( atag_detector_node
 	atags
 	${catkin_LIBRARIES}

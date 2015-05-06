@@ -32,10 +32,13 @@ namespace atags
 		ros::Publisher detectionPublisher;
 
 		image_transport::ImageTransport imagePort;
-		image_transport::CameraSubscriber cameraSub;
-		image_geometry::PinholeCameraModel cameraModel;
+		
+		std::vector<image_transport::CameraSubscriber> cameraSub;
 		
 		AprilTags::TagDetector::Ptr detector;
+		
+		void RectifyDetections( std::vector<AprilTags::TagDetection>& detections,
+								image_geometry::PinholeCameraModel& cameraModel );
 		
 	};
 	

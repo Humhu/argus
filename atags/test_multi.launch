@@ -1,0 +1,21 @@
+<launch>
+  <include file="$(find v4l2_cam)/cam_node_standalone.launch">
+    <arg name="device_path" value="/dev/video1" />
+    <arg name="camera_name" value="pseye_000" />
+    <arg name="name" value="camera0" />
+  </include>
+  
+  <include file="$(find v4l2_cam)/cam_node_standalone.launch">
+    <arg name="device_path" value="/dev/video2" />
+    <arg name="camera_name" value="pseye_001" />
+    <arg name="name" value="camera1" />
+  </include>
+  
+  <node pkg="atags" type="atag_detector_node" name="detector">
+    <rosparam>
+      image_sources: [camera0/image_raw, camera1/image_raw]
+      tag_family: 36h11
+    </rosparam>
+  </node>
+  
+</launch>

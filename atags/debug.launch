@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="atags" type="atag_detector_node" name="detector" launch-prefix="xterm -e gdb">
+    <rosparam>
+      image_sources: [camera0, camera1]
+    </rosparam>
+  </node>
+</launch>
