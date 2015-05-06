@@ -69,6 +69,8 @@ namespace v4l2_cam
 		Mutex mutex;
 		ConditionVariable blocked;
 		
+		std::string cameraName;
+		
 		// Service handlers
 		ros::ServiceServer capabilitiesServer;
 		ros::ServiceServer setStreamingServer;

@@ -30,7 +30,6 @@ namespace v4l2_cam
 	{
 
 		// Name uniquely IDs camera and validates calibration file
-		std::string cameraName;
 		privHandle.getParam( "camera_name", cameraName );
  		cameraInfoManager->setCameraName( cameraName );
 		if( privHandle.hasParam( "camera_info_url" ) )
@@ -210,7 +209,7 @@ namespace v4l2_cam
 	{
 		cv::Mat frame;
 		std_msgs::Header header;
-		header.frame_id = "0";
+		header.frame_id = cameraName;
 		
 		while( true )
 		{
