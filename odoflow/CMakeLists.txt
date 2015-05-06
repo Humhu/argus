@@ -76,15 +76,17 @@ add_library(odoflow
 	src/ROSParser.cpp
 	src/VisualOdometryPipeline.cpp
 )
-
+# add_dependencies( odoflow ${odoflow_EXPORTED_TARGETS} )
 target_link_libraries(odoflow
 	${OpenCV_LIBS}
 )
 
 add_executable( gsl_test src/GSLTest.cpp )
+# add_dependencies( gsl_test ${odoflow_EXPORTED_TARGETS} )
 target_link_libraries( gsl_test ${GSL_LIBRARIES} )
 
 add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )
+# add_dependencies( visual_odometry_node ${odoflow_EXPORTED_TARGETS} )
 target_link_libraries( visual_odometry_node
 	odoflow 
 	${catkin_LIBRARIES} )

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(v4l2_cam)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/v4l2_cam/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 
 set(CMAKE_BUILD_TYPE Release)
 
