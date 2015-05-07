@@ -1,11 +1,29 @@
 <launch>
-  <include file="$(find v4l2_cam)/cam_node_standalone.launch">
+  <node pkg="nodelet" type="nodelet" name="threadpool"  args="manager" output="screen">
+    <param name="num_worker_threads" value="10" />
+  </node>
+  
+  <node pkg="resource_management" type="resource_manager" name="resource_manager" output="screen">
+    <rosparam>
+      num_request_threads: 10
+      resources:
+        usb_bandwidth:
+          available: 480
+          max: 480
+          min: 0
+    </rosparam>
+  </node>
+  
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
     <arg name="device_path" value="/dev/video0"/>
     <arg name="camera_name" value="pseye_050_wide"/>
-    <arg name="name" value="camera0" />
+    <arg name="name" value="camera0"/>
+    <arg name="manager_name" value="threadpool"/>
+    <arg name="resource_name" value="resource_manager"/>
   </include>
   
-  <node pkg="atags" type="atag_detector_node" name="detector">
+  <node pkg="nodelet" type="nodelet" name="detector"
+        args="load atags/detector_nodelet threadpool" output="screen">
     <rosparam>
       image_sources: [camera0/image_raw]
       tag_family: 36h11

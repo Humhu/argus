@@ -15,7 +15,7 @@
 
 #include "resource_management/ResourceUser.h"
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/thread/locks.hpp>
 #include <boost/atomic.hpp>
 
@@ -28,7 +28,7 @@ namespace v4l2_cam
 	{
 	public:
 		
-		typedef boost::shared_ptr<DriverNode> Ptr;
+		typedef std::shared_ptr<DriverNode> Ptr;
 		
 		DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph );
 		~DriverNode();

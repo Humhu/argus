@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
-<library path="lib/libv4l2_cam_nodelet">
-  <class name="v4l2_cam/camera_nodelet"
-         type="v4l2_cam::CameraNodelet"
+<library path="lib/libatags_detector_nodelet">
+  <class name="atags/detector_nodelet"
+         type="atags::AtagDetectorNodelet"
          base_class_type="nodelet::Nodelet">
     <description> 
-      V4L2 camera driver nodelet.
+      AprilTag detector nodelet.
     </description>
   </class>
 </library>

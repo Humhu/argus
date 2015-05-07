@@ -72,13 +72,13 @@ target_link_libraries( atags
 	${catkin_LIBRARIES}
 )
 
-# add_library( atags_cam_nodelet nodes/camera_nodelet.cpp )
-# add_dependencies( atags_cam_nodelet ${atags_cam_EXPORTED_TARGETS}
-# 								   "${PROJECT_NAME}_gencfg" 
-# )
-# target_link_libraries( atags_cam_nodelet atags_cam
-# 										${catkin_LIBRARIES} 
-# )
+add_library( atags_detector_nodelet nodes/atag_detector_nodelet.cpp )
+add_dependencies( atags_detector_nodelet ${atags_cam_EXPORTED_TARGETS}
+								   "${PROJECT_NAME}_gencfg" 
+)
+target_link_libraries( atags_detector_nodelet atags
+										 ${catkin_LIBRARIES} 
+)
 	
 add_executable( atag_detector_node nodes/atag_detector_node.cpp )
 add_dependencies( atag_detector_node ${atags_EXPORTED_TARGETS} )
