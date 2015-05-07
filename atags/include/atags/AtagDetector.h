@@ -33,6 +33,8 @@ namespace atags
 
 		image_transport::ImageTransport imagePort;
 		
+		unsigned long sequenceCounter;
+		
 		std::vector<image_transport::CameraSubscriber> cameraSub;
 		
 		AprilTags::TagDetector::Ptr detector;

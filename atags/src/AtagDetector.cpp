@@ -19,7 +19,8 @@ namespace atags
 	AtagDetector::AtagDetector( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 		: nodeHandle( nh ), 
 		privHandle( ph ),
-		imagePort( nh )
+		imagePort( nh ),
+		sequenceCounter( 0 )
 	{
 
 		std::vector<std::string> topicNames;
@@ -73,11 +74,14 @@ namespace atags
 			RectifyDetections( detections, cameraModel );
 		}
 			
+		std_msgs::Header header;
+		header.frame_id = msg->header.frame_id;
+		header.stamp = msg->header.stamp;
 		BOOST_FOREACH( AprilTags::TagDetection& det, detections )
 		{
 			TagDetection detMsg;
-			detMsg.header = msg->header;
-			detMsg.code = det.code;
+ 			detMsg.header = header;
+			detMsg.header.seq = sequenceCounter++;
 			detMsg.id = det.id;
 			detMsg.hammingDistance = det.hammingDistance;
 			for( unsigned int i = 0; i < 4; i++ )
@@ -85,8 +89,6 @@ namespace atags
 				detMsg.corners[i].x = det.p[i].first;
 				detMsg.corners[i].y = det.p[i].second;
 			}
-			detMsg.center.x = det.cxy.first;
-			detMsg.center.y = det.cxy.second;
 			detectionPublisher.publish( detMsg );
 		}
 		
@@ -115,7 +117,7 @@ namespace atags
 		
 		cv::Mat undistortedPoints;
 		cv::undistortPoints( detectedPoints, undistortedPoints, cameraMatrix,
-							 distortionCoefficients, cv::noArray(), cameraMatrix );
+							 distortionCoefficients, cv::noArray(), cv::noArray() );
 		
 		ind = 0;
 		cv::Vec2d pt;
