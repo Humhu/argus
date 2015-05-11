@@ -4,7 +4,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 
-#include "v4l2_cam/WorkerPool.h"
+#include "argus_common/WorkerPool.hpp"
 #include "v4l2_cam/CycleCameras.h"
 #include "v4l2_cam/SetStreaming.h"
 
@@ -29,7 +29,7 @@ namespace v4l2_cam
 		ros::NodeHandle privHandle;
 		ros::ServiceServer cycleCamerasServer;
 		
-		WorkerPool dispatchers;
+		argus_common::WorkerPool dispatchers;
 		
 		boost::condition_variable_any commandBlock;
 		

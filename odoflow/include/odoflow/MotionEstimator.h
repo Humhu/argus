@@ -4,7 +4,7 @@
 #include <Eigen/Geometry>
 
 #include "odoflow/InterestPointDetector.h"
-#include "odoflow/PoseSE3.h"
+#include "argus_common/PoseSE3.h"
 
 namespace odoflow
 {
@@ -23,7 +23,7 @@ namespace odoflow
 		 * corresponding image points. Returns success. */
 		virtual bool EstimateMotion( const InterestPoints& firstPoints,
 									 const InterestPoints& secondPoints,
-									 PoseSE3& transform ) = 0;
+									 argus_common::PoseSE3& transform ) = 0;
 
 		/*! \brief Rectifies points into normalized camera coordinates. */
 		// TODO Use undistortion parameters

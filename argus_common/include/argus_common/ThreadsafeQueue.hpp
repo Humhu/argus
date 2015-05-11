@@ -7,11 +7,11 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/locks.hpp>
 
-namespace v4l2_cam {
+namespace argus_common {
 	
-	template <class T, template<typename,typename> class Container = std::deque >
 	/*! \class ThreadsafeContainer ThreadsafeQueue.h
 	* \brief is a mutex-wrapped container. */
+	template <class T, template<typename,typename> class Container = std::deque >
 	class ThreadsafeQueue {
 	public:
 

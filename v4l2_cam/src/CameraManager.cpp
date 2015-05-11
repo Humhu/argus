@@ -4,6 +4,8 @@
 
 #include <boost/foreach.hpp>
 
+using namespace argus_common;
+
 namespace v4l2_cam
 {
 	

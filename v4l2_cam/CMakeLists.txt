@@ -16,6 +16,7 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					std_msgs
 					resource_management
+					argus_common
 )
 
 # Use Boost for most utilities, threading
@@ -55,6 +56,7 @@ catkin_package(
 					sensor_msgs 
 					std_msgs 
 					resource_management
+					argus_common
 					
 	DEPENDS 		Boost 
 					OpenCV 

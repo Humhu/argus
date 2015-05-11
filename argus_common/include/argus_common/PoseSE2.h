@@ -9,7 +9,7 @@
 #define PSE2_COVARIANCE_DOF (6)
 
 // TODO: Templatize to choose between float and double
-namespace odoflow 
+namespace argus_common 
 {
 
 	class PoseSE3;

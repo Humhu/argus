@@ -1,8 +1,9 @@
 #include "odoflow/VisualOdometryPipeline.h"
 #include "odoflow/OpenCVMod.h"
-#include "odoflow/PoseSE3.h"
 
 #include <opencv2/highgui/highgui.hpp>
+
+using namespace argus_common;
 
 namespace odoflow
 {

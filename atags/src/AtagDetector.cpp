@@ -23,11 +23,13 @@ namespace atags
 		sequenceCounter( 0 )
 	{
 
+		int bufferLength;
+		privHandle.param( "buffer_length", bufferLength, 3 );
 		std::vector<std::string> topicNames;
 		privHandle.getParam( "image_sources", topicNames );
 		BOOST_FOREACH( const std::string& topic, topicNames )
 		{
-			cameraSub.push_back( imagePort.subscribeCamera( topic, 1, &AtagDetector::ImageCallback, this ) );
+			cameraSub.push_back( imagePort.subscribeCamera( topic, bufferLength, &AtagDetector::ImageCallback, this ) );
 		}
 		
 		detectionPublisher = privHandle.advertise<atags::TagDetection>( "detections", 20 );

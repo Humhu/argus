@@ -4,6 +4,8 @@
 
 #include <iostream>
 
+using namespace argus_common;
+
 namespace odoflow
 {
 	

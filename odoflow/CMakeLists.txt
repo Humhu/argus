@@ -4,14 +4,15 @@ project(odoflow)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-	roscpp
-	std_msgs
-	sensor_msgs
-	geometry_msgs
-	cv_bridge
-	image_transport
-	image_geometry
+find_package(catkin REQUIRED 
+	COMPONENTS		roscpp
+					std_msgs
+					sensor_msgs
+					geometry_msgs
+					cv_bridge
+					image_transport
+					image_geometry
+					argus_common
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -23,7 +24,7 @@ find_package(Boost REQUIRED)
 find_package(OpenCV 3 REQUIRED)
 add_definitions( "-DOPENCV3=1" )
 
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 find_package(GSL REQUIRED)
 
@@ -37,6 +38,8 @@ catkin_package(
 					cv_bridge 
 					std_msgs 
 					message_runtime
+					argus_common
+										
 	DEPENDS 		Boost 
 					OpenCV 
 					Eigen
@@ -46,7 +49,7 @@ include_directories(include)
 include_directories(
 	${Boost_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
-	${Eigen_INCLUDE_DIRS}
+	${EIGEN3_INCLUDE_DIR}
 	${GSL_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
 )
@@ -70,8 +73,6 @@ add_library(odoflow
 	src/LKPointTracker.cpp
 	src/MotionEstimator.cpp
 	src/OpenCVMod.cpp
-	src/PoseSE2.cpp
-	src/PoseSE3.cpp
 	src/RigidEstimator.cpp
 	src/ROSParser.cpp
 	src/VisualOdometryPipeline.cpp

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>resource_management</name>
+  <name>argus_common</name>
   <version>0.0.0</version>
-  <description>Nodes and interfaces for resource allocation in a system.</description>
+  <description>Common utilities, classes, and messages for the argus package.</description>
 
   <maintainer email="humhu@cmu.edu">Humphrey Hu</maintainer>
 
@@ -17,18 +17,9 @@
   <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>message_generation</build_depend>
-  <build_depend>nodelet</build_depend>
-  <build_depend>argus_common</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
-  <run_depend>message_runtime</run_depend>
-  <run_depend>nodelet</run_depend>
-  <run_depend>argus_common</run_depend>
 
-  <!--export>
-	  <nodelet plugin="${prefix}/v4l2_cam_nodelet.xml" />
-  </export-->
-  
 </package>

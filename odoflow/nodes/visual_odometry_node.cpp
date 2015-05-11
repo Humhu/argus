@@ -13,6 +13,9 @@
 #include "odoflow/ROSParser.h"
 #include "odoflow/InterfaceBindings.h"
 
+using namespace argus_common;
+using namespace odoflow;
+
 // TODO Add image pyramids
 class VisualOdometryNode
 {
@@ -27,9 +30,9 @@ class VisualOdometryNode
 	
 	image_geometry::PinholeCameraModel cameraModel;
 	
-	odoflow::VisualOdometryPipeline pipeline;
+	VisualOdometryPipeline pipeline;
 	
-	odoflow::PoseSE3 pose;
+	PoseSE3 pose;
 	
 public:
 	
@@ -45,9 +48,9 @@ public:
 		
 		posePub = pNode.advertise<geometry_msgs::PoseStamped>( "odometry", 10 );
 		
-		odoflow::InterestPointDetector::Ptr detector = odoflow::ParseDetector( pNode );
-		odoflow::InterestPointTracker::Ptr tracker = odoflow::ParseTracker( pNode );
-		odoflow::MotionEstimator::Ptr estimator = odoflow::ParseEstimator( pNode );
+		InterestPointDetector::Ptr detector = ParseDetector( pNode );
+		InterestPointTracker::Ptr tracker = ParseTracker( pNode );
+		MotionEstimator::Ptr estimator = ParseEstimator( pNode );
 		
 		// TODO Disallow default construction of pipeline?
 		pipeline.SetDetector( detector );
@@ -62,7 +65,7 @@ public:
 		pNode.param( "redetection_threshold", redetectionThreshold, 10 );
 		pipeline.SetRedetectionThreshold( redetectionThreshold );
 		
-		pose = odoflow::PoseSE3(); // Initialization (technically unnecessary)
+		pose = PoseSE3(); // Initialization (technically unnecessary)
 		
 	}
 	
@@ -77,7 +80,7 @@ public:
 		pipeline.SetRectificationParameters( cameraModel.intrinsicMatrix(),
 											 cameraModel.distortionCoeffs() );
 		
-		odoflow::Timepoint timestamp = msg->header.stamp.toBoost();
+		Timepoint timestamp = msg->header.stamp.toBoost();
 		
 		// Decode the received image into an OpenCV object
 		cv_bridge::CvImageConstPtr frame;
@@ -94,7 +97,7 @@ public:
 		cv::Mat image = frame->image;
 		
 		ros::Time start = ros::Time::now();
-		odoflow::PoseSE3 displacement;
+		PoseSE3 displacement;
 		bool success = pipeline.ProcessImage( image, timestamp, displacement );
 		ros::Time finish = ros::Time::now();
 		
@@ -102,7 +105,7 @@ public:
 		{
 			pose = pose*displacement.Inverse();
 			
-			odoflow::PoseSE3::Vector poseVector = pose.ToVector();
+			PoseSE3::Vector poseVector = pose.ToVector();
 			
 			geometry_msgs::PoseStamped poseMsg;
 			poseMsg.header = msg->header;

@@ -4,7 +4,7 @@
 #include <Eigen/Geometry>
 #include <iostream>
 
-namespace odoflow
+namespace argus_common
 {
 
 	class PoseSE2;

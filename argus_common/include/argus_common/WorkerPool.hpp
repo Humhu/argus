@@ -6,8 +6,9 @@
 
 #include <queue>
 
-namespace v4l2_cam {
+namespace argus_common {
 
+	/*! \brief An asynchronous worker thread pool. */
 	class WorkerPool {
 	public:
 
