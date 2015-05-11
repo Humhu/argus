@@ -3,7 +3,7 @@
 #include "manycal/LatchCorresponder.h"
 #include "manycal/TagCorrespondence.h"
 
-#include "atags/TagDetection.h"
+#include "argus_msgs/TagDetection.h"
 
 #include "v4l2_cam/CycleCameras.h"
 
@@ -13,7 +13,6 @@
 #include <boost/foreach.hpp>
 
 using namespace manycal;
-using namespace atags;
 
 // TODO
 int getch()
@@ -31,12 +30,12 @@ int getch()
 }
 
 class TagLatchCorresponder
-	: public LatchCorresponder<TagDetection, TagCorrespondence>
+	: public LatchCorresponder<argus_msgs::TagDetection, TagCorrespondence>
 {
 public:
 	
 	TagLatchCorresponder( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
-		: LatchCorresponder<TagDetection, TagCorrespondence>( nh, ph )
+		: LatchCorresponder<argus_msgs::TagDetection, TagCorrespondence>( nh, ph )
 	{}
 		
 protected:
@@ -45,9 +44,9 @@ protected:
 	{
 		TagCorrespondence msg;
 		msg.header = std_msgs::Header();
-		BOOST_FOREACH( const TagDetection::ConstPtr& det, latchedData )
+		BOOST_FOREACH( const argus_msgs::TagDetection::ConstPtr& det, latchedData )
 		{
-			TagDetection dCopy( *det );
+			argus_msgs::TagDetection dCopy( *det );
 			msg.detections.push_back( dCopy );
 		}
 		// TODO Make more obvious that publisher is a member

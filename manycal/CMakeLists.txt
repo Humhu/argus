@@ -17,6 +17,7 @@ find_package(catkin REQUIRED
 					atags
 					v4l2_cam
 					argus_common
+					argus_msgs
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -38,7 +39,7 @@ add_message_files(
 
 generate_messages(
 	DEPENDENCIES 	std_msgs
-					atags
+					argus_msgs
 )
 
 catkin_package(
@@ -56,6 +57,7 @@ catkin_package(
 					atags
 					v4l2_cam
 					argus_common
+					argus_msgs
 					
 	DEPENDS 		Boost 
 					OpenCV

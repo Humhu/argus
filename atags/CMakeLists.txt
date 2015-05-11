@@ -17,6 +17,7 @@ find_package(catkin REQUIRED
 					std_msgs
 					image_geometry
 					argus_common
+					argus_msgs
 )
 
 # Use Boost for most utilities, threading
@@ -27,17 +28,6 @@ find_package(Boost REQUIRED)
 find_package(apriltags REQUIRED)
 include_directories( ${apriltags_INCLUDE_DIRS} )
 add_definitions( ${apriltags_DEFINITIONS} )
-
-add_message_files(
-	FILES			Point2D_32.msg 
-					TagDetection.msg 
-)
-
-## Generate service files
-generate_messages(
-	DEPENDENCIES	std_msgs
-					sensor_msgs
-)
 
 catkin_package(
 	INCLUDE_DIRS 	include
@@ -67,7 +57,6 @@ include_directories( include
 add_library( atags
 	src/AtagDetector.cpp
 )
-add_dependencies( atags ${atags_EXPORTED_TARGETS} )
 target_link_libraries( atags
 	${apriltags_LIBRARIES}
 	${Boost_LIBRARIES}
@@ -75,15 +64,13 @@ target_link_libraries( atags
 )
 
 add_library( atags_detector_nodelet nodes/atag_detector_nodelet.cpp )
-add_dependencies( atags_detector_nodelet ${atags_cam_EXPORTED_TARGETS}
-								   "${PROJECT_NAME}_gencfg" 
-)
+add_dependencies( atags_detector_nodelet "${PROJECT_NAME}_gencfg" )
 target_link_libraries( atags_detector_nodelet atags
 										 ${catkin_LIBRARIES} 
 )
 	
 add_executable( atag_detector_node nodes/atag_detector_node.cpp )
-add_dependencies( atag_detector_node ${atags_EXPORTED_TARGETS} )
+add_dependencies( atag_detector_node "${PROJECT_NAME}_gencfg" )
 target_link_libraries( atag_detector_node
 	atags
 	${catkin_LIBRARIES}

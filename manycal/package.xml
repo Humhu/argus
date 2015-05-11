@@ -25,6 +25,7 @@
   <build_depend>atags</build_depend>
   <build_depend>v4l2_cam</build_depend>
   <build_depend>argus_common</build_depend>
+  <build_depend>argus_msgs</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
@@ -38,5 +39,6 @@
   <run_depend>atags</run_depend>
   <run_depend>v4l2_cam</run_depend>
   <run_depend>argus_common</run_depend>
+  <run_depend>argus_msgs</run_depend>
   
 </package>

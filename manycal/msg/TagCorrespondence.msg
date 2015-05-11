@@ -1,2 +1,2 @@
 std_msgs/Header header
-atags/TagDetection[] detections
+argus_msgs/TagDetection[] detections
