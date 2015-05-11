@@ -14,19 +14,24 @@
 
 using namespace manycal;
 
-// TODO
+int kbhit()
+{
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
+}
+
 int getch()
 {
-  static struct termios oldt, newt;
-  tcgetattr( STDIN_FILENO, &oldt);           // save old settings
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON);                 // disable buffering      
-  tcsetattr( STDIN_FILENO, TCSANOW, &newt);  // apply new settings
-
-  int c = getchar();  // read character (non-blocking)
-
-  tcsetattr( STDIN_FILENO, TCSANOW, &oldt);  // restore old settings
-  return c;
+    int r;
+    unsigned char c;
+    if ((r = read(0, &c, sizeof(c))) < 0) {
+        return r;
+    } else {
+        return c;
+    }
 }
 
 class TagLatchCorresponder
@@ -79,22 +84,21 @@ int main( int argc, char** argv )
 	
 	while( ros::ok() )
 	{
-		int c = getch();
+		int c = -1;
+		if( kbhit() ) { c = getch(); }
 		if( c == 'c' )
 		{
-			std::cout << "Starting latch..." << std::endl;
 			corresponder.StartLatch();
 			
+			// TODO Make blocking
 			v4l2_cam::CycleCameras req;
 			req.request.numToCapture = 1;
-			std::cout << "Starting cycle..." << std::endl;
+			req.request.blockUntilDone = true;
 			cycleClient.call ( req );
-			std::cout << "Cycle returned." << std::endl;
 		}
 		r.sleep();
 		
 	}
 	
-	std::cout << "Broke from loop." << std::endl;
 	return 0;
 }

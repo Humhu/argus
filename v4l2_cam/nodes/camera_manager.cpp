@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 
-#include "v4l2_cam/CameraManager.h"
+#include "v4l2_cam/CameraArray.h"
 
 int main( int argc, char** argv )
 {
@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	v4l2_cam::CameraManager manager( nh, ph );
+	v4l2_cam::CameraArray manager( nh, ph );
 	
 	ros::spin();
 	

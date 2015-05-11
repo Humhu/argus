@@ -1,4 +1,3 @@
 bool enableStreaming
-bool blockUntilStarted
 int32 numFramesToStream
 ---

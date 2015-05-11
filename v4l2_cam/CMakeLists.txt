@@ -30,8 +30,15 @@ add_definitions( "-DOPENCV3=1" )
 find_package(V4L2 REQUIRED)
 
 ## Generate service files
+add_message_files(
+	FILES			CameraStatus.msg 
+)
+
 add_service_files( 
-	FILES 			CycleCameras.srv
+	FILES 			CycleArray.srv
+					DisableArray.srv
+					DisableArrayCamera.srv
+					EnableArrayCamera.srv
 					PrintCapabilities.srv
 					SetStreaming.srv
 )
@@ -71,8 +78,8 @@ include_directories( include
 )
 
 add_library( v4l2_cam
+	src/CameraArray.cpp
 	src/CameraDriver.cpp
-	src/CameraManager.cpp
 	src/CameraTypes.cpp
 	src/DriverNode.cpp
 )

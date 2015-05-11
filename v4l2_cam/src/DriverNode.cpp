@@ -117,6 +117,8 @@ namespace v4l2_cam
 		privHandle.param( "pub_buff_size", rosBufferSize, 1 );
 		it_pub = it.advertiseCamera( "image_raw", rosBufferSize );
 		
+		statusPublisher = privHandle.advertise<CameraStatus>( "camera_status", 10 );
+		
 		// Set up publisher
 		processWorker = boost::thread( boost::bind( &DriverNode::Process, this ) );
 
@@ -140,8 +142,16 @@ namespace v4l2_cam
 		if( streaming.load( boost::memory_order_relaxed ) ) { return; }
 		streaming.store( true, boost::memory_order_relaxed );
 		AcquireResources();
+		unsigned int numFrames = frameCounter; // TODO Unsychronized read!
 		driver.SetStreaming( true );
 		blocked.notify_all();
+		
+		CameraStatus msg;
+		msg.header.frame_id = cameraName;
+		msg.header.stamp = ros::Time::now();
+		msg.streaming = true;
+		msg.framesStreamed = numFrames;
+		statusPublisher.publish( msg );
 	}
 	
 	void DriverNode::StopStreaming()
@@ -149,6 +159,13 @@ namespace v4l2_cam
 		streaming.store( false, boost::memory_order_relaxed );
 		driver.SetStreaming( false );
 		RelinquishResources();
+		
+		CameraStatus msg;
+		msg.header.frame_id = cameraName;
+		msg.header.stamp = ros::Time::now();
+		msg.streaming = false;
+		msg.framesStreamed = frameCounter; // TODO Unsynchronized read!
+		statusPublisher.publish( msg );
 	}
 	
 	bool DriverNode::SetStreamingService( v4l2_cam::SetStreaming::Request& req,
@@ -225,20 +242,10 @@ namespace v4l2_cam
 				ROS_WARN( "Received empty frame from device." );
 			}
 
-			// remainingToStream equaling 0 here means stream continuously
-			if( remainingToStream > 0 )
-			{
-				remainingToStream--;
-				if( remainingToStream == 0 )
-				{
-					StopStreaming();
-				}
-			}
-			
-				// Populate message headers
+			// Populate message headers
 			header.stamp = ros::Time::now(); // TODO Configure ROS time or wall time
 			header.seq = frameCounter++;
-					
+			
 			// TODO Verify cameraInfoManager matches current device settings
 			cameraInfo->header = header;
 				
@@ -248,6 +255,16 @@ namespace v4l2_cam
 			
 			// TODO Topic diagnostics
 			//topic_diagnostics_.tick( header.stamp );
+			
+			// remainingToStream equaling 0 here means stream continuously
+			if( remainingToStream > 0 )
+			{
+				remainingToStream--;
+				if( remainingToStream == 0 )
+				{
+					StopStreaming();
+				}
+			}
 		}
 	}
 	
