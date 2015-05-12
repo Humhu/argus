@@ -9,8 +9,13 @@ using namespace argus_common;
 namespace v4l2_cam
 {
 	
-	CameraManager::CameraManager( const ros::NodeHandle& nh, const std::string& _cameraName )
-		: cameraName( _cameraName ), nodeHandle( nh )
+	CameraManager::CameraManager( const ros::NodeHandle& nh, 
+								  image_transport::CameraPublisher& ipub,
+								  const std::string& _cameraName )
+		: cameraName( _cameraName ), 
+		nodeHandle( nh ),
+		imagePort( nodeHandle ),
+		imagePub( ipub )
 	{
 		while( !setStreamingClient.isValid() )
 		{
@@ -18,11 +23,20 @@ namespace v4l2_cam
 				cameraName + "/set_streaming", true );
 			setStreamingClient.waitForExistence();
 		}
+		
+		imageSub = imagePort.subscribeCamera( cameraName + "/image_raw", 1,
+					&CameraManager::ImageCallback, this );
 	}
 	
 	CameraManager::~CameraManager()
 	{
 // 		DisableCamera();
+	}
+	
+	void CameraManager::ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
+									   const sensor_msgs::CameraInfo::ConstPtr& info_msg )
+	{
+		imagePub.publish( msg, info_msg );
 	}
 	
 	void CameraManager::ValidateConnection()
@@ -55,7 +69,8 @@ namespace v4l2_cam
 	}
 	
 	CameraArray::CameraArray( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
-		: nodeHandle( nh ), privHandle( ph )
+		: nodeHandle( nh ), privHandle( ph ),
+		imagePort( ph )
 	{
 		
 		cycleArrayServer = privHandle.advertiseService( "cycle_array",
@@ -67,13 +82,15 @@ namespace v4l2_cam
 		disableAllServer = privHandle.advertiseService( "disable_all",
 							&CameraArray::DisableArrayService, this );
 		
+		imagePub = imagePort.advertiseCamera( "image_raw", 1 );
+		
 		std::vector<std::string> cameraNames;
 		privHandle.getParam( "cameras", cameraNames );
 		
 		BOOST_FOREACH( const std::string& name, cameraNames )
 		{
 			CameraManager::Ptr manager = 
-				std::make_shared<CameraManager>( nodeHandle, name );
+				std::make_shared<CameraManager>( nodeHandle, imagePub, name );
 			registry[ name ] = manager;
 		}
 		

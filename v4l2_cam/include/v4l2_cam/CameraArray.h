@@ -2,6 +2,9 @@
 #define _V4L2D_CAMERA_MANAGER_H_
 
 #include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <camera_info_manager/camera_info_manager.h>
 
 #include "argus_common/WorkerPool.hpp"
 
@@ -26,7 +29,9 @@ namespace v4l2_cam
 		
 		const std::string cameraName;
 		
-		CameraManager( const ros::NodeHandle& nh, const std::string& _cameraName );
+		CameraManager( const ros::NodeHandle& nh,
+					   image_transport::CameraPublisher& ipub,
+					   const std::string& _cameraName );
 		~CameraManager();
 		
 		void ValidateConnection(); // TODO Return success?
@@ -36,7 +41,14 @@ namespace v4l2_cam
 	private:
 		
 		ros::NodeHandle nodeHandle;
+		ros::NodeHandle privHandle;
+		image_transport::ImageTransport imagePort;
+		image_transport::CameraSubscriber imageSub;
+		image_transport::CameraPublisher& imagePub;
 		ros::ServiceClient setStreamingClient;
+		
+		void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
+						    const sensor_msgs::CameraInfo::ConstPtr& info_msg );
 		
 	};
 	
@@ -52,17 +64,17 @@ namespace v4l2_cam
 		
 	private:
 		
-// 		typedef boost::unique_lock< boost::shared_mutex > WriteLock;
-// 		typedef boost::shared_lock< boost::shared_mutex > ReadLock;
-// 		boost::shared_mutex mutex;
-
 		ros::NodeHandle nodeHandle;
 		ros::NodeHandle privHandle;
 		
+		// Service handlers
 		ros::ServiceServer cycleArrayServer;
 		ros::ServiceServer enableCameraServer;
 		ros::ServiceServer disableCameraServer;
 		ros::ServiceServer disableAllServer;
+		
+		image_transport::ImageTransport imagePort;
+		image_transport::CameraPublisher imagePub;
 		
 		argus_common::WorkerPool dispatchers;
 		

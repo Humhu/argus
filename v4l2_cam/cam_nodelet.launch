@@ -15,7 +15,7 @@
       stream_on_start: false
       
       resources:
-        usb_bandwidth: 250
+        usb_bandwidth: 200
       
       controls:
         horizontal_flip:
