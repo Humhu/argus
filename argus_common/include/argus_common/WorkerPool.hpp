@@ -39,7 +39,6 @@ namespace argus_common {
 
 		void StartWorkers()
 		{
-			std::cout << "Starting with " << numWorkers << " workers." << std::endl;
 			for( unsigned int i = 0; i < numWorkers; i++) {
 				workerThreads.create_thread( boost::bind( &WorkerPool::WorkerLoop, this ) );
 			}
