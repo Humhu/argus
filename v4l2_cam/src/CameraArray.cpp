@@ -12,8 +12,17 @@ namespace v4l2_cam
 	CameraManager::CameraManager( const ros::NodeHandle& nh, const std::string& _cameraName )
 		: cameraName( _cameraName ), nodeHandle( nh )
 	{
-		setStreamingClient = nodeHandle.serviceClient<SetStreaming>( 
-			cameraName + "/set_streaming", true );
+		while( !setStreamingClient.isValid() )
+		{
+			setStreamingClient = nodeHandle.serviceClient<SetStreaming>( 
+				cameraName + "/set_streaming", true );
+			setStreamingClient.waitForExistence();
+		}
+	}
+	
+	CameraManager::~CameraManager()
+	{
+// 		DisableCamera();
 	}
 	
 	void CameraManager::ValidateConnection()
@@ -29,7 +38,7 @@ namespace v4l2_cam
 	
 	void CameraManager::EnableCamera()
 	{
-		ValidateConnection();
+// 		ValidateConnection();
 		SetStreaming srv;
 		srv.request.enableStreaming = true;
 		srv.request.numFramesToStream = 0;
@@ -38,7 +47,7 @@ namespace v4l2_cam
 	
 	void CameraManager::DisableCamera()
 	{
-		ValidateConnection();
+// 		ValidateConnection();
 		SetStreaming srv;
 		srv.request.enableStreaming = false;
 		srv.request.numFramesToStream = 0;
@@ -46,12 +55,17 @@ namespace v4l2_cam
 	}
 	
 	CameraArray::CameraArray( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
-		: nodeHandle( nh ), privHandle( ph ),
-		cycleCamerasServer( privHandle.advertiseService(
-							"cycle_cameras",
-							&CameraArray::CycleArrayService,
-							this ) )
+		: nodeHandle( nh ), privHandle( ph )
 	{
+		
+		cycleArrayServer = privHandle.advertiseService( "cycle_array",
+							&CameraArray::CycleArrayService, this );
+		enableCameraServer = privHandle.advertiseService( "enable_camera",
+							&CameraArray::EnableCameraService, this );
+		disableCameraServer = privHandle.advertiseService( "disable_camera",
+							&CameraArray::DisableCameraService, this );
+		disableAllServer = privHandle.advertiseService( "disable_all",
+							&CameraArray::DisableArrayService, this );
 		
 		std::vector<std::string> cameraNames;
 		privHandle.getParam( "cameras", cameraNames );
@@ -117,7 +131,6 @@ namespace v4l2_cam
 	
 	bool CameraArray::DisableArrayService( DisableArray::Request& req,
 										   DisableArray::Response& res ) {
-		SetStreaming srv;
 		BOOST_FOREACH( CameraRegistry::value_type& item, registry )
 		{
 			DisableCamera( item.second );

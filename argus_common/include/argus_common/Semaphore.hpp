@@ -14,14 +14,14 @@ namespace argus_common {
 			: counter( startCounter )
 		{}
 		
-		void Increment( unsigned int i = 1 )
+		void Increment( int i = 1 )
 		{
 			boost::unique_lock<Mutex> lock( mutex );
 			counter += i;
 			hasCounters.notify_all(); // TODO all or one?
 		}
 		
-		void Decrement( unsigned int i = 1 )
+		void Decrement( int i = 1 )
 		{
 			boost::unique_lock<Mutex> lock( mutex );
 			

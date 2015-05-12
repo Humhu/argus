@@ -3,6 +3,8 @@
 #include "resource_management/RequestResources.h"
 #include "resource_management/ReleaseResources.h"
 
+#include <boost/foreach.hpp>
+
 namespace resource_management
 {
 	
@@ -22,26 +24,16 @@ namespace resource_management
 		releaseClient = 
 			nodeHandle.serviceClient<ReleaseResources>( resourceManager + "/release_resources", true );
 			
-		XmlRpc::XmlRpcValue resources;
+		typedef std::map< std::string, int > ResourceMap;
+		ResourceMap resources;
 		privHandle.getParam( "resources", resources );
-		
-		XmlRpc::XmlRpcValue::iterator iter = resources.begin();
-		while( iter != resources.end() )
+		BOOST_FOREACH( const ResourceMap::value_type& item, resources )
 		{
-			XmlRpc::XmlRpcValue::ValueStruct::value_type item = *iter;
-			
-			int nominal = item.second["nominal"];
-			int minimum = item.second["minimum"];
-			
 			ResourceRequest req;
 			req.resourceName = item.first;
-			req.nominalQuantity = nominal;
-			req.minimumQuantity = minimum;
+			req.requestedQuantity = item.second;
 			resourceRequirements.push_back( req );
-			
-			iter++;
 		}
-		
 	}
 	
 	bool ResourceUser::HasResources() const
@@ -49,22 +41,25 @@ namespace resource_management
 		return hasResources;
 	}
 	
-	void ResourceUser::AcquireResources()
+	bool ResourceUser::AcquireResources()
 	{
-		if( resourceRequirements.empty() || hasResources ) { return; }
+		if( resourceRequirements.empty() || hasResources ) { return true; }
+		
+		std::cout << "Attempting to acquire resources.." << std::endl;
 		
 		RequestResources req;
 		req.request.requests = resourceRequirements;
 		if( !requestClient.call( req ) )
 		{
 			ROS_ERROR_STREAM( "Failed to acquire resources." );
-			return;
+			return false;
 		}
 		
 		ROS_INFO_STREAM( "Acquired resource grant " << req.response.grantID );
 
 		currentGrantID = req.response.grantID;
 		hasResources = true;
+		return true;
 	}
 	
 	void ResourceUser::RelinquishResources()

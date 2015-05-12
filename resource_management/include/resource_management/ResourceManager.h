@@ -22,7 +22,6 @@ namespace resource_management
 	public:
 		
 		ResourceManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
-		~ResourceManager();
 		
 		bool RequestResourcesService( RequestResources::Request& req,
 									  RequestResources::Response& res );
@@ -32,15 +31,9 @@ namespace resource_management
 		
 	private:
 		
-		typedef boost::unique_lock< boost::shared_mutex > Lock;
+		typedef boost::unique_lock< boost::mutex > Lock;
 		
-		boost::shared_mutex mutex;
-		boost::condition_variable_any blockedCondition;
-		
-		std::shared_ptr<ros::AsyncSpinner> requestSpinner;
-		ros::CallbackQueue requestQueue;
-		ros::AsyncSpinner releaseSpinner;
-		ros::CallbackQueue releaseQueue;
+		boost::mutex mutex;
 		
 		ros::NodeHandle nodeHandle;
 		ros::NodeHandle privHandle;
@@ -51,8 +44,6 @@ namespace resource_management
 		struct ResourceEntry
 		{
 			unsigned int available;
-			unsigned int max;
-			unsigned int min;
 		};
 		
 		// TODO Heartbeat on old grants?
@@ -69,8 +60,7 @@ namespace resource_management
 		
 		bool ValidateRequest( const RequestResources::Request& req ) const;
 		bool TestSetResources( const RequestResources::Request& req,
-							   RequestResources::Response& res,
-							   Lock& lock );
+							   RequestResources::Response& res );
 		
 	};
 	

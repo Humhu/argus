@@ -15,9 +15,7 @@
       stream_on_start: false
       
       resources:
-        usb_bandwidth:
-          nominal: 250
-          minimum: 250
+        usb_bandwidth: 250
       
       controls:
         horizontal_flip:

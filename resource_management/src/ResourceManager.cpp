@@ -7,7 +7,6 @@ namespace resource_management
 	
 	ResourceManager::ResourceManager( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		: nodeHandle( nh ), privHandle( ph ),
-		releaseSpinner( 1, &releaseQueue ),
 		grantCounter( 0 )
 	{
 		
@@ -27,38 +26,17 @@ namespace resource_management
 			}
 			
 			int avail = item.second["available"];
-			int max = item.second["max"];
-			int min = item.second["min"];
 			
 			ResourceEntry entry;
 			entry.available = avail;
-			entry.max = max;
-			entry.min = min;
 			registry[name] = entry;
 		}
 		
-		int numRequestSpinners;
-		privHandle.param( "num_request_threads", numRequestSpinners, 4 );
-		requestSpinner = std::make_shared<ros::AsyncSpinner>( numRequestSpinners, &requestQueue );
-		requestSpinner->start();
-		
-		ros::AdvertiseServiceOptions requestOptions;
-		requestOptions.init<RequestResources>( "request_resources", 
-			boost::bind( &ResourceManager::RequestResourcesService, this, _1, _2 ) );
-		requestOptions.callback_queue = &requestQueue;
-		requestServer = privHandle.advertiseService( requestOptions );
-		
-		ros::AdvertiseServiceOptions releaseOptions;
-		releaseOptions.init<ReleaseResources>( "release_resources",
-			boost::bind( &ResourceManager::ReleaseResourcesService, this, _1, _2 ) );
-		releaseOptions.callback_queue = &releaseQueue;
-		releaseServer = privHandle.advertiseService( releaseOptions );
-		
-		releaseSpinner.start();
+		requestServer = privHandle.advertiseService( "request_resources", 
+			&ResourceManager::RequestResourcesService, this );
+		releaseServer = privHandle.advertiseService( "release_resources",
+			&ResourceManager::ReleaseResourcesService, this );
 	}
-	
-	ResourceManager::~ResourceManager()
-	{}
 	
 	bool ResourceManager::RequestResourcesService( RequestResources::Request& req,
 												   RequestResources::Response& res )
@@ -70,11 +48,9 @@ namespace resource_management
 			return false;
 		}
 
-		Lock lock( mutex );
-
-		while( !TestSetResources( req, res, lock ) )
+		if( !TestSetResources( req, res ) )
 		{
-			blockedCondition.wait( lock );
+			return false;
 		}
 		
 		return true;
@@ -97,7 +73,6 @@ namespace resource_management
 			registry[grant.resourceName].available += grant.amountGranted;
 		}
 		
-		blockedCondition.notify_all();
 		return true;
 	}
 	
@@ -115,13 +90,13 @@ namespace resource_management
 	}
 	
 	bool ResourceManager::TestSetResources( const RequestResources::Request& req,
-											RequestResources::Response& res,
-											Lock& lock )
+											RequestResources::Response& res )
 	{
-		// TODO Check lock state
+		Lock lock( mutex );
+
 		BOOST_FOREACH( const ResourceRequest& r, req.requests )
 		{			
-			if( registry[r.resourceName].available < r.minimumQuantity )
+			if( registry[r.resourceName].available < r.requestedQuantity )
 			{
 				return false;
 			}
@@ -134,10 +109,8 @@ namespace resource_management
 			ResourceGrant g;
 			g.resourceName = r.resourceName;
 			
-			unsigned int quant = std::min( registry[r.resourceName].available,
-										   r.nominalQuantity );
-			g.amountGranted = quant;
-			registry[r.resourceName].available -= quant;
+			g.amountGranted = r.requestedQuantity;
+			registry[r.resourceName].available -= r.requestedQuantity;
 			res.grants.push_back( g );
 		}
 		res.grantID = grantCounter;

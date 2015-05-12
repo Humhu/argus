@@ -140,8 +140,13 @@ namespace v4l2_cam
 	void DriverNode::StartStreaming()
 	{
 		if( streaming.load( boost::memory_order_relaxed ) ) { return; }
+		
+		if( !AcquireResources() ) { 
+			ROS_WARN_STREAM( "Could not acquire resources required for camera stream." );
+			return;
+		}
+		
 		streaming.store( true, boost::memory_order_relaxed );
-		AcquireResources();
 		unsigned int numFrames = frameCounter; // TODO Unsychronized read!
 		driver.SetStreaming( true );
 		blocked.notify_all();

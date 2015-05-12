@@ -27,6 +27,7 @@ namespace v4l2_cam
 		const std::string cameraName;
 		
 		CameraManager( const ros::NodeHandle& nh, const std::string& _cameraName );
+		~CameraManager();
 		
 		void ValidateConnection(); // TODO Return success?
 		void EnableCamera();
@@ -58,7 +59,7 @@ namespace v4l2_cam
 		ros::NodeHandle nodeHandle;
 		ros::NodeHandle privHandle;
 		
-		ros::ServiceServer cycleCamerasServer;
+		ros::ServiceServer cycleArrayServer;
 		ros::ServiceServer enableCameraServer;
 		ros::ServiceServer disableCameraServer;
 		ros::ServiceServer disableAllServer;

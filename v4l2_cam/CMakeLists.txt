@@ -110,11 +110,11 @@ add_dependencies( viewer_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( viewer_node
 	${catkin_LIBRARIES} )
 	
-add_executable( camera_manager nodes/camera_manager.cpp )
-add_dependencies( camera_manager ${PROJECT_NAME}_gencfg )
-target_link_libraries( camera_manager
+add_executable( camera_array nodes/camera_array.cpp )
+add_dependencies( camera_array ${PROJECT_NAME}_gencfg )
+target_link_libraries( camera_array
 	${catkin_LIBRARIES}
-	v4l2_cam)
+	v4l2_cam )
 	
 ## Mark executables and/or libraries for installation
 install(TARGETS v4l2_cam camera_node viewer_node

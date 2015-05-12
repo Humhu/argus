@@ -20,7 +20,11 @@ namespace resource_management
 		
 		bool HasResources() const;
 		
-		void AcquireResources();
+		/*! \brief Attempts to acquire the necessary resources. Returns true if
+		 * resources have been acquired or false if the resources are unavailable. */
+		bool AcquireResources();
+		
+		/*! \brief Returns the currently held resources. */
 		void RelinquishResources();
 		
 	private:

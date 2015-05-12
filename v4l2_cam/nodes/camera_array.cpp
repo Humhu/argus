@@ -12,7 +12,5 @@ int main( int argc, char** argv )
 	v4l2_cam::CameraArray manager( nh, ph );
 	
 	ros::spin();
-	
 	return 0;
-	
 }

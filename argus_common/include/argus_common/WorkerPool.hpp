@@ -20,6 +20,11 @@ namespace argus_common {
 			
 		WorkerPool( unsigned int n )
 			: numWorkers( n ) {}
+			
+		~WorkerPool()
+		{
+			StopWorkers();
+		}
 		
 		void SetNumWorkers( unsigned int n )
 		{
@@ -34,6 +39,7 @@ namespace argus_common {
 
 		void StartWorkers()
 		{
+			std::cout << "Starting with " << numWorkers << " workers." << std::endl;
 			for( unsigned int i = 0; i < numWorkers; i++) {
 				workerThreads.create_thread( boost::bind( &WorkerPool::WorkerLoop, this ) );
 			}
@@ -45,6 +51,15 @@ namespace argus_common {
 			workerThreads.join_all();
 		}
 
+		void WaitOnJobs()
+		{
+			Lock lock( mutex );
+			while( !jobQueue.empty() )
+			{
+				hasNoJobs.wait( lock );
+			}
+		}
+		
 	protected:
 
 		typedef boost::unique_lock< boost::shared_mutex > Lock;
@@ -53,8 +68,9 @@ namespace argus_common {
 		unsigned int numWorkers;
 		std::queue<Job> jobQueue;
 		boost::condition_variable_any hasJobs;
+		boost::condition_variable_any hasNoJobs;
 		boost::thread_group workerThreads;
-
+		
 		void WorkerLoop()
 		{
 			while( true ) {
@@ -69,6 +85,10 @@ namespace argus_common {
 					
 					Job job = jobQueue.front();
 					jobQueue.pop();
+					if( jobQueue.size() == 0 )
+					{
+						hasNoJobs.notify_all();
+					}
 					
 					lock.unlock();
 					
