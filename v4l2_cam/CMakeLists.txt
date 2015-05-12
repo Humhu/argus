@@ -53,6 +53,7 @@ catkin_package(
 	
 	LIBRARIES 		v4l2_cam
 					v4l2_cam_nodelet
+					camera_array_nodelet
 					
 	CATKIN_DEPENDS 	camera_info_manager
 					cv_bridge 
@@ -93,6 +94,14 @@ target_link_libraries( v4l2_cam
 
 add_library( v4l2_cam_nodelet nodes/camera_nodelet.cpp )
 add_dependencies( v4l2_cam_nodelet ${v4l2_cam_EXPORTED_TARGETS}
+								   "${PROJECT_NAME}_gencfg" 
+)
+target_link_libraries( v4l2_cam_nodelet v4l2_cam
+										${catkin_LIBRARIES} 
+)
+
+add_library( camera_array_nodelet nodes/camera_array_nodelet.cpp )
+add_dependencies( camera_array_nodelet ${v4l2_cam_EXPORTED_TARGETS}
 								   "${PROJECT_NAME}_gencfg" 
 )
 target_link_libraries( v4l2_cam_nodelet v4l2_cam

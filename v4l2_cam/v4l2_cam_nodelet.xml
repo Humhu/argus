@@ -8,3 +8,13 @@
     </description>
   </class>
 </library>
+
+<library path="lib/libcamera_array_nodelet">
+  <class name="v4l2_cam/camera_array_nodelet"
+         type="v4l2_cam::CameraArrayNodelet"
+         base_class_type="nodelet::Nodelet">
+    <description> 
+      Camera array nodelet.
+    </description>
+  </class>
+</library>

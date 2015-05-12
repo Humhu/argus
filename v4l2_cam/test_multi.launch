@@ -68,7 +68,8 @@
     <arg name="resource_name" value="resource_manager" />
   </include>
   
-  <node pkg="v4l2_cam" type="camera_array" name="camera_array" output="screen">
+  <node pkg="nodelet" type="nodelet" name="camera_array" 
+    args="load v4l2_cam/camera_array_nodelet camera_threadpool" output="screen">
     <rosparam>
       cameras: [camera0, camera1]
     </rosparam>

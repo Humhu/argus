@@ -59,6 +59,8 @@ namespace v4l2_cam
 	{
 	public:
 		
+		typedef std::shared_ptr<CameraArray> Ptr;
+		
 		CameraArray( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 		~CameraArray();
 		
