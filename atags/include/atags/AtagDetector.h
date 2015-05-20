@@ -8,6 +8,8 @@
 
 #include "apriltags/TagDetector.h"
 
+#include "argus_msgs/TagDetection.h"
+
 #include <memory>
 
 namespace atags 
@@ -29,18 +31,22 @@ namespace atags
 		ros::NodeHandle nodeHandle;
 		ros::NodeHandle privHandle;
 				
-		ros::Publisher detectionPublisher;
+		ros::Publisher rawPublisher;
+		ros::Publisher rectifiedPublisher;
 
 		image_transport::ImageTransport imagePort;
 		
 		unsigned long sequenceCounter;
 		
-		std::vector<image_transport::CameraSubscriber> cameraSub;
+		image_transport::CameraSubscriber cameraSub;
 		
 		AprilTags::TagDetector::Ptr detector;
 		
 		void RectifyDetections( std::vector<AprilTags::TagDetection>& detections,
-								image_geometry::PinholeCameraModel& cameraModel );
+								const image_geometry::PinholeCameraModel& cameraModel );
+		
+		void PopulateMessage( const AprilTags::TagDetection& detection,
+							  argus_msgs::TagDetection& msg );
 		
 	};
 	

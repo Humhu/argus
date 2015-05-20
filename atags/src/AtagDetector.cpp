@@ -1,5 +1,4 @@
 #include "atags/AtagDetector.h"
-#include "atags/TagDetection.h"
 
 #include "apriltags/Tag16h5.h"
 #include "apriltags/Tag25h7.h"
@@ -25,14 +24,10 @@ namespace atags
 
 		int bufferLength;
 		privHandle.param( "buffer_length", bufferLength, 3 );
-		std::vector<std::string> topicNames;
-		privHandle.getParam( "image_sources", topicNames );
-		BOOST_FOREACH( const std::string& topic, topicNames )
-		{
-			cameraSub.push_back( imagePort.subscribeCamera( topic, bufferLength, &AtagDetector::ImageCallback, this ) );
-		}
+		cameraSub = imagePort.subscribeCamera( "image_source", bufferLength, &AtagDetector::ImageCallback, this );
 		
-		detectionPublisher = privHandle.advertise<atags::TagDetection>( "detections", 20 );
+		rawPublisher = privHandle.advertise<argus_msgs::TagDetection>( "detections_raw", 20 );
+		rectifiedPublisher = privHandle.advertise<argus_msgs::TagDetection>( "detections_rectified", 20 );
 		
 		std::string tagFamily;
 		privHandle.param<std::string>( "tag_family", tagFamily, "36h11" );
@@ -61,60 +56,85 @@ namespace atags
 	void AtagDetector::ImageCallback( const sensor_msgs::ImageConstPtr& msg,
 									  const sensor_msgs::CameraInfoConstPtr& info_msg )
 	{
+		// Reinitializing the camera model is wasteful, but it may change over time
 		image_geometry::PinholeCameraModel cameraModel;
 		cameraModel.fromCameraInfo( info_msg );
 		
+		// Detection occurs in grayscale
 		cv_bridge::CvImageConstPtr frame = cv_bridge::toCvShare( msg, "mono8" );
-		std::vector<AprilTags::TagDetection> detections =
-			detector->extractTags( frame->image );
+		std::vector<AprilTags::TagDetection> detections = detector->extractTags( frame->image );
 		
 		if( detections.size() == 0 ) { return; }
+		
+		std_msgs::Header header;
+		header.frame_id = msg->header.frame_id;
+		header.stamp = msg->header.stamp;
+		argus_msgs::TagDetection detMsg;
+		detMsg.header = header;
 		
 		// Checks for uncalibrated data
 		if( cameraModel.fx() != 0 )
 		{
-			RectifyDetections( detections, cameraModel );
+			std::vector<AprilTags::TagDetection> rectified = detections;
+			RectifyDetections( rectified, cameraModel );
+			
+			// Publish rectified
+			BOOST_FOREACH( const AprilTags::TagDetection& det, rectified )
+			{
+				detMsg.isNormalized = true;
+				PopulateMessage( det, detMsg );
+				rectifiedPublisher.publish( detMsg );
+			}
 		}
 			
-		std_msgs::Header header;
-		header.frame_id = msg->header.frame_id;
-		header.stamp = msg->header.stamp;
-		BOOST_FOREACH( AprilTags::TagDetection& det, detections )
+		// Publish raw
+		BOOST_FOREACH( const AprilTags::TagDetection& det, detections )
 		{
-			TagDetection detMsg;
- 			detMsg.header = header;
-			detMsg.header.seq = sequenceCounter++;
-			detMsg.id = det.id;
-			detMsg.hammingDistance = det.hammingDistance;
-			for( unsigned int i = 0; i < 4; i++ )
-			{
-				detMsg.corners[i].x = det.p[i].first;
-				detMsg.corners[i].y = det.p[i].second;
-			}
-			detectionPublisher.publish( detMsg );
+			detMsg.isNormalized = false;
+ 			PopulateMessage( det, detMsg );
+			rawPublisher.publish( detMsg );
 		}
 		
 	}
 	
+	void AtagDetector::PopulateMessage( const AprilTags::TagDetection& detection,
+										argus_msgs::TagDetection& msg ) 
+	{
+			msg.header.seq = sequenceCounter++;
+			msg.id = detection.id;
+			msg.hammingDistance = detection.hammingDistance;
+			for( unsigned int i = 0; i < 4; i++ )
+			{
+				msg.corners[i].x = detection.p[i].first;
+				msg.corners[i].y = detection.p[i].second;
+			}
+			msg.center.x = detection.cxy.first;
+			msg.center.y = detection.cxy.second;
+	}
+	
 	void AtagDetector::RectifyDetections( std::vector<AprilTags::TagDetection>& detections,
-										  image_geometry::PinholeCameraModel& cameraModel	)
+										  const image_geometry::PinholeCameraModel& cameraModel	)
 	{
 		cv::Matx33d cameraMatrix = cameraModel.intrinsicMatrix();
 		cv::Mat distortionCoefficients = cameraModel.distortionCoeffs();
 		
-		cv::Mat detectedPoints( 4*detections.size(), 1, CV_64FC2 );
+		cv::Mat detectedPoints( 5*detections.size(), 1, CV_64FC2 );
 		
 		unsigned int ind = 0;
+		cv::Vec2d p;
 		BOOST_FOREACH( AprilTags::TagDetection& det, detections )
 		{
 			for( unsigned int i = 0; i < 4; i++ )
 			{
-				cv::Vec2d p;
 				p[0] = det.p[i].first;
 				p[1] = det.p[i].second;
 				detectedPoints.at<cv::Vec2d>(ind,0) = p;
 				ind++;
 			}
+			p[0] = det.cxy.first;
+			p[1] = det.cxy.second;
+			detectedPoints.at<cv::Vec2d>(ind,0) = p;
+			ind++;
 		}
 		
 		cv::Mat undistortedPoints;
@@ -122,16 +142,19 @@ namespace atags
 							 distortionCoefficients, cv::noArray(), cv::noArray() );
 		
 		ind = 0;
-		cv::Vec2d pt;
 		BOOST_FOREACH( AprilTags::TagDetection& det, detections )
 		{
 			for( unsigned int i = 0; i < 4; i++ )
 			{
-				pt = undistortedPoints.at<cv::Vec2d>(ind,0);
+				p = undistortedPoints.at<cv::Vec2d>(ind,0);
 				ind++;
-				det.p[i].first = pt[0];
-				det.p[i].second = pt[1];
+				det.p[i].first = p[0];
+				det.p[i].second = p[1];
 			}
+			p = undistortedPoints.at<cv::Vec2d>(ind,0);
+			ind++;
+			det.cxy.first = p[0];
+			det.cxy.second = p[1];
 		}
 		
 	}

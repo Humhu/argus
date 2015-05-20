@@ -1,36 +1,149 @@
 #include "manycal/ArrayCalibrator.h"
 
+#include "v4l2_cam/ListArrayCameras.h"
+
+#include "atags/AtagCommon.h"
+
+#include <boost/foreach.hpp>
+
+using namespace isam;
+using namespace argus_common;
+
 namespace manycal
 {
 
 	ArrayCalibrator::ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
-		: nodeHandle( nh ), privHandle( ph ) 
+		: nodeHandle( nh ), privHandle( ph ),
+		slam( std::make_shared<Slam>() ),
+		poseGraph( slam )
 	{
-		XmlRpc::XmlRpcValue cameras;
-		privHandle.getParam( "cameras", cameras);
+		std::string arrayName;
+		privHandle.getParam( "array_name", arrayName );
 		
-		XmlRpc::XmlRpcValue::iterator iter = cameras.begin();
-		while( iter != cameras.end() )
+		detectionSub = nodeHandle.subscribe( "detections", 10, &ArrayCalibrator::DetectionCallback, this );
+			
+		privHandle.getParam( "tag_size", tagSize );
+		
+		// Initialize pose graph
+		Pose3d pose; // Initializes to 0
+		Noise prior = Covariance( 1E2*eye(6) );
+		ros::Time now = ros::Time::now();
+		poseGraph.AddDynamic( "base", now.toBoost(), pose );
+		poseGraph.AddDynamicPrior( "base", now.toBoost(), pose, prior );
+	}
+	
+	ArrayCalibrator::~ArrayCalibrator()
+	{
+		slam.get_slam()->save( "array_calibrator_graph.isam" );
+	}
+	
+	void ArrayCalibrator::DetectionCallback( const argus_msgs::TagDetection::ConstPtr& msg )
+	{
+		if( !msg->isNormalized )
 		{
-// 			XmlRpc::XmlRpcValue::ValueStruct::value_type item = *iter;
-// 			iter++;
-// 			std::string name = item.first;
-// 			
-// 			if( registry.count( name ) > 0 )
-// 			{
-// 				throw std::runtime_error( "Duplicate camera  entry for " + name );
-// 			}
-// 			
-// 			int avail = item.second["available"];
-// 			int max = item.second["max"];
-// 			int min = item.second["min"];
-// 			
-// 			ResourceEntry entry;
-// 			entry.available = avail;
-// 			entry.max = max;
-// 			entry.min = min;
-// 			registry[name] = entry;
+			ROS_WARN_STREAM( "Received unnormalized detection message!" );
+			return;
 		}
+		
+		// Do odometry first
+		Pose3d_Node::Ptr previous = poseGraph.GetDynamicSeries( "base" )->GetLast().point;
+		Time previousTime = poseGraph.GetDynamicSeries( "base" )->GetLast().time;
+		Time msgTime = msg->header.stamp.toBoost();
+		double dt = to_seconds( msgTime - previousTime );
+		Noise transNoise = Covariance( 1E2*eye(6)*dt );
+		Pose3d displacement;
+		Pose3d_Node::Ptr latest = poseGraph.AddDynamicOdometry( "base", msgTime,
+																displacement, transNoise );
+		
+		std::string source = msg->header.frame_id;
+		if( cameraRegistry.count( source ) == 0 )
+		{
+			InitializeCamera( source );
+		}
+		
+		CameraRegistration& camReg = cameraRegistry[ source ];
+		
+		if( tagRegistry.count( msg->id ) == 0 )
+		{
+			InitializeTag( source, *msg, tagSize );
+		}
+		TagRegistration& tagReg = tagRegistry[ msg->id ];
+
+		Noise measNoise = Information( 10*eye(8) );
+		Point2d bl( msg->corners[0].x, msg->corners[0].y );
+		Point2d br( msg->corners[1].x, msg->corners[1].y );
+		Point2d tr( msg->corners[2].x, msg->corners[2].y );
+		Point2d tl( msg->corners[3].x, msg->corners[3].y );
+		TagCorners meas( bl, br, tr, tl );
+		
+		Tag_Extrinsics_Factor::Ptr factor = std::make_shared<Tag_Extrinsics_Factor>(
+			latest.get(), tagReg.extrinsics.get(), tagReg.intrinsics.get(),
+			camReg.extrinsics.get(), camReg.intrinsics.get(), meas, measNoise );
+		slam.add_factor( factor );
+		
+// 		Jacobian j = factor->jacobian();
+// 		std::cout << "Factor jacobian: " << std::endl << j << std::endl;
+		
+// 		Eigen::MatrixXd sj = matrix_of_sparseMatrix( slam.get_slam()->jacobian() );
+// 		std::cout << "System jacobian: " << std::endl << sj << std::endl;
+		
+// 		TagCorners pred = factor->predict();
+// 		std::cout << "Predicted: " << pred << std::endl;
+// 		std::cout << "Received: " << meas << std::endl;
+		
+// 		slam.get_slam()->write( std::cout );
+		slam.get_slam()->batch_optimization();
+		BOOST_FOREACH( TagRegistry::value_type& item, tagRegistry )
+		{
+			std::cout << "Tag " << item.first << " " << item.second.extrinsics->value() << std::endl;
+		}
+		BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
+		{
+			std::cout << "Camera " << item.first << " " << item.second.extrinsics->value() << std::endl;
+		}
+		std::cout << "Current pose " << poseGraph.GetDynamicSeries( "base" )->GetLast().point->value() << std::endl;
+		
+		std::cout << std::endl;
+		
+	}
+	
+	void ArrayCalibrator::InitializeCamera( const std::string& name )
+	{
+		// NOTE The tag detections will already be in undistorted normalized camera coordinates
+		CameraRegistration registration;
+		Eigen::Vector2d principalPoint;
+		principalPoint << 0.0, 0.0;
+		registration.intrinsics = std::make_shared<MonocularIntrinsics>( 1.0, 1.0, principalPoint );
+		Pose3d pose( 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 );
+		registration.extrinsics = poseGraph.AddStatic( name, pose );		
+		Noise prior = Information( 1E-3*eye(6) );
+		poseGraph.AddStaticPrior( name, pose, prior );
+		cameraRegistry[ name ] = registration;
+		
+		ROS_INFO_STREAM( "Initializing camera " << name << " at " << pose );
+	}
+	
+	// Assuming square tag with x-forward out of the tag, y left, z up
+	void ArrayCalibrator::InitializeTag( const std::string& camName, const argus_msgs::TagDetection& msg,
+										 double size )
+	{
+		Pose3d bot = poseGraph.GetDynamic( "base", msg.header.stamp.toBoost() )->value();
+		Pose3d ext = cameraRegistry.at(camName).extrinsics->value();
+		Pose3d displacement( atags::get_tag_pose( msg, size ).ToTransform() );
+		Pose3d guess( bot.wTo() * ext.wTo() * displacement.wTo() );
+		
+		TagRegistration registration;
+		registration.intrinsics = std::make_shared<TagIntrinsics>( tagSize );
+		std::stringstream ss;
+		ss << "Tag" << msg.id;
+		Noise prior = Information( eye(6) );
+		registration.extrinsics = poseGraph.AddStatic( ss.str(), guess );
+// 		poseGraph.AddStaticPrior( ss.str(), guess, prior );
+		
+		tagRegistry[ msg.id ] = registration;
+		
+		ROS_INFO_STREAM( "Initializing tag " << msg.id << " with relative pose " 
+			<< displacement << " at " << guess );
 	}
 	
 }

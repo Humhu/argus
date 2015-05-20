@@ -5,7 +5,7 @@
   
   <node pkg="resource_management" type="resource_manager" name="resource_manager" output="screen">
     <rosparam>
-      num_request_threads: 10
+      num_request_threads: 4
       resources:
         usb_bandwidth:
           available: 480
@@ -14,40 +14,43 @@
     </rosparam>
   </node>
   
-  <include file="$(find v4l2_cam)/cam_nodelet.launch">
-    <arg name="device_path" value="/dev/video1"/>
-    <arg name="camera_name" value="pseye_000_wide"/>
-    <arg name="name" value="camera0"/>
-    <arg name="manager_name" value="threadpool"/>
+  <include file="$(find v4l2_cam)/cam_node.launch">
+    <arg name="device_path" value="/dev/video0"/>
+    <arg name="camera_name" value="pseye_050_narrow"/>
+    <arg name="name" value="pseye_050"/>
+    <!--arg name="manager_name" value="threadpool"/-->
     <arg name="resource_name" value="resource_manager"/>
   </include>
   
-  <include file="$(find v4l2_cam)/cam_nodelet.launch">
-    <arg name="device_path" value="/dev/video2"/>
-    <arg name="camera_name" value="pseye_001_wide"/>
-    <arg name="name" value="camera1"/>
+  <!--include file="$(find v4l2_cam)/cam_nodelet.launch">
+    <arg name="device_path" value="/dev/video1"/>
+    <arg name="camera_name" value="pseye_046_narrow"/>
+    <arg name="name" value="pseye_046"/>
     <arg name="manager_name" value="threadpool"/>
     <arg name="resource_name" value="resource_manager"/>
-  </include>
+  </include-->
+  
+  <node pkg="nodelet" type="nodelet" name="camera_array" 
+    args="load v4l2_cam/camera_array_nodelet threadpool" output="screen">
+    <rosparam>
+      cameras: [pseye_050]
+    </rosparam>
+  </node>
   
   <node pkg="nodelet" type="nodelet" name="detector"
         args="load atags/detector_nodelet threadpool" output="screen">
+    <remap from="image_source" to="camera_array/image_raw"/>
     <rosparam>
-      image_sources: [camera0/image_raw]
       tag_family: 36h11
     </rosparam>
-    <remap from="detections" to="tag_detections"/>
   </node>
   
-  <node pkg="v4l2_cam" type="camera_manager" name="camera_manager" output="screen">
+  <node pkg="manycal" type="array_calibrator" name="calibrator" output="screen">
+    <remap from="detections" to="detector/detections_rectified"/>
     <rosparam>
-      cameras: [camera0, camera1]
+      array_name: camera_array
+      tag_size: 0.0858
     </rosparam>
-  </node>
-  
-  <node pkg="manycal" type="corresponder_node" name="corresponder" output="screen">
-    <remap from="source" to="tag_detections"/>
-    <rosparam param="camera_manager">camera_manager</rosparam>
   </node>
   
 </launch>

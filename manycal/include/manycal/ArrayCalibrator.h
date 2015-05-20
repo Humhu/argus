@@ -4,9 +4,14 @@
 #include <ros/ros.h>
 
 #include <isam/isam.h>
-#include <isam/slam_monocular.h>
+#include <isam/slam_tag.h>
+#include <isam/SlamInterface.h>
 
 #include <unordered_map>
+
+#include "manycal/PoseGraph.hpp"
+#include "argus_msgs/TagDetection.h"
+#include "argus_common/ArgusTypes.h"
 
 namespace manycal 
 {
@@ -16,20 +21,42 @@ namespace manycal
 	public:
 		
 		ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
+		~ArrayCalibrator();
 		
 	private:
 		
 		ros::NodeHandle nodeHandle;
 		ros::NodeHandle privHandle;
 		
+		ros::Subscriber detectionSub;
+		
 		struct CameraRegistration
 		{
-			std::string name;
-			isam::MonocularCamera cameraModel;
+			isam::MonocularIntrinsics::Ptr intrinsics;
+			isam::Pose3d_Node::Ptr extrinsics;
 		};
 		
-		isam::Slam slam;
-		std::unordered_map< std::string, CameraRegistration> registry;
+		struct TagRegistration
+		{
+			isam::TagIntrinsics::Ptr intrinsics;
+			isam::Pose3d_Node::Ptr extrinsics;
+		};
+		
+		
+		isam::SlamInterface slam;
+		PoseGraph3d poseGraph;
+		
+		typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
+		typedef std::unordered_map< unsigned int, TagRegistration > TagRegistry;
+		CameraRegistry cameraRegistry;
+		TagRegistry tagRegistry;
+		double tagSize; // HACK
+		
+		void DetectionCallback( const argus_msgs::TagDetection::ConstPtr& msg );
+		
+		void InitializeCamera( const std::string& name );
+		void InitializeTag( const std::string& camName, const argus_msgs::TagDetection& msg,
+							double size );
 		
 	};
 	

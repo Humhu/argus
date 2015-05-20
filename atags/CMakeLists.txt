@@ -46,6 +46,7 @@ catkin_package(
 					argus_common
 					
 	DEPENDS 		Boost 
+					apriltags
 					system_lib
 )
 
@@ -56,6 +57,7 @@ include_directories( include
 
 add_library( atags
 	src/AtagDetector.cpp
+	src/AtagCommon.cpp
 )
 target_link_libraries( atags
 	${apriltags_LIBRARIES}

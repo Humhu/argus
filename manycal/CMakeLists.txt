@@ -32,6 +32,11 @@ include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 find_package(isam REQUIRED)
 include_directories( ${isam_INCLUDE_DIRS} )
+message( STATUS ${isam_LIBRARIES} )
+
+find_package(apriltags REQUIRED)
+include_directories( ${apriltags_INCLUDE_DIRS} )
+add_definitions( ${apriltags_DEFINITIONS} )
 
 add_message_files(
 	FILES			TagCorrespondence.msg 
@@ -62,6 +67,7 @@ catkin_package(
 	DEPENDS 		Boost 
 					OpenCV
 					isam
+					apriltags
 					system_lib
 )
 
@@ -75,12 +81,14 @@ add_library( manycal
 target_link_libraries( manycal
 	${Boost_LIBRARIES}
 	${OpenCV_LIBS}
+	${isam_LIBRARIES}
 	${catkin_LIBRARIES}
 )
 
-add_executable( corresponder_node nodes/corresponder_node.cpp )
-add_dependencies( corresponder_node ${PROJECT_NAME}_gencfg )
-target_link_libraries( corresponder_node 
+add_executable( array_calibrator nodes/array_calibrator.cpp )
+add_dependencies( array_calibrator ${PROJECT_NAME}_gencfg )
+target_link_libraries( array_calibrator 
+	${isam_LIBRARIES}
 	${catkin_LIBRARIES} 
 	manycal )
 
