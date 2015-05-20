@@ -45,8 +45,6 @@ namespace resource_management
 	{
 		if( resourceRequirements.empty() || hasResources ) { return true; }
 		
-		std::cout << "Attempting to acquire resources.." << std::endl;
-		
 		RequestResources req;
 		req.request.requests = resourceRequirements;
 		if( !requestClient.call( req ) )
