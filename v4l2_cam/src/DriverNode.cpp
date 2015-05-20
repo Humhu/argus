@@ -11,7 +11,8 @@
 namespace v4l2_cam
 {
 
-	DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph,
+		const std::string& pubName )
 		: ResourceUser( nh, ph ),
 		nodeHandle( nh ), 
 		privHandle ( ph ), 
@@ -26,7 +27,8 @@ namespace v4l2_cam
 		it( privHandle ), 
 		cameraInfoManager( std::make_shared<InfoManager>( privHandle ) ),
 		frameCounter( 0 ),
-		streaming( false )
+		streaming( false ),
+		publishName( pubName )
 	{
 
 		// Name uniquely IDs camera and validates calibration file
@@ -231,7 +233,7 @@ namespace v4l2_cam
 	{
 		cv::Mat frame;
 		std_msgs::Header header;
-		header.frame_id = cameraName;
+		header.frame_id = publishName;
 		
 		while( true )
 		{

@@ -39,6 +39,7 @@ add_service_files(
 					DisableArray.srv
 					DisableArrayCamera.srv
 					EnableArrayCamera.srv
+					ListArrayCameras.srv
 					PrintCapabilities.srv
 					SetStreaming.srv
 )
@@ -92,35 +93,47 @@ target_link_libraries( v4l2_cam
 	${catkin_LIBRARIES}
 )
 
-add_library( v4l2_cam_nodelet nodes/camera_nodelet.cpp )
-add_dependencies( v4l2_cam_nodelet ${v4l2_cam_EXPORTED_TARGETS}
-								   "${PROJECT_NAME}_gencfg" 
+add_library( v4l2_cam_nodelet 
+	nodes/camera_nodelet.cpp )
+add_dependencies( v4l2_cam_nodelet 
+	${v4l2_cam_EXPORTED_TARGETS}
+	  "${PROJECT_NAME}_gencfg" 
 )
-target_link_libraries( v4l2_cam_nodelet v4l2_cam
-										${catkin_LIBRARIES} 
-)
-
-add_library( camera_array_nodelet nodes/camera_array_nodelet.cpp )
-add_dependencies( camera_array_nodelet ${v4l2_cam_EXPORTED_TARGETS}
-								   "${PROJECT_NAME}_gencfg" 
-)
-target_link_libraries( v4l2_cam_nodelet v4l2_cam
-										${catkin_LIBRARIES} 
+target_link_libraries( v4l2_cam_nodelet 
+	v4l2_cam
+	${catkin_LIBRARIES} 
 )
 
-add_executable( camera_node nodes/camera_node.cpp )
-add_dependencies( camera_node ${PROJECT_NAME}_gencfg )
+add_library( camera_array_nodelet 
+	nodes/camera_array_nodelet.cpp )
+add_dependencies( camera_array_nodelet 
+	${v4l2_cam_EXPORTED_TARGETS}
+	"${PROJECT_NAME}_gencfg" 
+)
+target_link_libraries( camera_array_nodelet 
+	v4l2_cam
+	${catkin_LIBRARIES} 
+)
+
+add_executable( camera_node 
+	nodes/camera_node.cpp )
+add_dependencies( camera_node 
+	${PROJECT_NAME}_gencfg )
 target_link_libraries( camera_node
 	${catkin_LIBRARIES}
 	v4l2_cam )
 
-add_executable( viewer_node nodes/viewer_node.cpp )
-add_dependencies( viewer_node ${PROJECT_NAME}_gencfg )
+add_executable( viewer_node 
+	nodes/viewer_node.cpp )
+add_dependencies( viewer_node 
+	${PROJECT_NAME}_gencfg )
 target_link_libraries( viewer_node
 	${catkin_LIBRARIES} )
 	
-add_executable( camera_array nodes/camera_array.cpp )
-add_dependencies( camera_array ${PROJECT_NAME}_gencfg )
+add_executable( camera_array 
+	nodes/camera_array.cpp )
+add_dependencies( camera_array 
+	${PROJECT_NAME}_gencfg )
 target_link_libraries( camera_array
 	${catkin_LIBRARIES}
 	v4l2_cam )

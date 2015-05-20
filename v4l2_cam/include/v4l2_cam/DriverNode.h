@@ -30,9 +30,9 @@ namespace v4l2_cam
 		
 		typedef std::shared_ptr<DriverNode> Ptr;
 		
-		DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph );
+		DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph, const std::string& pubName );
 		~DriverNode();
-				
+		
 		/*! \brief Service call that sets the camera's streaming state. */
 		bool SetStreamingService( v4l2_cam::SetStreaming::Request& req,
 								  v4l2_cam::SetStreaming::Response& res );
@@ -72,6 +72,7 @@ namespace v4l2_cam
 		ConditionVariable blocked;
 		
 		std::string cameraName;
+		std::string publishName; // Name to use for frame_id
 		
 		// Service handlers
 		ros::ServiceServer capabilitiesServer;

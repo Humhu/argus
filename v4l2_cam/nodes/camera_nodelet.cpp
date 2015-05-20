@@ -1,6 +1,8 @@
 #include <pluginlib/class_list_macros.h>
 #include <nodelet/nodelet.h>
 
+#include <boost/algorithm/string.hpp>
+
 #include "v4l2_cam/DriverNode.h"
 
 namespace v4l2_cam
@@ -21,8 +23,12 @@ namespace v4l2_cam
 		
 		virtual void onInit()
 		{
+			std::string name = getName();
+			std::vector<std::string> splits;
+			boost::split( splits, name, boost::is_any_of("/") );
+			
 			driver = std::make_shared<DriverNode>(
-				getNodeHandle(), getPrivateNodeHandle() );
+				getNodeHandle(), getPrivateNodeHandle(), splits[splits.size()-1] );
 		}
 		
 	};

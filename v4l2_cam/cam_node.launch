@@ -10,7 +10,7 @@
     <rosparam>
       frame_resolution: [320, 240]
       frame_rate: 120
-      stream_on_start: false
+      stream_on_start: true
       
       resources:
         usb_bandwidth: 250

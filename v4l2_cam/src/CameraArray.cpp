@@ -17,12 +17,9 @@ namespace v4l2_cam
 		imagePort( nodeHandle ),
 		imagePub( ipub )
 	{
-		while( !setStreamingClient.isValid() )
-		{
-			setStreamingClient = nodeHandle.serviceClient<SetStreaming>( 
+		ros::service::waitForService( cameraName + "/set_streaming" );
+		setStreamingClient = nodeHandle.serviceClient<SetStreaming>( 
 				cameraName + "/set_streaming", true );
-			setStreamingClient.waitForExistence();
-		}
 		
 		imageSub = imagePort.subscribeCamera( cameraName + "/image_raw", 1,
 					&CameraManager::ImageCallback, this );
@@ -73,17 +70,6 @@ namespace v4l2_cam
 		imagePort( ph )
 	{
 		
-		cycleArrayServer = privHandle.advertiseService( "cycle_array",
-							&CameraArray::CycleArrayService, this );
-		enableCameraServer = privHandle.advertiseService( "enable_camera",
-							&CameraArray::EnableCameraService, this );
-		disableCameraServer = privHandle.advertiseService( "disable_camera",
-							&CameraArray::DisableCameraService, this );
-		disableAllServer = privHandle.advertiseService( "disable_all",
-							&CameraArray::DisableArrayService, this );
-		
-		imagePub = imagePort.advertiseCamera( "image_raw", 1 );
-		
 		std::vector<std::string> cameraNames;
 		privHandle.getParam( "cameras", cameraNames );
 		
@@ -96,6 +82,19 @@ namespace v4l2_cam
 		
 		dispatchers.SetNumWorkers( registry.size() ); // One per camera
 		dispatchers.StartWorkers();
+		
+		cycleArrayServer = privHandle.advertiseService( "cycle_array",
+							&CameraArray::CycleArrayService, this );
+		enableCameraServer = privHandle.advertiseService( "enable_camera",
+							&CameraArray::EnableCameraService, this );
+		disableCameraServer = privHandle.advertiseService( "disable_camera",
+							&CameraArray::DisableCameraService, this );
+		disableAllServer = privHandle.advertiseService( "disable_all",
+							&CameraArray::DisableArrayService, this );
+		listCamerasServer = privHandle.advertiseService( "list_cameras",
+							&CameraArray::ListCamerasService, this );
+		
+		imagePub = imagePort.advertiseCamera( "image_raw", 1 );
 	}
 	
 	CameraArray::~CameraArray()
@@ -151,6 +150,17 @@ namespace v4l2_cam
 		BOOST_FOREACH( CameraRegistry::value_type& item, registry )
 		{
 			DisableCamera( item.second );
+		}
+		return true;
+	}
+	
+	bool CameraArray::ListCamerasService( ListArrayCameras::Request& req,
+										  ListArrayCameras::Response& res )
+	{
+		res.cameraNames.reserve( registry.size() );
+		BOOST_FOREACH( CameraRegistry::value_type& item, registry )
+		{
+			res.cameraNames.push_back( item.first );
 		}
 		return true;
 	}

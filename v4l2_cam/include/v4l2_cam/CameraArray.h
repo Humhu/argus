@@ -12,6 +12,7 @@
 #include "v4l2_cam/EnableArrayCamera.h"
 #include "v4l2_cam/DisableArrayCamera.h"
 #include "v4l2_cam/DisableArray.h"
+#include "v4l2_cam/ListArrayCameras.h"
 
 #include "v4l2_cam/SetStreaming.h"
 
@@ -55,6 +56,8 @@ namespace v4l2_cam
 	// TODO Unified management of camera extrinsics and intrinsics
 	/*! \brief Represents a cluster of cameras. Presents methods to interact 
 	 * with them as a networked array instead of individuals. */
+	// NOTE All the methods are unsychronized because they are expected to be 
+	// called by a single ROS spinner thread
 	class CameraArray
 	{
 	public:
@@ -74,6 +77,7 @@ namespace v4l2_cam
 		ros::ServiceServer enableCameraServer;
 		ros::ServiceServer disableCameraServer;
 		ros::ServiceServer disableAllServer;
+		ros::ServiceServer listCamerasServer;
 		
 		image_transport::ImageTransport imagePort;
 		image_transport::CameraPublisher imagePub;
@@ -95,6 +99,8 @@ namespace v4l2_cam
 								   DisableArrayCamera::Response& res );
 		bool DisableArrayService( DisableArray::Request& req,
 								  DisableArray::Response& res );
+		bool ListCamerasService( ListArrayCameras::Request& req,
+								 ListArrayCameras::Response& res );
 		
 		void EnableCamera( CameraManager::Ptr manager );
 		void DisableCamera( CameraManager::Ptr manager );
