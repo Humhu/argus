@@ -73,6 +73,9 @@ namespace v4l2_cam
 		std::vector<std::string> cameraNames;
 		privHandle.getParam( "cameras", cameraNames );
 		
+		// Have to initialize this first to avoid race condition
+		imagePub = imagePort.advertiseCamera( "image_raw", 1 );
+		
 		BOOST_FOREACH( const std::string& name, cameraNames )
 		{
 			CameraManager::Ptr manager = 
@@ -93,8 +96,6 @@ namespace v4l2_cam
 							&CameraArray::DisableArrayService, this );
 		listCamerasServer = privHandle.advertiseService( "list_cameras",
 							&CameraArray::ListCamerasService, this );
-		
-		imagePub = imagePort.advertiseCamera( "image_raw", 1 );
 	}
 	
 	CameraArray::~CameraArray()

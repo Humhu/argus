@@ -14,11 +14,11 @@
     </rosparam>
   </node>
   
-  <include file="$(find v4l2_cam)/cam_node.launch">
+  <include file="$(find v4l2_cam)/cam_nodelet.launch">
     <arg name="device_path" value="/dev/video0"/>
     <arg name="camera_name" value="pseye_050_narrow"/>
     <arg name="name" value="pseye_050"/>
-    <!--arg name="manager_name" value="threadpool"/-->
+    <arg name="manager_name" value="threadpool"/>
     <arg name="resource_name" value="resource_manager"/>
   </include>
   

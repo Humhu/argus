@@ -128,6 +128,7 @@ namespace v4l2_cam
 		privHandle.param( "stream_on_start", streamOnStart, false );
 		if( streamOnStart )
 		{
+			remainingToStream = 0;
 			StartStreaming();
 		}
 		
@@ -153,12 +154,12 @@ namespace v4l2_cam
 		driver.SetStreaming( true );
 		blocked.notify_all();
 		
-		CameraStatus msg;
-		msg.header.frame_id = cameraName;
-		msg.header.stamp = ros::Time::now();
-		msg.streaming = true;
-		msg.framesStreamed = numFrames;
-		statusPublisher.publish( msg );
+// 		CameraStatus msg;
+// 		msg.header.frame_id = cameraName;
+// 		msg.header.stamp = ros::Time::now();
+// 		msg.streaming = true;
+// 		msg.framesStreamed = numFrames;
+// 		statusPublisher.publish( msg );
 	}
 	
 	void DriverNode::StopStreaming()
@@ -167,12 +168,12 @@ namespace v4l2_cam
 		driver.SetStreaming( false );
 		RelinquishResources();
 		
-		CameraStatus msg;
-		msg.header.frame_id = cameraName;
-		msg.header.stamp = ros::Time::now();
-		msg.streaming = false;
-		msg.framesStreamed = frameCounter; // TODO Unsynchronized read!
-		statusPublisher.publish( msg );
+// 		CameraStatus msg;
+// 		msg.header.frame_id = cameraName;
+// 		msg.header.stamp = ros::Time::now();
+// 		msg.streaming = false;
+// 		msg.framesStreamed = frameCounter; // TODO Unsynchronized read!
+// 		statusPublisher.publish( msg );
 	}
 	
 	bool DriverNode::SetStreamingService( v4l2_cam::SetStreaming::Request& req,
