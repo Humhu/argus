@@ -8,7 +8,7 @@
     <rosparam>
       frame_resolution: [640,480]
       frame_rate: 30
-      stream_on_start: true
+      stream_on_start: false
 
       controls:
         horizontal_flip:

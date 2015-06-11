@@ -70,6 +70,20 @@ namespace v4l2_cam
 			}
 			frameWidth = frameResolution[0];
 			frameHeight = frameResolution[1];
+			
+			double xRatio = ((double)frameWidth)/cameraInfo->width;
+			double yRatio = ((double)frameHeight)/cameraInfo->height;
+			
+			cameraInfo->K[0] *= xRatio; // fx
+			cameraInfo->K[2] *= xRatio; // cx
+			cameraInfo->K[4] *= yRatio; // fy
+			cameraInfo->K[5] *= yRatio; // cy
+			
+			cameraInfo->P[0] *= xRatio;
+			cameraInfo->P[2] *= xRatio;
+			cameraInfo->P[5] *= yRatio;
+			cameraInfo->P[6] *= yRatio;
+			
 		}
 		privHandle.param( "frame_rate", frameRate, 30 );
 		

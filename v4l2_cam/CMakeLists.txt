@@ -25,6 +25,7 @@ find_package(Boost REQUIRED)
 # Find OpenCV3 and set flag
 find_package(OpenCV 3 REQUIRED)
 add_definitions( "-DOPENCV3=1" )
+message( STATUS "OpenCV libs: 	${OpenCV_LIBS}" )
 
 # Use userspace libv4l2 for interfacing
 find_package(V4L2 REQUIRED)
@@ -115,7 +116,7 @@ target_link_libraries( camera_array_nodelet
 	${catkin_LIBRARIES} 
 )
 
-add_executable( camera_node 
+add_executable( camera_node
 	nodes/camera_node.cpp )
 add_dependencies( camera_node 
 	${PROJECT_NAME}_gencfg )
