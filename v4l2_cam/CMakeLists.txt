@@ -17,6 +17,7 @@ find_package(catkin REQUIRED
 					std_msgs
 					resource_management
 					argus_common
+					camera_calibration_parsers
 )
 
 # Use Boost for most utilities, threading
@@ -67,6 +68,7 @@ catkin_package(
 					std_msgs 
 					resource_management
 					argus_common
+					camera_calibration_parsers
 					
 	DEPENDS 		Boost 
 					OpenCV 
@@ -82,6 +84,7 @@ include_directories( include
 
 add_library( v4l2_cam
 	src/CameraArray.cpp
+	src/CameraCalibration.cpp
 	src/CameraDriver.cpp
 	src/CameraTypes.cpp
 	src/DriverNode.cpp

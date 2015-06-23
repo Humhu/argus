@@ -7,6 +7,7 @@
 #include <boost/foreach.hpp>
 
 #include "v4l2_cam/DriverNode.h"
+#include "v4l2_cam/CameraCalibration.h"
 
 namespace v4l2_cam
 {
@@ -40,7 +41,25 @@ namespace v4l2_cam
 			privHandle.getParam( "camera_info_url", calibFile );
 			cameraInfoManager->loadCameraInfo( calibFile );
 		}
-		cameraInfo = boost::make_shared<sensor_msgs::CameraInfo>( cameraInfoManager->getCameraInfo() );
+		
+		CameraCalibration calib( cameraName, cameraInfoManager->getCameraInfo() );
+		
+		// Set the driver parameters (limited for now)
+		int frameWidth = 640;
+		int frameHeight = 480;
+		int frameRate;
+		
+		if( privHandle.hasParam( "frame_resolution" ) )
+		{
+			std::vector<int> frameResolution;
+			privHandle.getParam( "frame_resolution", frameResolution );
+			if( frameResolution.size() < 2 ) {
+				throw std::runtime_error( "Frame resolution must be 2 integers." );
+			}
+			cv::Size scale( frameWidth, frameHeight );
+			calib.SetScale( scale );
+		}
+		cameraInfo = boost::make_shared<sensor_msgs::CameraInfo>( calib.GetInfo() );
 		
 		// Initialize the driver
 		std::string devPath;
@@ -56,35 +75,6 @@ namespace v4l2_cam
 			return;
 		}
 		
-		// Set the driver parameters (limited for now)
-		int frameWidth = 640;
-		int frameHeight = 480;
-		int frameRate;
-		
-		if( privHandle.hasParam( "frame_resolution" ) )
-		{
-			std::vector<int> frameResolution;
-			privHandle.getParam( "frame_resolution", frameResolution );
-			if( frameResolution.size() < 2 ) {
-				throw std::runtime_error( "Frame resolution must be 2 integers." );
-			}
-			frameWidth = frameResolution[0];
-			frameHeight = frameResolution[1];
-			
-			double xRatio = ((double)frameWidth)/cameraInfo->width;
-			double yRatio = ((double)frameHeight)/cameraInfo->height;
-			
-			cameraInfo->K[0] *= xRatio; // fx
-			cameraInfo->K[2] *= xRatio; // cx
-			cameraInfo->K[4] *= yRatio; // fy
-			cameraInfo->K[5] *= yRatio; // cy
-			
-			cameraInfo->P[0] *= xRatio;
-			cameraInfo->P[2] *= xRatio;
-			cameraInfo->P[5] *= yRatio;
-			cameraInfo->P[6] *= yRatio;
-			
-		}
 		privHandle.param( "frame_rate", frameRate, 30 );
 		
 		v4l2_cam::OutputSpecification spec;
