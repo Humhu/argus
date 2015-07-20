@@ -76,9 +76,16 @@ namespace manycal
 		Point2d tl( msg->corners[3].x, msg->corners[3].y );
 		TagCorners meas( bl, br, tr, tl );
 		
-		Tag_Extrinsics_Factor::Ptr factor = std::make_shared<Tag_Extrinsics_Factor>(
-			latest.get(), tagReg.extrinsics.get(), tagReg.intrinsics.get(),
-			camReg.extrinsics.get(), camReg.intrinsics.get(), meas, measNoise );
+		Tag_Calibration_Factor::Properties props;
+		props.optimizePose = true;
+		props.optimizeCamExtrinsics = true;
+		props.optimizeCamIntrinsics = true;
+		props.optimizeTagLocation = true;
+		props.optimizeTagParameters = false;
+		Tag_Calibration_Factor::Ptr factor = std::make_shared<Tag_Calibration_Factor>(
+			latest.get(), tagReg.extrinsics.get(), camReg.extrinsics.get(),
+			camReg.intrinsics.get(), tagReg.intrinsics.get(),
+			meas, measNoise );
 		slam.add_factor( factor );
 		
 // 		Jacobian j = factor->jacobian();
@@ -109,18 +116,30 @@ namespace manycal
 	
 	void ArrayCalibrator::InitializeCamera( const std::string& name )
 	{
-		// NOTE The tag detections will already be in undistorted normalized camera coordinates
+		// NOTE The tag detections will already be in undistorted normalized camera coordinates (??) TODO
 		CameraRegistration registration;
 		Eigen::Vector2d principalPoint;
 		principalPoint << 0.0, 0.0;
-		registration.intrinsics = std::make_shared<MonocularIntrinsics>( 1.0, 1.0, principalPoint );
+		
+		// Create intrinsics node
+		registration.intrinsics = std::make_shared<MonocularIntrinsics_Node>();
+		MonocularIntrinsics intrinsics( 1.0, 1.0, principalPoint );
+		registration.intrinsics->init( intrinsics );
+		slam.add_node( registration.intrinsics );
+		
+		// Create intrinsics prior
+		Intrinsics_Factor::Ptr priorFactor = std::make_shared<Intrinsics_Factor>( 
+			registration.intrinsics.get(), intrinsics, Covariance( 1E3*eye(4) ) );
+		slam.add_factor( priorFactor );
+		
+		// Create extrinsics node and prior
 		Pose3d pose( 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 );
 		registration.extrinsics = poseGraph.AddStatic( name, pose );		
-		Noise prior = Information( 1E-3*eye(6) );
-		poseGraph.AddStaticPrior( name, pose, prior );
+		poseGraph.AddStaticPrior( name, pose, Covariance( 1E6*eye(6) ) );
+		
 		cameraRegistry[ name ] = registration;
 		
-		ROS_INFO_STREAM( "Initializing camera " << name << " at " << pose );
+		ROS_INFO_STREAM( "Initializing camera " << name );
 	}
 	
 	// Assuming square tag with x-forward out of the tag, y left, z up
@@ -133,7 +152,14 @@ namespace manycal
 		Pose3d guess( bot.wTo() * ext.wTo() * displacement.wTo() );
 		
 		TagRegistration registration;
-		registration.intrinsics = std::make_shared<TagIntrinsics>( tagSize );
+		registration.intrinsics = std::make_shared<TagIntrinsics_Node>();
+		TagIntrinsics tagIntrinsics( size );
+		registration.intrinsics->init( tagIntrinsics );
+		
+		Tag_Intrinsics_Factor::Ptr intrinsicsPrior = std::make_shared<Tag_Intrinsics_Factor>( 
+			registration.intrinsics.get(), tagIntrinsics, Covariance( 0.1*eye(1) ) );
+		slam.add_factor( intrinsicsPrior );
+		
 		std::stringstream ss;
 		ss << "Tag" << msg.id;
 		Noise prior = Information( eye(6) );

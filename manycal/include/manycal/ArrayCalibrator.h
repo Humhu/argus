@@ -3,7 +3,6 @@
 
 #include <ros/ros.h>
 
-#include <isam/isam.h>
 #include <isam/slam_tag.h>
 #include <isam/SlamInterface.h>
 
@@ -15,7 +14,7 @@
 
 namespace manycal 
 {
-	
+	/*! \brief Calibrates an array of cameras by using fiducial detections. */
 	class ArrayCalibrator
 	{
 	public:
@@ -32,16 +31,15 @@ namespace manycal
 		
 		struct CameraRegistration
 		{
-			isam::MonocularIntrinsics::Ptr intrinsics;
+			isam::MonocularIntrinsics_Node::Ptr intrinsics;
 			isam::Pose3d_Node::Ptr extrinsics;
 		};
 		
 		struct TagRegistration
 		{
-			isam::TagIntrinsics::Ptr intrinsics;
+			isam::TagIntrinsics_Node::Ptr intrinsics;
 			isam::Pose3d_Node::Ptr extrinsics;
 		};
-		
 		
 		isam::SlamInterface slam;
 		PoseGraph3d poseGraph;
