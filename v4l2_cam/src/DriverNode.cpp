@@ -56,6 +56,8 @@ namespace v4l2_cam
 			if( frameResolution.size() < 2 ) {
 				throw std::runtime_error( "Frame resolution must be 2 integers." );
 			}
+			frameWidth = frameResolution[0];
+			frameHeight = frameResolution[1];
 			cv::Size scale( frameWidth, frameHeight );
 			calib.SetScale( scale );
 		}
@@ -154,7 +156,7 @@ namespace v4l2_cam
 		}
 		
 		streaming.store( true, boost::memory_order_relaxed );
-		unsigned int numFrames = frameCounter; // TODO Unsychronized read!
+// 		unsigned int numFrames = frameCounter; // TODO Unsychronized read!
 		driver.SetStreaming( true );
 		blocked.notify_all();
 		

@@ -84,8 +84,8 @@ namespace v4l2_cam
 		std::shared_ptr<InfoManager> cameraInfoManager;
 		sensor_msgs::CameraInfo::Ptr cameraInfo;
 		
+		unsigned int frameCounter;		
 		StreamingMode mode;
-		unsigned int frameCounter;
 		v4l2_cam::CameraDriver driver;
 		unsigned int remainingToStream;
 		

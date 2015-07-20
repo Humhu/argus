@@ -31,6 +31,8 @@ namespace v4l2_cam
 		double xRatio = ( (double) scale.width ) / origInfo.width;
 		double yRatio = ( (double) scale.height ) / origInfo.height;
 		
+		cameraInfo.width = scale.width;
+		cameraInfo.height = scale.height;
 		cameraInfo.K[0] = origInfo.K[0]*xRatio; // fx
 		cameraInfo.K[2] = origInfo.K[2]*xRatio; // cx
 		cameraInfo.K[4] = origInfo.K[4]*yRatio; // fy
