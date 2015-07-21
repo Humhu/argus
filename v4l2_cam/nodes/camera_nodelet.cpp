@@ -23,12 +23,8 @@ namespace v4l2_cam
 		
 		virtual void onInit()
 		{
-			std::string name = getName();
-			std::vector<std::string> splits;
-			boost::split( splits, name, boost::is_any_of("/") );
-			
 			driver = std::make_shared<DriverNode>(
-				getNodeHandle(), getPrivateNodeHandle(), splits[splits.size()-1] );
+				getNodeHandle(), getPrivateNodeHandle() );
 		}
 		
 	};

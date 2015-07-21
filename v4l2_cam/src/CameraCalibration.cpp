@@ -12,7 +12,10 @@ namespace v4l2_cam
 	
 	CameraCalibration::CameraCalibration( const std::string& calibPath )
 	{
-		camera_calibration_parsers::readCalibration( calibPath, cameraName, origInfo );
+		if( !camera_calibration_parsers::readCalibration( calibPath, cameraName, origInfo ) )
+		{
+			throw std::runtime_error( "Could not read calibration at: " + calibPath );
+		}
 		cameraInfo = origInfo;
 	}
 	

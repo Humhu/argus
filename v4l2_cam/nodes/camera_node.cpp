@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	v4l2_cam::DriverNode node( nh, ph, ros::this_node::getName() );
+	v4l2_cam::DriverNode node( nh, ph );
 	
 	ros::spin();
 	return 0;

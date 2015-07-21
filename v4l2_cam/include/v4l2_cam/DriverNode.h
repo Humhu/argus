@@ -30,7 +30,7 @@ namespace v4l2_cam
 		
 		typedef std::shared_ptr<DriverNode> Ptr;
 		
-		DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph, const std::string& pubName );
+		DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph );
 		~DriverNode();
 		
 		/*! \brief Service call that sets the camera's streaming state. */
@@ -51,6 +51,19 @@ namespace v4l2_cam
 		typedef boost::mutex Mutex;
 		typedef boost::unique_lock<Mutex> Lock;
 		typedef boost::condition_variable ConditionVariable;
+
+		ros::NodeHandle nodeHandle;
+		ros::NodeHandle privHandle;
+		
+		// Service handlers
+		ros::ServiceServer capabilitiesServer;
+		ros::ServiceServer setStreamingServer;
+		
+		image_transport::ImageTransport it;
+		image_transport::CameraPublisher it_pub;
+		
+		std::shared_ptr<InfoManager> cameraInfoManager;
+		sensor_msgs::CameraInfo::Ptr cameraInfo;
 		
 		boost::atomic<bool> streaming;
 		boost::thread processWorker;
@@ -63,8 +76,7 @@ namespace v4l2_cam
 			STREAM_COUNT
 		};
 		
-		ros::NodeHandle nodeHandle;
-		ros::NodeHandle privHandle;
+
 		
 		ros::Publisher statusPublisher;
 		
@@ -72,17 +84,6 @@ namespace v4l2_cam
 		ConditionVariable blocked;
 		
 		std::string cameraName;
-		std::string publishName; // Name to use for frame_id
-		
-		// Service handlers
-		ros::ServiceServer capabilitiesServer;
-		ros::ServiceServer setStreamingServer;
-		
-		image_transport::ImageTransport it;
-		image_transport::CameraPublisher it_pub;
-		
-		std::shared_ptr<InfoManager> cameraInfoManager;
-		sensor_msgs::CameraInfo::Ptr cameraInfo;
 		
 		unsigned int frameCounter;		
 		StreamingMode mode;
