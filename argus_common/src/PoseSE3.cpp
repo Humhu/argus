@@ -40,7 +40,16 @@ namespace argus_common
 		Transform qTrans = quat*zero;
 		tform = trans*qTrans;
 	}
-	
+		
+		PoseSE3::PoseSE3( double x, double y, double z, double qw, double qx, double qy, double qz )
+	{
+		Quaternion quat( qw, qx, qy, qz );
+		quat.normalize();
+		Translation trans( x, y, z );
+		Translation zero( 0, 0, 0 );
+		tform = trans*(quat*zero);
+	}
+
 	PoseSE3::PoseSE3( const TranslationVector& t, double angle, const AxisVector& a ) 
 	{
 		Quaternion quat( Eigen::AngleAxisd( angle, a ) );

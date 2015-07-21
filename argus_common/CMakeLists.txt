@@ -42,11 +42,13 @@ include_directories( include
 add_library( argus_common
 	src/PoseSE2.cpp
 	src/PoseSE3.cpp
+	src/YamlUtils.cpp
 )
 # add_dependencies( argus_common ${argus_common_EXPORTED_TARGETS} )
 target_link_libraries( argus_common
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
+	yaml-cpp
 )
 
 
