@@ -29,7 +29,6 @@ namespace atags
 		rawPublisher = privHandle.advertise<argus_msgs::TagDetection>( "detections_raw", 20 );
 		rectifiedPublisher = privHandle.advertise<argus_msgs::TagDetection>( "detections_rectified", 20 );
 		
-		std::string tagFamily;
 		privHandle.param<std::string>( "tag_family", tagFamily, "36h11" );
 		if( tagFamily.compare( "16h5" ) == 0 )
 		{
@@ -72,6 +71,8 @@ namespace atags
 		argus_msgs::TagDetection detMsg;
 		detMsg.header = header;
 		
+		cv::Size imgSize = frame->image.size();
+		
 		// Checks for uncalibrated data
 		if( cameraModel.fx() != 0 )
 		{
@@ -82,7 +83,7 @@ namespace atags
 			BOOST_FOREACH( const AprilTags::TagDetection& det, rectified )
 			{
 				detMsg.isNormalized = true;
-				PopulateMessage( det, detMsg );
+				PopulateMessage( det, imgSize, detMsg );
 				rectifiedPublisher.publish( detMsg );
 			}
 		}
@@ -91,16 +92,20 @@ namespace atags
 		BOOST_FOREACH( const AprilTags::TagDetection& det, detections )
 		{
 			detMsg.isNormalized = false;
- 			PopulateMessage( det, detMsg );
+ 			PopulateMessage( det, imgSize, detMsg );
 			rawPublisher.publish( detMsg );
 		}
 		
 	}
 	
 	void AtagDetector::PopulateMessage( const AprilTags::TagDetection& detection,
+										const cv::Size& imgSize,
 										argus_msgs::TagDetection& msg ) 
 	{
 			msg.header.seq = sequenceCounter++;
+			msg.sourceWidth = imgSize.width;
+			msg.sourceHeight = imgSize.height;
+			msg.family = tagFamily;
 			msg.id = detection.id;
 			msg.hammingDistance = detection.hammingDistance;
 			for( unsigned int i = 0; i < 4; i++ )

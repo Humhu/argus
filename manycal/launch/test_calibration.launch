@@ -1,0 +1,30 @@
+<launch>
+   <env name="ROSCONSOLE_CONFIG_FILE" 
+       value="$(find manycal)/launch/rosconsole.config"/>
+   
+  <node pkg="v4l2_cam" type="camera_node" name="camera">
+    <rosparam>
+      camera_name: pseye_0
+      device_path: /dev/video0
+      frame_resolution: [640, 480]
+      frame_rate: 30
+      stream_on_start: true
+    </rosparam>
+  </node>
+  
+  <node pkg="atags" type="detector_node" name="detector">
+    <remap from="image_source" to="camera/image_raw"/>
+    <rosparam>
+      tag_family: 36h11
+    </rosparam>
+  </node>
+  
+  <node pkg="manycal" type="tag_calibrator_node" name="calibrator" output="screen">
+    <remap from="detections" to="detector/detections_raw"/>
+    <rosparam>
+      camera_config: /home/humphreh/Software/argus/src/manycal/test_config.yaml
+      tag_config: /home/humphreh/Software/argus/src/manycal/test_tag_list.yaml
+      tag_size: 0.0858
+    </rosparam>
+  </node>
+</launch>

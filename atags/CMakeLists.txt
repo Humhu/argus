@@ -65,15 +65,15 @@ target_link_libraries( atags
 	${catkin_LIBRARIES}
 )
 
-add_library( atags_detector_nodelet nodes/atag_detector_nodelet.cpp )
-add_dependencies( atags_detector_nodelet "${PROJECT_NAME}_gencfg" )
-target_link_libraries( atags_detector_nodelet atags
+add_library( detector_nodelet nodes/atag_detector_nodelet.cpp )
+add_dependencies( detector_nodelet "${PROJECT_NAME}_gencfg" )
+target_link_libraries( detector_nodelet atags
 										 ${catkin_LIBRARIES} 
 )
 	
-add_executable( atag_detector_node nodes/atag_detector_node.cpp )
-add_dependencies( atag_detector_node "${PROJECT_NAME}_gencfg" )
-target_link_libraries( atag_detector_node
+add_executable( detector_node nodes/atag_detector_node.cpp )
+add_dependencies( detector_node "${PROJECT_NAME}_gencfg" )
+target_link_libraries( detector_node
 	atags
 	${catkin_LIBRARIES}
 )

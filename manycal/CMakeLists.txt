@@ -85,11 +85,11 @@ target_link_libraries( manycal
 	${catkin_LIBRARIES}
 )
 
-add_executable( array_calibrator nodes/array_calibrator.cpp )
-add_dependencies( array_calibrator ${PROJECT_NAME}_gencfg )
-target_link_libraries( array_calibrator 
+add_executable( tag_calibrator_node nodes/array_calibrator.cpp )
+add_dependencies( tag_calibrator_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( tag_calibrator_node 
 	${isam_LIBRARIES}
-	${catkin_LIBRARIES} 
+	${catkin_LIBRARIES} 	
 	manycal )
 
 ## Mark executables and/or libraries for installation

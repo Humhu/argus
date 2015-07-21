@@ -40,12 +40,14 @@ namespace atags
 		
 		image_transport::CameraSubscriber cameraSub;
 		
+		std::string tagFamily;
 		AprilTags::TagDetector::Ptr detector;
 		
 		void RectifyDetections( std::vector<AprilTags::TagDetection>& detections,
 								const image_geometry::PinholeCameraModel& cameraModel );
 		
 		void PopulateMessage( const AprilTags::TagDetection& detection,
+							  const cv::Size& imgSize,
 							  argus_msgs::TagDetection& msg );
 		
 	};
