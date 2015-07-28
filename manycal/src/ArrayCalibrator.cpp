@@ -149,7 +149,7 @@ namespace manycal
 		props.optimizeCamExtrinsics = true;
 		props.optimizeCamIntrinsics = true;
 		props.optimizeTagLocation = true;
-		props.optimizeTagParameters = false;
+		props.optimizeTagStructure = false;
 		Tag_Calibration_Factor::Ptr factor = std::make_shared<Tag_Calibration_Factor>(
 			baseNode.get(), latest.get(), camReg.extrinsics.get(),
 			camReg.intrinsics.get(), tagReg.intrinsics.get(),
@@ -238,9 +238,9 @@ namespace manycal
 		YAML::Node intrinsics = tag["intrinsics"];
 		double tsize = intrinsics["size"].as<double>();
 		
-		TagIntrinsics tagIntrinsics( tsize );
+		TagIntrinsics tagIntrinsics( tsize, Eigen::VectorXd::Zero(3) );
 		TagIntrinsics_Node::Ptr intrinsicsNode = std::make_shared<TagIntrinsics_Node>();
-		intrinsicsNode->init( tsize );
+		intrinsicsNode->init( tagIntrinsics );
 		
 		TagRegistration registration;
 		registration.name = name;
