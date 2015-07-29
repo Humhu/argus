@@ -1,5 +1,4 @@
-#ifndef _POSE_SE3_H_
-#define _POSE_SE3_H_
+#pragma once
 
 #include <Eigen/Geometry>
 #include <iostream>
@@ -121,5 +120,3 @@ namespace argus_common
 	};
 	
 }
-
-#endif

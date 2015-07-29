@@ -3,40 +3,59 @@
 namespace argus_common
 {
 	
-	void SetPoseYaml( YAML::Node& node, const PoseSE3& pose, std::string id )
+	YAML::Node SetPoseYaml( const PoseSE3& pose )
 	{
-		YAML::Node sub;
-		SetQuaternionYaml( sub, pose.GetQuaternion() );
-		SetPositionYaml( sub, pose.GetTranslation() );
-		node[id] = sub;
+		YAML::Node node;
+		node["quaternion"] = SetQuaternionYaml( pose.GetQuaternion() );
+		node["position"] = SetPositionYaml( pose.GetTranslation() );
+		return node;
 	}
 	
-	bool GetPoseYaml( YAML::Node& node, PoseSE3& pose, std::string id )
+	bool GetPoseYaml( const YAML::Node& node, PoseSE3& pose )
 	{
-		if( !node[id] ) { return false; }
-		YAML::Node n = node[id];
+		if( !node["quaternion"] || !node["position"] )
+		{
+			throw std::runtime_error( "Missing quaternion/position field from pose." );
+		}
 		Eigen::Quaterniond quat; 
-		if( !GetQuaternionYaml( n, quat ) ) { return false; }
+		if( !GetQuaternionYaml( node["quaternion"], quat ) ) { return false; }
 		Eigen::Translation3d pos; 
-		if( !GetPositionYaml( n, pos ) ) { return false; }
+		if( !GetPositionYaml( node["position"], pos ) ) { return false; }
 		pose = PoseSE3( quat, pos );
 		return true;
 	}
 	
-	void SetQuaternionYaml( YAML::Node& node, const Eigen::Quaterniond& quat, std::string id )
+	YAML::Node SetQuaternionYaml( const Eigen::Quaterniond& quat )
 	{
 		std::vector<double> vals(4);
 		vals[0] = quat.w();
 		vals[1] = quat.x();
 		vals[2] = quat.y();
 		vals[3] = quat.z();
-		node[id] = vals;
+		YAML::Node node;
+		node = vals;
+		return node;
 	}
 	
-	bool GetQuaternionYaml( YAML::Node& node, Eigen::Quaterniond& quat, std::string id )
+	bool GetQuaternionYaml( const YAML::Node& node, Eigen::Quaterniond& quat )
 	{
-		if( !node[id] ) { return false; }
-		std::vector<double> vals = node[id].as< std::vector<double> >();
+		if( !node.IsSequence() )
+		{
+			throw std::runtime_error( "Null node in GetQuaternion!" );
+		}
+		
+		std::vector<double> vals;
+		try
+		{
+			vals = node.as< std::vector<double> >();
+		}
+		catch( std::exception e )
+		{
+			std::stringstream ss;
+			ss << "Error parsing quaternion string: " << node;
+			throw std::runtime_error( ss.str() );
+		}
+		
 		if( vals.size() != 4 )
 		{
 			throw std::runtime_error( "Incorrect number of elements for quaternion." );
@@ -45,19 +64,20 @@ namespace argus_common
 		return true;
 	}
 	
-	void SetPositionYaml( YAML::Node& node, const Eigen::Translation3d& trans, std::string id )
+	YAML::Node SetPositionYaml( const Eigen::Translation3d& trans )
 	{
 		std::vector<double> vals(3);
 		vals[0] = trans.x();
 		vals[1] = trans.y();
 		vals[2] = trans.z();
-		node[id] = vals;
+		YAML::Node node;
+		node = vals;
+		return node;
 	}
 	
-	bool GetPositionYaml( YAML::Node& node, Eigen::Translation3d& trans, std::string id )
+	bool GetPositionYaml( const YAML::Node& node, Eigen::Translation3d& trans )
 	{
-		if( !node[id] ) { return false; }
-		std::vector<double> vals = node[id].as< std::vector<double> >();
+		std::vector<double> vals = node.as< std::vector<double> >();
 		if( vals.size() != 3 )
 		{
 			throw std::runtime_error( "Incorrect number of elements for position." );
@@ -67,7 +87,8 @@ namespace argus_common
 		return true;
 	}
 	
-	void SetMatrixYaml( YAML::Node& node, const Eigen::MatrixXd& mat, std::string idDim, std::string idVal )
+	YAML::Node SetMatrixYaml( const Eigen::MatrixXd& mat, 
+							  std::string idDim, std::string idVal )
 	{
 		unsigned int numEls = mat.rows()*mat.cols();
 		std::vector<double> vals( numEls );
@@ -78,11 +99,14 @@ namespace argus_common
 		{
 			vals[i] = mat(i);
 		}
+		YAML::Node node;
 		node[idVal] = vals;
 		node[idDim] = dimensions;
+		return node;
 	}
 	
-	bool GetMatrixYaml( YAML::Node& node, Eigen::MatrixXd& mat, std::string idDim, std::string idVal )
+	bool GetMatrixYaml( const YAML::Node& node, Eigen::MatrixXd& mat, 
+						std::string idDim, std::string idVal )
 	{
 		if( !node[idDim] || !node[idVal] ) { return false; }
 		std::vector<int> dimensions = node[idDim].as< std::vector<int> >();
