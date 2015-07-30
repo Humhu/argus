@@ -43,8 +43,8 @@ namespace v4l2_cam
 		CameraCalibration calib( cameraName, cameraInfoManager->getCameraInfo() );
 		
 		// Set the driver parameters (limited for now)
-		int frameWidth = 640;
-		int frameHeight = 480;
+		unsigned int frameWidth = 640;
+		unsigned int frameHeight = 480;
 		int frameRate;
 		
 		if( privHandle.hasParam( "frame_resolution" ) )
@@ -54,8 +54,12 @@ namespace v4l2_cam
 			if( frameResolution.size() < 2 ) {
 				throw std::runtime_error( "Frame resolution must be 2 integers." );
 			}
-			frameWidth = frameResolution[0];
-			frameHeight = frameResolution[1];
+			if( frameResolution[0] < 0 || frameResolution[1] < 0 )
+			{
+				throw std::runtime_error( "Frame resolution must be positive." );
+			}
+			frameWidth = (unsigned int) frameResolution[0];
+			frameHeight = (unsigned int) frameResolution[1];
 			cv::Size scale( frameWidth, frameHeight );
 			calib.SetScale( scale );
 		}
@@ -146,38 +150,24 @@ namespace v4l2_cam
 	
 	void DriverNode::StartStreaming()
 	{
-		if( streaming.load( boost::memory_order_relaxed ) ) { return; }
+		if( streaming ) { return; }
 		
 		if( !AcquireResources() ) { 
 			ROS_WARN_STREAM( "Could not acquire resources required for camera stream." );
 			return;
 		}
 		
-		streaming.store( true, boost::memory_order_relaxed );
+		streaming = true;
 // 		unsigned int numFrames = frameCounter; // TODO Unsychronized read!
 		driver.SetStreaming( true );
 		blocked.notify_all();
-		
-// 		CameraStatus msg;
-// 		msg.header.frame_id = cameraName;
-// 		msg.header.stamp = ros::Time::now();
-// 		msg.streaming = true;
-// 		msg.framesStreamed = numFrames;
-// 		statusPublisher.publish( msg );
 	}
 	
 	void DriverNode::StopStreaming()
 	{
-		streaming.store( false, boost::memory_order_relaxed );
+		streaming = false;
 		driver.SetStreaming( false );
 		RelinquishResources();
-		
-// 		CameraStatus msg;
-// 		msg.header.frame_id = cameraName;
-// 		msg.header.stamp = ros::Time::now();
-// 		msg.streaming = false;
-// 		msg.framesStreamed = frameCounter; // TODO Unsynchronized read!
-// 		statusPublisher.publish( msg );
 	}
 	
 	bool DriverNode::SetStreamingService( v4l2_cam::SetStreaming::Request& req,
@@ -186,17 +176,9 @@ namespace v4l2_cam
 		Lock lock( mutex );
 
 		remainingToStream = req.numFramesToStream;
-
-		if( req.enableStreaming )
-		{
-			StartStreaming();
-		}
-		else
-		{
-			StopStreaming();
-		}
 		
-		
+		if( req.enableStreaming ) { StartStreaming(); }
+		else { StopStreaming(); }
 		return true;
 	}
 	
@@ -243,10 +225,11 @@ namespace v4l2_cam
 		while( true )
 		{
 			Lock lock( mutex );
-			while( !streaming.load( boost::memory_order_relaxed ) )
+			while( !streaming )
 			{
 				blocked.wait( lock );
 			}
+			lock.unlock();
 			
 			frame = driver.GetFrame();
 			if( frame.empty() )
@@ -254,15 +237,12 @@ namespace v4l2_cam
 				ROS_WARN( "Received empty frame from device." );
 			}
 
+			lock.lock();
 			// Populate message headers
 			header.stamp = ros::Time::now(); // TODO Configure ROS time or wall time
-			header.seq = frameCounter++;
-			
-			// TODO Verify cameraInfoManager matches current device settings
 			cameraInfo->header = header;
-				
-			cv_bridge::CvImage img( header, "bgr8", frame );
 			
+			cv_bridge::CvImage img( header, "bgr8", frame );
 			it_pub.publish( img.toImageMsg(), cameraInfo );
 			
 			// TODO Topic diagnostics

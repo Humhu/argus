@@ -17,7 +17,6 @@
 
 #include <memory>
 #include <boost/thread/locks.hpp>
-#include <boost/atomic.hpp>
 
 namespace v4l2_cam
 {
@@ -65,7 +64,7 @@ namespace v4l2_cam
 		std::shared_ptr<InfoManager> cameraInfoManager;
 		sensor_msgs::CameraInfo::Ptr cameraInfo;
 		
-		boost::atomic<bool> streaming;
+		bool streaming;
 		boost::thread processWorker;
 		
 		/*! \brief Denotes the camera's mode of operation. */
