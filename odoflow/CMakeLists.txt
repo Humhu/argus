@@ -42,7 +42,7 @@ catkin_package(
 										
 	DEPENDS 		Boost 
 					OpenCV 
-					Eigen
+					Eigen3
 )
 
 include_directories(include)

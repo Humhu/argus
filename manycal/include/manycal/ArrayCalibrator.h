@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <yaml-cpp/yaml.h>
+#include <tf/transform_broadcaster.h>
 
 #include <isam/slam_tag.h>
 #include <isam/SlamInterface.h>
@@ -32,10 +33,13 @@ namespace manycal
 		
 		ros::Subscriber detectionSub;
 		
+		tf::TransformBroadcaster transformPub;
+		
 		struct CameraRegistration
 		{
 			isam::MonocularIntrinsics_Node::Ptr intrinsics;
 			isam::Pose3d_Node::Ptr extrinsics;
+			isam::Pose3d_Factor::Ptr prior;
 		};
 		
 		struct TagRegistration
@@ -51,6 +55,7 @@ namespace manycal
 		PoseGraph3d poseGraph;
 		YAML::Node cameraConfigLog;
 		YAML::Node tagConfigLog;
+		unsigned int detectionCounter;
 		
 		typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
 		typedef std::unordered_map< std::string, TagRegistration > TagRegistry;
@@ -70,6 +75,16 @@ namespace manycal
 		// Turns a tag detection into a string hash
 		static std::string GetTagKey( const std::string& tagFamily, unsigned int id );
 
+		// Optimize the graph and publish all new poses
+		void UpdateCalibration();
+		void PublishPose( const std::string& name, const isam::Pose3d& pose, ros::Time time );
+		
+		void InitializeCamera( const std::string& name );
+		void InitializeTag( const std::string& camName, const argus_msgs::TagDetection& msg,
+							double size );
+		
+		static std::string GetTagName( unsigned int id );
+		
 	};
 	
 }

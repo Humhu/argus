@@ -3,6 +3,7 @@
 
 #include "isam/SlamInterface.h"
 
+#include "argus_common/ArgusTypes.h"
 #include "argus_common/TimeSeries.hpp"
 
 #include <unordered_map>
@@ -18,7 +19,7 @@ namespace manycal
 	{
 	public:
 		
-		typedef boost::posix_time::ptime Time;
+		typedef argus_common::Time Time;
 		typedef std::shared_ptr<PoseGraph> Ptr;
 		typedef PoseNode PoseNodeType; // Represents all poses
 		typedef UnaryFactor PriorType; // Used for priors
@@ -30,7 +31,8 @@ namespace manycal
 		{}
 		
 		/*! \brief Add a new static object. */
-		typename PoseNode::Ptr AddStatic( const std::string& name, const typename PoseNode::DataType& data )
+		typename PoseNode::Ptr AddStatic( const std::string& name, 
+										  const typename PoseNode::DataType& data )
 		{
 			typename PoseNode::Ptr node = std::make_shared<PoseNode>();
 			node->init( data );
@@ -40,14 +42,15 @@ namespace manycal
 		}
 		
 		/*! \brief Retrieve a static object. */
-		typename PoseNode::Ptr GetStatic( const std::string& name )
+		typename PoseNode::Ptr GetStatic( const std::string& name ) const
 		{
 			return staticMap.at( name );
 		}
 		
 		/*! \brief Add a prior to a static object. */
-		void AddStaticPrior( const std::string& name, const typename UnaryFactor::DataType& data,
-							 const isam::Noise& noise )
+		typename UnaryFactor::Ptr AddStaticPrior( const std::string& name, 
+												  const typename UnaryFactor::DataType& data,
+												  const isam::Noise& noise )
 		{
 			typename PoseNode::Ptr pose = GetStatic( name );
 			if( !pose )
@@ -56,10 +59,12 @@ namespace manycal
 			}
 			typename UnaryFactor::Ptr unary = std::make_shared<UnaryFactor>( pose.get(), data, noise );
 			slam.add_factor( unary );
+			return unary;
 		}
 		
 		/*! \brief Add a new dynamic object pose. */
-		typename PoseNode::Ptr AddDynamic( const std::string& name, Time time, const typename PoseNode::DataType& data )
+		typename PoseNode::Ptr AddDynamic( const std::string& name, Time time, 
+										   const typename PoseNode::DataType& data )
 		{
 			if( dynamicMap.count( name ) == 0 )
 			{
@@ -74,7 +79,7 @@ namespace manycal
 		}
 		
 		/*! \brief Retrieve a dynamic pose at a specified time if it exists. */
-		typename PoseNode::Ptr GetDynamic( const std::string& name, Time time )
+		typename PoseNode::Ptr GetDynamic( const std::string& name, Time time ) const
 		{
 			typename PoseNode::Ptr pos;
 			try
@@ -87,7 +92,7 @@ namespace manycal
 		}
 		
 		/*! \brief Return the entire time series for a dynamic object. */
-		typename PoseGraph::DynamicSeries::Ptr GetDynamicSeries( const std::string& name )
+		typename PoseGraph::DynamicSeries::Ptr GetDynamicSeries( const std::string& name ) const
 		{
 			typename DynamicSeries::Ptr series;
 			try
@@ -100,8 +105,9 @@ namespace manycal
 		}
 		
 		/*! \brief Adds a prior to an existing dynamic pose. */
-		void AddDynamicPrior( const std::string& name, Time time, const typename UnaryFactor::DataType& data,
-							  const isam::Noise& noise )
+		typename UnaryFactor::Ptr AddDynamicPrior( const std::string& name, Time time, 
+												   const typename UnaryFactor::DataType& data,
+												   const isam::Noise& noise )
 		{
 			typename PoseNode::Ptr pose = GetDynamic( name, time );
 			if( !pose )
@@ -110,7 +116,7 @@ namespace manycal
 			}
 			typename UnaryFactor::Ptr unary = std::make_shared<UnaryFactor>( pose.get(), data, noise );
 			slam.add_factor( unary );
-				
+			return unary;
 		}
 		
 		/*! \brief Creates a new dynamic pose at the specified time and links it to its time

@@ -19,7 +19,8 @@ namespace manycal
 	ArrayCalibrator::ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 		: nodeHandle( nh ), privHandle( ph ),
 		slam( std::make_shared<Slam>() ),
-		poseGraph( slam )
+		poseGraph( slam ),
+		detectionCounter( 0 )
 	{
 		detectionSub = nodeHandle.subscribe( "detections", 10, &ArrayCalibrator::DetectionCallback, this );
 			
@@ -158,18 +159,40 @@ namespace manycal
 
 		slam.get_slam()->update();
 		
-		BOOST_FOREACH( TagRegistry::value_type& item, tagRegistry )
-		{
-			std::cout << "Tag " << item.first << " " << latest->value() << std::endl;
+		detectionCounter++;
+		if( detectionCounter > 100 ) {
+			UpdateCalibration();
+			detectionCounter = 0;
 		}
+		
+	}
+	
+	void ArrayCalibrator::UpdateCalibration()
+	{
+		ros::Time now = ros::Time::now();
+		slam.get_slam()->batch_optimization();
+		
+	
 		BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
 		{
-			std::cout << "Camera " << item.first << " ext: " << item.second.extrinsics->value() << std::endl;
-			std::cout << "Camera " << item.first << " int: " << item.second.intrinsics->value() << std::endl;
+			std::cout << "Camera " << item.first << " " << item.second.extrinsics->value() << std::endl;
+			
+			Pose3d camPose = item.second.extrinsics->value();
+			PublishPose( item.first, camPose, now );
 		}
 		
 		std::cout << std::endl;
-		
+	}
+	
+	void ArrayCalibrator::PublishPose( const std::string& name, const Pose3d& pose, ros::Time time )
+	{
+			Eigen::Quaterniond q = pose.rot().quaternion();
+			tf::Quaternion quat( q.x(), q.w(), q.z(), q.w() );
+			tf::Vector3 pos( pose.x(), pose.y(), pose.z() );
+			
+			tf::Transform trans( quat, pos );
+			tf::StampedTransform ttrans( trans, time, "base", name ) ;
+			transformPub.sendTransform( ttrans );
 	}
 	
 	void ArrayCalibrator::ParseCamera( const std::string& name, YAML::Node cam )
@@ -225,7 +248,7 @@ namespace manycal
 		
 		// Create extrinsics node and prior
 		registration.extrinsics = poseGraph.AddStatic( name, extrinsicsPrior );
-		poseGraph.AddStaticPrior( name, extrinsicsPrior, extrinsicsNoise );
+		registration.prior = poseGraph.AddStaticPrior( name, extrinsicsPrior, extrinsicsNoise );
 		
 		cameraRegistry[ name ] = registration;
 	}
@@ -284,6 +307,13 @@ namespace manycal
 	std::string ArrayCalibrator::GetTagKey( const std::string& tagFamily, unsigned int id )
 	{
 		return "tag_" + tagFamily + std::to_string( id );
+	}
+	
+	std::string ArrayCalibrator::GetTagName( unsigned int id )
+	{
+		std::stringstream ss;
+		ss << "Tag" << id;
+		return ss.str();
 	}
 	
 }

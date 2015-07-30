@@ -18,6 +18,7 @@ find_package(catkin REQUIRED
 					v4l2_cam
 					argus_common
 					argus_msgs
+					tf
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -63,6 +64,7 @@ catkin_package(
 					v4l2_cam
 					argus_common
 					argus_msgs
+					tf
 					
 	DEPENDS 		Boost 
 					OpenCV
