@@ -9,6 +9,8 @@
 
 #include <opencv2/core/core.hpp>
 
+#include "argus_common/ThreadsafeQueue.hpp"
+
 #include <boost/thread.hpp>
 #include <boost/thread/locks.hpp>
 
@@ -103,7 +105,7 @@ namespace v4l2_cam
 			bool isEnqueued;
 		};
 
-		typedef boost::shared_mutex Mutex;
+		typedef boost::mutex Mutex;
 		typedef boost::unique_lock<Mutex> Lock;
 		
 		mutable Mutex mutex;

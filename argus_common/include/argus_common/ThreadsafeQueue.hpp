@@ -19,7 +19,10 @@ namespace argus_common {
 		typedef Container<T, typename std::allocator<T> > ContainerType;
 
 		ThreadsafeQueue( size_t initSize )
-			: items( initSize ) {}
+		{
+			items.resize( initSize );
+			items.clear();
+		}
 
 		void PushFront( const T& item )
 		{
