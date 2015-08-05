@@ -7,27 +7,21 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED 
-	COMPONENTS		message_generation
-					roscpp
-					std_msgs
+	COMPONENTS		roscpp
 )
 
-# Use Boost for most utilities, threading
+# Use Boost for utilities
 find_package(Boost REQUIRED)
 
+# Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
-
-
-## Generate service files
 
 catkin_package(
 	INCLUDE_DIRS 	include
 	
 	LIBRARIES 		argus_common
 					
-	CATKIN_DEPENDS 	message_runtime 
-					roscpp 
-					std_msgs 
+	CATKIN_DEPENDS 	roscpp
 					
 	DEPENDS 		Boost 
 					system_lib

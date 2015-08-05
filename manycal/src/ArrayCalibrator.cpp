@@ -2,8 +2,8 @@
 
 #include "argus_common/YamlUtils.h"
 
-#include "v4l2_cam/ListArrayCameras.h"
-#include "v4l2_cam/CameraCalibration.h"
+#include "camera_array/ListArrayCameras.h"
+#include "camplex/CameraCalibration.h"
 
 #include "atags/AtagCommon.h"
 
@@ -11,7 +11,7 @@
 
 using namespace isam;
 using namespace argus_common;
-using namespace v4l2_cam;
+using namespace camplex;
 
 namespace manycal
 {

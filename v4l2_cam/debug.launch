@@ -1,5 +1,0 @@
-<launch>
-  <node pkg="v4l2_cam" type="camera_node" name="camera" launch-prefix="xterm -e gdb">
-	<param name="device_path" value="/dev/video1" />
-  </node>
-</launch>

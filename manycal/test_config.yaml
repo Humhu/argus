@@ -1,5 +1,4 @@
 pseye_0:
   extrinsics:
-    pose:
-      quaternion: [1, 0, 0, 0]
-      position: [0, 0, 0]
+    quaternion: [1, 0, 0, 0]
+    position: [0, 0, 0]

@@ -1,12 +1,13 @@
-#include "v4l2_cam/CameraArray.h"
-#include "v4l2_cam/SetStreaming.h"
-#include "v4l2_cam/CycleArray.h"
+#include "camera_array/CameraArray.h"
+#include "camplex/SetStreaming.h"
+#include "camera_array/CycleArray.h"
 
 #include <boost/foreach.hpp>
 
 using namespace argus_common;
+using namespace camplex;
 
-namespace v4l2_cam
+namespace camera_array
 {
 	
 	CameraManager::CameraManager( const ros::NodeHandle& nh, 

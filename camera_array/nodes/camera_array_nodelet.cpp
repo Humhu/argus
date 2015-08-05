@@ -1,9 +1,9 @@
 #include <pluginlib/class_list_macros.h>
 #include <nodelet/nodelet.h>
 
-#include "v4l2_cam/CameraArray.h"
+#include "camera_array/CameraArray.h"
 
-namespace v4l2_cam
+namespace camera_array
 {
 
 	class CameraArrayNodelet 
@@ -29,5 +29,5 @@ namespace v4l2_cam
 	
 }
 
-PLUGINLIB_DECLARE_CLASS( v4l2_cam, camera_array_nodelet,
-						 v4l2_cam::CameraArrayNodelet, nodelet::Nodelet );
+PLUGINLIB_DECLARE_CLASS( camera_array, camera_array_nodelet,
+						 camera_array::CameraArrayNodelet, nodelet::Nodelet );

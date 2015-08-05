@@ -1,5 +1,4 @@
-#ifndef _V4L2D_CAMERA_MANAGER_H_
-#define _V4L2D_CAMERA_MANAGER_H_
+#pragma once
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -8,17 +7,17 @@
 
 #include "argus_common/WorkerPool.hpp"
 
-#include "v4l2_cam/CycleArray.h"
-#include "v4l2_cam/EnableArrayCamera.h"
-#include "v4l2_cam/DisableArrayCamera.h"
-#include "v4l2_cam/DisableArray.h"
-#include "v4l2_cam/ListArrayCameras.h"
+#include "camera_array/CycleArray.h"
+#include "camera_array/EnableArrayCamera.h"
+#include "camera_array/DisableArrayCamera.h"
+#include "camera_array/DisableArray.h"
+#include "camera_array/ListArrayCameras.h"
 
-#include "v4l2_cam/SetStreaming.h"
+#include "camplex/SetStreaming.h"
 
 #include <unordered_map>
 
-namespace v4l2_cam
+namespace camera_array
 {
 
 	/*! \brief Stateful camera connection manager and interface. */
@@ -107,5 +106,3 @@ namespace v4l2_cam
 	};
 	
 }
-
-#endif

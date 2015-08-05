@@ -15,7 +15,7 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					std_msgs
 					atags
-					v4l2_cam
+					camplex
 					argus_common
 					argus_msgs
 					tf
@@ -61,7 +61,7 @@ catkin_package(
 					sensor_msgs 
 					std_msgs
 					atags
-					v4l2_cam
+					camplex
 					argus_common
 					argus_msgs
 					tf
