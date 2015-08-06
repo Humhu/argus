@@ -10,7 +10,7 @@ find_package(catkin REQUIRED
 					nodelet
 					roscpp
 					std_msgs
-					argus_common
+					argus_utils
 )
 
 # Use Boost for most utilities, threading
@@ -40,7 +40,7 @@ catkin_package(
 					nodelet
 					roscpp 
 					std_msgs 
-					argus_common
+					argus_utils
 					
 	DEPENDS 		Boost 
 					system_lib

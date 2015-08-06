@@ -16,7 +16,7 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					std_msgs
 					image_geometry
-					argus_common
+					argus_utils
 					argus_msgs
 )
 
@@ -43,7 +43,7 @@ catkin_package(
 					sensor_msgs 
 					std_msgs
 					image_geometry
-					argus_common
+					argus_utils
 					
 	DEPENDS 		Boost 
 					apriltags

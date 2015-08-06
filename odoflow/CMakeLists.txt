@@ -12,7 +12,7 @@ find_package(catkin REQUIRED
 					cv_bridge
 					image_transport
 					image_geometry
-					argus_common
+					argus_utils
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -38,7 +38,7 @@ catkin_package(
 					cv_bridge 
 					std_msgs 
 					message_runtime
-					argus_common
+					argus_utils
 										
 	DEPENDS 		Boost 
 					OpenCV 

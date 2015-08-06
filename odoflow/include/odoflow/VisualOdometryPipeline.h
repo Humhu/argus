@@ -7,7 +7,7 @@
 #include "odoflow/InterestPointTracker.h"
 #include "odoflow/MotionEstimator.h"
 
-#include "argus_common/PoseSE3.h"
+#include "argus_utils/PoseSE3.h"
 
 namespace odoflow
 {
@@ -23,7 +23,7 @@ namespace odoflow
 		
 		/*! \brief Returns success. */
 		bool ProcessImage( const cv::Mat& image, const Timepoint& timestamp,
-						   argus_common::PoseSE3& displacement );
+						   argus_utils::PoseSE3& displacement );
 		
 		void SetDetector( InterestPointDetector::Ptr det );
 		void SetTracker( InterestPointTracker::Ptr tr );

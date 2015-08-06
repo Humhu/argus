@@ -4,7 +4,7 @@
 
 #include <boost/foreach.hpp>
 
-using namespace argus_common;
+using namespace argus_utils;
 using namespace camplex;
 
 namespace camera_array

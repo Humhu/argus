@@ -13,7 +13,7 @@
 #include "odoflow/ROSParser.h"
 #include "odoflow/InterfaceBindings.h"
 
-using namespace argus_common;
+using namespace argus_utils;
 using namespace odoflow;
 
 // TODO Add image pyramids

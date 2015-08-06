@@ -1,7 +1,7 @@
 #include "odoflow/RigidEstimator.h"
 #include "odoflow/OpenCVMod.h"
 
-using namespace argus_common;
+using namespace argus_utils;
 
 namespace odoflow
 {

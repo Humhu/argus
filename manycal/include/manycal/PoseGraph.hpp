@@ -3,8 +3,8 @@
 
 #include "isam/SlamInterface.h"
 
-#include "argus_common/ArgusTypes.h"
-#include "argus_common/TimeSeries.hpp"
+#include "argus_utils/ArgusTypes.h"
+#include "argus_utils/TimeSeries.hpp"
 
 #include <unordered_map>
 
@@ -19,12 +19,12 @@ namespace manycal
 	{
 	public:
 		
-		typedef argus_common::Time Time;
+		typedef argus_utils::Time Time;
 		typedef std::shared_ptr<PoseGraph> Ptr;
 		typedef PoseNode PoseNodeType; // Represents all poses
 		typedef UnaryFactor PriorType; // Used for priors
 		typedef BinaryFactor EdgeType; // Used for odometry
-		typedef argus_common::TimeSeries< typename PoseNode::Ptr > DynamicSeries;
+		typedef argus_utils::TimeSeries< typename PoseNode::Ptr > DynamicSeries;
 		
 		PoseGraph( isam::SlamInterface& _slam )
 			: slam( _slam )

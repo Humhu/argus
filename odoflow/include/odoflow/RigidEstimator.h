@@ -17,7 +17,7 @@ namespace odoflow
 		
 		virtual bool EstimateMotion( const InterestPoints& firstPoints,
 									 const InterestPoints& secondPoints,
-									 argus_common::PoseSE3& transform );
+									 argus_utils::PoseSE3& transform );
 		
 		void SetOutputScale( double scale );
 		

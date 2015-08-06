@@ -1,6 +1,6 @@
 #include "manycal/ArrayCalibrator.h"
 
-#include "argus_common/YamlUtils.h"
+#include "argus_utils/YamlUtils.h"
 
 #include "camera_array/ListArrayCameras.h"
 #include "camplex/CameraCalibration.h"
@@ -10,7 +10,7 @@
 #include <boost/foreach.hpp>
 
 using namespace isam;
-using namespace argus_common;
+using namespace argus_utils;
 using namespace camplex;
 
 namespace manycal

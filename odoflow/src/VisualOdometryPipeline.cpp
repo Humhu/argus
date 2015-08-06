@@ -3,7 +3,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
-using namespace argus_common;
+using namespace argus_utils;
 
 namespace odoflow
 {

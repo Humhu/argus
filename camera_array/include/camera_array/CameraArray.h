@@ -5,7 +5,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <camera_info_manager/camera_info_manager.h>
 
-#include "argus_common/WorkerPool.hpp"
+#include "argus_utils/WorkerPool.hpp"
 
 #include "camera_array/CycleArray.h"
 #include "camera_array/EnableArrayCamera.h"
@@ -81,7 +81,7 @@ namespace camera_array
 		image_transport::ImageTransport imagePort;
 		image_transport::CameraPublisher imagePub;
 		
-		argus_common::WorkerPool dispatchers;
+		argus_utils::WorkerPool dispatchers;
 		
 		boost::condition_variable_any commandBlock;
 		

@@ -1,6 +1,6 @@
 #include "atags/AtagCommon.h"
 
-using namespace argus_common;
+using namespace argus_utils;
 
 namespace atags 
 {
@@ -23,7 +23,7 @@ namespace atags
 	}
 	
 	/*! \brief Return the pose of a rectified tag detection. */
-	argus_common::PoseSE3 get_tag_pose( const argus_msgs::TagDetection& msg,
+	argus_utils::PoseSE3 get_tag_pose( const argus_msgs::TagDetection& msg,
 										double tagSize )
 	{
 		if( !msg.isNormalized )
@@ -33,7 +33,7 @@ namespace atags
 		return get_tag_pose( msg, tagSize, 1.0, 1.0, 0.0, 0.0 );
 	}
 
-	argus_common::PoseSE3 get_tag_pose( const argus_msgs::TagDetection& msg, double tagSize,
+	argus_utils::PoseSE3 get_tag_pose( const argus_msgs::TagDetection& msg, double tagSize,
 										double fx, double fy, double px, double py )
 	{
 		PoseSE3 pose;

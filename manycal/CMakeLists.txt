@@ -16,7 +16,7 @@ find_package(catkin REQUIRED
 					std_msgs
 					atags
 					camplex
-					argus_common
+					argus_utils
 					argus_msgs
 					tf
 )
@@ -62,7 +62,7 @@ catkin_package(
 					std_msgs
 					atags
 					camplex
-					argus_common
+					argus_utils
 					argus_msgs
 					tf
 					

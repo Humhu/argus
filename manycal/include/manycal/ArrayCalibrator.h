@@ -13,7 +13,7 @@
 #include "manycal/PoseGraph.hpp"
 
 #include "argus_msgs/TagDetection.h"
-#include "argus_common/PoseSE3.h"
+#include "argus_utils/PoseSE3.h"
 
 namespace manycal 
 {

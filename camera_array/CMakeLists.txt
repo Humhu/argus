@@ -11,7 +11,7 @@ find_package(catkin REQUIRED
 					nodelet
 					roscpp
 					std_msgs
-					argus_common
+					argus_utils
 					camplex
 )
 
@@ -39,7 +39,7 @@ catkin_package(
 					nodelet
 					roscpp 
 					std_msgs
-					argus_common
+					argus_utils
 					camplex
 					
 	DEPENDS 		Boost 
