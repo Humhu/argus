@@ -1,0 +1,4 @@
+# Retrieve the current extrinsics information from this manager
+
+---
+ExtrinsicsInfo info
