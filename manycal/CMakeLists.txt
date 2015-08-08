@@ -35,9 +35,9 @@ find_package(isam REQUIRED)
 include_directories( ${isam_INCLUDE_DIRS} )
 message( STATUS ${isam_LIBRARIES} )
 
-find_package(apriltags REQUIRED)
-include_directories( ${apriltags_INCLUDE_DIRS} )
-add_definitions( ${apriltags_DEFINITIONS} )
+# find_package(apriltags REQUIRED)
+# include_directories( ${apriltags_INCLUDE_DIRS} )
+# add_definitions( ${apriltags_DEFINITIONS} )
 
 add_message_files(
 	FILES			TagCorrespondence.msg 
@@ -69,7 +69,6 @@ catkin_package(
 	DEPENDS 		Boost 
 					OpenCV
 					isam
-					apriltags
 					system_lib
 )
 

@@ -1,0 +1,5 @@
+# GetCameraArrayInfo
+# Service to request all the intrinsics for a camera array 
+
+---
+CameraArrayInfo info

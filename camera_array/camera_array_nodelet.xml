@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<library path="lib/libcamera_array_nodelet">
+  <class name="camera_array/camera_array_nodelet"
+         type="camera_array::CameraArrayNodelet"
+         base_class_type="nodelet::Nodelet">
+    <description> 
+      Camera array nodelet.
+    </description>
+  </class>
+</library>

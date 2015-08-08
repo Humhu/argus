@@ -20,19 +20,29 @@ find_package(catkin REQUIRED
 					argus_msgs
 )
 
-# Use Boost for most utilities, threading
-find_package(Boost REQUIRED)
+message( STATUS ${CATKIN_DEVEL_PREFIX} )
 
-# Find externally built apriltags library
-# TODO Use /internal copy if not found?
-find_package(apriltags REQUIRED)
-include_directories( ${apriltags_INCLUDE_DIRS} )
-add_definitions( ${apriltags_DEFINITIONS} )
+include( ExternalProject )
+ExternalProject_Add(
+	apriltags_external
+	GIT_REPOSITORY git@github.com:Humhu/apriltags.git
+	BUILD_COMMAND cmake --build .
+	INSTALL_COMMAND make install
+	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CATKIN_DEVEL_PREFIX}
+)
+set( apriltags_INCLUDE_DIRS ${CATKIN_DEVEL_PREFIX}/include )
+set( apriltags_LIBRARIES ${CATKIN_DEVEL_PREFIX}/lib/libapriltags.so )
+
+find_package(Boost REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 catkin_package(
 	INCLUDE_DIRS 	include
+					# TODO It's not happy about this include - change the install path?
+					${apriltags_INCLUDE_DIRS}
 	
 	LIBRARIES 		atags
+					${apriltags_LIBRARIES}
 					
 	CATKIN_DEPENDS 	camera_info_manager
 					cv_bridge 
@@ -46,12 +56,14 @@ catkin_package(
 					argus_utils
 					
 	DEPENDS 		Boost 
-					apriltags
 					system_lib
+					apriltags_external
 )
 
 include_directories( include
+					 ${apriltags_INCLUDE_DIRS}
 					 ${Boost_INCLUDE_DIRS}
+					 ${EIGEN3_INCLUDE_DIR}
 					 ${catkin_INCLUDE_DIRS}
 )
 
@@ -77,7 +89,7 @@ target_link_libraries( detector_node
 	atags
 	${catkin_LIBRARIES}
 )
-	
+
 ## Mark executables and/or libraries for installation
 install(TARGETS atags
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -86,6 +98,11 @@ install(TARGETS atags
 )
 
 install(DIRECTORY include/${PROJECT_NAME}/
+	DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+	FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY include/apriltags/
 	DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 	FILES_MATCHING PATTERN "*.h"
 )

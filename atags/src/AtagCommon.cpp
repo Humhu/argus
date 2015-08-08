@@ -1,4 +1,5 @@
 #include "atags/AtagCommon.h"
+#include "argus_utils/GeometryUtils.h"
 
 using namespace argus_utils;
 
@@ -43,11 +44,13 @@ namespace atags
 		AprilTags::TagDetection detection = msg_to_detection( msg );
 		detection.getRelativeTranslationRotation( tagSize, fx, fy, px, py,
 												  translation, rotation );
-// 		static PoseSE3 postrotation( 0, 0, 0, M_PI/2, M_PI/2, 0 );
-		static PoseSE3 postrotation( 0, 0, 0, -M_PI/2, -M_PI/2, 0 );
+// 		static PoseSE3 postrotation( 0, 0, 0, M_PI/2, M_PI/2, 0 );		
+		static PoseSE3 postrotation( PoseSE3::Translation( 0, 0, 0 ), 
+									 EulerToQuaternion( EulerAngles( -M_PI/2, -M_PI/2, 0 ) ) );
+		
 		PoseSE3::Translation t( translation );
 		PoseSE3::Quaternion q( rotation );
-		PoseSE3 H_tag_cam( q, t );
+		PoseSE3 H_tag_cam( t, q );
 		return H_tag_cam * postrotation;
 		
 	}

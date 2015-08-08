@@ -1,6 +1,7 @@
 #include "odoflow/FivePointEstimator.h"
-
 #include "odoflow/OpenCVMod.h"
+
+#include "argus_utils/GeometryUtils.h"
 
 #include <iostream>
 
@@ -77,7 +78,7 @@ namespace odoflow
 // 		std::cout << "H:" << std::endl << H << std::endl;
 		transform = PoseSE3( H );
 		
-		PoseSE3::EulerAngles euler = transform.GetEulerAngles();
+		EulerAngles euler = QuaternionToEuler( transform.GetQuaternion() );
 		std::cout << "Angle displacement: " << euler << std::endl;
 		
 		return true;

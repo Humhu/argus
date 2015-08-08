@@ -3,39 +3,39 @@
 #include <ros/ros.h>
 
 // Messages
-#include "extrinsics_info_manager/ExtrinsicsInfo.h"
+#include "camera_array/CameraArrayInfo.h"
 
 // Services
-#include "extrinsics_info_manager/GetExtrinsicsInfo.h"
-#include "extrinsics_info_manager/SetExtrinsicsInfo.h"
+#include "camera_array/GetCameraArrayInfo.h"
+#include "camera_array/SetCameraArrayInfo.h"
 
-namespace extrinsics_info_manager
+namespace camera_array
 {
 	
 /*! \brief Manages extrinsics information for a set of frames relative to a reference.
  * Closely mirrors interface to CameraInfoManager. 
  * NOTE This class is not synchronized and thus not safe for threading
  */
-class ExtrinsicsInfoManager
+class CameraArrayInfoManager
 {
 public:
 	
-	ExtrinsicsInfoManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	CameraArrayInfoManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	/*! \brief Set the reference frame name for this manager. */
 	void SetReferenceName( const std::string& name );
 		
 	/*! \brief Load extrinsics information from a YAML file. */
-	bool LoadExtrinsicsInfo( const std::string& filePath );
+	bool LoadCameraArrayInfo( const std::string& filePath );
 	
 	/*! \brief Returns whether or not info has been loaded. */
 	bool IsCalibrated() const;
 	
 	/*! \brief Get the current extrinsics info. */
-	ExtrinsicsInfo GetExtrinsicsInfo() const;
+	CameraArrayInfo GetCameraArrayInfo() const;
 	
 	/*! \brief Set the current extrinsics info. */
-	void SetExtrinsicsInfo( const ExtrinsicsInfo& info );
+	void SetCameraArrayInfo( const CameraArrayInfo& info );
 
 	
 private:
@@ -49,12 +49,12 @@ private:
 	std::string referenceName;
 	bool initialized;
 	
-	bool GetExtrinsicsInfoService( GetExtrinsicsInfo::Request& req,
-								   GetExtrinsicsInfo::Response& res );
-	bool SetExtrinsicsInfoService( SetExtrinsicsInfo::Request& req,
-								   SetExtrinsicsInfo::Response& res );
+	bool GetCameraArrayInfoService( GetCameraArrayInfo::Request& req,
+								   GetCameraArrayInfo::Response& res );
+	bool SetCameraArrayInfoService( SetCameraArrayInfo::Request& req,
+								   SetCameraArrayInfo::Response& res );
 	
-	ExtrinsicsInfo extrinsics;
+	CameraArrayInfo extrinsics;
 	
 };
 	

@@ -11,29 +11,37 @@ find_package(catkin REQUIRED
 					nodelet
 					roscpp
 					std_msgs
+					sensor_msgs
 					argus_utils
 					camplex
+					tf
+					image_geometry
 )
 
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
 
+# Use Eigen for matrices, linear algebra
+find_package(Eigen3 REQUIRED)
+add_message_files(
+	FILES			CameraArrayInfo.msg 
+)
+
 add_service_files( 
-	FILES 			CycleArray.srv
-					DisableArray.srv
-					DisableArrayCamera.srv
-					EnableArrayCamera.srv
-					ListArrayCameras.srv
+	FILES 			GetCameraArrayInfo.srv
+					SetCameraArrayInfo.srv
 )
 
 generate_messages(
 	DEPENDENCIES	std_msgs
+					sensor_msgs
 )
 
 catkin_package(
 	INCLUDE_DIRS 	include
 	
 	LIBRARIES 		camera_array
+					camera_array_nodelet
 					
 	CATKIN_DEPENDS 	message_runtime 
 					nodelet
@@ -41,6 +49,8 @@ catkin_package(
 					std_msgs
 					argus_utils
 					camplex
+					tf
+					image_geometry
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -48,11 +58,16 @@ catkin_package(
 
 include_directories( include
 					 ${Boost_INCLUDE_DIRS}
+					 ${EIGEN3_INCLUDE_DIR}
 					 ${catkin_INCLUDE_DIRS}
 )
 
 add_library( camera_array
+	src/ArrayUtils.cpp
 	src/CameraArray.cpp
+	src/CameraArrayCalibrationParsers.cpp
+	src/CameraArrayInfoManager.cpp
+	src/PinholeCameraArrayModel.cpp
 )
 add_dependencies( camera_array ${camera_array_EXPORTED_TARGETS} )
 target_link_libraries( camera_array

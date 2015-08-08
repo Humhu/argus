@@ -1,12 +1,12 @@
 #pragma once
 
-#include "extrinsics_info_manager/ExtrinsicsInfo.h"
+#include "camera_array/CameraArrayInfo.h"
 
-namespace extrinsics_info_manager
+namespace camera_array
 {
 	
 /*! \brief Tools for reading/writing extrinsics calibration files.
- * Extrinsics Calibration YAML format:
+ * CameraArray Calibration YAML format:
  * reference_name: [reference frame name]
  * frames:
  *   [object1 name]:
@@ -17,13 +17,13 @@ namespace extrinsics_info_manager
  */
 
 /*! \brief Read a calibration from a file. Returns success. */
-bool ReadExtrinsicsCalibration( const std::string& path,
+bool ReadCameraArrayCalibration( const std::string& path,
 								std::string& refName,
-								ExtrinsicsInfo& info );
+								CameraArrayInfo& info );
 	
 /*! \brief Writes a calibration to file. Returns success. */
-bool WriteExtrinsicsCalibration( const std::string& path,
+bool WriteCameraArrayCalibration( const std::string& path,
 								 const std::string& refName,
-								 const ExtrinsicsInfo& info );
+								 const CameraArrayInfo& info );
 	
 }

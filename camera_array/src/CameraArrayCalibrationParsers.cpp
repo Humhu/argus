@@ -1,18 +1,18 @@
 #include "argus_utils/YamlUtils.h"
 #include "argus_utils/GeometryUtils.h"
 
-#include "extrinsics_info_manager/ExtrinsicsCalibrationParsers.h"
+#include "camera_array/CameraArrayCalibrationParsers.h"
 
 #include <fstream>
 
 using namespace argus_utils;
 
-namespace extrinsics_info_manager
+namespace camera_array
 {
 
-bool ReadExtrinsicsCalibration( const std::string& path,
+bool ReadCameraArrayCalibration( const std::string& path,
 								std::string& refName,
-								ExtrinsicsInfo& info )
+								CameraArrayInfo& info )
 {
 	YAML::Node yaml;
 	try 
@@ -27,7 +27,7 @@ bool ReadExtrinsicsCalibration( const std::string& path,
 	if( !yaml["reference_name"] || !yaml["frames"] ) { return false; }
 	
 	// Prepare info for writing
-	info.frameNames.clear();
+	info.cameraNames.clear();
 	info.extrinsics.clear();
 	
 	refName = yaml["reference_name"].as<std::string>();
@@ -41,16 +41,16 @@ bool ReadExtrinsicsCalibration( const std::string& path,
 		if( !GetPoseYaml( iter->second, extrinsic ) ) { return false; }
 		geometry_msgs::Pose pose = PoseToMsg( extrinsic );
 		
-		info.frameNames.push_back( frameName );
+		info.cameraNames.push_back( frameName );
 		info.extrinsics.push_back( pose );
 	}
 	
 	return true;
 }
 	
-bool WriteExtrinsicsCalibration( const std::string& path,
+bool WriteCameraArrayCalibration( const std::string& path,
 								 const std::string& refName,
-								 const ExtrinsicsInfo& info )
+								 const CameraArrayInfo& info )
 {
 	std::ofstream output( path );
 	if( !output.is_open() )
@@ -62,10 +62,10 @@ bool WriteExtrinsicsCalibration( const std::string& path,
 	yaml["reference_name"] = refName;
 	
 	YAML::Node frames;
-	if( info.frameNames.size() != info.extrinsics.size() ) { return false; }
-	for( unsigned int i = 0; i < info.frameNames.size(); i++ )
+	if( info.cameraNames.size() != info.extrinsics.size() ) { return false; }
+	for( unsigned int i = 0; i < info.cameraNames.size(); i++ )
 	{
-		std::string frameName = info.frameNames[i];
+		std::string frameName = info.cameraNames[i];
 		PoseSE3 extrinsic = MsgToPose( info.extrinsics[i] );
 		frames[frameName] = SetPoseYaml( extrinsic );
 	}
@@ -75,4 +75,4 @@ bool WriteExtrinsicsCalibration( const std::string& path,
 	return true;
 }
 
-} // end namespace extrinsics_info_manager
+} // end namespace camera_array

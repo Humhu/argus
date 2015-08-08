@@ -6,57 +6,37 @@
 #include <camera_info_manager/camera_info_manager.h>
 
 #include "argus_utils/WorkerPool.hpp"
+#include "argus_utils/PoseSE3.h"
 
-#include "camera_array/CycleArray.h"
-#include "camera_array/EnableArrayCamera.h"
-#include "camera_array/DisableArrayCamera.h"
-#include "camera_array/DisableArray.h"
-#include "camera_array/ListArrayCameras.h"
-
+#include "camplex/CameraCalibration.h"
 #include "camplex/SetStreaming.h"
+#include "camplex/CaptureFrames.h"
+
+#include "camera_array/CameraArrayInfoManager.h"
+#include "camera_array/GetCameraArrayInfo.h"
+
+#include <yaml-cpp/yaml.h>
 
 #include <unordered_map>
 
+#include <tf/transform_broadcaster.h>
+
 namespace camera_array
 {
-
-	/*! \brief Stateful camera connection manager and interface. */
-	class CameraManager
-	{
-	public:
-		
-		typedef std::shared_ptr<CameraManager> Ptr;
-		
-		const std::string cameraName;
-		
-		CameraManager( const ros::NodeHandle& nh,
-					   image_transport::CameraPublisher& ipub,
-					   const std::string& _cameraName );
-		~CameraManager();
-		
-		void ValidateConnection(); // TODO Return success?
-		void EnableCamera();
-		void DisableCamera();
-		
-	private:
-		
-		ros::NodeHandle nodeHandle;
-		ros::NodeHandle privHandle;
-		image_transport::ImageTransport imagePort;
-		image_transport::CameraSubscriber imageSub;
-		image_transport::CameraPublisher& imagePub;
-		ros::ServiceClient setStreamingClient;
-		
-		void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
-						    const sensor_msgs::CameraInfo::ConstPtr& info_msg );
-		
-	};
-	
-	// TODO Unified management of camera extrinsics and intrinsics
 	/*! \brief Represents a cluster of cameras. Presents methods to interact 
-	 * with them as a networked array instead of individuals. */
-	// NOTE All the methods are unsychronized because they are expected to be 
-	// called by a single ROS spinner thread
+	 * with them as a networked array instead of individuals. 
+	 * TODO Maintains a set of tf frames for the extrinsics?
+	 * 
+	 * Calibration YAML format:
+	 * array_name: [name of the array]
+	 * cameras:
+	 *   [camera_0_name]:
+	 *     extrinsics:
+	 *       position: [pose of camera_0 relative to array reference frame]
+	 *       quaternion: [quat]
+	 *   [camera_1_name]:
+	 *     etc.
+	 */
 	class CameraArray
 	{
 	public:
@@ -66,43 +46,47 @@ namespace camera_array
 		CameraArray( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 		~CameraArray();
 		
+		bool CallSetStreaming( const std::string& cameraName, bool stream );
+		bool CallCaptureFrames( const std::string& cameraName, unsigned int num );
+		
 	private:
 		
 		ros::NodeHandle nodeHandle;
 		ros::NodeHandle privHandle;
-		
+
+		CameraArrayInfoManager extrinsicsManager;
+
 		// Service handlers
-		ros::ServiceServer cycleArrayServer;
-		ros::ServiceServer enableCameraServer;
-		ros::ServiceServer disableCameraServer;
-		ros::ServiceServer disableAllServer;
-		ros::ServiceServer listCamerasServer;
+		ros::ServiceServer setStreamingServer;
+		ros::ServiceServer captureFramesServer;
 		
-		image_transport::ImageTransport imagePort;
-		image_transport::CameraPublisher imagePub;
-		
-		argus_utils::WorkerPool dispatchers;
-		
-		boost::condition_variable_any commandBlock;
+// 		argus_utils::WorkerPool dispatchers;
+// 		boost::condition_variable_any commandBlock;
 		
 		/*! \brief Status and registration entry for each camera. */
 		
-		typedef std::unordered_map< std::string, CameraManager::Ptr > CameraRegistry;
+		struct CameraRegistration
+		{
+			ros::ServiceClient setStreamingClient;
+			ros::ServiceClient captureFramesClient;
+			
+			CameraRegistration( ros::NodeHandle& nh, const std::string& cameraName );
+			
+			bool CallSetStreaming( bool stream );
+			bool CallCaptureFrames( unsigned int num );
+			bool CallGetCameraInfo( sensor_msgs::CameraInfo& info );
+		};
+		
+		typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
 		CameraRegistry registry;
 		
-		bool CycleArrayService( CycleArray::Request& req,
-								CycleArray::Response& res );
-		bool EnableCameraService( EnableArrayCamera::Request& req,
-								  EnableArrayCamera::Response& res );
-		bool DisableCameraService( DisableArrayCamera::Request& req,
-								   DisableArrayCamera::Response& res );
-		bool DisableArrayService( DisableArray::Request& req,
-								  DisableArray::Response& res );
-		bool ListCamerasService( ListArrayCameras::Request& req,
-								 ListArrayCameras::Response& res );
+		bool SetStreamService( camplex::SetStreaming::Request& req,
+							   camplex::SetStreaming::Response& res );
+		bool CaptureFramesService( camplex::CaptureFrames::Request& req,
+								   camplex::CaptureFrames::Response& res );
 		
-		void EnableCamera( CameraManager::Ptr manager );
-		void DisableCamera( CameraManager::Ptr manager );
+		/*! \brief Register a camera to the array using its node name. */
+		void RegisterCamera( const std::string& cameraName );
 	};
 	
 }
