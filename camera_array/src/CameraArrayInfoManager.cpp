@@ -8,9 +8,9 @@ namespace camera_array
 												  ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ), referenceName( "reference" ), initialized( false )
 	{
-		getInfoServer = privHandle.advertiseService( "get_extrinsics_info",
+		getInfoServer = privHandle.advertiseService( "get_array_info",
 							&CameraArrayInfoManager::GetCameraArrayInfoService, this );
-		setInfoServer = privHandle.advertiseService( "set_extrinsics_info",
+		setInfoServer = privHandle.advertiseService( "set_array_info",
 							&CameraArrayInfoManager::SetCameraArrayInfoService, this );
 	}
 	

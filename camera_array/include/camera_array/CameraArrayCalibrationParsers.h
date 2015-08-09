@@ -7,11 +7,16 @@ namespace camera_array
 	
 /*! \brief Tools for reading/writing extrinsics calibration files.
  * CameraArray Calibration YAML format:
- * reference_name: [reference frame name]
- * frames:
+ * array_name: [reference frame name]
+ * cameras:
  *   [object1 name]:
- *     position: [x y z]
- *     quaternion: [qw qx qy qz]
+ *     extrinsics:
+ *       position: [x y z]
+ *       quaternion: [qw qx qy qz]
+ *     intrinsics:
+ *       focal_length: [fx fy]
+ *       principal_point: [px py]
+ *       resolution: [iw ih]
  *   [object2 name]:
  *     etc...
  */

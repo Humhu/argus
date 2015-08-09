@@ -1,14 +1,23 @@
 #pragma once
 
-#include <image_geometry/pinhole_camera_model.h>
-
 #include "camera_array/CameraArrayInfo.h"
+
+#include "camplex/CameraCalibration.h"
 
 #include "argus_utils/GeometryUtils.h"
 
 namespace camera_array
 {
 
+struct CameraObservation
+{
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+	
+	bool valid;
+	Eigen::Vector2d imageCoordinates;
+	
+};
+	
 /*! \brief Models an array of pinhole cameras. */
 class PinholeCameraArrayModel
 {
@@ -18,12 +27,11 @@ public:
 	
 	PinholeCameraArrayModel();
 	
-	/*! \brief Initialize from an extrinsics message and corresponding
-		* intrinsics messages. Note that the ordering must be the same! */
+	/*! \brief Initialize from a camera array calibration. */
 	void FromInfo( const CameraArrayInfo& info );
 	
-	/*! \brief Projects a point in the array frame onto each cameras image plane. */
-	Points Project( const cv::Point3d& point );
+	/*! \brief Projects a point [x,y,z] to image coordinates for each camera. */
+	std::vector<CameraObservation> Project( const Eigen::Vector3d& point );
 	std::vector< Points > Project( const std::vector< cv::Point3d >& points );
 	
 private:
@@ -31,12 +39,15 @@ private:
 	struct CameraRegistration
 	{
 		argus_utils::PoseSE3 extrinsic;
-		image_geometry::PinholeCameraModel cameraModel;
+		camplex::CameraCalibration intrinsic;
 	};
 	
 	std::vector< std::string > cameraNames;
 	std::vector< CameraRegistration > registry;
 	
-};
+	static Eigen::Vector2d ProjectPoint( const camplex::CameraCalibration& intrinsic,
+										 const Eigen::Vector3d& point );
 	
+};
+
 }
