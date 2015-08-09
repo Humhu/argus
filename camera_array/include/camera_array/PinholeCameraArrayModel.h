@@ -32,13 +32,15 @@ public:
 	
 	/*! \brief Projects a point [x,y,z] to image coordinates for each camera. */
 	std::vector<CameraObservation> Project( const Eigen::Vector3d& point );
-	std::vector< Points > Project( const std::vector< cv::Point3d >& points );
+	
+	/*! \brief Returns the image bounds for each camera. */
+	std::vector< cv::Rect > GetRois() const;
 	
 private:
 	
 	struct CameraRegistration
 	{
-		argus_utils::PoseSE3 extrinsic;
+		argus_utils::PoseSE3 extrinsicInverse;
 		camplex::CameraCalibration intrinsic;
 	};
 	

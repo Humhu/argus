@@ -17,17 +17,27 @@ void PinholeCameraArrayModel::FromInfo( const CameraArrayInfo& info )
 	{
 		PoseSE3 extrinsic = MsgToPose( info.extrinsics[i] );
 		CameraCalibration cc( cameraNames[i], info.intrinsics[i] );
-		CameraRegistration reg = { extrinsic, cc };
+		CameraRegistration reg = { extrinsic.Inverse(), cc };
 		registry.push_back( reg );
 	}
 }
 
+std::vector< cv::Rect > PinholeCameraArrayModel::GetRois() const
+{
+	std::vector< cv::Rect > rois( registry.size() );
+	for( unsigned int i = 0; i < registry.size(); i++ )
+	{
+		rois[i] = registry[i].intrinsic.GetRoi();
+	}
+	return rois;
+}
+	
 std::vector<CameraObservation> PinholeCameraArrayModel::Project( const Eigen::Vector3d& point )
 {
 	std::vector<CameraObservation> observations( registry.size() );
 	for( unsigned int i = 0; i < registry.size(); i++ )
 	{
-		Eigen::Vector3d relPoint = registry[i].extrinsic.ToTransform().inverse()*point;
+		Eigen::Vector3d relPoint = registry[i].extrinsicInverse.ToTransform()*point;
 		if( relPoint(2) <= 0 ) 
 		{
 			observations[i].valid = false;
