@@ -76,15 +76,20 @@ target_link_libraries( atags
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
+add_dependencies( atags apriltags_external )
 
 add_library( detector_nodelet nodes/atag_detector_nodelet.cpp )
-add_dependencies( detector_nodelet "${PROJECT_NAME}_gencfg" )
+add_dependencies( detector_nodelet tags_gencfg 
+								   apriltags_external 
+)
 target_link_libraries( detector_nodelet atags
-										 ${catkin_LIBRARIES} 
+										${catkin_LIBRARIES} 
 )
 	
 add_executable( detector_node nodes/atag_detector_node.cpp )
-add_dependencies( detector_node "${PROJECT_NAME}_gencfg" )
+add_dependencies( detector_node atags_gencfg
+								apriltags_external 
+)
 target_link_libraries( detector_node
 	atags
 	${catkin_LIBRARIES}
