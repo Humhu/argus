@@ -4,7 +4,8 @@
 
 namespace camera_array
 {
-	
+
+// TODO Distortion parameters
 /*! \brief Tools for reading/writing extrinsics calibration files.
  * CameraArray Calibration YAML format:
  * array_name: [reference frame name]

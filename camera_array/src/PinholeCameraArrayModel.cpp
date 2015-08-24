@@ -34,18 +34,20 @@ std::vector< cv::Rect > PinholeCameraArrayModel::GetRois() const
 	
 std::vector<CameraObservation> PinholeCameraArrayModel::Project( const Eigen::Vector3d& point )
 {
+	// Convert from x-forward to z-forward
 	std::vector<CameraObservation> observations( registry.size() );
 	for( unsigned int i = 0; i < registry.size(); i++ )
 	{
 		Eigen::Vector3d relPoint = registry[i].extrinsicInverse.ToTransform()*point;
-		if( relPoint(2) <= 0 ) 
+		if( relPoint(0) <= 0 ) 
 		{
 			observations[i].valid = false;
 		}
 		else
 		{
 			observations[i].valid = true;
-			observations[i].imageCoordinates = ProjectPoint( registry[i].intrinsic, relPoint );
+			Eigen::Vector3d camPoint( -point(1), -point(2), point(0) );
+			observations[i].imageCoordinates = ProjectPoint( registry[i].intrinsic, camPoint );
 		}
 	}
 	return observations;

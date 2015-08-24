@@ -13,9 +13,8 @@ using namespace camera_calibration_parsers;
 namespace camera_array
 {
 
-bool ReadCameraArrayCalibration( const std::string& path,
-								std::string& refName,
-								CameraArrayInfo& info )
+bool ReadCameraArrayCalibration( const std::string& path, std::string& refName,
+								 CameraArrayInfo& info )
 {
 	YAML::Node yaml;
 	try 
@@ -46,6 +45,9 @@ bool ReadCameraArrayCalibration( const std::string& path,
 		if( !GetPoseYaml( iter->second["extrinsics"], pose ) ) { return false; }
 		geometry_msgs::Pose extrinsic = PoseToMsg( pose );
 		
+		if( !iter->second["intrinsics"]["focal_length"] ||
+			!iter->second["intrinsics"]["principal_point"] ||
+			!iter->second["intrinsics"]["resolution"] ) { return false; }
 		std::vector<double> focal = iter->second["intrinsics"]["focal_length"].as< std::vector<double> >();
 		std::vector<double> principal= iter->second["intrinsics"]["principal_point"].as< std::vector<double> >();
 		std::vector<double> resolution = iter->second["intrinsics"]["resolution"].as< std::vector<double> >();
