@@ -26,7 +26,11 @@ bool ReadCameraArrayCalibration( const std::string& path, std::string& refName,
 		return false;
 	}
 	
-	if( !yaml["array_name"] || !yaml["cameras"] ) { return false; }
+	if( !yaml["array_name"] || !yaml["cameras"] ) 
+	{ 
+		std::cerr << "Could not find all required fields in config file." << std::endl;
+		return false; 
+	}
 	
 	// Prepare info for writing
 	info.cameraNames.clear();
@@ -42,12 +46,20 @@ bool ReadCameraArrayCalibration( const std::string& path, std::string& refName,
 		std::string cameraName = iter->first.as<std::string>();
 		
 		PoseSE3 pose;
-		if( !GetPoseYaml( iter->second["extrinsics"], pose ) ) { return false; }
+		if( !GetPoseYaml( iter->second["extrinsics"], pose ) ) 
+		{ 
+			std::cerr << "Could not read pose." << std::endl;
+			return false; 
+		}
 		geometry_msgs::Pose extrinsic = PoseToMsg( pose );
 		
 		if( !iter->second["intrinsics"]["focal_length"] ||
 			!iter->second["intrinsics"]["principal_point"] ||
-			!iter->second["intrinsics"]["resolution"] ) { return false; }
+			!iter->second["intrinsics"]["resolution"] ) 
+		{ 
+			std::cerr << "Could not read intrinsics." << std::endl;
+			return false; 
+		}
 		std::vector<double> focal = iter->second["intrinsics"]["focal_length"].as< std::vector<double> >();
 		std::vector<double> principal= iter->second["intrinsics"]["principal_point"].as< std::vector<double> >();
 		std::vector<double> resolution = iter->second["intrinsics"]["resolution"].as< std::vector<double> >();
