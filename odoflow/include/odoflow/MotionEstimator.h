@@ -19,10 +19,10 @@ public:
 	MotionEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ) {}
 	
-	/*! \brief Estimates the camera transform between the two sets of
-		* corresponding image points. Returns success. */
-	virtual bool EstimateMotion( const InterestPoints& firstPoints,
-									const InterestPoints& secondPoints,
+	/*! \brief Estimates the transform that turns srcPoints into dstPoints.
+	 * Returns success. */
+	virtual bool EstimateMotion( const InterestPoints& srcPoints,
+									const InterestPoints& dstPoints,
 									argus_utils::PoseSE3& transform ) = 0;
 
 	/*! \brief Rectifies points into normalized camera coordinates. */

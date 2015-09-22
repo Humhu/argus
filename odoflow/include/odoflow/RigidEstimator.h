@@ -15,8 +15,8 @@ public:
 	
 	RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
-	virtual bool EstimateMotion( const InterestPoints& firstPoints,
-									const InterestPoints& secondPoints,
+	virtual bool EstimateMotion( const InterestPoints& srcPoints,
+									const InterestPoints& dstPoints,
 									argus_utils::PoseSE3& transform );
 	
 	void SetOutputScale( double scale );

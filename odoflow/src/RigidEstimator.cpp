@@ -10,13 +10,13 @@ namespace odoflow
 	: MotionEstimator( nh, ph )
 	{}
 	
-	bool RigidEstimator::EstimateMotion( const InterestPoints& firstPoints,
-										 const InterestPoints& secondPoints,
+	bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
+										 const InterestPoints& dstPoints,
 										 PoseSE3& transform )
 	{
 		
-		cv::Mat Hest = cv::estimateRigidTransform( firstPoints,
-												   secondPoints, false );
+		cv::Mat Hest = cv::estimateRigidTransform( srcPoints,
+												   dstPoints, false );
 		
 		if( Hest.empty() )
 		{
@@ -29,8 +29,9 @@ namespace odoflow
 		Ab.block<2,2>(0,0) = A/zScale;
 		
 		Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
-		H.block<2,2>(0,0) = Ab.block<2,2>(0,0);
-		H.block<2,1>(0,3) = Ab.block<2,1>(0,2);
+		H.block<2,2>(1,1) = Ab.block<2,2>(0,0);
+		H(1,3) = -Ab(0,2); // Image x corresponds to camera -y
+		H(2,3) = -Ab(1,2); // Image y corresponds to camera -z
 		
 		transform = PoseSE3(H);
 		return true;

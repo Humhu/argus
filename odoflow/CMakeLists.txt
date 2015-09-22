@@ -13,6 +13,7 @@ find_package(catkin REQUIRED
 					image_transport
 					image_geometry
 					argus_utils
+					camplex
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -39,6 +40,7 @@ catkin_package(
 					std_msgs 
 					message_runtime
 					argus_utils
+					camplex
 										
 	DEPENDS 		Boost 
 					OpenCV 

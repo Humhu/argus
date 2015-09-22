@@ -1,5 +1,11 @@
 #pragma once
 
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+
+#include "camplex/CameraCalibration.h"
+
 #include "odoflow/InterestPointDetector.h"
 #include "odoflow/InterestPointTracker.h"
 #include "odoflow/MotionEstimator.h"
@@ -9,8 +15,11 @@
 namespace odoflow
 {
 	
-/*! \brief A complete VO pipeline that consumes images and outputs velocity estimates. 
- * Requires four components in the private namespace:
+/*! \brief A complete VO pipeline that consumes images and outputs velocity estimates.
+ * Subscribes to "/image_raw" for the image source.
+ * Private namespace parameters are:
+ * redetection_threshold: [todo]
+ * camera_pose: [PoseSE3] (0)
  * detector:
  *   type: [string] {corner, fixed, FAST} (corner)
  * tracker:
@@ -29,7 +38,8 @@ public:
 	~VisualOdometryPipeline();
 	
 	/*! \brief Returns success. */
-	bool ProcessImage( const cv::Mat& image, argus_utils::PoseSE3& displacement );
+	bool ProcessImage( const cv::Mat& image, camplex::CameraCalibration calibration, 
+					   argus_utils::PoseSE3& displacement );
 	
 	void SetDetector( InterestPointDetector::Ptr det );
 	void SetTracker( InterestPointTracker::Ptr tr );
@@ -38,13 +48,18 @@ public:
 	void SetRedetectionThreshold( unsigned int t );
 	void SetVisualization( bool enable );
 	
-	void SetRectificationParameters( const cv::Matx33d& cameraMat,
-										const cv::Mat& distortionCoeffs );
-	
 private:
 	
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
+	
+	ros::Publisher velPub;
+	
+	image_transport::ImageTransport imagePort;
+	image_transport::CameraSubscriber imageSub;
+	
+	argus_utils::PoseSE3 cameraPose;
+	ros::Time lastTime;
 	
 	InterestPointDetector::Ptr detector;
 	InterestPointTracker::Ptr tracker;
@@ -60,8 +75,8 @@ private:
 	
 	unsigned int redetectionThreshold;
 	
-	cv::Matx33d cameraMatrix;
-	cv::Mat distortionCoefficients;
+	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,	
+						const sensor_msgs::CameraInfoConstPtr& info_msg );
 	
 };
 
