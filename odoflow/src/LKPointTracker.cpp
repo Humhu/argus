@@ -5,8 +5,23 @@
 namespace odoflow
 {
 	
-	LKPointTracker::LKPointTracker()
-	{}
+	LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	: InterestPointTracker( nh, ph )
+	{
+		int maxIters;
+		double minEps;
+		privHandle.param( "tracker/max_iters", maxIters, 20 );
+		privHandle.param<double>( "tracker/min_eps", minEps, 0.03 );
+		flowTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
+											 maxIters, minEps );
+		
+		int windowDim;
+		privHandle.param( "tracker/window_size", windowDim, 13 );
+		flowWindowSize = cv::Size( windowDim, windowDim );
+		// TODO Arg checking
+		
+		privHandle.param<double>( "tracker/eigenvalue_threshold", flowEigenThreshold, 0.001 );
+	}
 	
 	void LKPointTracker::TrackInterestPoints( const cv::Mat& firstImage,
 											  const cv::Mat& secondImage,
@@ -66,21 +81,6 @@ namespace odoflow
 			firstInliers.push_back( InterestPoint( firstConvertedPoints[i].x, firstConvertedPoints[i].y ) );
 			secondInliers.push_back( InterestPoint( secondConvertedPoints[i].x, secondConvertedPoints[i].y ) );
 		}
-	}
-	
-	void LKPointTracker::SetFlowCriteria( int maxIters, double epsilon )
-	{
-		flowTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, maxIters, epsilon );
-	}
-
-	void LKPointTracker::SetFlowWindow( int width, int height )
-	{
-		flowWindowSize = cv::Size( width, height );
-	}
-	
-	void LKPointTracker::SetFlowThreshold( double eig )
-	{
-		flowEigenThreshold = eig;
 	}
 	
 }

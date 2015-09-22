@@ -56,41 +56,25 @@ include_directories(
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 
-if( USE_ROS )
-	add_definitions( -DUSE_ROS=1 )
-else( USE_ROS )
-	add_definitions( -DUSE_ROS=0 )
-endif( USE_ROS )
-
 add_library(odoflow
 	src/CornerPointDetector.cpp
 	src/FASTPointDetector.cpp
 	src/FixedPointDetector.cpp
-	src/FivePointEstimator.cpp
-	src/InterfaceBindings.cpp
-	src/InterestPointDetector.cpp
-	src/InterestPointTracker.cpp
 	src/LKPointTracker.cpp
-	src/MotionEstimator.cpp
 	src/OpenCVMod.cpp
 	src/RigidEstimator.cpp
-	src/ROSParser.cpp
 	src/VisualOdometryPipeline.cpp
 )
-# add_dependencies( odoflow ${odoflow_EXPORTED_TARGETS} )
+add_dependencies( odoflow ${odoflow_EXPORTED_TARGETS} odoflow_gencfg)
 target_link_libraries(odoflow
 	${OpenCV_LIBS}
 )
 
-add_executable( gsl_test src/GSLTest.cpp )
-# add_dependencies( gsl_test ${odoflow_EXPORTED_TARGETS} )
-target_link_libraries( gsl_test ${GSL_LIBRARIES} )
-
 add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )
-# add_dependencies( visual_odometry_node ${odoflow_EXPORTED_TARGETS} )
+add_dependencies( visual_odometry_node odoflow_gencfg )
 target_link_libraries( visual_odometry_node
-	odoflow 
-	${catkin_LIBRARIES} )
+					   odoflow 
+					   ${catkin_LIBRARIES} )
 
 #############
 ## Install ##

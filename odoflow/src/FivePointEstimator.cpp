@@ -10,9 +10,13 @@ using namespace argus_utils;
 namespace odoflow
 {
 	
-	FivePointEstimator::FivePointEstimator()
-		: estimationMethod( RANSAC ), residualThreshold( 0.002 ), outputScale( 1.0 )
-	{}
+	FivePointEstimator::FivePointEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	: MotionEstimator( nh, ph )
+	{
+		estimationMethod( RANSAC ), residualThreshold( 0.002 ), outputScale( 1.0 )	
+		
+		
+	}
 	
 	bool FivePointEstimator::EstimateMotion( const InterestPoints& firstPoints,
 											 const InterestPoints& secondPoints,

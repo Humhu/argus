@@ -70,16 +70,7 @@ namespace odoflow
 			
 			InterestPoints gridPoints;
 			
-			for( unsigned int i = 0; i < grid[0]; i++ )
-			{
-				double x = (i+1)/((double) grid[0]+1);
-				for( unsigned int j = 0; j < grid[1]; j++ )
-				{
-					double y = (j+1)/((double) grid[1]+1);
-					InterestPoint point( x, y );
-					gridPoints.push_back( point );
-				}
-			}
+
 			
 			FixedPointDetector::Ptr detector = 
 			std::make_shared<FixedPointDetector>();

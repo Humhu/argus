@@ -1,7 +1,4 @@
-#ifndef _OFLOW_VO_PIPELINE_H_
-#define _OFLOW_VO_PIPELINE_H_
-
-#include "odoflow/InterfaceBindings.h"
+#pragma once
 
 #include "odoflow/InterestPointDetector.h"
 #include "odoflow/InterestPointTracker.h"
@@ -12,49 +9,60 @@
 namespace odoflow
 {
 	
-	class VisualOdometryPipeline
-	{
-	public:
-		
-		typedef std::shared_ptr<VisualOdometryPipeline> Ptr;
-		
-		VisualOdometryPipeline();
-		~VisualOdometryPipeline();
-		
-		/*! \brief Returns success. */
-		bool ProcessImage( const cv::Mat& image, const Timepoint& timestamp,
-						   argus_utils::PoseSE3& displacement );
-		
-		void SetDetector( InterestPointDetector::Ptr det );
-		void SetTracker( InterestPointTracker::Ptr tr );
-		void SetEstimator( MotionEstimator::Ptr es );
-		
-		void SetRedetectionThreshold( unsigned int t );
-		void SetVisualization( bool enable );
-		
-		void SetRectificationParameters( const cv::Matx33d& cameraMat,
-										 const cv::Mat& distortionCoeffs );
-		
-	private:
-		
-		InterestPointDetector::Ptr detector;
-		InterestPointTracker::Ptr tracker;
-		MotionEstimator::Ptr estimator;
-		bool showOutput;
-		
-		cv::Mat keyframe;
-		Timepoint keyframeTime;
-		InterestPoints keyframePoints;
-		
-		cv::Mat midframe;
-		InterestPoints midframePoints;
-		
-		unsigned int redetectionThreshold;
-		
-		cv::Matx33d cameraMatrix;
-		cv::Mat distortionCoefficients;
-		
-	};
-}
+/*! \brief A complete VO pipeline that consumes images and outputs velocity estimates. 
+ * Requires four components in the private namespace:
+ * detector:
+ *   type: [string] {corner, fixed, FAST} (corner)
+ * tracker:
+ *   type: [string] {lucas_kanade} (lucas_kanade)
+ * estimator:
+ *   type: [string] {rigid} (rigid)
+ */
+// TODO Abstract keyframe, redetection policies?
+class VisualOdometryPipeline
+{
+public:
+	
+	typedef std::shared_ptr<VisualOdometryPipeline> Ptr;
+	
+	VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	~VisualOdometryPipeline();
+	
+	/*! \brief Returns success. */
+	bool ProcessImage( const cv::Mat& image, argus_utils::PoseSE3& displacement );
+	
+	void SetDetector( InterestPointDetector::Ptr det );
+	void SetTracker( InterestPointTracker::Ptr tr );
+	void SetEstimator( MotionEstimator::Ptr es );
+	
+	void SetRedetectionThreshold( unsigned int t );
+	void SetVisualization( bool enable );
+	
+	void SetRectificationParameters( const cv::Matx33d& cameraMat,
+										const cv::Mat& distortionCoeffs );
+	
+private:
+	
+	ros::NodeHandle nodeHandle;
+	ros::NodeHandle privHandle;
+	
+	InterestPointDetector::Ptr detector;
+	InterestPointTracker::Ptr tracker;
+	MotionEstimator::Ptr estimator;
+	bool showOutput; // TODO Move into a separate node or something
+	bool enableUndistortion;
+	
+	cv::Mat keyframe;
+	InterestPoints keyframePoints;
+	
+	cv::Mat midframe;
+	InterestPoints midframePoints;
+	
+	unsigned int redetectionThreshold;
+	
+	cv::Matx33d cameraMatrix;
+	cv::Mat distortionCoefficients;
+	
+};
 
-#endif
+} // end namespace odoflow

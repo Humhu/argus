@@ -6,14 +6,9 @@ using namespace argus_utils;
 namespace odoflow
 {
 
-	RigidEstimator::RigidEstimator()
-		: outputScale( 1.0 )
+	RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	: MotionEstimator( nh, ph )
 	{}
-	
-	void RigidEstimator::SetOutputScale( double scale )
-	{
-		outputScale = scale;
-	}
 	
 	bool RigidEstimator::EstimateMotion( const InterestPoints& firstPoints,
 										 const InterestPoints& secondPoints,
@@ -35,7 +30,7 @@ namespace odoflow
 		
 		Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
 		H.block<2,2>(0,0) = Ab.block<2,2>(0,0);
-		H.block<2,1>(0,3) = Ab.block<2,1>(0,2)*outputScale;
+		H.block<2,1>(0,3) = Ab.block<2,1>(0,2);
 		
 		transform = PoseSE3(H);
 		return true;

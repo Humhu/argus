@@ -1,5 +1,4 @@
-#ifndef _OFLOW_LKTRACKER_H_
-#define _OFLOW_LKTRACKER_H_
+#pragma once
 
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -9,35 +8,34 @@
 namespace odoflow
 {
 	
-	class LKPointTracker
-		: public InterestPointTracker
-	{
-	public:
-		
-		typedef std::shared_ptr<LKPointTracker> Ptr;
-		
-		LKPointTracker();
-		
-		virtual void TrackInterestPoints( const cv::Mat& firstImage,
-										  const cv::Mat& secondImage,
-										  const InterestPoints& firstPoints,
-										  const InterestPoints& secondPointsGuess,
-										  std::vector<bool>& mask,
-										  InterestPoints& firstInliers,
-										  InterestPoints& secondInliers );
-		
-		void SetFlowCriteria( int maxIters, double epsilon );
-		void SetFlowWindow( int width, int height );
-		void SetFlowThreshold( double eig );
-		
-	private:
-		
-		// Flow calculation parameters
-		cv::TermCriteria flowTermCriteria;
-		cv::Size flowWindowSize;
-		double flowEigenThreshold;
-		
-	};
-}
+class LKPointTracker
+	: public InterestPointTracker
+{
+public:
+	
+	typedef std::shared_ptr<LKPointTracker> Ptr;
+	
+	LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	
+	virtual void TrackInterestPoints( const cv::Mat& firstImage,
+										const cv::Mat& secondImage,
+										const InterestPoints& firstPoints,
+										const InterestPoints& secondPointsGuess,
+										std::vector<bool>& mask,
+										InterestPoints& firstInliers,
+										InterestPoints& secondInliers );
+	
+	void SetFlowCriteria( int maxIters, double epsilon );
+	void SetFlowWindow( int width, int height );
+	void SetFlowThreshold( double eig );
+	
+private:
+	
+	// Flow calculation parameters
+	cv::TermCriteria flowTermCriteria;
+	cv::Size flowWindowSize;
+	double flowEigenThreshold;
+	
+};
 
-#endif
+} // end namespace odoflow

@@ -1,5 +1,4 @@
-#ifndef _OFLOW_MOTION_ESTIMATOR_H_
-#define _OFLOW_MOTION_ESTIMATOR_H_
+#pragma once
 
 #include <Eigen/Geometry>
 
@@ -9,31 +8,31 @@
 namespace odoflow
 {
 	
-	typedef Eigen::Transform<double, 3, Eigen::Isometry> Transform;
+typedef Eigen::Transform<double, 3, Eigen::Isometry> Transform;
+
+class MotionEstimator
+{
+public:
 	
-	class MotionEstimator
-	{
-	public:
-		
-		typedef std::shared_ptr<MotionEstimator> Ptr;
-				
-		MotionEstimator();
-		
-		/*! \brief Estimates the camera transform between the two sets of
-		 * corresponding image points. Returns success. */
-		virtual bool EstimateMotion( const InterestPoints& firstPoints,
-									 const InterestPoints& secondPoints,
-									 argus_utils::PoseSE3& transform ) = 0;
+	typedef std::shared_ptr<MotionEstimator> Ptr;
+			
+	MotionEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	: nodeHandle( nh ), privHandle( ph ) {}
+	
+	/*! \brief Estimates the camera transform between the two sets of
+		* corresponding image points. Returns success. */
+	virtual bool EstimateMotion( const InterestPoints& firstPoints,
+									const InterestPoints& secondPoints,
+									argus_utils::PoseSE3& transform ) = 0;
 
-		/*! \brief Rectifies points into normalized camera coordinates. */
-		// TODO Use undistortion parameters
-		InterestPoints RectifyPoints( const InterestPoints& points );
-		
-	protected:
-		
-		cv::Mat cameraMatrix;
-									 
-	};
-}
+	/*! \brief Rectifies points into normalized camera coordinates. */
+	// TODO Use undistortion parameters
+	InterestPoints RectifyPoints( const InterestPoints& points );
+	
+protected:
+	
+	ros::NodeHandle nodeHandle;
+	ros::NodeHandle privHandle;
+};
 
-#endif
+} // end namespace odoflow

@@ -3,59 +3,47 @@
 namespace odoflow
 {
 
-	CornerPointDetector::CornerPointDetector() {}
+CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
+: InterestPointDetector( nh, ph )
+{
+	privHandle.param( "detector/max_num_points", featureMaxPoints, 500 );
+	privHandle.param( "detector/min_quality", featureQuality, 0.01 );
+	privHandle.param( "detector/min_separation", featureSeparation, 10.0 );
+	privHandle.param( "detector/block_size", featureBlockSize, 3 );
 	
-	InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
+	int refineWindowDim;
+	privHandle.param( "detector/window_size", refineWindowDim, 10 );
+	refineWindowSize = cv::Size( refineWindowDim, refineWindowDim );
+	
+	privHandle.param( "detector/use_harris", featureUseHarris, false );
+	if( featureUseHarris )
 	{
-		InterestPoints points;
-		cv::goodFeaturesToTrack( image, points, featureMaxPoints, featureQuality, featureSeparation, 
-								 cv::noArray(), featureBlockSize, featureUseHarris, featureHarrisK );
-		return points;
+		privHandle.param( "detector/harris_k", featureHarrisK, 0.04 );
 	}
 	
-	void CornerPointDetector::SetMaxPoints( int maxPoints )
-	{
-		featureMaxPoints = maxPoints;
-	}
+	privHandle.param( "detector/refine_enable", refineEnable, true );
 	
-	void CornerPointDetector::SetMinQuality( double quality )
+	if( refineEnable )
 	{
-		featureQuality = quality;
+		int refineMaxIters;
+		double refineMinEps;
+		privHandle.param( "detector/refine_max_iters", refineMaxIters, 20 );
+		privHandle.param( "detector/refine_min_eps", refineMinEps, 0.03 );
+		refineTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
+											   refineMaxIters, refineMinEps );
 	}
-	
-	void CornerPointDetector::SetMinSeparation( double separation )
-	{
-		featureSeparation = separation;
-	}
-	
-	void CornerPointDetector::SetQualityWindowSize( int winSize )
-	{
-		featureBlockSize = winSize;
-	}
-	
-	void CornerPointDetector::SetHarrisMode( bool enable )
-	{
-		featureUseHarris = enable;
-	}
-	
-	void CornerPointDetector::SetHarrisK( double k )
-	{
-		featureHarrisK = k;
-	}
-	
-	void CornerPointDetector::SetRefinementMode( bool enable )
-	{
-		refineEnable = enable;
-	}
-	
-	void CornerPointDetector::SetRefinementWindow( int width, int height )
-	{
-		refineWindowSize = cv::Size( width, height );
-	}
-	
-	void CornerPointDetector::SetRefinementCriteria( int maxIters, double epsilon )
-	{
-		refineTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, maxIters, epsilon );
-	}
-	
+
 }
+
+InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
+{
+	InterestPoints points;
+	cv::goodFeaturesToTrack( image, points, featureMaxPoints, featureQuality, featureSeparation, 
+								cv::noArray(), featureBlockSize, featureUseHarris, featureHarrisK );
+	
+	// TODO Subpixel refinement
+	
+	return points;
+}
+
+} // end namespace odoflow
