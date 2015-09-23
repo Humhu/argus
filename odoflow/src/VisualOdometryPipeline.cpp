@@ -10,13 +10,16 @@
 #include "odoflow/RigidEstimator.h"
 
 #include "argus_utils/YamlUtils.h"
+#include "argus_utils/MatrixUtils.h"
 
-#include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <image_geometry/pinhole_camera_model.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
 using namespace argus_utils;
+
+namespace gmsgs = geometry_msgs;
 
 namespace odoflow
 {
@@ -80,7 +83,7 @@ VisualOdometryPipeline::VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHa
 	}
 	
 	imageSub = imagePort.subscribeCamera( "/image_raw", 1, &VisualOdometryPipeline::ImageCallback, this );
-	velPub = privHandle.advertise<geometry_msgs::TwistStamped>( "odometry", 10 );
+	velPub = nodeHandle.advertise<gmsgs::TwistWithCovarianceStamped>( "/velocity_raw", 10 );
 
 }
 
@@ -95,7 +98,19 @@ VisualOdometryPipeline::~VisualOdometryPipeline()
 void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& msg,
 											const sensor_msgs::CameraInfoConstPtr& info_msg )
 {
-	camplex::CameraCalibration calib( "cam", *info_msg );
+	sensor_msgs::CameraInfo info( *info_msg );
+	if( std::isnan( info.K[0] ) )
+	{
+		info.K[0] = 600;
+		info.K[4] = 600;
+		info.K[2] = info.width/2;
+		info.K[5] = info.height/2;
+	}
+// 		ROS_ERROR( "Received invalid camera calibration." );
+// 		exit( -1 );
+		// HACK for now, since logs have bad calibrations
+	
+	camplex::CameraCalibration calib( "cam", info );
 	
 	ros::Time timestamp = msg->header.stamp;
 	
@@ -123,14 +138,20 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		PoseSE3::TangentVector cTangent = se3log( displacement );
 		PoseSE3::TangentVector velocity = cameraPose.Adjoint( cTangent / dt );
 		
-		geometry_msgs::TwistStamped msg;
+		// TODO Parse covariance and transform to robot frame
+		// TODO Utility for writing matrix to ros msg field?
+		
+		gmsgs::TwistWithCovarianceStamped msg;
 		msg.header.stamp = timestamp;
-		msg.twist.linear.x = velocity(0);
-		msg.twist.linear.y = velocity(1);
-		msg.twist.linear.z = velocity(2);
-		msg.twist.angular.x = velocity(3);
-		msg.twist.angular.y = velocity(4);
-		msg.twist.angular.z = velocity(5);
+		msg.twist.twist.linear.x = velocity(0);
+		msg.twist.twist.linear.y = velocity(1);
+		msg.twist.twist.linear.z = velocity(2);
+		msg.twist.twist.angular.x = velocity(3);
+		msg.twist.twist.angular.y = velocity(4);
+		msg.twist.twist.angular.z = velocity(5);
+		
+		Eigen::Matrix<double,6,6> cov = Eigen::Matrix<double,6,6>::Identity();
+		argus_utils::SerializeMatrix( cov, msg.twist.covariance );
 		
 		velPub.publish( msg );
 		
@@ -216,10 +237,11 @@ bool VisualOdometryPipeline::ProcessImage( const cv::Mat& image,
 									trackMask, keyframeInliers, procInliers );
 	keyframePoints = keyframeInliers;
 	
-	// Rectify the points to normalized image coordinates
-	InterestPoints keyframeTrackPoints, procTrackPoints;
-// 	if( enableUndistortion )
-// 	{
+	if( keyframeInliers.size() > 0 && procInliers.size() > 0 )
+	{
+		// Rectify the points to normalized image coordinates
+		InterestPoints keyframeTrackPoints, procTrackPoints;
+
 		cv::Mat keyframeMat = ParsePointVector( keyframeInliers );
 		cv::Mat procMat = ParsePointVector( procInliers );
 		cv::Mat keyframeUndistortedMat, procUndistortedMat;
@@ -229,43 +251,21 @@ bool VisualOdometryPipeline::ProcessImage( const cv::Mat& image,
 							cameraModel.distortionCoeffs() );
 		keyframeTrackPoints = ParsePointMatrix( keyframeUndistortedMat );
 		procTrackPoints = ParsePointMatrix( procUndistortedMat );
-// 	}
-// 	else
-// 	{
-// 		keyframeTrackPoints = keyframeInliers;
-// 		procTrackPoints = procInliers;
-// 	}
-	
-	// Use corresponding points to estimate the transform between the images
-	bool estimateSuccess = 
-		estimator->EstimateMotion( procTrackPoints, keyframeTrackPoints, displacement );
-	if( !estimateSuccess )
-	{
-		ROS_WARN( "Failed to estimate motion from frames." );
-	}
 		
-// 	PoseSE3::TangentVector velocity = PoseSE3::TangentVector::Zero();
-	
-// 	if( dt > 0 )
-// 	{
-// 		PoseSE3::TangentVector twist = se3log( displacement );
-// 		velocity = twist/dt;
-// 	}
+		// Use corresponding points to estimate the transform between the images
+		bool estimateSuccess = 
+			estimator->EstimateMotion( procTrackPoints, keyframeTrackPoints, displacement );
+			
+		if( !estimateSuccess ) { ROS_WARN( "Failed to estimate motion from frames." ); }
+	}
+	else { ROS_WARN( "Failed to find tracking inliers." ); }
 	
 	// NOTE Currently if we have a tracking failure we get lost forever
 	// TODO If we want to keep midframe tracking we may need to force an upper
 	// bound on number of midframes to avoid this problem
-// 		if( estimateSuccess )
-// 		{
-		// Final loop bookkeeping
-		image.copyTo( keyframe );
-		keyframePoints = procInliers;
-		midframePoints = procInliers;
-// 		}
-// 		else
-// 		{
-// 			midframePoints = procInliers;
-// 		}
+	image.copyTo( keyframe );
+	keyframePoints = procInliers;
+	midframePoints = procInliers;
 	
 	return true;
 }

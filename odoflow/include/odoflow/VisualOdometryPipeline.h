@@ -17,6 +17,7 @@ namespace odoflow
 	
 /*! \brief A complete VO pipeline that consumes images and outputs velocity estimates.
  * Subscribes to "/image_raw" for the image source.
+ * Publishes geometry_msgs/TwistWithCovarianceStamped on "/velocity_raw".
  * Private namespace parameters are:
  * redetection_threshold: [todo]
  * camera_pose: [PoseSE3] (0)

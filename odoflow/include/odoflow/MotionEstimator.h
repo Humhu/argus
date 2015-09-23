@@ -26,7 +26,7 @@ public:
 									argus_utils::PoseSE3& transform ) = 0;
 
 	/*! \brief Rectifies points into normalized camera coordinates. */
-	// TODO Use undistortion parameters
+	// TODO Use undistortion parameters?
 	InterestPoints RectifyPoints( const InterestPoints& points );
 	
 protected:
