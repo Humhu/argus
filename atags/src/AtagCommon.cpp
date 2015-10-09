@@ -27,7 +27,7 @@ namespace atags
 	argus_utils::PoseSE3 get_tag_pose( const argus_msgs::TagDetection& msg,
 										double tagSize )
 	{
-		if( !msg.isNormalized )
+		if( !msg.normalized )
 		{
 			throw std::runtime_error( "Called wrong get_tag_pose for unnormalized detection." );
 		}

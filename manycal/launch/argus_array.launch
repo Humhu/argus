@@ -1,0 +1,47 @@
+<launch>
+  
+  <node pkg="camplex" type="camera_node" name="camera1" ns="argus">
+    <rosparam>
+      device_path: /dev/argus/camera1
+      frame_resolution: [640,480]
+      frame_rate: 30
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="camplex" type="camera_node" name="camera2" ns="argus">
+    <rosparam>
+      device_path: /dev/argus/camera2
+      frame_resolution: [640,480]
+      frame_rate: 30
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="camplex" type="camera_node" name="camera3" ns="argus">
+    <rosparam>
+      device_path: /dev/argus/camera3
+      frame_resolution: [640,480]
+      frame_rate: 30
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="camplex" type="camera_node" name="camera4" ns="argus">
+    <rosparam>
+      device_path: /dev/argus/camera4
+      frame_resolution: [640,480]
+      frame_rate: 30
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="manycal" type="array_synchronizer_node" name="acap" ns="argus">
+    <rosparam>
+      camera_names: [camera1, camera2, camera3, camera4]
+      #output_directory: /home/humphreh/Software/argus_devel/test
+      num_simultaneous_captures: 2
+    </rosparam>
+  </node>
+  
+</launch>

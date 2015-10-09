@@ -8,7 +8,7 @@
 
 #include "apriltags/TagDetector.h"
 
-#include "argus_msgs/TagDetection.h"
+#include "argus_msgs/TagDetectionsStamped.h"
 
 #include <memory>
 
@@ -46,9 +46,10 @@ namespace atags
 		void RectifyDetections( std::vector<AprilTags::TagDetection>& detections,
 								const image_geometry::PinholeCameraModel& cameraModel );
 		
-		void PopulateMessage( const AprilTags::TagDetection& detection,
+		void PopulateMessage( const std::vector<AprilTags::TagDetection>& detection,
 							  const cv::Size& imgSize,
-							  argus_msgs::TagDetection& msg );
+							  argus_msgs::TagDetectionsStamped& msg,
+							  bool rectified );
 		
 	};
 	

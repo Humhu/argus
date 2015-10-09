@@ -10,6 +10,7 @@ find_package(catkin REQUIRED
 add_message_files(
 	FILES			Point2D_32.msg 
 					TagDetection.msg 
+					TagDetectionsStamped.msg
 )
 
 generate_messages(

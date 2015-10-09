@@ -83,7 +83,7 @@ namespace manycal
 	
 	void ArrayCalibrator::DetectionCallback( const argus_msgs::TagDetection::ConstPtr& msg )
 	{
-		if( msg->isNormalized )
+		if( msg->normalized )
 		{
 			ROS_WARN_STREAM( "Received normalized detections! Expected unnormalized detections." );
 			return;

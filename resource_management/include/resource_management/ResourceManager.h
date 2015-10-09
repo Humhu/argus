@@ -1,5 +1,4 @@
-#ifndef _V4L2D_RESOURCE_MANAGER_H_
-#define _V4L2D_RESOURCE_MANAGER_H_
+#pragma once
 
 #include <ros/ros.h>
 #include <ros/callback_queue.h>
@@ -17,53 +16,51 @@
 namespace resource_management
 {
 	
-	class ResourceManager
+class ResourceManager
+{
+public:
+	
+	ResourceManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	
+	bool RequestResourcesService( RequestResources::Request& req,
+									RequestResources::Response& res );
+	
+	bool ReleaseResourcesService( ReleaseResources::Request& req,
+									ReleaseResources::Response& res );
+	
+private:
+	
+	typedef boost::unique_lock< boost::mutex > Lock;
+	
+	boost::mutex mutex;
+	
+	ros::NodeHandle nodeHandle;
+	ros::NodeHandle privHandle;
+	
+	ros::ServiceServer requestServer;
+	ros::ServiceServer releaseServer;
+	
+	struct ResourceEntry
 	{
-	public:
-		
-		ResourceManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
-		
-		bool RequestResourcesService( RequestResources::Request& req,
-									  RequestResources::Response& res );
-		
-		bool ReleaseResourcesService( ReleaseResources::Request& req,
-									  ReleaseResources::Response& res );
-		
-	private:
-		
-		typedef boost::unique_lock< boost::mutex > Lock;
-		
-		boost::mutex mutex;
-		
-		ros::NodeHandle nodeHandle;
-		ros::NodeHandle privHandle;
-		
-		ros::ServiceServer requestServer;
-		ros::ServiceServer releaseServer;
-		
-		struct ResourceEntry
-		{
-			unsigned int available;
-		};
-		
-		// TODO Heartbeat on old grants?
-		struct GrantEntry
-		{
-			ros::Time startTime;
-			std::vector<ResourceGrant> grants;
-		};
-		
-		std::unordered_map< std::string, ResourceEntry > registry;
-		std::unordered_map< unsigned int, GrantEntry > grants;
-		
-		unsigned int grantCounter;
-		
-		bool ValidateRequest( const RequestResources::Request& req ) const;
-		bool TestSetResources( const RequestResources::Request& req,
-							   RequestResources::Response& res );
-		
+		unsigned int available;
 	};
 	
-}
-
-#endif
+	// TODO Heartbeat on old grants?
+	struct GrantEntry
+	{
+		ros::Time startTime;
+		std::vector<ResourceGrant> grants;
+	};
+	
+	std::unordered_map< std::string, ResourceEntry > registry;
+	std::unordered_map< unsigned int, GrantEntry > grants;
+	
+	unsigned int grantCounter;
+	
+	bool ValidateRequest( const RequestResources::Request& req ) const;
+	bool TestSetResources( const RequestResources::Request& req,
+							RequestResources::Response& res );
+	
+};
+	
+} // end namespace resource_management

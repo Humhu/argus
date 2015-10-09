@@ -63,7 +63,6 @@ include_directories( include
 )
 
 add_library( camera_array
-	src/ArrayUtils.cpp
 	src/CameraArray.cpp
 	src/CameraArrayCalibrationParsers.cpp
 	src/CameraArrayInfoManager.cpp

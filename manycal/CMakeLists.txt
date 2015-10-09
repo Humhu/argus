@@ -43,6 +43,10 @@ add_message_files(
 	FILES			TagCorrespondence.msg 
 )
 
+add_service_files(
+	FILES			CaptureArray.srv
+)
+
 generate_messages(
 	DEPENDENCIES 	std_msgs
 					argus_msgs
@@ -75,7 +79,9 @@ catkin_package(
 include_directories( include )
 
 add_library( manycal
-	src/ArrayCalibrator.cpp
+# 	src/ArrayCalibrator.cpp
+	src/ArrayCapturer.cpp
+	src/ArraySynchronizer.cpp
 )
 
 # add_dependencies( manycal ${manycal_EXPORTED_TARGETS} )
@@ -86,13 +92,27 @@ target_link_libraries( manycal
 	${catkin_LIBRARIES}
 )
 
-add_executable( tag_calibrator_node nodes/array_calibrator.cpp )
-add_dependencies( tag_calibrator_node ${PROJECT_NAME}_gencfg )
-target_link_libraries( tag_calibrator_node 
+# add_executable( tag_calibrator_node nodes/array_calibrator.cpp )
+# add_dependencies( tag_calibrator_node ${PROJECT_NAME}_gencfg )
+# target_link_libraries( tag_calibrator_node 
+# 	${isam_LIBRARIES}
+# 	${catkin_LIBRARIES} 	
+# 	manycal )
+	
+add_executable( array_capturer_node nodes/array_capture_node.cpp )
+add_dependencies( array_capturer_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( array_capturer_node
 	${isam_LIBRARIES}
 	${catkin_LIBRARIES} 	
 	manycal )
 
+add_executable( array_synchronizer_node nodes/array_synchronizer_node.cpp )
+add_dependencies( array_synchronizer_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( array_synchronizer_node
+	${isam_LIBRARIES}
+	${catkin_LIBRARIES} 	
+	manycal )	
+	
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

@@ -26,8 +26,8 @@ namespace atags
 		privHandle.param( "buffer_length", bufferLength, 3 );
 		cameraSub = imagePort.subscribeCamera( "image_source", bufferLength, &AtagDetector::ImageCallback, this );
 		
-		rawPublisher = privHandle.advertise<argus_msgs::TagDetection>( "detections_raw", 20 );
-		rectifiedPublisher = privHandle.advertise<argus_msgs::TagDetection>( "detections_rectified", 20 );
+		rawPublisher = privHandle.advertise<argus_msgs::TagDetectionsStamped>( "detections_raw", 20 );
+		rectifiedPublisher = privHandle.advertise<argus_msgs::TagDetectionsStamped>( "detections_rectified", 20 );
 		
 		privHandle.param<std::string>( "tag_family", tagFamily, "36h11" );
 		if( tagFamily.compare( "16h5" ) == 0 )
@@ -68,53 +68,55 @@ namespace atags
 		std_msgs::Header header;
 		header.frame_id = msg->header.frame_id;
 		header.stamp = msg->header.stamp;
-		argus_msgs::TagDetection detMsg;
+		argus_msgs::TagDetectionsStamped detMsg;
 		detMsg.header = header;
 		
 		cv::Size imgSize = frame->image.size();
 		
+		// Publish raw
+		PopulateMessage( detections, imgSize, detMsg, false );
+		rawPublisher.publish( detMsg );
+		
 		// Checks for uncalibrated data
 		if( cameraModel.fx() != 0 )
 		{
-			std::vector<AprilTags::TagDetection> rectified = detections;
-			RectifyDetections( rectified, cameraModel );
+			RectifyDetections( detections, cameraModel );
 			
 			// Publish rectified
-			BOOST_FOREACH( const AprilTags::TagDetection& det, rectified )
-			{
-				detMsg.isNormalized = true;
-				PopulateMessage( det, imgSize, detMsg );
-				rectifiedPublisher.publish( detMsg );
-			}
-		}
-			
-		// Publish raw
-		BOOST_FOREACH( const AprilTags::TagDetection& det, detections )
-		{
-			detMsg.isNormalized = false;
- 			PopulateMessage( det, imgSize, detMsg );
-			rawPublisher.publish( detMsg );
+			PopulateMessage( detections, imgSize, detMsg, true );
+			rectifiedPublisher.publish( detMsg );
 		}
 		
 	}
 	
-	void AtagDetector::PopulateMessage( const AprilTags::TagDetection& detection,
+	void AtagDetector::PopulateMessage( const std::vector<AprilTags::TagDetection>& detections,
 										const cv::Size& imgSize,
-										argus_msgs::TagDetection& msg ) 
+										argus_msgs::TagDetectionsStamped& msg,
+										bool rectified ) 
 	{
 			msg.header.seq = sequenceCounter++;
 			msg.sourceWidth = imgSize.width;
 			msg.sourceHeight = imgSize.height;
-			msg.family = tagFamily;
-			msg.id = detection.id;
-			msg.hammingDistance = detection.hammingDistance;
-			for( unsigned int i = 0; i < 4; i++ )
+			
+			msg.detections.resize( detections.size() );
+			
+			for( unsigned int j = 0; j < detections.size(); j++ )
 			{
-				msg.corners[i].x = detection.p[i].first;
-				msg.corners[i].y = detection.p[i].second;
+				argus_msgs::TagDetection det;
+				
+				det.family = tagFamily;
+				det.id = detections[j].id;
+				det.hammingDistance = detections[j].hammingDistance;
+				for( unsigned int i = 0; i < 4; i++ )
+				{
+					det.corners[i].x = detections[j].p[i].first;
+					det.corners[i].y = detections[j].p[i].second;
+				}
+				det.center.x = detections[j].cxy.first;
+				det.center.y = detections[j].cxy.second;
+				det.normalized = rectified;
+				msg.detections[j] = det;
 			}
-			msg.center.x = detection.cxy.first;
-			msg.center.y = detection.cxy.second;
 	}
 	
 	void AtagDetector::RectifyDetections( std::vector<AprilTags::TagDetection>& detections,
