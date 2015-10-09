@@ -41,6 +41,8 @@ VisualOdometryPipeline::VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHa
 	int rDet;
 	ph.param( "redetection_threshold", rDet, 10 );
 	redetectionThreshold = static_cast<unsigned int>( rDet );
+
+	ph.param( "show_output", showOutput, false );
 	
 	std::string detectorType, trackerType, estimatorType;
 	ph.param<std::string>( "detector/type", detectorType, "corner" );
