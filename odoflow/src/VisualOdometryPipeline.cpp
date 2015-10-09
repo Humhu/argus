@@ -137,7 +137,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	if( success && dt > 0.0 )
 	{
 		
-		PoseSE3::TangentVector cTangent = se3log( displacement );
+		PoseSE3::TangentVector cTangent = PoseSE3::Log( displacement );
 		PoseSE3::TangentVector velocity = cameraPose.Adjoint( cTangent / dt );
 		
 		// TODO Parse covariance and transform to robot frame
