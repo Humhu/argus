@@ -16,7 +16,7 @@
 namespace manycal
 {
 	
-// TODO Need a principled way to do resource/access control when cycling the array
+/*! \brief Subscribes to an image_synchronized topic and saves images. */
 class ArrayCapturer
 {
 public:	
@@ -41,7 +41,7 @@ private:
 	unsigned int imageCounter;
 	unsigned int cycleCounter;
 	
-	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
+	void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 						const std::string& cameraName );
 	
 	void CaptureJob( unsigned int index );

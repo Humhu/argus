@@ -66,7 +66,7 @@ add_library( camera_array
 	src/CameraArray.cpp
 	src/CameraArrayCalibrationParsers.cpp
 	src/CameraArrayInfoManager.cpp
-	src/PinholeCameraArrayModel.cpp
+# 	src/PinholeCameraArrayModel.cpp
 )
 add_dependencies( camera_array ${camera_array_EXPORTED_TARGETS} )
 target_link_libraries( camera_array
@@ -74,22 +74,22 @@ target_link_libraries( camera_array
 	${catkin_LIBRARIES}
 )
 
-add_library( camera_array_nodelet 
-	nodes/camera_array_nodelet.cpp )
-add_dependencies( camera_array_nodelet 
-	${camera_array_EXPORTED_TARGETS}
-	  "${PROJECT_NAME}_gencfg" 
-)
-target_link_libraries( camera_array_nodelet 
-	camera_array
-	${catkin_LIBRARIES} 
-)
-
-add_executable( camera_array_node
-	nodes/camera_array_node.cpp )
-add_dependencies( camera_array_node 
+# add_library( camera_array_nodelet 
+# 	nodes/camera_array_nodelet.cpp )
+# add_dependencies( camera_array_nodelet 
+# 	${camera_array_EXPORTED_TARGETS}
+# 	  "${PROJECT_NAME}_gencfg" 
+# )
+# target_link_libraries( camera_array_nodelet 
+# 	camera_array
+# 	${catkin_LIBRARIES} 
+# )
+# 
+add_executable( camera_array_param_manager
+	nodes/camera_array_param_manager.cpp )
+add_dependencies( camera_array_param_manager 
 	${PROJECT_NAME}_gencfg )
-target_link_libraries( camera_array_node
+target_link_libraries( camera_array_param_manager
 	${catkin_LIBRARIES}
 	camera_array )
 

@@ -1,0 +1,23 @@
+<launch>
+  
+   <node pkg="camplex" type="camera_node" name="camera1" ns="argus">
+    <rosparam>
+      camera_name: camera1
+      device_path: /dev/argus/camera1
+      frame_resolution: [640,480]
+      frame_rate: 30
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="atags" type="detector_node" name="atag_detector" ns="argus" output="screen">
+    <remap from="image" to="camera1/image_raw"/>
+    <rosparam>
+      enable_undistortion: false
+      enable_normalization: false
+      num_threads: 4
+      tag_family: 36h11
+    </rosparam>
+  </node>
+  
+</launch>

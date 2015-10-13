@@ -1,0 +1,4 @@
+# Service to set the parameters of a fiducial array
+
+FiducialArrayInfo info
+---

@@ -19,6 +19,7 @@ find_package(catkin REQUIRED
 					argus_utils
 					argus_msgs
 					tf
+					graphopt
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -31,9 +32,9 @@ find_package(OpenCV 3 REQUIRED)
 add_definitions( "-DOPENCV3=1" )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-find_package(isam REQUIRED)
-include_directories( ${isam_INCLUDE_DIRS} )
-message( STATUS ${isam_LIBRARIES} )
+# find_package(isam REQUIRED)
+# include_directories( ${isam_INCLUDE_DIRS} )
+# message( STATUS ${isam_LIBRARIES} )
 
 # find_package(apriltags REQUIRED)
 # include_directories( ${apriltags_INCLUDE_DIRS} )
@@ -69,6 +70,7 @@ catkin_package(
 					argus_utils
 					argus_msgs
 					tf
+					graphopt
 					
 	DEPENDS 		Boost 
 					OpenCV

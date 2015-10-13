@@ -2,6 +2,7 @@
   
   <node pkg="camplex" type="camera_node" name="camera1" ns="argus">
     <rosparam>
+      camera_name: camera1
       device_path: /dev/argus/camera1
       frame_resolution: [640,480]
       frame_rate: 30
@@ -11,6 +12,7 @@
   
   <node pkg="camplex" type="camera_node" name="camera2" ns="argus">
     <rosparam>
+      camera_name: camera2
       device_path: /dev/argus/camera2
       frame_resolution: [640,480]
       frame_rate: 30
@@ -20,6 +22,7 @@
   
   <node pkg="camplex" type="camera_node" name="camera3" ns="argus">
     <rosparam>
+      camera_name: camera3
       device_path: /dev/argus/camera3
       frame_resolution: [640,480]
       frame_rate: 30
@@ -29,6 +32,7 @@
   
   <node pkg="camplex" type="camera_node" name="camera4" ns="argus">
     <rosparam>
+      camera_name: camera4
       device_path: /dev/argus/camera4
       frame_resolution: [640,480]
       frame_rate: 30
@@ -36,12 +40,58 @@
     </rosparam>
   </node>
   
-  <node pkg="manycal" type="array_synchronizer_node" name="acap" ns="argus">
+  <node pkg="manycal" type="array_synchronizer_node" name="acap" ns="argus" 
+    output="screen">
     <rosparam>
       camera_names: [camera1, camera2, camera3, camera4]
-      #output_directory: /home/humphreh/Software/argus_devel/test
       num_simultaneous_captures: 2
     </rosparam>
   </node>
+  
+  <node pkg="atags" type="detector_pool" name="detector_pool" ns="argus" output="screen">
+    <rosparam>
+      enable_undistortion: false
+      enable_normalization: false
+      num_threads: 4
+      tag_family: 36h11
+      image_sources: [camera1, camera2, camera3, camera4]
+    </rosparam>
+  </node>
+  
+  <!--node pkg="atags" type="detector_node" name="detector1" ns="argus" output="screen">
+    <remap from="image" to="camera1/image_synchronized"/>
+    <rosparam>
+      tag_family: 36h11
+      enable_undistortion: false
+      enable_normalization: false
+    </rosparam>
+  </node>
+  
+  <node pkg="atags" type="detector_node" name="detector2" ns="argus" output="screen">
+    <remap from="image" to="camera2/image_synchronized"/>
+    <rosparam>
+      tag_family: 36h11
+      enable_undistortion: false
+      enable_normalization: false
+    </rosparam>
+  </node>
+  
+  <node pkg="atags" type="detector_node" name="detector3" ns="argus" output="screen">
+    <remap from="image" to="camera3/image_synchronized"/>
+    <rosparam>
+      tag_family: 36h11
+      enable_undistortion: false
+      enable_normalization: false
+    </rosparam>
+  </node>
+  
+  <node pkg="atags" type="detector_node" name="detector4" ns="argus" output="screen">
+    <remap from="image" to="camera4/image_synchronized"/>
+    <rosparam>
+      tag_family: 36h11
+      enable_undistortion: false
+      enable_normalization: false
+    </rosparam>
+  </node-->
   
 </launch>

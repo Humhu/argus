@@ -48,14 +48,12 @@ private:
 	
 	std::string referenceName;
 	bool initialized;
-	
-	bool GetCameraArrayInfoService( GetCameraArrayInfo::Request& req,
-								   GetCameraArrayInfo::Response& res );
-	bool SetCameraArrayInfoService( SetCameraArrayInfo::Request& req,
-								   SetCameraArrayInfo::Response& res );
-	
 	CameraArrayInfo extrinsics;
 	
+	bool GetCameraArrayInfoService( GetCameraArrayInfo::Request& req,
+	                                GetCameraArrayInfo::Response& res );
+	bool SetCameraArrayInfoService( SetCameraArrayInfo::Request& req,
+	                                SetCameraArrayInfo::Response& res );
 };
 	
 } // end namespace camera_array

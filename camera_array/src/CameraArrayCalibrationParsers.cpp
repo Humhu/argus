@@ -3,7 +3,7 @@
 
 #include "camera_array/CameraArrayCalibrationParsers.h"
 
-#include "camplex/CameraCalibration.h"
+#include "camera_calibration_parsers/parse.h"
 
 #include <fstream>
 
@@ -13,8 +13,9 @@ using namespace camera_calibration_parsers;
 namespace camera_array
 {
 
-bool ReadCameraArrayCalibration( const std::string& path, std::string& refName,
-								 CameraArrayInfo& info )
+bool ReadCameraArrayCalibration( const std::string& path, 
+                                 std::string& refName,
+                                 CameraArrayInfo& info )
 {
 	YAML::Node yaml;
 	try 
@@ -34,7 +35,7 @@ bool ReadCameraArrayCalibration( const std::string& path, std::string& refName,
 	
 	// Prepare info for writing
 	info.cameraNames.clear();
-	info.intrinsics.clear();
+// 	info.intrinsics.clear();
 	info.extrinsics.clear();
 	
 	refName = yaml["array_name"].as<std::string>();
@@ -53,32 +54,46 @@ bool ReadCameraArrayCalibration( const std::string& path, std::string& refName,
 		}
 		geometry_msgs::Pose extrinsic = PoseToMsg( pose );
 		
-		if( !iter->second["intrinsics"]["focal_length"] ||
-			!iter->second["intrinsics"]["principal_point"] ||
-			!iter->second["intrinsics"]["resolution"] ) 
-		{ 
-			std::cerr << "Could not read intrinsics." << std::endl;
-			return false; 
-		}
-		std::vector<double> focal = iter->second["intrinsics"]["focal_length"].as< std::vector<double> >();
-		std::vector<double> principal= iter->second["intrinsics"]["principal_point"].as< std::vector<double> >();
-		std::vector<double> resolution = iter->second["intrinsics"]["resolution"].as< std::vector<double> >();
-		camplex::CameraCalibration cc( cameraName, focal[0], focal[1], 
-									   principal[0], principal[1],
-									   resolution[0], resolution[1] );
-		sensor_msgs::CameraInfo intrinsic = cc.GetInfo();
+// 		if( !iter->second["intrinsics"]["focal_length"] ||
+// 			!iter->second["intrinsics"]["principal_point"] ||
+// 			!iter->second["intrinsics"]["resolution"] ) 
+// 		{ 
+// 			std::cerr << "Could not read intrinsics." << std::endl;
+// 			return false; 
+// 		}
+// 		std::vector<double> focal = iter->second["intrinsics"]["focal_length"].as< std::vector<double> >();
+// 		std::vector<double> principal= iter->second["intrinsics"]["principal_point"].as< std::vector<double> >();
+// 		std::vector<double> resolution = iter->second["intrinsics"]["resolution"].as< std::vector<double> >();
+// 		camplex::CameraCalibration cc( cameraName, focal[0], focal[1], 
+// 									   principal[0], principal[1],
+// 									   resolution[0], resolution[1] );
+// 		sensor_msgs::CameraInfo intrinsic = cc.GetInfo();
+		
+// 		std::string intrinsicsPath;
+// 		if( !iter->second["intrinsics"]["url"] )
+// 		{
+// 			std::cerr << "Could not read intrinsics." << std::endl;
+// 			return false;
+// 		}
+// 		
+// 		sensor_msgs::CameraInfo intrinsic;
+// 		if( !camera_calibration_parsers::readCalibration( intrinsicsPath, cameraName, intrinsic ) )
+// 		{
+// 			std::cerr << "Error reading intrinsic calibration file." << std::endl;
+// 			return false;
+// 		}
 		
 		info.cameraNames.push_back( cameraName );
 		info.extrinsics.push_back( extrinsic );
-		info.intrinsics.push_back( intrinsic );
+// 		info.intrinsics.push_back( intrinsic );
 	}
 	
 	return true;
 }
 	
 bool WriteCameraArrayCalibration( const std::string& path,
-								 const std::string& refName,
-								 const CameraArrayInfo& info )
+                                  const std::string& refName,
+                                  const CameraArrayInfo& info )
 {
 	std::ofstream output( path );
 	if( !output.is_open() )
@@ -100,17 +115,17 @@ bool WriteCameraArrayCalibration( const std::string& path,
 		
 		camNode["extrinsics"] = SetPoseYaml( extrinsic );
 		
-		camplex::CameraCalibration cc( cameraName, info.intrinsics[i] );
-		std::vector<double> focal(2), principal(2), resolution(2); // = { cc.GetFx(), cc.GetFy() };
-		focal[0] = cc.GetFx(); focal[1] = cc.GetFy();
-		principal[0] = cc.GetCx(); principal[1] = cc.GetCy();
-		cv::Size scale = cc.GetScale();
-		resolution[0] = scale.width; resolution[1] = scale.height;
-		
-		camNode["intrinsics"]["focal_length"] = focal;
-		camNode["intrinsics"]["principal_point"] = principal;
-		camNode["intrinsics"]["resolution"] = resolution;
-		
+// 		camplex::CameraCalibration cc( cameraName, info.intrinsics[i] );
+// 		std::vector<double> focal(2), principal(2), resolution(2); // = { cc.GetFx(), cc.GetFy() };
+// 		focal[0] = cc.GetFx(); focal[1] = cc.GetFy();
+// 		principal[0] = cc.GetCx(); principal[1] = cc.GetCy();
+// 		cv::Size scale = cc.GetScale();
+// 		resolution[0] = scale.width; resolution[1] = scale.height;
+// 		
+// 		camNode["intrinsics"]["focal_length"] = focal;
+// 		camNode["intrinsics"]["principal_point"] = principal;
+// 		camNode["intrinsics"]["resolution"] = resolution;
+// 		
 		cameras[cameraName] = camNode;
 	}
 	

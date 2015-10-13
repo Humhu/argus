@@ -14,22 +14,18 @@ namespace camera_array
  *     extrinsics:
  *       position: [x y z]
  *       quaternion: [qw qx qy qz]
- *     intrinsics:
- *       focal_length: [fx fy]
- *       principal_point: [px py]
- *       resolution: [iw ih]
  *   [object2 name]:
  *     etc...
  */
 
 /*! \brief Read a calibration from a file. Returns success. */
 bool ReadCameraArrayCalibration( const std::string& path,
-								std::string& refName,
-								CameraArrayInfo& info );
+                                 std::string& refName,
+                                 CameraArrayInfo& info );
 	
 /*! \brief Writes a calibration to file. Returns success. */
 bool WriteCameraArrayCalibration( const std::string& path,
-								 const std::string& refName,
-								 const CameraArrayInfo& info );
+                                  const std::string& refName,
+                                  const CameraArrayInfo& info );
 	
 }

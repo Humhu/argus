@@ -13,7 +13,8 @@
 namespace manycal
 {
 
-/*! \brief Cycles and gathers outputs from the array into a synchronized output. */
+/*! \brief Cycles and gathers outputs from the array into synchronized outputs.
+ * Outputs show up as [camera_name]/image_synchronized. */
 class ArraySynchronizer
 {
 public:	
@@ -30,25 +31,31 @@ private:
 		sensor_msgs::CameraInfo::Ptr info;
 	};
 	
+	struct CameraRegistration
+	{
+		std::string name;
+		ros::ServiceClient captureClient;
+		image_transport::CameraSubscriber imageSub;
+		image_transport::CameraPublisher imagePub;
+		BufferedData data;
+	};
+	
 	ros::NodeHandle nodeHandle, privHandle;
 	ros::ServiceServer captureServer;
 	
-	image_transport::ImageTransport publicPort, privatePort;
-	std::vector< image_transport::CameraSubscriber > imageSubs;
-	image_transport::CameraPublisher imagePub;
+	std::vector< CameraRegistration > cameraRegistry;
 	
-	std::vector< ros::ServiceClient > captureClients;
-	
+	image_transport::ImageTransport publicPort;
+		
 	argus_utils::Semaphore cameraTokens;
+	argus_utils::Semaphore completedJobs;
 	argus_utils::WorkerPool pool;
 	
-	boost::mutex mutex;
-	std::vector< BufferedData > dataBuffer;
-	
 	void ImageCallback( const sensor_msgs::Image::ConstPtr& image,
-						const sensor_msgs::CameraInfo::ConstPtr& info );
+						const sensor_msgs::CameraInfo::ConstPtr& info,
+						CameraRegistration& registration );
 	
-	void CaptureJob( unsigned int index );
+	void CaptureJob( CameraRegistration& registration );
 	
 	bool CaptureArrayCallback( CaptureArray::Request& req,
 							   CaptureArray::Response& res );

@@ -1,5 +1,4 @@
-#ifndef _MANYCAL_ARRAY_CALIBRATOR_H_
-#define _MANYCAL_ARRAY_CALIBRATOR_H_
+#pragma once
 
 #include <ros/ros.h>
 #include <yaml-cpp/yaml.h>
@@ -87,6 +86,4 @@ private:
 	
 };
 	
-}
-
-#endif
+} // end namespace manycal

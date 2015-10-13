@@ -18,6 +18,7 @@ find_package(catkin REQUIRED
 					image_geometry
 					argus_utils
 					argus_msgs
+					fiducial_array
 )
 
 message( STATUS ${CATKIN_DEVEL_PREFIX} )
@@ -54,6 +55,7 @@ catkin_package(
 					std_msgs
 					image_geometry
 					argus_utils
+					fiducial_array
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -68,7 +70,6 @@ include_directories( include
 )
 
 add_library( atags
-	src/AtagDetector.cpp
 	src/AtagCommon.cpp
 )
 target_link_libraries( atags
@@ -78,15 +79,15 @@ target_link_libraries( atags
 )
 add_dependencies( atags apriltags_external )
 
-add_library( detector_nodelet nodes/atag_detector_nodelet.cpp )
-add_dependencies( detector_nodelet tags_gencfg 
-								   apriltags_external 
-)
-target_link_libraries( detector_nodelet atags
-										${catkin_LIBRARIES} 
-)
+# add_library( detector_nodelet nodes/atag_detector_nodelet.cpp )
+# add_dependencies( detector_nodelet tags_gencfg 
+# 								   apriltags_external 
+# )
+# target_link_libraries( detector_nodelet atags
+# 										${catkin_LIBRARIES} 
+# )
 	
-add_executable( detector_node nodes/atag_detector_node.cpp )
+add_executable( detector_node nodes/AtagDetectorNode.cpp )
 add_dependencies( detector_node atags_gencfg
 								apriltags_external 
 )
