@@ -10,25 +10,10 @@ using namespace argus_utils;
 namespace fiducial_array
 {
 
-bool ReadFiducialArrayCalibration( const std::string& path, std::string& refName,
-                                   FiducialArrayInfo& info )
+bool ParseFiducialArrayCalibration( const YAML::Node& yaml,
+                                    std::string& refName,
+                                    FiducialArrayInfo& info )
 {
-	YAML::Node yaml;
-	try 
-	{
-		 yaml = YAML::LoadFile( path );
-	}
-	catch( YAML::BadFile e )
-	{
-		return false;
-	}
-	
-	if( !yaml["array_name"] || !yaml["fiducials"] ) 
-	{ 
-		std::cerr << "Could not find all required fields in config file." << std::endl;
-		return false; 
-	}
-	
 	// Prepare info for writing
 	info.fiducialNames.clear();
 	info.intrinsics.clear();
@@ -83,6 +68,27 @@ bool ReadFiducialArrayCalibration( const std::string& path, std::string& refName
 		info.extrinsics.push_back( extrinsic );
 	}
 	return true;
+}
+	
+bool ReadFiducialArrayCalibration( const std::string& path, std::string& refName,
+                                   FiducialArrayInfo& info )
+{
+	YAML::Node yaml;
+	try 
+	{
+		 yaml = YAML::LoadFile( path );
+	}
+	catch( YAML::BadFile e )
+	{
+		return false;
+	}
+	
+	if( !yaml["array_name"] || !yaml["fiducials"] ) 
+	{ 
+		std::cerr << "Could not find all required fields in config file." << std::endl;
+		return false; 
+	}
+	return ParseFiducialArrayCalibration( yaml, refName, info );
 }
 	
 bool WriteFiducialArrayCalibration( const std::string& path,

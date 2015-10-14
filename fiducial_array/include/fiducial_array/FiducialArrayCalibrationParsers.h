@@ -1,5 +1,6 @@
 #pragma once
 
+#include <yaml-cpp/yaml.h>
 #include "fiducial_array/FiducialArrayInfo.h"
 
 namespace fiducial_array
@@ -21,6 +22,12 @@ namespace fiducial_array
  *   [object2 name]:
  *     etc...
  */
+
+/*! \brief Parses a calibration from a YAML object returned by the ROS parameter
+ * server. */
+bool ParseFiducialArrayCalibration( const YAML::Node& yaml,
+									std::string& refName,
+									FiducialArrayInfo& info );
 
 /*! \brief Read a calibration from a file. Returns success. */
 bool ReadFiducialArrayCalibration( const std::string& path,
