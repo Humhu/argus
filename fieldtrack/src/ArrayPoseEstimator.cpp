@@ -108,21 +108,6 @@ void ArrayPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialDete
 		PoseSE3 cameraRelativePose = EstimateArrayPose( imageFramePoints, nullptr, fiducialFramePoints );
 		PoseSE3 frameRelativePose = cameraExtrinsics * cameraRelativePose;
 		
-		for( unsigned int i = 0; i < imageFramePoints.size(); i++ )
-		{
-			ROS_INFO_STREAM( "Image point " << i << " (" << imageFramePoints[i].x
-			<< ", " << imageFramePoints[i].y << ")" );
-		}
-		
-		for( unsigned int i = 0; i < fiducialFramePoints.size(); i++ )
-		{
-			ROS_INFO_STREAM( "Fiducial point " << i << " (" << fiducialFramePoints[i].x
-			<< ", " << fiducialFramePoints[i].y << ", " << fiducialFramePoints[i].z << ")" );
-		}
-		ROS_INFO_STREAM( "Camera extrinsics: " << cameraExtrinsics );
-		ROS_INFO_STREAM( "Camera relative: " << cameraRelativePose );
-		ROS_INFO_STREAM( "Frame relative: " << frameRelativePose );
-		
 		argus_msgs::RelativePose poseMsg;
 		poseMsg.observer_header.frame_id = cameraFrameName;
 		poseMsg.observer_header.stamp = msg->header.stamp;

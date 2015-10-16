@@ -25,7 +25,6 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	ph.param( "enable_undistortion", enableUndistortion, false );
 	ph.param( "enable_normalization", enableNormalization, false );
 
-	cameraSub = imagePort.subscribeCamera( "image", 10, &AtagNode::ImageCallback, this );
 	rawPublisher = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_raw", 20 );
 	if( enableUndistortion || enableNormalization )
 	{
@@ -58,6 +57,10 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		ROS_ERROR( "Invalid tag family. Must be 16h5, 25h7, 25h9, 36h9, or 36h11" );
 		exit( -1 );
 	}
+	
+	int buffLen;
+	ph.param( "buffer_size", buffLen, 5 );
+	cameraSub = imagePort.subscribeCamera( "image", buffLen, &AtagNode::ImageCallback, this );
 }
 	
 private:
@@ -90,8 +93,6 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		return; 
 	}
 	
-	ros::Time now = ros::Time::now();
-	
 	// Publish raw
 	std::vector<argus_msgs::FiducialDetection> fidDetections;
 	fidDetections.reserve( tagDetections.size() );
@@ -103,7 +104,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	argus_msgs::ImageFiducialDetections detMsg;
 	detMsg.detections = fidDetections;
 	detMsg.header.frame_id = msg->header.frame_id;
-	detMsg.header.stamp = now;
+	detMsg.header.stamp = msg->header.stamp;
 	
 	rawPublisher.publish( detMsg );
 	
