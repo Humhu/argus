@@ -7,8 +7,7 @@
 
 #include "argus_msgs/TagDetection.h"
 #include "argus_msgs/TagDetectionsStamped.h"
-
-#include "fiducial_array/PoseEstimation.h"
+#include "argus_msgs/FiducialDetection.h"
 
 namespace atags 
 {
@@ -21,14 +20,15 @@ argus_msgs::TagDetection DetectionToMessage( const AprilTags::TagDetection& det,
 
 /*! \brief Convert to and from a tag-image detections message. */
 std::vector<AprilTags::TagDetection> MessageToDetections( const argus_msgs::TagDetectionsStamped& msg );
+
 argus_msgs::TagDetectionsStamped 
 DetectionsToMessage( const std::vector<AprilTags::TagDetection>& detections, 
                      const std::string& family, const sensor_msgs::CameraInfo& info, 
                      bool undistorted, bool normalized);
 
 /*! \brief Convert to FiducialDetection type. */
-fiducial_array::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
-                                                 const std::string& family );
+argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
+                                             const std::string& family );
 
 /*! \brief Returns transform from tag to camera assuming x-forward for both frames. */
 // TODO Clean up this interface to use the msg.normalized member somehow

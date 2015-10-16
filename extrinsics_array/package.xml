@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>fiducial_array</name>
+  <name>extrinsics_array</name>
   <version>0.0.1</version>
   <description>Software to manage arrays of fiducials.</description>
   
@@ -16,18 +16,14 @@
   
   <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>sensor_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>argus_utils</build_depend>
-  <build_depend>extrinsics_array</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
-  <run_depend>sensor_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>argus_utils</run_depend>
-  <run_depend>extrinsics_array</run_depend>
   
 </package>

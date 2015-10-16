@@ -23,7 +23,7 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : imagePort( nh )
 {
 	ph.param( "enable_undistortion", enableUndistortion, false );
-	ph.param( "enable_normalizaton", enableNormalization, false );
+	ph.param( "enable_normalization", enableNormalization, false );
 
 	cameraSub = imagePort.subscribeCamera( "image", 10, &AtagNode::ImageCallback, this );
 	rawPublisher = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_raw", 20 );
@@ -93,7 +93,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	ros::Time now = ros::Time::now();
 	
 	// Publish raw
-	std::vector<fiducial_array::FiducialDetection> fidDetections;
+	std::vector<argus_msgs::FiducialDetection> fidDetections;
 	fidDetections.reserve( tagDetections.size() );
 	for( unsigned int i = 0; i < tagDetections.size(); i++ )
 	{
@@ -101,7 +101,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	}
 	
 	argus_msgs::ImageFiducialDetections detMsg;
-	detMsg = fiducial_array::DetectionsToMsg( fidDetections );
+	detMsg.detections = fidDetections;
 	detMsg.header.frame_id = msg->header.frame_id;
 	detMsg.header.stamp = now;
 	
@@ -113,11 +113,10 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		// Check for uncalibrated camera
 		if( cameraModel.fx() == 0 || cameraModel.fy() == 0 ) { return; }
 		
-		std::vector<fiducial_array::FiducialDetection> fidUndistorted;
+		
 		fiducial_array::UndistortDetections( fidDetections, cameraModel,
 											 enableUndistortion, enableNormalization,
-									         fidUndistorted );
-		detMsg = fiducial_array::DetectionsToMsg( fidUndistorted );
+									         detMsg.detections );
 		
 		processedPublisher.publish( detMsg );
 	}

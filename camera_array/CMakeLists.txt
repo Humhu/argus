@@ -7,14 +7,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED 
-	COMPONENTS		message_generation
-					nodelet
-					roscpp
-					std_msgs
-					sensor_msgs
+	COMPONENTS		roscpp
 					argus_utils
-					camplex
-					tf
 					image_geometry
 )
 
@@ -23,33 +17,14 @@ find_package(Boost REQUIRED)
 
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
-add_message_files(
-	FILES			CameraArrayInfo.msg 
-)
-
-add_service_files( 
-	FILES 			GetCameraArrayInfo.srv
-					SetCameraArrayInfo.srv
-)
-
-generate_messages(
-	DEPENDENCIES	std_msgs
-					sensor_msgs
-)
 
 catkin_package(
 	INCLUDE_DIRS 	include
 	
 	LIBRARIES 		camera_array
-					camera_array_nodelet
 					
-	CATKIN_DEPENDS 	message_runtime 
-					nodelet
-					roscpp 
-					std_msgs
+	CATKIN_DEPENDS 	roscpp 
 					argus_utils
-					camplex
-					tf
 					image_geometry
 					
 	DEPENDS 		Boost 
@@ -63,35 +38,13 @@ include_directories( include
 )
 
 add_library( camera_array
-	src/CameraArray.cpp
-	src/CameraArrayCalibrationParsers.cpp
-	src/CameraArrayInfoManager.cpp
-# 	src/PinholeCameraArrayModel.cpp
+ 	src/PinholeCameraArrayModel.cpp
 )
 add_dependencies( camera_array ${camera_array_EXPORTED_TARGETS} )
 target_link_libraries( camera_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
-
-# add_library( camera_array_nodelet 
-# 	nodes/camera_array_nodelet.cpp )
-# add_dependencies( camera_array_nodelet 
-# 	${camera_array_EXPORTED_TARGETS}
-# 	  "${PROJECT_NAME}_gencfg" 
-# )
-# target_link_libraries( camera_array_nodelet 
-# 	camera_array
-# 	${catkin_LIBRARIES} 
-# )
-# 
-add_executable( camera_array_param_manager
-	nodes/camera_array_param_manager.cpp )
-add_dependencies( camera_array_param_manager 
-	${PROJECT_NAME}_gencfg )
-target_link_libraries( camera_array_param_manager
-	${catkin_LIBRARIES}
-	camera_array )
 
 ## Mark executables and/or libraries for installation
 install(TARGETS 

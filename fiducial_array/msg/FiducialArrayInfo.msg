@@ -1,10 +1,5 @@
-# Contains aggregated information for a fiducial array
+# The array extrinsics and fiducial names
+extrinsics_array/ExtrinsicsArrayInfo extrinsics
 
-# Names of the member fiducials
-string[] fiducialNames
-
-# The intrinsics of the member fiducials
-FiducialInfo[] intrinsics
-
-# The relative poses of the member fiducials in the array reference frame
-geometry_msgs/Pose[] extrinsics
+# The fiducial intrinsics
+FiducialInfo[] fiducials

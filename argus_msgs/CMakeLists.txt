@@ -13,6 +13,7 @@ add_message_files(
 				ImageFiducialDetections.msg
 				Point2D.msg
 				Point2D_32.msg 
+				RelativePose.msg
 				TagDetection.msg 
 				TagDetectionsStamped.msg
 )

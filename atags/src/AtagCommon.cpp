@@ -51,17 +51,20 @@ argus_msgs::TagDetection DetectionToMessage( const AprilTags::TagDetection& det,
 	return msg;
 }
 
-fiducial_array::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
-                                                 const std::string& family )
+argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
+                                             const std::string& family )
 {
-	fiducial_array::FiducialDetection det;
-	det.name = family + "_id" + std::to_string( tag.id );
+	argus_msgs::FiducialDetection det;
+	det.name = "apriltag_" + family + "_id" + std::to_string( tag.id );
 	det.undistorted = false;
 	det.normalized = false;
 	det.points.reserve( 4 );
 	for( unsigned int i = 0; i < 4; i++ )
 	{
-		det.points.push_back( cv::Point2f( tag.p[i].first, tag.p[i].second ) );
+		argus_msgs::Point2D point;
+		point.x = tag.p[i].first;
+		point.y = tag.p[i].second;
+		det.points.push_back( point );
 	}
 	return det;
 }
