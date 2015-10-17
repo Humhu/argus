@@ -17,15 +17,17 @@ FiducialInfoManager::FiducialInfoManager( ros::NodeHandle& nh )
 
 FiducialInfoManager::~FiducialInfoManager() {}
 
-bool FiducialInfoManager::ReadArrayInformation( const std::string& arrayPath )
+bool FiducialInfoManager::ReadArrayInformation( const std::string& arrayPath, bool forceRead )
 {
-	// If not, retrieve it from the parameter server
+	if( !forceRead && failedArrayQueries.count( arrayPath ) > 0 ) { return false; }
+	
 	YAML::Node fiducials;
 	
 	std::string p = SanitizeArrayPath( arrayPath );
 	if( !GetYamlParam( nodeHandle, p, fiducials ) )
 	{
-		ROS_ERROR_STREAM( "Error reading fiducial array information at " << p );
+		ROS_WARN_STREAM( "Could not retrieve fiducial array information at " << p );
+		failedArrayQueries.insert( arrayPath );
 		return false;
 	}
 	
@@ -34,6 +36,7 @@ bool FiducialInfoManager::ReadArrayInformation( const std::string& arrayPath )
 	if( !ParseFiducialArrayCalibration( fiducials, arrayInfo ) )
 	{
 		ROS_ERROR_STREAM( "Error parsing fiducial information for " << p );
+		failedArrayQueries.insert( arrayPath );
 		return false;
 	}
 	arrayMap[ p ] = std::make_shared<FiducialArray>( arrayInfo );

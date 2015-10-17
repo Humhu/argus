@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 
-#include "fieldtrack/TrackerManager.h"
+#include "fieldtrack/TargetTracker.h"
 
 int main( int argc, char** argv )
 {
@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	fieldtrack::TrackerManager tracker( nh, ph );
+	fieldtrack::TargetTracker tracker( nh, ph );
 	
 	ros::spin();
 	return 0;

@@ -6,6 +6,7 @@
 
 #include <ros/ros.h>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace extrinsics_array
 {
@@ -35,12 +36,16 @@ public:
 	void SetLookupNamespace( const std::string& loc );
 	
 	/*! \brief Load information for an array from the parameter server to the local cache. 
-	 * Overwrites existing cached values. Returns success. */
-	virtual bool ReadArrayInformation( const std::string& arrayPath );
+	 * Overwrites existing cached values. If arrayPath has been queried before and 
+	 * failed, this method skips querying the parameter server unless forceRead is set.
+	 * Returns success. */
+	virtual bool ReadArrayInformation( const std::string& arrayPath, bool forceRead = false );
 
 	/*! \brief Load information for the array that contains the specified member using
-	 * * the lookup table. Overwrites existing cached values. Returns success. */
-	bool ReadMemberInformation( const std::string& memberName );
+	 * the lookup table. Overwrites existing cached values. If memberName has been
+	 * queried before and failed, this method skips querying the parameter server unless
+	 * forceRead is set. Returns success. */
+	bool ReadMemberInformation( const std::string& memberName, bool forceRead = false );
 	
 	/*! \brief Returns whether the array at the path is cached. */
 	bool HasArray( const std::string& arrayPath ) const;
@@ -62,6 +67,10 @@ protected:
 	ros::NodeHandle nodeHandle;
 	
 	LookupInterface lookupInterface;
+	
+	/*! \brief Records array queries that have failed before. */
+	std::unordered_set< std::string > failedArrayQueries;
+	std::unordered_set< std::string > failedMemberQueries;
 	
 	/*! \brief Map from array names to info. */
 	std::unordered_map< std::string, ExtrinsicsArray::Ptr > arrayMap;

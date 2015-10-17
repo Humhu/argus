@@ -1,14 +1,21 @@
 #pragma once
 
-#include "argus_msgs/ImageFiducialDetections.h"
+#include <ros/ros.h>
 
-#include "fiducial_array/FiducialInfoManager.h"
+#include "argus_msgs/RelativePose.h"
+
+#include "argus_utils/PoseSE3.h"
+#include "argus_utils/ManifoldKalmanFilter.hpp"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
+
+#include <unordered_map>
 
 namespace fieldtrack
 {
-
-/*! \brief Listens to fiducial detections and converts them to array relative poses. */
+	
+/*! \brief Estimates the pose of a frame relative to arrays by fusing observations
+ * of the relative pose to the array members. Uses the extrinsics lookup interface.
+ * Subscribes to relative_poses and publishes on */
 class ArrayPoseEstimator
 {
 public:
@@ -17,16 +24,18 @@ public:
 	
 private:
 	
-	/*! \brief Subscribes to /detections. Should be remapped. */
-	ros::Subscriber detSub;
+	ros::NodeHandle nodeHandle;
+	ros::NodeHandle privHandle;
 	
-	ros::Publisher posePub;
+	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 	
-	fiducial_array::FiducialInfoManager fidManager;
-	extrinsics_array::ExtrinsicsInfoManager camManager;
+	/*! \brief The frame this estimator tracks relative to arrays. */
+	std::string referenceName;
 	
-	void DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg ); 
+	ros::Subscriber relPoseSub;
+	std::unordered_map< std::string, ros::Publisher > relPosePubs;
 	
+	void RelativePoseCallback( const argus_msgs::RelativePose::ConstPtr& msg );
 };
 	
 } // end namespace fieldtrack

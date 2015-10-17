@@ -1,8 +1,7 @@
-#include "fieldtrack/TrackerManager.h"
+#include "fieldtrack/TargetTracker.h"
 #include "geometry_msgs/PoseStamped.h" // TODO Publish covariance also!
 
 #include "argus_utils/YamlUtils.h"
-#include "argus_utils/GeometryUtils.h"
 
 #include <boost/foreach.hpp>
 
@@ -12,7 +11,7 @@ using namespace argus_msgs;
 namespace fieldtrack
 {
 	
-TrackerManager::TrackerManager( ros::NodeHandle& nh, ros::NodeHandle& ph )
+TargetTracker::TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), firstIteration ( true )
 {
 	YAML::Node iCov, tCov, oCov;
@@ -53,15 +52,15 @@ TrackerManager::TrackerManager( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	double pubFreq;
 	ph.param<double>( "update_rate", pubFreq, 10.0 );
 	timer = std::make_shared<ros::Timer>( 
-	    nodeHandle.createTimer( ros::Duration( 1.0/pubFreq ), &TrackerManager::TimerCallback, this ) );
+	    nodeHandle.createTimer( ros::Duration( 1.0/pubFreq ), &TargetTracker::TimerCallback, this ) );
 	ROS_INFO_STREAM( "Updating and publishing at rate " << pubFreq );
 	
-	poseSub = nodeHandle.subscribe( "relative_poses", 10, &TrackerManager::PoseCallback, this );
+	poseSub = nodeHandle.subscribe( "relative_poses", 10, &TargetTracker::PoseCallback, this );
 }
 
 // TODO Odometry update from displacement updates
 
-void TrackerManager::TimerCallback( const ros::TimerEvent& event )
+void TargetTracker::TimerCallback( const ros::TimerEvent& event )
 {
 	// Don't predict on first iteration because dt is not defined
 	firstIteration = false;
@@ -79,15 +78,17 @@ void TrackerManager::TimerCallback( const ros::TimerEvent& event )
 			filter.Predict( transCovariance * dt, WorldFrame );
 		}
 		
-		geometry_msgs::PoseStamped msg;
-		msg.header.frame_id = referenceName;
-		msg.header.stamp = event.current_real;
-		msg.pose = PoseToMsg( filter.EstimateMean() );
+		argus_msgs::RelativePose msg;
+		msg.observer_header.frame_id = referenceName;
+		msg.observer_header.stamp = event.current_real;
+		msg.target_header.frame_id = targetName;
+		msg.target_header.stamp = event.current_real;
+		msg.relative_pose = PoseToMsg( filter.EstimateMean() );
 		publishers[ targetName ].publish( msg );
 	}
 }
 
-void TrackerManager::PoseCallback( const RelativePose::ConstPtr& msg )
+void TargetTracker::PoseCallback( const RelativePose::ConstPtr& msg )
 {
 	PoseSE3 relPose;
 	std::string targetName;
@@ -120,12 +121,12 @@ void TrackerManager::PoseCallback( const RelativePose::ConstPtr& msg )
 		filter.TransCovariance() = transCovariance;
 		filter.ObsCovariance() = obsCovariance;
 		
-		publishers[ targetName ] = nodeHandle.advertise<geometry_msgs::PoseStamped>
-		    ( "tracked_frames/" + targetName, 10 );
+		publishers[ targetName ] = nodeHandle.advertise<argus_msgs::RelativePose>
+		    ( "tracked_frames", 10 );
 	}
 	
-	ros::Duration age = ros::Time::now() - msg->observer_header.stamp;
-	ROS_INFO_STREAM( "Observation age: " << age.toSec() );
+// 	ros::Duration age = ros::Time::now() - msg->observer_header.stamp;
+// 	ROS_INFO_STREAM( "Observation age: " << age.toSec() );
 	
 	// Retrieve the filter and perform an update
 	Filter& filter = filters[ targetName ];

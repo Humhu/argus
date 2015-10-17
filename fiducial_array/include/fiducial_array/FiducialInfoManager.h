@@ -21,8 +21,10 @@ public:
 	virtual ~FiducialInfoManager();
 	
 	/*! \brief Load information for a fiducial array from the parameter server 
-	 * to the local cache. Overwrites existing cached values. Returns success. */
-	virtual bool ReadArrayInformation( const std::string& arrayPath );
+	 * to the local cache. Overwrites existing cached values. If arrayPath has 
+	 * been queried before and failed, this method skips querying the parameter 
+	 * server unles forceRead is set. Returns success. */
+	virtual bool ReadArrayInformation( const std::string& arrayPath, bool forceRead = false );
 	
 	/*! \brief Read out the fiducial array from the cache. Throws an exception if not cached. */
 	const FiducialArray& GetFiducialArray( const std::string& arrayPath );

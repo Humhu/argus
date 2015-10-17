@@ -21,15 +21,18 @@ void ExtrinsicsInfoManager::SetLookupNamespace( const std::string& loc )
 	lookupInterface.SetLookupNamespace( loc );
 }
 
-bool ExtrinsicsInfoManager::ReadArrayInformation( const std::string& arrayPath )
+bool ExtrinsicsInfoManager::ReadArrayInformation( const std::string& arrayPath, 
+                                                  bool forceRead )
 {
-	// If not, retrieve it from the parameter server
+	if( !forceRead && failedArrayQueries.count( arrayPath ) > 0 ) { return false; }
+	
 	YAML::Node extrinsics;
 	
 	std::string p = SanitizeArrayPath( arrayPath );
 	if( !GetYamlParam( nodeHandle, p, extrinsics ) )
 	{
-		ROS_ERROR_STREAM( "Error reading extrinsics array information at " << p );
+		ROS_WARN_STREAM( "Could not retrieve extrinsics array information at " << p );
+		failedArrayQueries.insert( arrayPath );
 		return false;
 	}
 	
@@ -38,6 +41,7 @@ bool ExtrinsicsInfoManager::ReadArrayInformation( const std::string& arrayPath )
 	if( !ParseExtrinsicsArrayCalibration( extrinsics, arrayInfo ) )
 	{
 		ROS_ERROR_STREAM( "Error parsing extrinsics information for " << p );
+		failedArrayQueries.insert( arrayPath );
 		return false;
 	}
 	arrayMap[ p ] = std::make_shared<ExtrinsicsArray>( arrayInfo );
@@ -50,12 +54,16 @@ bool ExtrinsicsInfoManager::ReadArrayInformation( const std::string& arrayPath )
 	return true;
 }
 
-bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName )
+bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName,
+                                                   bool forceRead )
 {
+	if( !forceRead && failedMemberQueries.count( memberName ) > 0 ) { return false; }
+	
 	std::string arrayPath;
 	if( !lookupInterface.ReadLookup( memberName, arrayPath ) )
 	{
-		ROS_ERROR_STREAM( "Could not find parent information for " + memberName );
+		ROS_WARN_STREAM( "Could not find parent information for " + memberName );
+		failedMemberQueries.insert( memberName );
 		return false;
 	}
 	

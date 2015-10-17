@@ -14,11 +14,11 @@ namespace fieldtrack
 // NOTE This class is not synchronized. Do not use with AsyncSpinner or threads.
 /*! \brief Subscribes to relative pose information and fuses them to produce
  * pose estimates in the observer reference frame. */	
-class TrackerManager
+class TargetTracker
 {
 public:
 	
-	TrackerManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 private:
 	

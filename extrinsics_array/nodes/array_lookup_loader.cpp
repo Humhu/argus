@@ -52,7 +52,6 @@ int main( int argc, char** argv )
 	}
 	
 	ROS_INFO_STREAM( "Loading complete." );
-	ros::spin();
-// 	return 0;
+	return 0;
 	
 }
