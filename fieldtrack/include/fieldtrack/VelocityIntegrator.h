@@ -28,6 +28,7 @@ private:
 	
 	std::string referenceName;
 	argus_utils::PoseSE3 integratedPose;
+	argus_utils::PoseSE3 offset;
 	bool initialized;
 	
 	void TimerCallback( const ros::TimerEvent& event );

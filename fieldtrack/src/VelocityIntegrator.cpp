@@ -1,5 +1,6 @@
 #include "fieldtrack/VelocityIntegrator.h"
 #include "argus_utils/GeometryUtils.h"
+#include "argus_utils/YamlUtils.h"
 
 using namespace argus_utils;
 
@@ -9,6 +10,16 @@ namespace fieldtrack
 VelocityIntegrator::VelocityIntegrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), initialized( false )
 {
+	YAML::Node poseYaml;
+	if( GetYamlParam( privHandle, "transform", poseYaml ) )
+	{
+		if( !GetPoseYaml( poseYaml, offset ) )
+		{
+			ROS_ERROR( "Could not parse offset transform." );
+			exit( -1 );
+		}
+	}
+	
 	if( !privHandle.getParam( "reference_name", referenceName ) )
 	{
 		ROS_ERROR( "Reference name not specified." );
@@ -49,7 +60,7 @@ void VelocityIntegrator::TimerCallback( const ros::TimerEvent& event )
 void VelocityIntegrator::TwistCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
 {
 	PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
-	integratedPose = integratedPose * PoseSE3::Exp( vel );
+	integratedPose = integratedPose * offset * PoseSE3::Exp( vel );
 }
 	
 } // end namespace fieldtrack
