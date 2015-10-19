@@ -114,51 +114,5 @@ argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double 
 	PoseSE3 H_tag_cam( t, q );
 	return H_tag_cam * postrotation;
 }
-
-void UndistortDetections( const std::vector<AprilTags::TagDetection>& detections,
-                          const image_geometry::PinholeCameraModel& cameraModel,
-                          bool undistort, bool normalize, 
-                          std::vector<AprilTags::TagDetection>& undistorted )
-{
-	cv::Mat detectedPoints( 4*detections.size(), 1, CV_64FC2 );
-	
-	unsigned int ind = 0;
-	cv::Vec2d p;
-	BOOST_FOREACH( const AprilTags::TagDetection& det, detections )
-	{
-		for( unsigned int i = 0; i < 4; i++ )
-		{
-			p[0] = det.p[i].first;
-			p[1] = det.p[i].second;
-			detectedPoints.at<cv::Vec2d>(ind,0) = p;
-			ind++;
-		}
-	}
-	
-	cv::Mat undistortedMat, distortionCoeffs;
-	cv::Matx33d outputCameraMatrix = cv::Matx33d::eye();
-	
-	if( undistort ) { distortionCoeffs = cameraModel.distortionCoeffs(); }
-	if( normalize ) { outputCameraMatrix = cameraModel.intrinsicMatrix(); }
-	
-	cv::undistortPoints( detectedPoints, undistortedMat, cameraModel.intrinsicMatrix(),
-	                     distortionCoeffs, cv::noArray(), outputCameraMatrix );
-	
-	ind = 0;
-	undistorted.reserve( detections.size() );
-	for( unsigned int j = 0; j < detections.size(); j++ )
-	{
-		AprilTags::TagDetection undistortedDetection;
-		for( unsigned int i = 0; i < 4; i++ )
-		{
-			p = undistortedMat.at<cv::Vec2d>(ind,0);
-			ind++;
-			
-			undistortedDetection.p[i].first = p[0];
-			undistortedDetection.p[i].second = p[1];
-		}
-		undistorted.push_back( undistortedDetection );
-	}
-}
 	
 } // end namespace atags

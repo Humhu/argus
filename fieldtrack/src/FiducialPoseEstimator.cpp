@@ -36,7 +36,7 @@ FiducialPoseEstimator::FiducialPoseEstimator( ros::NodeHandle& nh, ros::NodeHand
 
 void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
 {
-	
+
 	// Map from reference frame names to fiducial detections
 	typedef std::unordered_map< std::string, std::vector< argus_msgs::FiducialDetection > > 
 	        DetectionMap;
@@ -68,8 +68,8 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 			// for an untrackable object
 			if( !fidManager.ReadMemberInformation( det.name, false ) )
 			{
-// 				ROS_WARN_STREAM( "Could not retrieve extrinsics info for fiducial " << det.name );
-				return;
+			  // 				ROS_WARN_STREAM( "Could not retrieve extrinsics info for fiducial " << det.name );
+				continue;
 			}
 			
 		}
@@ -108,7 +108,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		
 		PoseSE3 cameraRelativePose = EstimateArrayPose( imageFramePoints, nullptr, fiducialFramePoints );
 		PoseSE3 frameRelativePose = cameraExtrinsics * cameraRelativePose;
-		
+
 		argus_msgs::RelativePose poseMsg;
 		poseMsg.observer_header.frame_id = cameraFrameName;
 		poseMsg.observer_header.stamp = msg->header.stamp;
@@ -117,7 +117,6 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		poseMsg.relative_pose = PoseToMsg( frameRelativePose );
 		posePub.publish( poseMsg );
 	}
-	
 }
 	
 } // end namespace fieldtrack

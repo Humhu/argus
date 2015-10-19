@@ -35,10 +35,4 @@ argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
 argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
                                      double fx, double fy, double px, double py );
 
-/*! \brief Undistort and normalize tag detections. */
-void UndistortDetections( const std::vector<AprilTags::TagDetection>& detections,
-                          const image_geometry::PinholeCameraModel& cameraModel, 
-                          bool undistort, bool normalize, 
-                          std::vector<AprilTags::TagDetection>& undistorted );
-
 }

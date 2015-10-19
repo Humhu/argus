@@ -75,6 +75,7 @@ void UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 		det.name = detections[i].name;
 		det.undistorted = undistort;
 		det.normalized = normalize;
+		det.points.clear();
 		det.points.reserve( detections[i].points.size() );
 		for( unsigned int j = 0; j < detections[i].points.size(); j++ )
 		{
