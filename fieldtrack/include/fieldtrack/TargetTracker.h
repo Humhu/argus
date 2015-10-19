@@ -23,10 +23,12 @@ public:
 private:
 	
 	typedef argus_utils::ManifoldKalmanFilter< argus_utils::PoseSE3, argus_utils::WorldFrame > Filter;
-	
+	typedef std::unordered_map< std::string, Filter > FilterMap;
+
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	ros::Subscriber poseSub;
+	ros::Subscriber dispSub;
 	
 	bool firstIteration;
 	
@@ -39,7 +41,7 @@ private:
 	std::unordered_map< std::string, ros::Publisher > publishers;
 	
 	/*! \brief Map from target reference frame name to corresponding filter. */
-	std::unordered_map< std::string, Filter > filters;
+	FilterMap filters;
 	
 	// TODO Load these in somehow
 	/*! \brief Covariances for the filter. */
@@ -49,6 +51,7 @@ private:
 	
 	void TimerCallback( const ros::TimerEvent& event );
 	void PoseCallback( const argus_msgs::RelativePose::ConstPtr& msg );
+	void DisplacementCallback( const argus_msgs::RelativePose::ConstPtr& msg );
 };
 	
 } // end namespace fieldtrack

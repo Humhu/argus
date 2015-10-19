@@ -48,6 +48,7 @@ add_library( fieldtrack
 	src/ArrayPoseEstimator.cpp
 	src/FiducialPoseEstimator.cpp
 	src/TargetTracker.cpp
+	src/VelocityIntegrator.cpp
 )
 # add_dependencies( fieldtrack ${fieldtrack_EXPORTED_TARGETS} )
 target_link_libraries( fieldtrack
@@ -73,6 +74,20 @@ add_executable( target_tracker
 	nodes/target_tracker.cpp )
 add_dependencies( target_tracker ${PROJECT_NAME}_gencfg )
 target_link_libraries( target_tracker
+	fieldtrack
+	${catkin_LIBRARIES} )
+
+add_executable( velocity_integrator
+	nodes/velocity_integrator.cpp )
+add_dependencies( velocity_integrator ${PROJECT_NAME}_gencfg )
+target_link_libraries( velocity_integrator
+	fieldtrack
+	${catkin_LIBRARIES} )
+
+add_executable( static_pose_converter
+	nodes/static_pose_converter.cpp )
+add_dependencies( static_pose_converter ${PROJECT_NAME}_gencfg )
+target_link_libraries( static_pose_converter
 	fieldtrack
 	${catkin_LIBRARIES} )
 

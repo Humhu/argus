@@ -32,8 +32,8 @@ TargetTracker::TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	}
 	
 	if( iQ.rows() != initCovariance.rows() || iQ.cols() != initCovariance.cols() ||
-		tQ.rows() != transCovariance.rows() || tQ.cols() != transCovariance.cols() ||
-		oQ.rows() != obsCovariance.rows() || oQ.cols() != obsCovariance.cols() )
+	    tQ.rows() != transCovariance.rows() || tQ.cols() != transCovariance.cols() ||
+	    oQ.rows() != obsCovariance.rows() || oQ.cols() != obsCovariance.cols() )
 	{
 		ROS_ERROR_STREAM( "Parsed matrices are of the wrong size." );
 	}
@@ -56,6 +56,39 @@ TargetTracker::TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	ROS_INFO_STREAM( "Updating and publishing at rate " << pubFreq );
 	
 	poseSub = nodeHandle.subscribe( "relative_poses", 10, &TargetTracker::PoseCallback, this );
+	dispSub = nodeHandle.subscribe( "displacements", 10, &TargetTracker::DisplacementCallback, this );
+	
+}
+
+// TODO Use RelativePoseWithCovariance msg instead
+void TargetTracker::DisplacementCallback( const RelativePose::ConstPtr& msg )
+{
+	if( msg->observer_header.frame_id != referenceName ||
+	    msg->target_header.frame_id != referenceName )
+	{
+		return;
+	}
+	
+	PoseSE3 displacementInv;
+	if( msg->observer_header.stamp < msg->target_header.stamp )
+	{
+		displacementInv = MsgToPose( msg->relative_pose ).Inverse();
+	}
+	else
+	{
+		displacementInv = MsgToPose( msg->relative_pose );
+	}
+	
+	// TODO Track last predict time used?
+	// NOTE Use zero covariance for predicts here since timer takes care of
+	// covariance rate adding
+	Filter::StateCovariance Q = Filter::StateCovariance::Zero();
+	BOOST_FOREACH( FilterMap::value_type& item, filters )
+	{
+		std::string targetName = item.first;
+		Filter& filter = item.second;
+		filter.PredictWorld( displacementInv, Q, WorldFrame );
+	}
 }
 
 // TODO Odometry update from displacement updates
@@ -68,7 +101,6 @@ void TargetTracker::TimerCallback( const ros::TimerEvent& event )
 	double dt = ( event.current_real - event.last_real ).toSec();
 	
 	// TODO Predict step to current time?
-	typedef std::unordered_map< std::string, Filter > FilterMap;
 	BOOST_FOREACH( FilterMap::value_type& item, filters )
 	{
 		std::string targetName = item.first;
