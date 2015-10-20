@@ -60,7 +60,8 @@ void VelocityIntegrator::TimerCallback( const ros::TimerEvent& event )
 void VelocityIntegrator::TwistCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
 {
 	PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
-	integratedPose = integratedPose * offset * PoseSE3::Exp( vel );
+	PoseSE3 displacement = PoseSE3::Exp( offset.GetAdjoint() * vel );
+	integratedPose = integratedPose * displacement;
 }
 	
 } // end namespace fieldtrack
