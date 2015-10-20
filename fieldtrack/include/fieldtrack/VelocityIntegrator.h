@@ -31,6 +31,11 @@ private:
 	argus_utils::PoseSE3 offset;
 	bool initialized;
 	
+	// Trapezoid integration scheme
+	bool twistInitialized;
+	geometry_msgs::TwistStamped lastTwist;
+	double scale;
+	
 	void TimerCallback( const ros::TimerEvent& event );
 	void TwistCallback( const geometry_msgs::TwistStamped::ConstPtr& msg );
 	

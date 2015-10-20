@@ -8,7 +8,7 @@ namespace fieldtrack
 {
 	
 VelocityIntegrator::VelocityIntegrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), initialized( false )
+: nodeHandle( nh ), privHandle( ph ), initialized( false ), twistInitialized( false )
 {
 	YAML::Node poseYaml;
 	if( GetYamlParam( privHandle, "transform", poseYaml ) )
@@ -19,6 +19,8 @@ VelocityIntegrator::VelocityIntegrator( ros::NodeHandle& nh, ros::NodeHandle& ph
 			exit( -1 );
 		}
 	}
+	
+	privHandle.param( "scale", scale, 1.0 );
 	
 	if( !privHandle.getParam( "reference_name", referenceName ) )
 	{
@@ -59,9 +61,17 @@ void VelocityIntegrator::TimerCallback( const ros::TimerEvent& event )
 
 void VelocityIntegrator::TwistCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
 {
-	PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
-	PoseSE3 displacement = PoseSE3::Exp( offset.GetAdjoint() * vel );
-	integratedPose = integratedPose * displacement;
+	if( twistInitialized )
+	{
+		PoseSE3::TangentVector currVel = MsgToTangent( msg->twist );
+		PoseSE3::TangentVector prevVel = MsgToTangent( lastTwist.twist );
+		PoseSE3::TangentVector meanVel = 0.5 * ( currVel + prevVel );
+		
+		double dt = ( msg->header.stamp - lastTwist.header.stamp ).toSec();
+		PoseSE3 displacement = PoseSE3::Exp( dt * scale * offset.GetAdjoint() * meanVel );
+		integratedPose = integratedPose * displacement;
+	}
+	lastTwist = *msg;
 }
 	
 } // end namespace fieldtrack
