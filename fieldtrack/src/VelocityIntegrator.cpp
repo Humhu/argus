@@ -71,6 +71,7 @@ void VelocityIntegrator::TwistCallback( const geometry_msgs::TwistStamped::Const
 		PoseSE3 displacement = PoseSE3::Exp( dt * scale * offset.GetAdjoint() * meanVel );
 		integratedPose = integratedPose * displacement;
 	}
+	twistInitialized = true;
 	lastTwist = *msg;
 }
 	
