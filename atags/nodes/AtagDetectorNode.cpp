@@ -59,6 +59,7 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	}
 	
 	ph.param( "max_skewness_ratio", maxSkewnessRatio, 3.0 );
+	ph.param( "min_area_product", minAreaProduct, 4000.0 );
 	
 	int buffLen;
 	ph.param( "buffer_size", buffLen, 5 );
@@ -74,6 +75,7 @@ bool enableUndistortion;
 bool enableNormalization;
 
 double maxSkewnessRatio; // Used to filter out skew detections
+double minAreaProduct; // Used to filter out small detections
 
 ros::Publisher rawPublisher;
 ros::Publisher processedPublisher;
@@ -107,6 +109,9 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		double esmall = std::min( eigenvalues(0).real(), eigenvalues(1).real() );
 		double eratio = elarge / esmall;
 		if( eratio > maxSkewnessRatio ) { continue; }
+		double eprod = elarge * esmall;
+		if( eprod < minAreaProduct ) { continue; }
+		
 				
 		fidDetections.push_back( atags::TagToFiducial( tagDetections[i], tagFamily ) );
 	}

@@ -136,7 +136,7 @@ Eigen::Matrix2d ComputeCovariance( const AprilTags::TagDetection& det )
 		points[i] = points[i] - mean;
 		cov += points[i] * points[i].transpose();
 	}
-	return cov;
+	return cov * 0.25;
 }
 	
 } // end namespace atags
