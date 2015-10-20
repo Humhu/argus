@@ -58,6 +58,8 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		exit( -1 );
 	}
 	
+	ph.param( "max_skewness_ratio", maxSkewnessRatio, 3.0 );
+	
 	int buffLen;
 	ph.param( "buffer_size", buffLen, 5 );
 	cameraSub = imagePort.subscribeCamera( "image", buffLen, &AtagNode::ImageCallback, this );
@@ -70,6 +72,8 @@ AprilTags::TagDetector::Ptr detector;
 
 bool enableUndistortion;
 bool enableNormalization;
+
+double maxSkewnessRatio; // Used to filter out skew detections
 
 ros::Publisher rawPublisher;
 ros::Publisher processedPublisher;
@@ -89,7 +93,6 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	
 	if( tagDetections.size() == 0 ) 
 	{ 
-// 			ROS_INFO( "No tags detected." );
 		return; 
 	}
 	
@@ -98,6 +101,13 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	fidDetections.reserve( tagDetections.size() );
 	for( unsigned int i = 0; i < tagDetections.size(); i++ )
 	{
+		Eigen::Matrix2d cov = atags::ComputeCovariance( tagDetections[i] );
+		Eigen::Vector2cd eigenvalues = cov.eigenvalues();
+		double elarge = std::max( eigenvalues(0).real(), eigenvalues(1).real() );
+		double esmall = std::min( eigenvalues(0).real(), eigenvalues(1).real() );
+		double eratio = elarge / esmall;
+		if( eratio > maxSkewnessRatio ) { continue; }
+				
 		fidDetections.push_back( atags::TagToFiducial( tagDetections[i], tagFamily ) );
 	}
 	

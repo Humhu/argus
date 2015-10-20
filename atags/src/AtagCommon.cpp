@@ -114,5 +114,29 @@ argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double 
 	PoseSE3 H_tag_cam( t, q );
 	return H_tag_cam * postrotation;
 }
+
+Eigen::Matrix2d ComputeCovariance( const AprilTags::TagDetection& det )
+{
+	Eigen::Vector2d points[4];
+	for( unsigned int i = 0; i < 4; i++ )
+	{
+		points[i] << det.p[i].first, det.p[i].second;
+	}
+	
+	Eigen::Vector2d mean = Eigen::Vector2d::Zero();
+	for( unsigned int i = 0; i < 4; i++ )
+	{
+		mean += points[i];
+	}
+	mean *= 0.25;
+	
+	Eigen::Matrix2d cov = Eigen::Matrix2d::Zero();
+	for( unsigned int i = 0; i < 4; i++ )
+	{
+		points[i] = points[i] - mean;
+		cov += points[i] * points[i].transpose();
+	}
+	return cov;
+}
 	
 } // end namespace atags

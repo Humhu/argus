@@ -35,4 +35,7 @@ argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
 argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
                                      double fx, double fy, double px, double py );
 
+/*! \brief Calculates the covariance of the corners to estimate skew. */
+Eigen::Matrix2d ComputeCovariance( const AprilTags::TagDetection& det );
+
 }
