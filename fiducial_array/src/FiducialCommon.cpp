@@ -87,6 +87,7 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 		}
 		undistorted.push_back( det );
 	}
+	return true;
 }
 
 } // end namespace fiducial_array
