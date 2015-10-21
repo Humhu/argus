@@ -115,6 +115,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 				
 		fidDetections.push_back( atags::TagToFiducial( tagDetections[i], tagFamily ) );
 	}
+	if( fidDetections.empty() ) { return; }
 	
 	argus_msgs::ImageFiducialDetections detMsg;
 	detMsg.detections = fidDetections;

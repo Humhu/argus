@@ -19,7 +19,7 @@ std::vector< cv::Point3f > MsgToPoints( const std::vector< geometry_msgs::Point 
 	
 /*! \brief Undistort and normalize fiducial detections in-place. Assumes all detections
  * have the same undistortion/normalization status. */
-void UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
+bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
                           const image_geometry::PinholeCameraModel& cameraModel, 
                           bool undistort, bool normalize,
                           std::vector< argus_msgs::FiducialDetection >& undistorted );

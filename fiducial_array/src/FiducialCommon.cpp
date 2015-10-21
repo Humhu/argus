@@ -28,21 +28,22 @@ std::vector< cv::Point3f > MsgToPoints( const std::vector< geometry_msgs::Point 
 	return points;
 }
 	
-void UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
+bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
                           const image_geometry::PinholeCameraModel& cameraModel, 
                           bool undistort, bool normalize,
                           std::vector< argus_msgs::FiducialDetection >& undistorted )
 {
+	undistorted.clear();
+	
+	if( detections.empty() ) { return true; }
+	
 	// Shortcut work if possible
 	if( detections[0].undistorted == undistort 
 	    && detections[0].normalized == normalize )
-	{ return; }
+	{ return true; }
 	
 	// Quick catch of uncalibrated camera model
-	if( std::isnan( cameraModel.fx() ) ) 
-	{
-		throw std::runtime_error( "Attempted to undistort with uncalibrated camera model." );
-	}
+	if( std::isnan( cameraModel.fx() ) ) { return false; }
 	
 	// TODO Preallocate size?
 	std::vector< cv::Point2f > points2d, undistortedPoints;
@@ -66,7 +67,6 @@ void UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 	                     distortionCoeffs, cv::noArray(), outputCameraMatrix );
 	
 	// Assign to undistorted output 
-	undistorted.clear();
 	undistorted.reserve( detections.size() );
 	unsigned int ind = 0;
 	argus_msgs::FiducialDetection det;
