@@ -162,8 +162,9 @@ void TargetTracker::PoseCallback( const RelativePose::ConstPtr& msg )
 	
 	// Retrieve the filter and perform an update
 	Filter& filter = filters[ targetName ];
-	filter.UpdateWorld( relPose, BodyFrame ); // TODO Incorporate extrinsics uncertainty
-	
+	//filter.UpdateWorld( relPose, BodyFrame ); // TODO Incorporate extrinsics uncertainty
+	filter.UpdateBody( relPose, BodyFrame );
+
 }
 	
 } // end namespace fieldtrack

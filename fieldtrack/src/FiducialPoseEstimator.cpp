@@ -109,10 +109,10 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		PoseSE3 cameraRelativePose = EstimateArrayPose( imageFramePoints, nullptr, fiducialFramePoints );
 		PoseSE3 frameRelativePose = cameraExtrinsics * cameraRelativePose;
 
-		EulerAngles euler = QuaternionToEuler( cameraRelativePose.GetQuaternion() );
-		EulerAngles finalEuler = QuaternionToEuler( frameRelativePose.GetQuaternion() );
-		ROS_INFO_STREAM( "Relative orientation of target to camera: " << euler );
-		ROS_INFO_STREAM( "Relative orientation of target to robot: " << finalEuler );
+		//EulerAngles euler = QuaternionToEuler( cameraRelativePose.GetQuaternion() );
+		//EulerAngles finalEuler = QuaternionToEuler( frameRelativePose.GetQuaternion() );
+		//ROS_INFO_STREAM( "Relative orientation of target to camera: " << euler );
+		//ROS_INFO_STREAM( "Relative orientation of target to robot: " << finalEuler );
 
 		argus_msgs::RelativePose poseMsg;
 		poseMsg.observer_header.frame_id = cameraFrameName;
