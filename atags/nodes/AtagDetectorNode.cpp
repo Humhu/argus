@@ -103,10 +103,9 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	fidDetections.reserve( tagDetections.size() );
 	for( unsigned int i = 0; i < tagDetections.size(); i++ )
 	{
-		Eigen::Matrix2d cov = atags::ComputeCovariance( tagDetections[i] );
-		Eigen::Vector2cd eigenvalues = cov.eigenvalues();
-		double elarge = std::max( eigenvalues(0).real(), eigenvalues(1).real() );
-		double esmall = std::min( eigenvalues(0).real(), eigenvalues(1).real() );
+		std::pair<double,double> diagLengths = atags::ComputeDiagonals( tagDetections[i] );
+		double elarge = std::max( diagLengths.first, diagLengths.second );
+		double esmall = std::min( diagLengths.first, diagLengths.second );
 		double eratio = elarge / esmall;
 		if( eratio > maxSkewnessRatio ) { continue; }
 		double eprod = elarge * esmall;

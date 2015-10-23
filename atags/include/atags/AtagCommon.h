@@ -38,4 +38,7 @@ argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double 
 /*! \brief Calculates the covariance of the corners to estimate skew. */
 Eigen::Matrix2d ComputeCovariance( const AprilTags::TagDetection& det );
 
+/*! \brief Returns the diagonal distances. */
+std::pair<double, double> ComputeDiagonals( const AprilTags::TagDetection& det );
+
 }
