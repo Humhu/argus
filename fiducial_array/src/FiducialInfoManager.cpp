@@ -10,7 +10,7 @@ using namespace extrinsics_array;
 
 namespace fiducial_array
 {
-	
+
 FiducialInfoManager::FiducialInfoManager( ros::NodeHandle& nh )
 : ExtrinsicsInfoManager( nh )
 {}
@@ -60,5 +60,5 @@ const FiducialArray& FiducialInfoManager::GetParentFiducialArray( const std::str
 	ExtrinsicsArray::Ptr array = arrayMap.at( memberMap.at( memberName ) );
 	return *( std::dynamic_pointer_cast< FiducialArray >( array ) );
 }
-	
+
 } // end namespace fiducial_array

@@ -63,14 +63,14 @@ TargetTracker::TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 // TODO Use RelativePoseWithCovariance msg instead
 void TargetTracker::DisplacementCallback( const RelativePose::ConstPtr& msg )
 {
-	if( msg->observer_header.frame_id != referenceName ||
-	    msg->target_header.frame_id != referenceName )
+	if( msg->observer_name != referenceName ||
+	    msg->target_name != referenceName )
 	{
 		return;
 	}
 	
 	PoseSE3 displacementInv;
-	if( msg->observer_header.stamp < msg->target_header.stamp )
+	if( msg->observer_time < msg->target_time )
 	{
 		displacementInv = MsgToPose( msg->relative_pose ).Inverse();
 	}
@@ -111,10 +111,10 @@ void TargetTracker::TimerCallback( const ros::TimerEvent& event )
 		}
 		
 		argus_msgs::RelativePose msg;
-		msg.observer_header.frame_id = referenceName;
-		msg.observer_header.stamp = event.current_real;
-		msg.target_header.frame_id = targetName;
-		msg.target_header.stamp = event.current_real;
+		msg.observer_name = referenceName;
+		msg.observer_time = event.current_real;
+		msg.target_name = targetName;
+		msg.target_time = event.current_real;
 		msg.relative_pose = PoseToMsg( filter.EstimateMean() );
 		publishers[ targetName ].publish( msg );
 	}
@@ -125,15 +125,15 @@ void TargetTracker::PoseCallback( const RelativePose::ConstPtr& msg )
 	PoseSE3 relPose;
 	std::string targetName;
 	
-	if( msg->observer_header.frame_id == referenceName )
+	if( msg->observer_name == referenceName )
 	{
 		relPose = MsgToPose( msg->relative_pose );
-		targetName = msg->target_header.frame_id;
+		targetName = msg->target_name;
 	}
-	else if( msg->target_header.frame_id == referenceName )
+	else if( msg->target_name == referenceName )
 	{
 		relPose = MsgToPose( msg->relative_pose ).Inverse();
-		targetName = msg->observer_header.frame_id;
+		targetName = msg->observer_name;
 	}
 	else
 	{

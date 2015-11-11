@@ -98,8 +98,8 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 			}
 			
 			const FiducialArray& fiducialArray = fidManager.GetParentFiducialArray( detection.name );
-			
-			const std::vector<cv::Point3f>& fidPoints = fiducialArray.GetFiducialPoints( detection.name );
+			const Fiducial& fiducial = fiducialArray.GetFiducialTransformed( detection.name );
+			const std::vector<cv::Point3f>& fidPoints = MsgToPoints( fiducial.points );
 			fiducialFramePoints.insert( fiducialFramePoints.end(), fidPoints.begin(), fidPoints.end() );
 			
 			const std::vector<cv::Point2f>& imgPoints = MsgToPoints( detection.points );
@@ -115,10 +115,10 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		//ROS_INFO_STREAM( "Relative orientation of target to robot: " << finalEuler );
 
 		argus_msgs::RelativePose poseMsg;
-		poseMsg.observer_header.frame_id = cameraFrameName;
-		poseMsg.observer_header.stamp = msg->header.stamp;
-		poseMsg.target_header.frame_id = fiducialFrameName;
-		poseMsg.target_header.stamp = msg->header.stamp;
+		poseMsg.observer_name = cameraFrameName;
+		poseMsg.observer_time = msg->header.stamp;
+		poseMsg.target_name = fiducialFrameName;
+		poseMsg.target_time = msg->header.stamp;
 		poseMsg.relative_pose = PoseToMsg( frameRelativePose );
 		posePub.publish( poseMsg );
 	}

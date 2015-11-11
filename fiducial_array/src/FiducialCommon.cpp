@@ -28,6 +28,145 @@ std::vector< cv::Point3f > MsgToPoints( const std::vector< geometry_msgs::Point 
 	return points;
 }
 	
+std::vector <argus_msgs::Point2D> PointsToMsg( const std::vector <cv::Point2f>& points )
+{
+	std::vector <argus_msgs::Point2D> msgs;
+	msgs.reserve( points.size() );
+	for( unsigned int i = 0; i < points.size(); i++ )
+	{
+		argus_msgs::Point2D msg;
+		msg.x = points[i].x;
+		msg.y = points[i].y;
+		msgs.push_back( msg );
+	}
+	return msgs;
+}
+
+std::vector <geometry_msgs::Point> PointsToMsg( const std::vector <cv::Point3f>& points )
+{
+	std::vector <geometry_msgs::Point> msgs;
+	msgs.reserve( points.size() );
+	for( unsigned int i = 0; i < points.size(); i++ )
+	{
+		geometry_msgs::Point msg;
+		msg.x = points[i].x;
+		msg.y = points[i].y;
+		msg.z = points[i].z;
+		msgs.push_back( msg );
+	}
+	return msgs;
+}
+
+Eigen::Matrix <double, 2, Eigen::Dynamic> PointsToMatrix( const std::vector <cv::Point2f>& points )
+{
+	if( points.size() == 0 )
+	{
+		throw std::runtime_error( "Cannot convert zero size point array." );
+	}
+	
+	Eigen::Matrix <double, 2, Eigen::Dynamic> mat( 2, points.size() );
+	for( unsigned int i = 0; i < points.size(); i++ )
+	{
+		mat.col( i ) = Eigen::Vector2d( points[i].x, points[i].y );
+	}
+	return mat;
+}
+
+Eigen::Matrix <double, 3, Eigen::Dynamic> PointsToMatrix( const std::vector <cv::Point3f>& points )
+{
+	if( points.size() == 0 )
+	{
+		throw std::runtime_error( "Cannot convert zero size point array." );
+	}
+	
+	Eigen::Matrix <double, 3, Eigen::Dynamic> mat( 3, points.size() );
+	for( unsigned int i = 0; i < points.size(); i++ )
+	{
+		mat.col( i ) = Eigen::Vector3d( points[i].x, points[i].y, points[i].z );
+	}
+	return mat;
+}
+
+std::vector <cv::Point2f> MatrixToPoints( const Eigen::Matrix <double, 2, Eigen::Dynamic>& mat )
+{
+	std::vector <cv::Point2f> points;
+	points.reserve( mat.cols() );
+	for( unsigned int i = 0; i < mat.cols(); i++ )
+	{
+		points.emplace_back( mat(0,i), mat(1,i) );
+	}
+	return points;
+}
+
+std::vector <cv::Point3f> MatrixToPoints( const Eigen::Matrix <double, 3, Eigen::Dynamic>& mat )
+{
+	std::vector <cv::Point3f> points;
+	points.reserve( mat.cols() );
+	for( unsigned int i = 0; i < mat.cols(); i++ )
+	{
+		points.emplace_back( mat(0,i), mat(1,i), mat(2,i) );
+	}
+	return points;	
+}
+
+
+std::vector <argus_msgs::Point2D> MatrixToMsg( const Eigen::Matrix <double, 2, Eigen::Dynamic>& mat )
+{
+	std::vector <argus_msgs::Point2D> msgs;
+	msgs.reserve( mat.cols() );
+	for( unsigned int i = 0; i < mat.cols(); i++ )
+	{
+		argus_msgs::Point2D msg;
+		msg.x = mat(0,i);
+		msg.y = mat(1,i);
+		msgs.push_back( msg );
+	}
+	return msgs;
+}
+
+std::vector <geometry_msgs::Point> MatrixToMsg( const Eigen::Matrix <double, 3, Eigen::Dynamic>& mat )
+{
+	std::vector <geometry_msgs::Point> msgs;
+	msgs.reserve( mat.cols() );
+	for( unsigned int i = 0; i < mat.cols(); i++ )
+	{
+		geometry_msgs::Point msg;
+		msg.x = mat(0,i);
+		msg.y = mat(1,i);
+		msg.z = mat(2,i);
+		msgs.push_back( msg );
+	}
+	return msgs;
+}
+
+Eigen::Matrix <double, 2, Eigen::Dynamic> MsgToMatrix( const std::vector <argus_msgs::Point2D>& msg )
+{
+	if( msg.size() == 0 )
+	{
+		throw std::runtime_error( "Cannot convert zero size message array." );
+	}
+	Eigen::Matrix <double, 2, Eigen::Dynamic> mat( 2, msg.size() );
+	for( unsigned int i = 0; i < msg.size(); i++ )
+	{
+		mat.col(i) = Eigen::Vector2d( msg[i].x, msg[i].y );
+	}
+	return mat;
+}
+
+Eigen::Matrix <double, 3, Eigen::Dynamic> MsgToMatrix( const std::vector <geometry_msgs::Point>& msg )
+{
+	if( msg.size() == 0 )
+	{
+		throw std::runtime_error( "Cannot convert zero size message array." );
+	}
+	Eigen::Matrix <double, 3, Eigen::Dynamic> mat( 3, msg.size() );
+	for( unsigned int i = 0; i < msg.size(); i++ )
+	{
+		mat.col(i) = Eigen::Vector3d( msg[i].x, msg[i].y, msg[i].z );
+	}
+	return mat;
+}
+
 bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
                           const image_geometry::PinholeCameraModel& cameraModel, 
                           bool undistort, bool normalize,

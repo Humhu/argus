@@ -13,15 +13,15 @@ void PoseCallback( const RelativePose::ConstPtr& msg,
 {
 	PoseSE3 pose;
 	std::string frameName;
-	if( msg->observer_header.frame_id == refName )
+	if( msg->observer_name == refName )
 	{
 		pose = MsgToPose( msg->relative_pose );
-		frameName = msg->target_header.frame_id;
+		frameName = msg->target_name;
 	}
-	else if( msg->target_header.frame_id == refName )
+	else if( msg->target_name == refName )
 	{
 		pose = MsgToPose( msg->relative_pose ).Inverse();
-		frameName = msg->observer_header.frame_id;
+		frameName = msg->observer_name;
 	}
 	else
 	{
@@ -29,7 +29,7 @@ void PoseCallback( const RelativePose::ConstPtr& msg,
 	}
 	
 	geometry_msgs::PoseStamped pmsg;
-	pmsg.header.stamp = msg->observer_header.stamp;
+	pmsg.header.stamp = msg->observer_time;
 	pmsg.header.frame_id = frameName;
 	pmsg.pose = PoseToMsg( pose );
 	pub.publish( pmsg );

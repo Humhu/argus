@@ -38,15 +38,15 @@ void ArrayPoseEstimator::RelativePoseCallback( const argus_msgs::RelativePose::C
 	std::string targetName;
 	
 	// Flip reversed observations if needed
-	if( msg->observer_header.frame_id == referenceName )
+	if( msg->observer_name == referenceName )
 	{
 		obsPose = MsgToPose( msg->relative_pose );
-		targetName = msg->target_header.frame_id;
+		targetName = msg->target_name;
 	}
-	else if( msg->target_header.frame_id == referenceName )
+	else if( msg->target_name == referenceName )
 	{
 		obsPose = MsgToPose( msg->relative_pose ).Inverse();
-		targetName = msg->observer_header.frame_id;
+		targetName = msg->observer_name;
 	}
 	else
 	{
@@ -82,10 +82,10 @@ void ArrayPoseEstimator::RelativePoseCallback( const argus_msgs::RelativePose::C
 	
 	// Publish the relative pose
 	argus_msgs::RelativePose pMsg;
-	pMsg.observer_header.frame_id = referenceName;
-	pMsg.observer_header.stamp = msg->observer_header.stamp;
-	pMsg.target_header.frame_id = targetFrameName;
-	pMsg.target_header.stamp = msg->target_header.stamp;
+	pMsg.observer_name = referenceName;
+	pMsg.observer_time = msg->observer_time;
+	pMsg.target_name = targetFrameName;
+	pMsg.target_time = msg->target_time;
 	pMsg.relative_pose = PoseToMsg( relPose );
 	relPosePubs[ targetFrameName ].publish( pMsg );
 	

@@ -1,8 +1,13 @@
+# Message header
+std_msgs/Header header
+
 # Observer frame and timestamp
-std_msgs/Header observer_header
+string observer_name
+time observer_time
 
 # Target frame and timestamp
-std_msgs/Header target_header
+string target_name
+time target_time
 
 # Relative pose of target in observer frame
 geometry_msgs/Pose relative_pose

@@ -49,10 +49,10 @@ void VelocityIntegrator::TimerCallback( const ros::TimerEvent& event )
 	}
 	
 	argus_msgs::RelativePose msg;
-	msg.observer_header.stamp = event.last_real;
-	msg.observer_header.frame_id = referenceName;
-	msg.target_header.stamp = event.current_real;
-	msg.target_header.frame_id = referenceName;
+	msg.observer_time = event.last_real;
+	msg.observer_name = referenceName;
+	msg.target_time = event.current_real;
+	msg.target_name = referenceName;
 	msg.relative_pose = PoseToMsg( integratedPose );
 	dispPub.publish( msg );
 	

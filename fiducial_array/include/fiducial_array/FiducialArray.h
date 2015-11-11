@@ -1,6 +1,7 @@
 #pragma once
 
 #include "extrinsics_array/ExtrinsicsArray.h"
+#include "fiducial_array/Fiducial.h"
 #include "fiducial_array/FiducialInfo.h"
 #include "fiducial_array/FiducialArrayInfo.h"
 
@@ -11,7 +12,7 @@
 namespace fiducial_array
 {
 
-/*! \brief Stores point representations for a fiducial array. */
+/*! \brief Stores point representations for a fiducial array.*/
 class FiducialArray 
 : public extrinsics_array::ExtrinsicsArray
 {
@@ -27,23 +28,19 @@ public:
 	/*! \brief Constructs an array from a calibration message. */
 	FiducialArray( const FiducialArrayInfo& info );
 	
-	/*! \brief Constructs an array from names, poses, and fiducial-frame points. */
-	FiducialArray( const std::string& refName,
-	               const std::vector< std::string >& names,
-	               const std::vector< argus_utils::PoseSE3 >& poses,
-	               const std::vector< std::vector< cv::Point3f > >& points );
-	
 	/*! \brief Returns the fiducial points in the array frame. */
-	const std::vector< cv::Point3f >& GetFiducialPoints( const std::string& name ) const;
+	const Fiducial& GetFiducialTransformed( const std::string& name ) const;
+	
+	/*! \brief Returns the fiducial points in their local frame. */
+	const Fiducial& GetFiducial( const std::string& name ) const;
 	
 protected:
 	
-	/*! \brief Fiducial points in array coordinates */
-	std::unordered_map< std::string, std::vector< cv::Point3f > > fiducialPoints;
+	/*! \brief Fiducials in local coordinates */
+	std::unordered_map <std::string, Fiducial > fiducials;
 	
-	void Populate( const std::vector< std::string >& names,
-	               const std::vector< argus_utils::PoseSE3 >& poses,
-	               const std::vector< std::vector< cv::Point3f > >& points );
+	/*! \brief Fiducials in array coordinates */
+	std::unordered_map <std::string, Fiducial > arrayFiducials;
 	
 };
 

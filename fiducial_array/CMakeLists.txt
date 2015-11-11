@@ -62,6 +62,7 @@ include_directories( include
 )
 
 add_library( fiducial_array
+	src/Fiducial.cpp
 	src/FiducialArray.cpp
 	src/FiducialCalibrationParsers.cpp
 	src/FiducialInfoManager.cpp
