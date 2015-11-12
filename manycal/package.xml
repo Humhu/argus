@@ -16,33 +16,29 @@
 
   <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>image_transport</build_depend>
-  <build_depend>cv_bridge</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>camera_info_manager</build_depend>
   <build_depend>message_generation</build_depend>
-  <build_depend>nodelet</build_depend>
-  <build_depend>atags</build_depend>
-  <build_depend>camplex</build_depend>
   <build_depend>argus_utils</build_depend>
   <build_depend>argus_msgs</build_depend>
-  <build_depend>tf</build_depend>
   <build_depend>graphopt</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>extrinsics_array</build_depend>
+  <build_depend>fiducial_array</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
-  <run_depend>image_transport</run_depend>
-  <run_depend>cv_bridge</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>camera_info_manager</run_depend>
   <run_depend>message_runtime</run_depend>
-  <run_depend>nodelet</run_depend>
-  <run_depend>atags</run_depend>
-  <run_depend>camplex</run_depend>
   <run_depend>argus_utils</run_depend>
   <run_depend>argus_msgs</run_depend>
-  <run_depend>tf</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>cv_bridge</run_depend>
   <run_depend>graphopt</run_depend>
+  <run_depend>extrinsics_array</run_depend>
+  <run_depend>fiducial_array</run_depend>
   
 </package>

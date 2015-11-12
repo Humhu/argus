@@ -8,7 +8,7 @@ namespace manycal
 {
 	
 ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), publicPort( nodeHandle )
+: nodeHandle( nh ), privHandle( ph ), publicPort( nodeHandle ), privatePort( privHandle )
 {
 	std::vector< std::string > cameraNames;
 	if( !privHandle.getParam( "camera_names", cameraNames ) )
@@ -20,21 +20,31 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	cameraRegistry.reserve( cameraNames.size() );
 	BOOST_FOREACH( const std::string& cameraName, cameraNames )
 	{
+		if( cameraRegistry.count( cameraName ) > 0 )
+		{
+			ROS_ERROR_STREAM( "Duplicate camera: " << cameraName );
+			exit( -1 );
+		}
+		
 		CameraRegistration registration;
 		registration.name = cameraName;
 		
 		std::string captureServiceName = cameraName + "/capture_frames";
 		ros::service::waitForService( captureServiceName );
 		registration.captureClient = nodeHandle.serviceClient<camplex::CaptureFrames>( captureServiceName );
-		registration.imagePub = publicPort.advertiseCamera( cameraName + "/image_synchronized", 1 );
+// 		registration.imagePub = publicPort.advertiseCamera( "image_synchronized", 2 );
 		
-		cameraRegistry.push_back( registration );
+		cameraRegistry[ cameraName ] = ( registration );
 		
 		// Have to push registration into registry before we can get the reference to it
-		cameraRegistry.back().imageSub = publicPort.subscribeCamera( cameraName + "/image_raw", 1, 
-		    boost::bind( &ArraySynchronizer::ImageCallback, this, _1, _2, boost::ref(cameraRegistry.back()) ) );
+// 		std::string cameraTopic = cameraName + "/image_raw";
+// 		cameraRegistry.back().imageSub = publicPort.subscribeCamera( cameraTopic, 1, 
+// 		    boost::bind( &ArraySynchronizer::ImageCallback, this, _1, _2, boost::ref(cameraRegistry.back()) ) );
 	}
 	
+	imagePub = privatePort.advertiseCamera( "image_synchronized", 2*cameraNames.size() );
+	imageSub = publicPort.subscribeCamera( "image_input", 2*cameraNames.size(), &ArraySynchronizer::ImageCallback, this );
+		
 	captureServer = privHandle.advertiseService( "capture_array", &ArraySynchronizer::CaptureArrayCallback, this );
 	
 	int numSimultaneous;
@@ -49,14 +59,15 @@ bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req,
 {
 	
 	// TODO Make sure buffer is cleared?
-	BOOST_FOREACH( CameraRegistration& registration, cameraRegistry )
+	BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
 	{
 		argus_utils::WorkerPool::Job job = boost::bind( &ArraySynchronizer::CaptureJob, 
-		                                                this, boost::ref(registration) );
+		                                                this, boost::ref( item.second ) );
 		pool.EnqueueJob( job );
 	}
 
 	// TODO Handle timeouts
+// 	ROS_INFO( "Dispatched all jobs. Waiting on semaphore." );
 	completedJobs.Decrement( cameraRegistry.size() ); // Wait for all jobs to complete
 	
 	ros::Time now = ros::Time::now();
@@ -64,8 +75,9 @@ bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req,
 	std_msgs::Header header;
 	header.stamp = now;
 // 	static unsigned int sequence = 0;
-	BOOST_FOREACH( CameraRegistration& registration, cameraRegistry )
+	BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
 	{
+		CameraRegistration& registration = item.second;
 		if( !registration.data.image )
 		{
 			ROS_ERROR_STREAM( "Null buffered data!" );
@@ -74,7 +86,7 @@ bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req,
 		header.seq = registration.data.image->header.seq;
 		registration.data.image->header = header;
 		registration.data.info->header = header;
-		registration.imagePub.publish( registration.data.image, registration.data.info );
+		imagePub.publish( registration.data.image, registration.data.info );
 	}
 	
 	return true;
@@ -92,11 +104,17 @@ void ArraySynchronizer::CaptureJob( CameraRegistration& registration )
 }
 
 void ArraySynchronizer::ImageCallback( const sensor_msgs::Image::ConstPtr& image, 
-                                       const sensor_msgs::CameraInfo::ConstPtr& info,
-                                       CameraRegistration& registration )
+                                       const sensor_msgs::CameraInfo::ConstPtr& info )
 {
 	// Concurrent modification through ref is safe
-// 	CameraRegistration& registration = cameraRegistry.at( index );
+	if( cameraRegistry.count( image->header.frame_id ) == 0 )
+	{
+		ROS_WARN_STREAM( "Received image from unregistered camera " << image->header.frame_id );
+		return;
+		
+	}
+ 	CameraRegistration& registration = cameraRegistry[ image->header.frame_id ];
+// 	ROS_INFO( "Image received." );
 	registration.data.image = boost::make_shared<sensor_msgs::Image>( *image );
 	registration.data.info = boost::make_shared<sensor_msgs::CameraInfo>( *info );
 	

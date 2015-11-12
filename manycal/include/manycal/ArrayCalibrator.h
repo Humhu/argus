@@ -3,21 +3,32 @@
 #include <ros/ros.h>
 #include <yaml-cpp/yaml.h>
 #include <tf/transform_broadcaster.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-#include <isam/slam_tag.h>
-#include <isam/SlamInterface.h>
+#include "manycal/slam3d.h"
+#include "manycal/sclam_fiducial.h"
+#include "manycal/OdometryGraph.hpp"
+
+#include <isam/sclam_monocular.h>
+
+#include "argus_msgs/ImageFiducialDetections.h"
+
+#include "argus_utils/PoseSE3.h"
+
+#include "fiducial_array/FiducialInfoManager.h"
 
 #include <unordered_map>
 
-#include "manycal/PoseGraph.hpp"
-
-#include "argus_msgs/TagDetection.h"
-#include "argus_utils/PoseSE3.h"
-
 namespace manycal 
 {
-/*! \brief Calibrates an array of cameras by using fiducial detections. 
- * Reads from the output of ArrayCapturer. */
+	
+template <>
+double index_difference <ros::Time>( const ros::Time& a, const ros::Time& b )
+{
+	return (a - b).toSec();
+}
+	
+/*! \brief Calibrates arrays of cameras and fiducials. */
 class ArrayCalibrator
 {
 public:
@@ -31,58 +42,54 @@ private:
 	ros::NodeHandle privHandle;
 	
 	ros::Subscriber detectionSub;
+	ros::Subscriber relPoseSub;
 	
-	tf::TransformBroadcaster transformPub;
+	fiducial_array::FiducialInfoManager fidManager;
+	extrinsics_array::ExtrinsicsInfoManager camManager;
 	
 	struct CameraRegistration
 	{
-		isam::MonocularIntrinsics_Node::Ptr intrinsics;
-		isam::Pose3d_Node::Ptr extrinsics;
-		isam::Pose3d_Factor::Ptr prior;
+		std::shared_ptr <isam::PoseSE3_Node> extrinsics;
+		std::shared_ptr <isam::MonocularIntrinsics_Node> intrinsics;
+		bool optimizeExtrinsics;
+		bool optimizeIntrinsics;
 	};
 	
-	struct TagRegistration
+	struct FiducialRegistration
 	{
-		std::string name;
-		unsigned int id;
-		std::string family;
-		isam::TagIntrinsics_Node::Ptr intrinsics;
-		bool initialized; // Initialized in pose graph
+		std::shared_ptr <isam::PoseSE3_Node> extrinsics;
+		std::shared_ptr <isam::FiducialIntrinsics_Node> intrinsics;
+		bool optimizeExtrinsics;
+		bool optimizeIntrinsics;
 	};
 	
-	isam::SlamInterface slam;
-	PoseGraph3d poseGraph;
-	YAML::Node cameraConfigLog;
-	YAML::Node tagConfigLog;
-	unsigned int detectionCounter;
+	typedef OdometryGraph<isam::PoseSE3, ros::Time> OdometryGraphSE3;
+	struct FrameRegistration
+	{
+		OdometryGraphSE3::Ptr poses;
+		bool optimizePoses;
+	};
 	
-	typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
-	typedef std::unordered_map< std::string, TagRegistration > TagRegistry;
+	isam::Slam::Ptr slam;
 	
-	/*! \brief Mapping from camera names to registrations. */
-	CameraRegistry cameraRegistry;
-	/*! \brief Mapping from tag hashes to registrations. */
-	TagRegistry tagRegistry;
+	/*! \brief Map from frame names to registrations. */
+	std::unordered_map <std::string, FrameRegistration> frameRegistry;
+	std::unordered_map <std::string, CameraRegistration> cameraRegistry;
+	std::unordered_map <std::string, FiducialRegistration> fiducialRegistry;
 	
-	void DetectionCallback( const argus_msgs::TagDetection::ConstPtr& msg );
+	void RelPoseCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg );
+	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	
-	void ParseCamera( const std::string& name, YAML::Node cam );
-	void ParseTag( const std::string& name, YAML::Node tag );
+	void InitializeFrame( const std::string& frameName, ros::Time t );
+	void InitializeCamera( const std::string& cameraName, ros::Time t );
+	void InitializeFiducial( const std::string& fidName, ros::Time t );
 	
-	void InitializeTag( const std::string& key, const argus_msgs::TagDetection& msg );
-	
-	// Turns a tag detection into a string hash
-	static std::string GetTagKey( const std::string& tagFamily, unsigned int id );
-
-	// Optimize the graph and publish all new poses
-	void UpdateCalibration();
-	void PublishPose( const std::string& name, const isam::Pose3d& pose, ros::Time time );
-	
-	void InitializeCamera( const std::string& name );
-	void InitializeTag( const std::string& camName, const argus_msgs::TagDetection& msg,
-						double size );
-	
-	static std::string GetTagName( unsigned int id );
+	void CreateObservationFactor( CameraRegistration& camera,
+	                              FrameRegistration& cameraFrame,
+	                              FiducialRegistration& fiducial,
+	                              FrameRegistration& fiducialFrame,
+	                              const argus_msgs::FiducialDetection& detection,
+								  ros::Time t );
 	
 };
 	

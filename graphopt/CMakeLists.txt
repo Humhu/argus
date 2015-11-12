@@ -54,15 +54,15 @@ include_directories( include
 					 ${catkin_INCLUDE_DIRS}
 )
 
-add_library( graphopt
-	src/GraphCommon.cpp
-)
-target_link_libraries( graphopt
-	${isam_LIBRARIES}
-	${Boost_LIBRARIES}
-	${catkin_LIBRARIES}
-)
-add_dependencies( graphopt isam_external )
+# add_library( graphopt
+# 	src/GraphCommon.cpp
+# )
+# target_link_libraries( graphopt
+# 	${isam_LIBRARIES}
+# 	${Boost_LIBRARIES}
+# 	${catkin_LIBRARIES}
+# )
+# add_dependencies( graphopt isam_external )
 
 # add_executable( detector_node nodes/AtagDetectorNode.cpp )
 # add_dependencies( detector_node atags_gencfg

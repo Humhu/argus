@@ -9,12 +9,13 @@
 #include "manycal/CaptureArray.h"
 
 #include <boost/thread/thread.hpp>
+#include <unordered_map>
 
 namespace manycal
 {
 
 /*! \brief Cycles and gathers outputs from the array into synchronized outputs.
- * Outputs show up as [camera_name]/image_synchronized. */
+ * Outputs show up as image_synchronized. */
 class ArraySynchronizer
 {
 public:	
@@ -35,25 +36,29 @@ private:
 	{
 		std::string name;
 		ros::ServiceClient captureClient;
-		image_transport::CameraSubscriber imageSub;
-		image_transport::CameraPublisher imagePub;
+// 		image_transport::CameraSubscriber imageSub;
+// 		image_transport::CameraPublisher imagePub;
 		BufferedData data;
 	};
+	
+	image_transport::CameraPublisher imagePub;
+	image_transport::CameraSubscriber imageSub;
 	
 	ros::NodeHandle nodeHandle, privHandle;
 	ros::ServiceServer captureServer;
 	
-	std::vector< CameraRegistration > cameraRegistry;
+	typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
+	CameraRegistry cameraRegistry;
 	
 	image_transport::ImageTransport publicPort;
+	image_transport::ImageTransport privatePort;
 		
 	argus_utils::Semaphore cameraTokens;
 	argus_utils::Semaphore completedJobs;
 	argus_utils::WorkerPool pool;
 	
 	void ImageCallback( const sensor_msgs::Image::ConstPtr& image,
-						const sensor_msgs::CameraInfo::ConstPtr& info,
-						CameraRegistration& registration );
+						const sensor_msgs::CameraInfo::ConstPtr& info );
 	
 	void CaptureJob( CameraRegistration& registration );
 	

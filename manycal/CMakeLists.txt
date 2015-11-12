@@ -7,19 +7,17 @@ set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED 
 	COMPONENTS		camera_info_manager
-					cv_bridge
-					image_transport
 					message_generation
-					nodelet
 					roscpp
 					sensor_msgs
 					std_msgs
-					atags
-					camplex
 					argus_utils
 					argus_msgs
-					tf
-					graphopt
+					image_transport
+					cv_bridge
+# 					graphopt
+					extrinsics_array
+					fiducial_array
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -27,30 +25,16 @@ include_directories( ${catkin_INCLUDE_DIRS} )
 find_package(Boost REQUIRED)
 include_directories( ${Boost_INCLUDE_DIRS} )
 
-# Find OpenCV3 and set flag
-find_package(OpenCV 3 REQUIRED)
-add_definitions( "-DOPENCV3=1" )
-include_directories( ${OpenCV_INCLUDE_DIRS} )
-
-# find_package(isam REQUIRED)
-# include_directories( ${isam_INCLUDE_DIRS} )
-# message( STATUS ${isam_LIBRARIES} )
-
-# find_package(apriltags REQUIRED)
-# include_directories( ${apriltags_INCLUDE_DIRS} )
-# add_definitions( ${apriltags_DEFINITIONS} )
-
-add_message_files(
-	FILES			TagCorrespondence.msg 
-)
+find_package(isam REQUIRED)
+include_directories( ${isam_INCLUDE_DIRS} )
+message( STATUS ${isam_LIBRARIES} )
 
 add_service_files(
-	FILES			CaptureArray.srv
+	FILES           CaptureArray.srv
 )
 
 generate_messages(
-	DEPENDENCIES 	std_msgs
-					argus_msgs
+	DEPENDENCIES	std_msgs
 )
 
 catkin_package(
@@ -58,19 +42,17 @@ catkin_package(
 	
 	LIBRARIES 		manycal
 					
-	CATKIN_DEPENDS 	cv_bridge 
-					image_transport 
-					message_runtime 
-					nodelet
+	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
 					sensor_msgs 
 					std_msgs
-					atags
-					camplex
 					argus_utils
 					argus_msgs
-					tf
-					graphopt
+					image_transport
+					cv_bridge
+# 					graphopt
+					extrinsics_array
+					fiducial_array
 					
 	DEPENDS 		Boost 
 					OpenCV
@@ -81,9 +63,10 @@ catkin_package(
 include_directories( include )
 
 add_library( manycal
-# 	src/ArrayCalibrator.cpp
-	src/ArrayCapturer.cpp
+ 	src/ArrayCalibrator.cpp
+# 	src/ArrayCapturer.cpp
 	src/ArraySynchronizer.cpp
+	src/ManycalCommon.cpp
 )
 
 # add_dependencies( manycal ${manycal_EXPORTED_TARGETS} )
@@ -101,13 +84,27 @@ target_link_libraries( manycal
 # 	${catkin_LIBRARIES} 	
 # 	manycal )
 	
-add_executable( array_capturer_node nodes/array_capture_node.cpp )
-add_dependencies( array_capturer_node ${PROJECT_NAME}_gencfg )
-target_link_libraries( array_capturer_node
+# add_executable( array_capturer_node nodes/array_capture_node.cpp )
+# add_dependencies( array_capturer_node ${PROJECT_NAME}_gencfg )
+# target_link_libraries( array_capturer_node
+# 	${isam_LIBRARIES}
+# 	${catkin_LIBRARIES} 	
+# 	manycal )
+
+add_executable( isam_test tests/IsamTest.cpp )
+add_dependencies( isam_test ${PROJECT_NAME}_gencfg )
+target_link_libraries( isam_test
 	${isam_LIBRARIES}
-	${catkin_LIBRARIES} 	
+	${catkin_LIBRARIES}
 	manycal )
 
+add_executable( odometry_test tests/OdometryTest.cpp )
+add_dependencies( odometry_test ${PROJECT_NAME}_gencfg )
+target_link_libraries( odometry_test
+	${isam_LIBRARIES}
+	${catkin_LIBRARIES}
+	manycal )
+	
 add_executable( array_synchronizer_node nodes/array_synchronizer_node.cpp )
 add_dependencies( array_synchronizer_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( array_synchronizer_node
