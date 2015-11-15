@@ -2,7 +2,7 @@
 
 #include "extrinsics_array/ExtrinsicsArray.h"
 #include "extrinsics_array/ExtrinsicsArrayInfo.h"
-#include "extrinsics_array/LookupInterface.h"
+#include "lookup/LookupInterface.h"
 
 #include <ros/ros.h>
 #include <unordered_map>
@@ -11,7 +11,7 @@
 namespace extrinsics_array
 {
 	
-/*! \brief Stores, retrieves, and caches fiducial array information from the ROS
+/*! \brief Stores, retrieves, and caches array information from the ROS
  * parameter server. Also manages the array member lookup table on the parameter
  * server. 
  *
@@ -66,7 +66,7 @@ protected:
 	
 	ros::NodeHandle nodeHandle;
 	
-	LookupInterface lookupInterface;
+	lookup::LookupInterface lookupInterface;
 	
 	/*! \brief Records array queries that have failed before. */
 	std::unordered_set< std::string > failedArrayQueries;

@@ -2,7 +2,7 @@
 
 #include <ros/ros.h>
 
-namespace extrinsics_array
+namespace lookup
 {
 
 /*! \brief Provides an interface to a ROS parameter server lookup service. */
@@ -15,12 +15,13 @@ public:
 	/*! \brief Sets the lookup namespace. */
 	void SetLookupNamespace( const std::string& ns );
 	
-	// TODO Convert parent path to fully qualified?
 	/*! \brief Writes the parent entry. */
-	void WriteLookup( const std::string& child, const std::string& parent );
+	void WriteParent( const std::string& child, const std::string& parent );
 	
 	/*! \brief Tries to look up the parent. Returns success. */
-	bool ReadLookup( const std::string& child, std::string& parent );
+	bool ReadParent( const std::string& child, std::string& parent );
+	
+	/*! \brief Writes the frame displacement topic. */
 	
 private:
 	
@@ -31,4 +32,4 @@ private:
 	
 };
 	
-} // end namespace extrinsics_array 
+} // end namespace lookup 

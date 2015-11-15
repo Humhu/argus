@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(extrinsics_array)
+project(lookup)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
@@ -9,67 +9,52 @@ set(CMAKE_BUILD_TYPE Release)
 find_package(catkin REQUIRED 
 	COMPONENTS		message_generation
 					roscpp
-					std_msgs
-					geometry_msgs
 					argus_utils
-					lookup
 )
 
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
 
-# Find OpenCV3 and set flags for other ROS packages
-find_package(OpenCV 3 REQUIRED)
-add_definitions( "-DOPENCV3=1" )
-
+# TODO Figure out how to make this included with argus_utils includes
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
-
-add_message_files(
-	FILES			ExtrinsicsArrayInfo.msg
-)
-
-generate_messages(
-	DEPENDENCIES	std_msgs
-					geometry_msgs
-)
 
 catkin_package(
 	INCLUDE_DIRS 	include
 	
-	LIBRARIES 		extrinsics_array
+	LIBRARIES 		lookup
 					
-	CATKIN_DEPENDS 	message_runtime 
-					roscpp 
-					std_msgs
-					geometry_msgs
+	CATKIN_DEPENDS 	roscpp 
 					argus_utils
-					lookup
 					
 	DEPENDS 		Boost 
 					system_lib
 )
 
 include_directories( include
+${EIGEN3_INCLUDE_DIR}
 					 ${Boost_INCLUDE_DIRS}
-					 ${EIGEN3_INCLUDE_DIR}
-					 ${OpenCV_INCLUDE_DIRS}
 					 ${catkin_INCLUDE_DIRS}
 )
 
-add_library( extrinsics_array
-	src/ExtrinsicsArray.cpp
-	src/ExtrinsicsArrayCalibrationParsers.cpp
-	src/ExtrinsicsInfoManager.cpp
+add_library( lookup
+	src/LookupInterface.cpp
 )
-add_dependencies( extrinsics_array ${extrinsics_array_EXPORTED_TARGETS} )
-target_link_libraries( extrinsics_array
+target_link_libraries( lookup
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
 
+add_executable( lookup_file_registrar nodes/lookup_file_registrar.cpp )
+add_dependencies( lookup_file_registrar lookup_gencfg )
+target_link_libraries( lookup_file_registrar lookup )
+
+add_executable( lookup_registrar nodes/lookup_registrar.cpp )
+add_dependencies( lookup_registrar lookup_gencfg )
+target_link_libraries( lookup_registrar lookup )
+
 ## Mark executables and/or libraries for installation
-install(TARGETS extrinsics_array
+install(TARGETS lookup
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

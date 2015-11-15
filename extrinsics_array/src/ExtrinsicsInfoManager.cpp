@@ -60,7 +60,7 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 	if( !forceRead && failedMemberQueries.count( memberName ) > 0 ) { return false; }
 	
 	std::string arrayPath;
-	if( !lookupInterface.ReadLookup( memberName, arrayPath ) )
+	if( !lookupInterface.ReadParent( memberName, arrayPath ) )
 	{
 		ROS_WARN_STREAM( "Could not find parent information for " + memberName );
 		failedMemberQueries.insert( memberName );
