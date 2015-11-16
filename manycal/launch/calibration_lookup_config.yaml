@@ -1,0 +1,12 @@
+apriltag_36h11_id0:
+  namespace:
+    lookup_value: apriltag_36h11_id0
+    resolve_value: true
+  reference_frame:
+    lookup_value: calibration_target
+    resolve_value: false
+  
+calibration_target:
+  odometry_topic:
+    lookup_value: odometry 
+    resolve_value: true

@@ -3,8 +3,8 @@
 namespace lookup
 {
 
-LookupInterface::LookupInterface( ros::NodeHandle& nh )
-: nodeHandle( nh ), lookupNamespace( "/lookup/" ) {}
+LookupInterface::LookupInterface()
+: nodeHandle(), lookupNamespace( "/lookup/" ) {}
 
 void LookupInterface::SetLookupNamespace( const std::string& ns )
 {
@@ -12,26 +12,35 @@ void LookupInterface::SetLookupNamespace( const std::string& ns )
 	if( lookupNamespace.back() != '/' ) { lookupNamespace += "/"; }
 }
 
-void LookupInterface::WriteParent( const std::string& child, const std::string& parent )
+void LookupInterface::WriteNamespace( const std::string& targetName, const std::string& ns )
 {
-	std::string lookupPath = FormLookupPath( child ) + "parent_array";
+	std::string resolvedNamespace = CleanPath( nodeHandle.resolveName( ns ) );
+	std::string lookupPath = FormLookupPath( targetName );
 	
-	// Parent paths should always end in a slash /
-	std::string p = parent;
+	ROS_INFO_STREAM( "Registering target (" << targetName 
+	    << ") with fully resolved namespace (" << resolvedNamespace 
+	    << ") at lookup path (" << lookupPath << ")" );
+	
+	nodeHandle.setParam( lookupPath, resolvedNamespace );
+}
+
+bool LookupInterface::ReadNamespace( const std::string& targetName, 
+                                     std::string& resolvedNamespace )
+{
+	return nodeHandle.getParam( FormLookupPath( targetName ), resolvedNamespace );
+}
+
+std::string LookupInterface::CleanPath( const std::string& path )
+{
+	std::string p = path;
 	if( p.back() != '/' ) { p += "/"; }
-	nodeHandle.setParam( lookupPath, p );
+	return p;
 }
 
-bool LookupInterface::ReadParent( const std::string& child, std::string& parent )
+std::string LookupInterface::FormLookupPath( const std::string& key ) const
 {
-	std::string lookupPath = FormLookupPath( child ) + "parent_array";
-	return nodeHandle.getParam( lookupPath, parent );
-}
-
-std::string LookupInterface::FormLookupPath( const std::string& child ) const
-{
-	std::string lookupPath = lookupNamespace + child;
-	if( lookupPath.back() != '/' ) { lookupPath += "/"; }
+	std::string lookupPath = CleanPath( lookupNamespace + key );
+	lookupPath += "namespace";
 	return lookupPath;
 }
 	

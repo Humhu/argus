@@ -1,10 +1,10 @@
 #pragma once
 
 #include "argus_utils/PoseSE3.h"
-#include "fiducial_array/FiducialInfo.h"
+#include "fiducials/FiducialInfo.h"
 #include "geometry_msgs/Point.h"
 
-namespace fiducial_array
+namespace fiducials
 {
 
 /*! \brief Stores point representations for a fiducial. */
@@ -26,4 +26,4 @@ public:
 	
 };
 	
-} // end namespace fiducial_array
+} // end namespace fiducials

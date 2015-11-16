@@ -27,6 +27,7 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
+	lookup::LookupInterface lookupInterface;
 	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 	
 	/*! \brief The frame this estimator tracks relative to arrays. */

@@ -13,7 +13,7 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					argus_utils
 					extrinsics_array
-					fiducial_array
+					fiducials
 )
 
 # Use Boost for most utilities, threading
@@ -32,7 +32,7 @@ catkin_package(
 					std_msgs
 					argus_utils
 					extrinsics_array
-					fiducial_array
+					fiducials
 					
 	DEPENDS 		Boost 
 					system_lib

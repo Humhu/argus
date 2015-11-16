@@ -1,15 +1,13 @@
 #include "argus_utils/YamlUtils.h"
 #include "argus_utils/GeometryUtils.h"
-#include "fiducial_array/FiducialCalibrationParsers.h"
-#include "extrinsics_array/ExtrinsicsArrayCalibrationParsers.h"
+#include "fiducials/FiducialCalibrationParsers.h"
 
 #include <fstream>
 #include <boost/foreach.hpp>
 
 using namespace argus_utils;
-using namespace extrinsics_array;
 
-namespace fiducial_array
+namespace fiducials
 {
 
 bool ParseFiducialCalibration( const YAML::Node& yaml, FiducialInfo& info )
@@ -90,64 +88,4 @@ bool WriteFiducialCalibration( const std::string& path, const FiducialInfo& info
 	return true;
 }
 
-bool ParseFiducialArrayCalibration( const YAML::Node& yaml, FiducialArrayInfo& info )
-{
-	if( !ParseExtrinsicsArrayCalibration( yaml, info.extrinsics ) ) { return false; }
-	
-	info.fiducials.clear();
-	info.fiducials.reserve( info.extrinsics.memberNames.size() );
-	
-	BOOST_FOREACH( const std::string& memberName, info.extrinsics.memberNames )
-	{
-		FiducialInfo fidInfo;
-		if( !ParseFiducialCalibration( yaml[memberName], fidInfo ) ) { return false; }
-		info.fiducials.push_back( fidInfo );
-	}
-	return true;
-}
-
-bool ReadFiducialArrayCalibration( const std::string& path,
-							  FiducialArrayInfo& info )
-{
-	YAML::Node yaml;
-	try 
-	{
-		 yaml = YAML::LoadFile( path );
-	}
-	catch( YAML::BadFile e )
-	{
-		return false;
-	}
-	
-	return ParseFiducialArrayCalibration( yaml, info );
-}
-
-bool PopulateFiducialArrayCalibration( const FiducialArrayInfo& info, YAML::Node& yaml )
-{
-	if( !PopulateExtrinsicsArrayCalibration( info.extrinsics, yaml ) ) { return false; }
-	
-	for( unsigned int i = 0; i < info.extrinsics.memberNames.size(); i++ )
-	{
-		std::string memberName = info.extrinsics.memberNames[i];
-		YAML::Node member;
-		if( !PopulateFiducialCalibration( info.fiducials[i], member ) ) { return false; }
-		yaml[ memberName ] = member;
-	}
-	return true;
-}
-
-bool WriteFiducialArrayCalibration( const std::string& path, const FiducialArrayInfo& info )
-{
-	std::ofstream output( path );
-	if( !output.is_open() )
-	{
-		return false;
-	}
-	
-	YAML::Node yaml;
-	if( !PopulateFiducialArrayCalibration( info, yaml ) ) { return false; }
-	output << yaml;
-	return true;
-}
-
-} // end namespace fiducial_array
+} // end namespace fiducials

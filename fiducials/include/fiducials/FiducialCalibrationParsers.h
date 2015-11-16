@@ -2,10 +2,9 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "fiducial_array/FiducialInfo.h"
-#include "fiducial_array/FiducialArrayInfo.h"
+#include "fiducials/FiducialInfo.h"
 
-namespace fiducial_array
+namespace fiducials
 {
 
 /*! \brief Tools for reading/writing fiducial calibration files.
@@ -29,17 +28,4 @@ bool PopulateFiducialCalibration( const FiducialInfo& info, YAML::Node& yaml );
 /*! \brief Writes a fiducial calibration to a YAML file. Returns success. */
 bool WriteFiducialCalibration( const std::string& path, const FiducialInfo& info );
 
-
-/*! \brief Parse a fiducial array calibration from a YAML object. */
-bool ParseFiducialArrayCalibration( const YAML::Node& yaml, FiducialArrayInfo& info );
-
-/*! \brief Reads a fiducial array calibration from a YAML file. Returns success. */
-bool ReadFiducialArrayCalibration( const std::string& path, FiducialArrayInfo& info );
-
-/*! \brief Populates a YAML node from a fiducial array calibration. Returns succes. */
-bool PopulateFiducialArrayCalibration( const FiducialArrayInfo& info, YAML::Node& yaml );
-
-/*! \brief Writes a fiducial array calibraiton to a YAML file. Returns success. */
-bool WriteFiducialArrayCalibration( const std::string& path, const FiducialArrayInfo& info );
-
-} // end namespace fiducial_array
+} // end namespace fiducials

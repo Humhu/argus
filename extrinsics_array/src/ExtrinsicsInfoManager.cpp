@@ -10,97 +10,69 @@ using namespace argus_utils;
 namespace extrinsics_array
 {
 	
-ExtrinsicsInfoManager::ExtrinsicsInfoManager( ros::NodeHandle& nh )
-: nodeHandle( nh ), lookupInterface( nodeHandle )
+ExtrinsicsInfoManager::ExtrinsicsInfoManager( lookup::LookupInterface& interface )
+: lookupInterface( interface )
 {}
-
-ExtrinsicsInfoManager::~ExtrinsicsInfoManager() {}
-
-void ExtrinsicsInfoManager::SetLookupNamespace( const std::string& loc )
-{
-	lookupInterface.SetLookupNamespace( loc );
-}
-
-bool ExtrinsicsInfoManager::ReadArrayInformation( const std::string& arrayPath, 
-                                                  bool forceRead )
-{
-	if( !forceRead && failedArrayQueries.count( arrayPath ) > 0 ) { return false; }
-	
-	YAML::Node extrinsics;
-	
-	std::string p = SanitizeArrayPath( arrayPath );
-	if( !GetYamlParam( nodeHandle, p, extrinsics ) )
-	{
-		ROS_WARN_STREAM( "Could not retrieve extrinsics array information at " << p );
-		failedArrayQueries.insert( arrayPath );
-		return false;
-	}
-	
-	// Parse the array info into the map
-	ExtrinsicsArrayInfo arrayInfo;
-	if( !ParseExtrinsicsArrayCalibration( extrinsics, arrayInfo ) )
-	{
-		ROS_ERROR_STREAM( "Error parsing extrinsics information for " << p );
-		failedArrayQueries.insert( arrayPath );
-		return false;
-	}
-	arrayMap[ p ] = std::make_shared<ExtrinsicsArray>( arrayInfo );
-	
-	// Add the info to the extrinsics name map
-	BOOST_FOREACH( const std::string& name, arrayInfo.memberNames )
-	{
-		memberMap[ name ] = p;
-	}
-	return true;
-}
 
 bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName,
                                                    bool forceRead )
 {
-	if( !forceRead && failedMemberQueries.count( memberName ) > 0 ) { return false; }
+	// Fast-fail using cache
+	if( !forceRead && failedQueries.count( memberName ) > 0 ) { return false; }
 	
-	std::string arrayPath;
-	if( !lookupInterface.ReadParent( memberName, arrayPath ) )
+	std::string memberNamespace;
+	if( !lookupInterface.ReadNamespace( memberName, memberNamespace ) )
 	{
-		ROS_WARN_STREAM( "Could not find parent information for " + memberName );
-		failedMemberQueries.insert( memberName );
+		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
+		failedQueries.insert( memberName );
+		return false;
+	}
+
+	MemberRegistration registration;
+	
+	// Read extrinsics first
+	YAML::Node extrinsics;
+	std::string extrinsicsKey = memberNamespace + "extrinsics";
+	if( !GetYamlParam( nodeHandle, extrinsicsKey, extrinsics ) )
+	{
+		ROS_WARN_STREAM( "Could not find extrinsics information for: " << memberName 
+		    << " at path " << extrinsicsKey );
+		return false;
+	}
+	if( !GetPoseYaml( extrinsics, registration.extrinsics ) )
+	{
+		ROS_WARN_STREAM( "Could not parse extrinsics information for: " << memberName
+		    << " at key: " << extrinsicsKey );
 		return false;
 	}
 	
-	// Don't have to write to the memberMap because ReadArrayInformation will do it
-	return ReadArrayInformation( arrayPath );
-}
-
-bool ExtrinsicsInfoManager::HasArray( const std::string& arrayPath ) const
-{
-	return arrayMap.count( SanitizeArrayPath( arrayPath ) ) != 0;
+	// Then read reference frame ID
+	YAML::Node reference;
+	std::string referenceKey = memberNamespace + "frame_id";
+	if( !GetYamlParam( nodeHandle, referenceKey, reference ) )
+	{
+		ROS_WARN_STREAM( "Could not find reference frame information for: " << memberName
+		    << " at path " << referenceKey );
+		return false;
+	}
+	registration.frameID = reference.as<std::string>();
+	memberRegistry[ memberName ] = registration;
+	return true;
 }
 
 bool ExtrinsicsInfoManager::HasMember( const std::string& memberName ) const
 {
-	return memberMap.count( memberName ) != 0;
+	return memberRegistry.count( memberName ) != 0;
 }
 
-const ExtrinsicsArray& ExtrinsicsInfoManager::GetArray( const std::string& arrayPath )
+const PoseSE3& ExtrinsicsInfoManager::GetExtrinsics( const std::string& memberName ) const
 {
-	return *( arrayMap.at( arrayPath ) );
-}
-	
-const ExtrinsicsArray& ExtrinsicsInfoManager::GetParentArray( const std::string& memberName )
-{
-	return *( arrayMap.at( memberMap.at( memberName ) ) );
-}
-	
-const std::string& ExtrinsicsInfoManager::GetParentPath( const std::string& memberName )
-{
-	return memberMap.at( memberName );
+	return memberRegistry.at( memberName ).extrinsics;
 }
 
-std::string ExtrinsicsInfoManager::SanitizeArrayPath( const std::string& arrayPath )
+const std::string& ExtrinsicsInfoManager::GetReferenceFrame( const std::string& memberName ) const
 {
-	std::string p = arrayPath;
-	if( p.back() != '/' ) { p += "/"; }
-	return p;
+	return memberRegistry.at( memberName ).frameID;
 }
 
 } // end namespace extrinsics_array

@@ -3,6 +3,8 @@
 #include "argus_utils/MapUtils.hpp"
 #include "isam/Slam.h"
 
+#include <iostream> // TODO
+
 namespace manycal
 {
 
@@ -33,10 +35,21 @@ public:
 	OdometryGraph( isam::Slam::Ptr s ) 
 	: slam( s ) {}
 	
-	typename NodeType::Ptr GetNode( const IndexType& ind )
+	/*! \brief Retrieve a node at the specified index if it exists. Returns nullptr otherwise. */
+	typename NodeType::Ptr GetNode( const IndexType& ind ) const
 	{
-		if( timeSeries.count( ind == 0 ) ) { return nullptr; }
-		return timeSeries[ ind ];
+		if( timeSeries.count( ind ) == 0 ) { return nullptr; }
+		return timeSeries.at( ind ).node;
+	}
+	
+	/*! \brief Retrieve a node at the specified index if it exists. Creates the node
+	 * if it is between the first and last index otherwise. Returns the node. */
+	typename NodeType::Ptr GetNodeInterpolate( const IndexType& ind )
+	{
+		typename NodeType::Ptr node = GetNode( ind );
+		if( node ) { return node; }
+		
+		return SplitOdometry( ind );
 	}
 	
 	/*! \brief Creates a node and adds a prior. */
@@ -88,7 +101,7 @@ public:
 		if( !argus_utils::get_closest_lower( timeSeries, ind, prevIter ) || 
 		    !argus_utils::get_closest_upper( timeSeries, ind, nextIter ) )
 		{
-			return false;
+			return nullptr;
 		}
 		
 		IndexType prevTime = prevIter->first;

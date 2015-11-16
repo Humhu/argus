@@ -1,7 +1,7 @@
-#include "fiducial_array/FiducialCommon.h"
+#include "fiducials/FiducialCommon.h"
 #include <boost/foreach.hpp>
 
-namespace fiducial_array
+namespace fiducials
 {
 
 std::vector< cv::Point2f > MsgToPoints( const std::vector< argus_msgs::Point2D >& msg )
@@ -229,4 +229,4 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 	return true;
 }
 
-} // end namespace fiducial_array
+} // end namespace fiducials

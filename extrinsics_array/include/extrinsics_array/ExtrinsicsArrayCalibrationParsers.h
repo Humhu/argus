@@ -34,4 +34,4 @@ bool PopulateExtrinsicsArrayCalibration( const ExtrinsicsArrayInfo& info,
 bool WriteExtrinsicsArrayCalibration( const std::string& path,
                                       const ExtrinsicsArrayInfo& info );
 
-} // end namespace fiducial_array
+} // end namespace extrinsics_array

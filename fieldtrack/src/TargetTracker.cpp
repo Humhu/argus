@@ -57,7 +57,6 @@ TargetTracker::TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	
 	poseSub = nodeHandle.subscribe( "relative_poses", 10, &TargetTracker::PoseCallback, this );
 	dispSub = nodeHandle.subscribe( "displacements", 10, &TargetTracker::DisplacementCallback, this );
-	
 }
 
 // TODO Use RelativePoseWithCovariance msg instead

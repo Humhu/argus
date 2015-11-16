@@ -11,11 +11,11 @@
 
 #include <isam/sclam_monocular.h>
 
+#include "lookup/LookupInterface.h"
 #include "argus_msgs/ImageFiducialDetections.h"
-
 #include "argus_utils/PoseSE3.h"
-
-#include "fiducial_array/FiducialInfoManager.h"
+#include "fiducials/FiducialInfoManager.h"
+#include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 #include <unordered_map>
 
@@ -41,11 +41,17 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
-	ros::Subscriber detectionSub;
-	ros::Subscriber relPoseSub;
+	lookup::LookupInterface lookup;
+	fiducials::FiducialInfoManager fiducialManager;
+	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 	
-	fiducial_array::FiducialInfoManager fidManager;
-	extrinsics_array::ExtrinsicsInfoManager camManager;
+	/*! \brief Stores subscriptions to odometry and detection inputs. */
+	struct TargetRegistration
+	{
+		ros::Subscriber detectionSub;
+		ros::Subscriber odometrySub;
+	};
+	std::unordered_map <std::string, TargetRegistration> targetRegistry;
 	
 	struct CameraRegistration
 	{
@@ -71,18 +77,26 @@ private:
 	};
 	
 	isam::Slam::Ptr slam;
+	std::vector<isam::FiducialFactor::Ptr> observations;
 	
 	/*! \brief Map from frame names to registrations. */
 	std::unordered_map <std::string, FrameRegistration> frameRegistry;
 	std::unordered_map <std::string, CameraRegistration> cameraRegistry;
 	std::unordered_map <std::string, FiducialRegistration> fiducialRegistry;
 	
-	void RelPoseCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg );
+	void OdometryCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg );
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	
-	void InitializeFrame( const std::string& frameName, ros::Time t );
-	void InitializeCamera( const std::string& cameraName, ros::Time t );
-	void InitializeFiducial( const std::string& fidName, ros::Time t );
+	/*! \brief Initialize a new reference frame. Returns success. */
+	bool InitializeFrame( const std::string& frameName, ros::Time t );
+	
+	/*! \brief Initialize a new camera. Uses the camera manager to determine parent 
+	 * reference. Returns success. */
+	bool InitializeCamera( const std::string& cameraName, ros::Time t );
+	
+	/*! \brief Initialize a new fiducial. Uses the extrinsics manager to determine 
+	 * parent reference. Returns success. */
+	bool InitializeFiducial( const std::string& fidName, ros::Time t );
 	
 	void CreateObservationFactor( CameraRegistration& camera,
 	                              FrameRegistration& cameraFrame,

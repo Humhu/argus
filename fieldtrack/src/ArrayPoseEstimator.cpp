@@ -8,16 +8,13 @@ namespace fieldtrack
 {
 	
 ArrayPoseEstimator::ArrayPoseEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), extrinsicsManager( nh )
+: nodeHandle( nh ), privHandle( ph ), lookupInterface(), 
+extrinsicsManager( lookupInterface )
 {
 	// Set up lookup interface
 	std::string lookupNamespace;
-	if( !ph.getParam( "lookup_namespace", lookupNamespace ) ) 
-	{
-		ROS_ERROR_STREAM( "Lookup namespace must be specified." );
-	}
-	if( lookupNamespace.back() != '/' ) { lookupNamespace += "/"; }
-	extrinsicsManager.SetLookupNamespace( lookupNamespace );
+	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
+	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
 	// Parse reference name
 	if( !privHandle.getParam( "reference_name", referenceName ) )
@@ -67,9 +64,8 @@ void ArrayPoseEstimator::RelativePoseCallback( const argus_msgs::RelativePose::C
 	}
 	
 	// Convert obsPose to be between the frames referenceName and target's parent array frame
-	const ExtrinsicsArray& targetArray = extrinsicsManager.GetParentArray( targetName );
-	std::string targetFrameName = targetArray.GetReferenceFrame();
-	PoseSE3 targetExtrinsics = targetArray.GetPose( targetName );
+	const std::string& targetFrameName = extrinsicsManager.GetReferenceFrame( targetName );
+	const PoseSE3& targetExtrinsics = extrinsicsManager.GetExtrinsics( targetName );
 	
 	PoseSE3 relPose = obsPose * targetExtrinsics.Inverse();
 	

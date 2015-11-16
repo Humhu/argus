@@ -5,30 +5,30 @@
 namespace lookup
 {
 
-/*! \brief Provides an interface to a ROS parameter server lookup service. */
+/*! \brief Provides an interface to a lookup service that resolves unique object
+ * names to fully-qualified namespaces. Uses the ROS parameter server. */
 class LookupInterface
 {
 public:
 
-	LookupInterface( ros::NodeHandle& nh );
+	LookupInterface();
 	
 	/*! \brief Sets the lookup namespace. */
 	void SetLookupNamespace( const std::string& ns );
 	
-	/*! \brief Writes the parent entry. */
-	void WriteParent( const std::string& child, const std::string& parent );
+	/*! \brief Fully resolves the namespace and registers it to the target name. */
+	void WriteNamespace( const std::string& targetName, const std::string& ns );
 	
-	/*! \brief Tries to look up the parent. Returns success. */
-	bool ReadParent( const std::string& child, std::string& parent );
-	
-	/*! \brief Writes the frame displacement topic. */
+	/*! \brief Tries to look up the corresponding namespace. Returns success. */
+	bool ReadNamespace( const std::string& key, std::string& ns );
 	
 private:
 	
 	ros::NodeHandle nodeHandle;
 	std::string lookupNamespace;
 	
-	std::string FormLookupPath( const std::string& child ) const;
+	static std::string CleanPath( const std::string& path );
+	std::string FormLookupPath( const std::string& key ) const;
 	
 };
 	

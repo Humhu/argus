@@ -7,46 +7,22 @@ using namespace argus_utils;
 namespace extrinsics_array
 {
 	
-ExtrinsicsArray::ExtrinsicsArray() {}
-
-ExtrinsicsArray::~ExtrinsicsArray() {}
+ExtrinsicsArray::ExtrinsicsArray( const std::string& refName )
+: referenceFrame( refName ) {}
 
 ExtrinsicsArray::ExtrinsicsArray( const ExtrinsicsArrayInfo& info )
 {
-	std::vector< PoseSE3 > poses;
-	poses.reserve( info.extrinsics.size() );
 	for( unsigned int i = 0; i < info.extrinsics.size(); i++ )
 	{
-		poses.push_back( MsgToPose( info.extrinsics[i] ) );
+		AddMember( info.memberNames[i], MsgToPose( info.extrinsics[i] ) );
 	}
 	referenceFrame = info.frame_id;
-	Populate( info.memberNames, poses );
 }
 
-ExtrinsicsArray::ExtrinsicsArray( const std::string& refName,
-                                  const std::vector< std::string >& names,
-                                  const std::vector< argus_utils::PoseSE3 >& poses )
+void ExtrinsicsArray::AddMember( const std::string& memberName,
+                                 const PoseSE3& pose )
 {
-	referenceFrame = refName;
-	Populate( names, poses );
-}
-
-void ExtrinsicsArray::Populate( const std::vector< std::string >& names,
-                                const std::vector< argus_utils::PoseSE3 >& poses )
-{
-	if( names.size() != poses.size() )
-	{
-		throw std::runtime_error( "Need same number of names and poses." );
-	}
-	
-	for( unsigned int i = 0; i < names.size(); i++ )
-	{
-		if( HasMember( names[i] ) )
-		{
-			throw std::runtime_error( "Duplicate member name " + names[i] );
-		}
-		extrinsics[ names[i] ] = poses[i];
-	}
+	extrinsics[ memberName ] = pose;
 }
 
 const std::string& ExtrinsicsArray::GetReferenceFrame() const { return referenceFrame; }

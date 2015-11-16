@@ -1,30 +1,30 @@
 <launch>
-   <env name="ROSCONSOLE_CONFIG_FILE" 
-       value="$(find manycal)/launch/rosconsole.config"/>
+  
+  <group ns="calibration_target">
+    
+    # AprilTag 36h11 ID 0
+    <rosparam command="load" file="$(env HOME)/.ros/object_info/apriltag_36h11_id0.yaml"/>
+
+    <node pkg="lookup" type="lookup_file_registrar" name="fiducial_registrar">
+      <rosparam subst_value="true" param="file_path">
+        $(find manycal)/launch/calibration_lookup_config.yaml
+      </rosparam>
+    </node>
+
+    <node pkg="manycal" type="dummy_odometry" name="dummy_odometer" output="screen">
+      <remap from="displacements" to="odometry"/>
+      <rosparam>
+        rate: 10.0
+        frame_id: calibration_target
+      </rosparam>
+    </node>
+
+  </group>
    
-  <node pkg="v4l2_cam" type="camera_node" name="camera">
+  <node pkg="manycal" type="array_calibrator_node" name="calibrator" output="screen">
     <rosparam>
-      camera_name: pseye_0
-      device_path: /dev/video0
-      frame_resolution: [640, 480]
-      frame_rate: 30
-      stream_on_start: true
+      calibration_targets: [robot, calibration_target]
     </rosparam>
   </node>
   
-  <node pkg="atags" type="detector_node" name="detector">
-    <remap from="image_source" to="camera/image_raw"/>
-    <rosparam>
-      tag_family: 36h11
-    </rosparam>
-  </node>
-  
-  <node pkg="manycal" type="tag_calibrator_node" name="calibrator" output="screen">
-    <remap from="detections" to="detector/detections_raw"/>
-    <rosparam>
-      camera_config: /home/humphreh/Software/argus/src/manycal/test_config.yaml
-      tag_config: /home/humphreh/Software/argus/src/manycal/test_tag_list.yaml
-      tag_size: 0.0858
-    </rosparam>
-  </node>
 </launch>

@@ -13,22 +13,18 @@ class ExtrinsicsArray
 {
 public:
 	
-	typedef std::shared_ptr< ExtrinsicsArray > Ptr;
+	typedef std::shared_ptr <ExtrinsicsArray> Ptr;
 	
-	/*! \brief Constructs an empty array. */
-	ExtrinsicsArray();
-	
-	virtual ~ExtrinsicsArray();
+	/*! \brief Constructs an empty array for a specified reference frame ID. */
+	ExtrinsicsArray( const std::string& refName );
 	
 	/*! \brief Constructs an array from an info message. */
 	ExtrinsicsArray( const ExtrinsicsArrayInfo& info );
 	
-	/*! \brief Constructs an array from name pose pairs. */
-	ExtrinsicsArray( const std::string& refName,
-	                 const std::vector< std::string >& names,
-	                 const std::vector< argus_utils::PoseSE3 >& poses );
+	/*! \brief Adds a member with the specified pose. Overwrites existing members. */
+	void AddMember( const std::string& memberName, const argus_utils::PoseSE3& pose );
 	
-	/*! \brief Return the reference frame name. */
+	/*! \brief Return the reference frame ID. */
 	const std::string& GetReferenceFrame() const;
 	
 	/*! \brief Returns whether or not the array contains a member. */
@@ -45,9 +41,6 @@ protected:
 	/*! \brief Fiducial points in array coordinates */
 	std::unordered_map< std::string, argus_utils::PoseSE3 > extrinsics;
 	
-	/*! \brief Populates the array using name-pose pairs. */
-	void Populate( const std::vector< std::string >& names,
-	               const std::vector< argus_utils::PoseSE3 >& poses );
 };
 
 } // end namespace extrinsics_array

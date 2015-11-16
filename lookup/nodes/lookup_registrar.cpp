@@ -14,6 +14,7 @@ int main( int argc, char** argv )
 	
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
+	lookup::LookupInterface lookupInterface;
 	
 	std::string lookupNamespace;
 	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup/" );
@@ -22,38 +23,26 @@ int main( int argc, char** argv )
 		lookupNamespace += "/"; 
 		
 	}
+	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
-	std::string lookupKey;
-	if( !ph.getParam( "lookup_key", lookupKey ) )
+	std::string targetName;
+	if( !ph.getParam( "target_name", targetName ) )
 	{
-		ROS_ERROR_STREAM( "Must specify the key to register the topic to." );
-		return -1;
-	}
-	if( lookupKey.front() == '/' ) 
-	{ 
-		lookupKey.erase( lookupKey.begin() ); 
-	}
-	
-	std::string lookupValue;
-	if( !ph.getParam( "lookup_value", lookupValue ) )
-	{
-		ROS_ERROR_STREAM( "Must specify the value to register." );
+		ROS_ERROR_STREAM( "Must specify the target name." );
 		return -1;
 	}
 	
-	bool resolve;
-	ph.param( "resolve_value", resolve, false );
-	if( resolve )
+	std::string targetNamespace;
+	ph.param<std::string>( "target_namespace", targetNamespace, "" );
+	
+	lookupInterface.WriteNamespace( targetName, targetNamespace );	
+	
+	bool keepParams;
+	ph.param( "keep_params", keepParams, false );
+	if( !keepParams )
 	{
-		lookupValue = nh.resolveName( lookupValue );
+		ph.deleteParam("");
 	}
-	
-	ROS_INFO_STREAM( "Registering topic (" << lookupValue << ") to key ("
-	    << lookupKey << ") with lookup (" << lookupNamespace << ")" );
-	
-	nh.setParam( lookupNamespace + lookupKey, lookupValue );
-	
-	ROS_INFO_STREAM( "Registration complete." );
 	
 	return 0;
 	

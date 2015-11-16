@@ -7,9 +7,9 @@
 #include "argus_msgs/FiducialDetection.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
-#include "fiducial_array/FiducialInfo.h"
+#include "fiducials/FiducialInfo.h"
 
-namespace fiducial_array
+namespace fiducials
 {
 
 /*! \brief Convert ROS message types to OpenCV points. */

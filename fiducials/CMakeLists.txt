@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(fiducial_array)
+project(fiducials)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
@@ -13,7 +13,7 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					geometry_msgs
 					argus_utils
-					extrinsics_array
+					lookup
 )
 
 # Use Boost for most utilities, threading
@@ -27,20 +27,18 @@ add_definitions( "-DOPENCV3=1" )
 find_package(Eigen3 REQUIRED)
 add_message_files(
 	FILES			FiducialInfo.msg
-					FiducialArrayInfo.msg # Not sure if we should keep this
 )
 
 generate_messages(
 	DEPENDENCIES	std_msgs
 					sensor_msgs
 					geometry_msgs
-					extrinsics_array
 )
 
 catkin_package(
 	INCLUDE_DIRS 	include
 	
-	LIBRARIES 		fiducial_array
+	LIBRARIES 		fiducials
 					
 	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
@@ -48,7 +46,7 @@ catkin_package(
 					sensor_msgs
 					geometry_msgs
 					argus_utils
-					extrinsics_array
+					lookup
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -61,7 +59,7 @@ include_directories( include
 					 ${catkin_INCLUDE_DIRS}
 )
 
-add_library( fiducial_array
+add_library( fiducials
 	src/Fiducial.cpp
 	src/FiducialArray.cpp
 	src/FiducialCalibrationParsers.cpp
@@ -69,15 +67,15 @@ add_library( fiducial_array
 	src/FiducialCommon.cpp
 	src/PoseEstimation.cpp
 )
-add_dependencies( fiducial_array ${fiducial_array_EXPORTED_TARGETS} )
-target_link_libraries( fiducial_array
+add_dependencies( fiducials ${fiducials_EXPORTED_TARGETS} )
+target_link_libraries( fiducials
 	${Boost_LIBRARIES}
 	${OpenCV_LIBS}
 	${catkin_LIBRARIES}
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS fiducial_array
+install(TARGETS fiducials
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

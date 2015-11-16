@@ -12,7 +12,7 @@
 
 #include "atags/AtagCommon.h"
 #include "argus_msgs/ImageFiducialDetections.h"
-#include "fiducial_array/FiducialCommon.h"
+#include "fiducials/FiducialCommon.h"
 
 /*! \brief A single-threaded AprilTag detector. */
 class AtagNode
@@ -93,10 +93,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	cv::Mat frame = cv_bridge::toCvShare( msg, "mono8" )->image;
 	std::vector<AprilTags::TagDetection> tagDetections = detector->extractTags( frame );
 	
-	if( tagDetections.size() == 0 ) 
-	{ 
-		return; 
-	}
+	if( tagDetections.size() == 0 ) { return; }
 	
 	// Publish raw
 	std::vector<argus_msgs::FiducialDetection> fidDetections;
@@ -111,7 +108,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		double eprod = elarge * esmall;
 		if( eprod < minAreaProduct ) { continue; }
 		
-				
+		
 		fidDetections.push_back( atags::TagToFiducial( tagDetections[i], tagFamily ) );
 	}
 	if( fidDetections.empty() ) { return; }
@@ -127,12 +124,15 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	if( enableUndistortion || enableNormalization )
 	{
 		// Check for uncalibrated camera
-		if( cameraModel.fx() == 0 || cameraModel.fy() == 0 ) { return; }
+		if( cameraModel.fx() == 0 || cameraModel.fy() == 0 ) { 
+			ROS_WARN_STREAM( "Cannot undistort or normalize detection with uninitialized camera." );
+			return; 
+		}
 		
 		
-		fiducial_array::UndistortDetections( fidDetections, cameraModel,
-											 enableUndistortion, enableNormalization,
-									         detMsg.detections );
+		fiducials::UndistortDetections( fidDetections, cameraModel,
+		                                enableUndistortion, enableNormalization,
+		                                detMsg.detections );
 		
 		processedPublisher.publish( detMsg );
 	}

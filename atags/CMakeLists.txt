@@ -18,7 +18,7 @@ find_package(catkin REQUIRED
 					image_geometry
 					argus_utils
 					argus_msgs
-					fiducial_array
+					fiducials
 )
 
 message( STATUS ${CATKIN_DEVEL_PREFIX} )
@@ -55,7 +55,7 @@ catkin_package(
 					std_msgs
 					image_geometry
 					argus_utils
-					fiducial_array
+					fiducials
 					
 	DEPENDS 		Boost 
 					system_lib

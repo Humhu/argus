@@ -45,10 +45,6 @@ target_link_libraries( lookup
 	${catkin_LIBRARIES}
 )
 
-add_executable( lookup_file_registrar nodes/lookup_file_registrar.cpp )
-add_dependencies( lookup_file_registrar lookup_gencfg )
-target_link_libraries( lookup_file_registrar lookup )
-
 add_executable( lookup_registrar nodes/lookup_registrar.cpp )
 add_dependencies( lookup_registrar lookup_gencfg )
 target_link_libraries( lookup_registrar lookup )

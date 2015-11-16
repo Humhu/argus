@@ -1,11 +1,11 @@
-#include "fiducial_array/PoseEstimation.h"
+#include "fiducials/PoseEstimation.h"
 #include "argus_utils/GeometryUtils.h"
 
 #include <opencv2/calib3d/calib3d.hpp>
 
 using namespace argus_msgs;
 
-namespace fiducial_array
+namespace fiducials
 {
 
 // TODO if info is null, assume normalized and undistorted detections

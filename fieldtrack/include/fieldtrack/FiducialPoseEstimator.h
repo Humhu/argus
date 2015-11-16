@@ -2,14 +2,13 @@
 
 #include "argus_msgs/ImageFiducialDetections.h"
 
-#include "fiducial_array/FiducialInfoManager.h"
+#include "fiducials/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 namespace fieldtrack
 {
 
-/*! \brief Listens to fiducial detections and converts them to array relative poses. 
- * Currently does not handle non-array fiducials. */
+/*! \brief Listens to fiducial detections and converts them to relative poses. */
 class FiducialPoseEstimator
 {
 public:
@@ -23,10 +22,16 @@ private:
 	
 	ros::Publisher posePub;
 	
-	fiducial_array::FiducialInfoManager fidManager;
-	extrinsics_array::ExtrinsicsInfoManager camManager;
+	lookup::LookupInterface lookupInterface;
+	fiducials::FiducialInfoManager fiducialManager;
+	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	
+	std::unordered_map<std::string, fiducials::Fiducial> transformedFiducials;
 	
 	void DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg ); 
+	
+	bool RetrieveCameraInfo( const std::string& cameraName );
+	bool RetrieveFiducialInfo( const std::string& fidName );
 	
 };
 	

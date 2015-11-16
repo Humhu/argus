@@ -1,0 +1,60 @@
+<launch>
+  
+  <node pkg="lookup" type="lookup_registrar" name="robot_registrar">
+    <rosparam>
+      target_name: robot
+      target_namespace: robot
+    </rosparam>
+  </node>
+  
+  # Test robot, should be named in actual deployment
+  <group ns="robot">
+    
+    # Asynchronous redundant camera array (ARCA)
+    <group ns="cameras">
+
+      # Playstation Eye 043
+      <node pkg="lookup" type="lookup_registrar" name="pseye_043_registrar">
+        <rosparam>
+          target_name: pseye_043
+          target_namespace: pseye_043
+        </rosparam>
+      </node>
+      
+      <node pkg="camplex" type="camera_node" name="pseye_043" output="screen">
+        <remap from="~/image_raw" to="image_raw"/>
+        <rosparam command="load" file="$(env HOME)/.ros/object_info/pseye_043.yaml"/>
+        <rosparam>
+          frame_id: robot
+          camera_name: pseye_043_wide
+          device_path: /dev/argus/camera1
+          frame_resolution: [640, 480]
+          frame_rate: 30
+          stream_on_start: true
+        </rosparam>
+      </node>
+      
+    </group>
+  
+    <node pkg="atags" type="detector_node" name="detector" output="screen">
+      <remap from="image" to="cameras/image_raw"/>
+      <remap from="~/detections_raw" to="detections_raw"/>
+      <remap from="~/detections_processed" to="detections_processed"/>
+      <rosparam>
+        enable_undistortion: true
+        enable_normalization: true
+        tag_family: 36h11
+      </rosparam>
+    </node>
+    
+    <node pkg="manycal" type="dummy_odometry" name="dummy_odometer" output="screen">
+      <remap from="displacements" to="odometry"/>
+      <rosparam>
+        rate: 10.0
+        frame_id: robot
+      </rosparam>
+    </node>
+    
+  </group>
+  
+</launch>

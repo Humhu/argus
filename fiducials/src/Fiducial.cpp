@@ -1,7 +1,7 @@
-#include "fiducial_array/Fiducial.h"
-#include "fiducial_array/FiducialCommon.h"
+#include "fiducials/Fiducial.h"
+#include "fiducials/FiducialCommon.h"
 
-namespace fiducial_array
+namespace fiducials
 {
 	
 Fiducial::Fiducial() {}
@@ -18,4 +18,4 @@ Fiducial Fiducial::Transform( const argus_utils::PoseSE3& pose ) const
 	return Fiducial( info );
 }
 	
-} // end namespace fiducial_array
+} // end namespace fiducials

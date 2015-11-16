@@ -2,12 +2,12 @@
 
 #include "argus_utils/PoseSE3.h"
 
-#include "fiducial_array/FiducialCommon.h"
-#include "fiducial_array/FiducialArray.h"
+#include "fiducials/FiducialCommon.h"
+#include "fiducials/FiducialArray.h"
 #include "argus_msgs/FiducialDetection.h"
 #include "sensor_msgs/CameraInfo.h"
 
-namespace fiducial_array
+namespace fiducials
 {
 
 // TODO Camera model or camera info?
