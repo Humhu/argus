@@ -100,8 +100,7 @@ bool ExtrinsicsInfoManager::GetNamespace( const std::string& memberName,
 	// Fast-fail using cache
 	if( !forceLookup && failedQueries.count( memberName ) > 0 ) { return false; }
 	
-	std::string memberNamespace;
-	if( !lookupInterface.ReadNamespace( memberName, memberNamespace ) )
+	if( !lookupInterface.ReadNamespace( memberName, ns ) )
 	{
 		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
 		failedQueries.insert( memberName );
