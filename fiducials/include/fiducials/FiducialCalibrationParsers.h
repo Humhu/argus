@@ -22,8 +22,8 @@ bool ParseFiducialCalibration( const YAML::Node& yaml, FiducialInfo& info );
 /*! \brief Reads a fiducial calibration from a YAML file. Returns success. */
 bool ReadFiducialCalibration( const std::string& path, FiducialInfo& info );
 
-/*! \brief Populates a YAML node from a fiducial calibration. Returns success. */
-bool PopulateFiducialCalibration( const FiducialInfo& info, YAML::Node& yaml );
+/*! \brief Populates a YAML node from a fiducial calibration. */
+void PopulateFiducialCalibration( const FiducialInfo& info, YAML::Node& yaml );
 
 /*! \brief Writes a fiducial calibration to a YAML file. Returns success. */
 bool WriteFiducialCalibration( const std::string& path, const FiducialInfo& info );

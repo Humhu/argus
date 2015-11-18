@@ -15,24 +15,16 @@ ExtrinsicsInfoManager::ExtrinsicsInfoManager( lookup::LookupInterface& interface
 {}
 
 bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName,
-                                                   bool forceRead )
+                                                   bool forceLookup )
 {
-	// Fast-fail using cache
-	if( !forceRead && failedQueries.count( memberName ) > 0 ) { return false; }
-	
 	std::string memberNamespace;
-	if( !lookupInterface.ReadNamespace( memberName, memberNamespace ) )
-	{
-		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
-		failedQueries.insert( memberName );
-		return false;
-	}
+	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
 
 	MemberRegistration registration;
 	
 	// Read extrinsics first
 	YAML::Node extrinsics;
-	std::string extrinsicsKey = memberNamespace + "extrinsics";
+	std::string extrinsicsKey = GenerateExtrinsicsKey( memberNamespace );
 	if( !GetYamlParam( nodeHandle, extrinsicsKey, extrinsics ) )
 	{
 		ROS_WARN_STREAM( "Could not find extrinsics information for: " << memberName 
@@ -47,7 +39,7 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 	}
 	
 	// Then read reference frame ID
-	std::string referenceKey = memberNamespace + "frame_id";
+	std::string referenceKey = GenerateRefFrameKey( memberNamespace );
 	if( !nodeHandle.getParam( referenceKey, registration.frameID ) )
 	{
 		ROS_WARN_STREAM( "Could not find reference frame information for: " << memberName
@@ -55,6 +47,22 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 		return false;
 	}
 	memberRegistry[ memberName ] = registration;
+	return true;
+}
+
+bool ExtrinsicsInfoManager::WriteMemberInformation( const std::string& memberName,
+                                                    bool forceLookup )
+{
+	// Can't write info if we don't have it cached!
+	if( memberRegistry.count( memberName ) == 0 ) { return false; }
+	
+	std::string memberNamespace;
+	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
+	
+	MemberRegistration& registration = memberRegistry[ memberName ];
+	YAML::Node extrinsics = SetPoseYaml( registration.extrinsics );
+	SetYamlParam( nodeHandle, GenerateExtrinsicsKey( memberNamespace ), extrinsics );
+	nodeHandle.setParam( GenerateRefFrameKey( memberNamespace ), registration.frameID );
 	return true;
 }
 
@@ -71,6 +79,45 @@ const PoseSE3& ExtrinsicsInfoManager::GetExtrinsics( const std::string& memberNa
 const std::string& ExtrinsicsInfoManager::GetReferenceFrame( const std::string& memberName ) const
 {
 	return memberRegistry.at( memberName ).frameID;
+}
+
+void ExtrinsicsInfoManager::SetExtrinsics( const std::string& memberName, 
+                                           const PoseSE3& ext )
+{
+	memberRegistry[ memberName ].extrinsics = ext;
+}
+
+void ExtrinsicsInfoManager::SetReferenceFrame( const std::string& memberName, 
+                                               const std::string& refFrame )
+{
+	memberRegistry[ memberName ].frameID = refFrame;
+}
+
+bool ExtrinsicsInfoManager::GetNamespace( const std::string& memberName,
+                                          std::string& ns,
+                                          bool forceLookup )
+{
+	// Fast-fail using cache
+	if( !forceLookup && failedQueries.count( memberName ) > 0 ) { return false; }
+	
+	std::string memberNamespace;
+	if( !lookupInterface.ReadNamespace( memberName, memberNamespace ) )
+	{
+		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
+		failedQueries.insert( memberName );
+		return false;
+	}
+	return true;
+}
+
+std::string ExtrinsicsInfoManager::GenerateExtrinsicsKey( const std::string& ns )
+{
+	return ns + "extrinsics";
+}
+
+std::string ExtrinsicsInfoManager::GenerateRefFrameKey( const std::string& ns )
+{
+	return ns + "frame_id";
 }
 
 } // end namespace extrinsics_array

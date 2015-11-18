@@ -59,7 +59,7 @@ bool ReadFiducialCalibration( const std::string& path, FiducialInfo& info )
 	return ParseFiducialCalibration( yaml, info );
 }
 
-bool PopulateFiducialCalibration( const FiducialInfo& info, YAML::Node& yaml )
+void PopulateFiducialCalibration( const FiducialInfo& info, YAML::Node& yaml )
 {
 	std::vector<double> pointsX, pointsY, pointsZ;
 	for( unsigned int i = 0; i < info.points.size(); i++ )
@@ -71,7 +71,6 @@ bool PopulateFiducialCalibration( const FiducialInfo& info, YAML::Node& yaml )
 	yaml[ "intrinsics" ][ "points_x" ] = pointsX;
 	yaml[ "intrinsics" ][ "points_y" ] = pointsY;
 	yaml[ "intrinsics" ][ "points_z" ] = pointsZ;
-	return true;
 }
 
 bool WriteFiducialCalibration( const std::string& path, const FiducialInfo& info )
@@ -83,7 +82,7 @@ bool WriteFiducialCalibration( const std::string& path, const FiducialInfo& info
 	}
 	
 	YAML::Node yaml;
-	if( !PopulateFiducialCalibration( info, yaml ) ) { return false; }
+	PopulateFiducialCalibration( info, yaml );
 	output << yaml;
 	return true;
 }
