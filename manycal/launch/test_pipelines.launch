@@ -16,7 +16,7 @@
       # Playstation Eye 043
       <node pkg="lookup" type="lookup_registrar" name="pseye_043_registrar">
         <rosparam>
-          target_name: pseye_043
+          target_name: pseye_043_wide
           target_namespace: pseye_043
         </rosparam>
       </node>
@@ -29,7 +29,28 @@
           camera_name: pseye_043_wide
           device_path: /dev/argus/camera1
           frame_resolution: [640, 480]
-          frame_rate: 30
+          frame_rate: 15
+          stream_on_start: true
+        </rosparam>
+      </node>
+      
+      # Playstation Eye 043
+      <node pkg="lookup" type="lookup_registrar" name="pseye_047_registrar">
+        <rosparam>
+          target_name: pseye_047_wide
+          target_namespace: pseye_047
+        </rosparam>
+      </node>
+      
+      <node pkg="camplex" type="camera_node" name="pseye_047" output="screen">
+        <remap from="~/image_raw" to="image_raw"/>
+        <rosparam command="load" file="$(env HOME)/.ros/object_info/pseye_047.yaml"/>
+        <rosparam>
+          frame_id: robot
+          camera_name: pseye_047_wide
+          device_path: /dev/argus/camera2
+          frame_resolution: [640, 480]
+          frame_rate: 15
           stream_on_start: true
         </rosparam>
       </node>

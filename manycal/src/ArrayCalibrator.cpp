@@ -5,6 +5,9 @@
 #include "argus_utils/MatrixUtils.h"
 #include "argus_utils/MapUtils.hpp"
 
+#include "fiducials/FiducialCommon.h"
+#include "fiducials/PoseEstimation.h"
+
 #include <boost/foreach.hpp>
 
 using namespace argus_utils;
@@ -14,8 +17,6 @@ using namespace fiducials;
 
 namespace manycal
 {
-
-// TODO Load priors for cameras and fiducials?
 
 ArrayCalibrator::ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), lookup(), 
@@ -53,52 +54,31 @@ fiducialManager( lookup ), extrinsicsManager( lookup )
 			continue;
 		}
 		
-		std::string odometryTopic;
-		std::string odometryKey = targetNamespace + "odometry_topic";
-		if( nodeHandle.getParam( odometryKey, odometryTopic ) )
-		{
-			ROS_WARN_STREAM( "Could not read odometry_topic for: " << targetName 
-			    << " at path: " << odometryKey );
-			continue;
-		}
+		std::string odometryTopic = targetNamespace + "odometry";
 		// TODO Specify buffer size?
 		registration.odometrySub = nodeHandle.subscribe( odometryTopic, 
 		                                                 10,
 		                                                 &ArrayCalibrator::OdometryCallback,
 		                                                 this );
 		
-		std::string detectionTopic;
-		std::string detectionKey = targetNamespace + "detection_topic";
-		if( nodeHandle.getParam( detectionKey, detectionTopic ) )
-		{
-			registration.detectionSub = nodeHandle.subscribe( detectionTopic,
-			                                                  10,
-			                                                  &ArrayCalibrator::DetectionCallback,
-			                                                  this );
-		}
-		
+		std::string detectionTopic = targetNamespace + "detections_processed";
+		registration.detectionSub = nodeHandle.subscribe( detectionTopic,
+		                                                  10,
+		                                                  &ArrayCalibrator::DetectionCallback,
+		                                                  this );
 	}
 }
 
 ArrayCalibrator::~ArrayCalibrator()
-{
-// 	slam->batch_optimization();
-// 	slam->write( std::cout );
-}
+{}
 
-// TODO Change this back to relative_pose so we can catch skipped time steps
+// TODO Change this back to relative_pose so we can catch skipped time steps?
 void ArrayCalibrator::OdometryCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg )
 {
 	std::string frameName = msg->header.frame_id;
 	
-	// If we haven't seen the frame yet, initialize it
-	if( frameRegistry.count( frameName ) == 0 )
-	{
-		// We can't add odometry after initialization because it's zero time difference
-		// NOTE We could just let poses->AddOdometry return nullptr, but this is clearer
-		InitializeFrame( frameName, msg->header.stamp );
-		return; 
-	}
+	// Don't initialize frames on odometry callbacks, save it for detections	
+	if( frameRegistry.count( frameName ) == 0 ) { return; }
 	
 	// Now parse message fields
 	PoseSE3 displacement = MsgToPose( msg->pose.pose );
@@ -113,66 +93,88 @@ void ArrayCalibrator::OdometryCallback( const geometry_msgs::PoseWithCovarianceS
 
 void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr& msg )
 {
-	std::string cameraName = msg->header.frame_id;
+
+	ros::Time timestamp = msg->header.stamp;
+	std::string camName = msg->header.frame_id;
+	if( cameraRegistry.count( camName ) == 0 ) { InitializeCamera( camName ); }
+	CameraRegistration& camReg = cameraRegistry[ camName ];
 	
-	// If we haven't seen this camera before, initialize it
-	if( cameraRegistry.count( cameraName ) == 0 )
-	{
-		if( !InitializeCamera( cameraName, msg->header.stamp ) )
-		{
-			return;
-		}
-	}
-	CameraRegistration& cameraRegistration = cameraRegistry[ cameraName ];
+	std::string camFrameName = extrinsicsManager.GetReferenceFrame( camName );
+	if( frameRegistry.count( camFrameName ) == 0 ) { CreateFrame( camFrameName, timestamp ); }
+	FrameRegistration& camFrameReg = frameRegistry[ camFrameName ];
 	
-	// NOTE We don't have to check if the frame exists because initializing the camera
-	// automatically registers the frame if it doesn't already exist
-	std::string cameraFrameName = extrinsicsManager.GetReferenceFrame( cameraName );
-	FrameRegistration& cameraFrameRegistration = frameRegistry[ cameraFrameName ];
-	ros::Time latestCamTime = get_highest_key( cameraFrameRegistration.poses->timeSeries );
-	
-	// If the message postdates the last camera odometry, we have to discard it
-	if( msg->header.stamp > latestCamTime )
-	{
-		ROS_WARN_STREAM( "Dropping detection from " << cameraName << " at time "
-		    << msg->header.stamp << " after latest camera odometry at " << latestCamTime );
-		return;
-	}
-		
 	BOOST_FOREACH( const FiducialDetection& detection, msg->detections )
 	{
-		std::string fiducialName = detection.name;
-		if( fiducialRegistry.count( fiducialName ) == 0 )
+		std::string fidName = detection.name;
+		if( fiducialRegistry.count( fidName ) == 0 ) { InitializeFiducial( fidName ); }
+		FiducialRegistration& fidReg = fiducialRegistry[ fidName ];
+		
+		std::string fidFrameName = extrinsicsManager.GetReferenceFrame( fidName );
+		if( frameRegistry.count( fidFrameName ) == 0 ) { CreateFrame( fidFrameName, timestamp ); }
+		FrameRegistration& fidFrameReg = frameRegistry[ fidFrameName ];
+		
+		// If one of the two frames is uninitialized, we initialize it using PNP
+		if( !camFrameReg.initialized || !fidFrameReg.initialized )
 		{
-			if( !InitializeFiducial( fiducialName, msg->header.stamp ) )
+			isam::FiducialIntrinsics::MatrixType fidPointsMat = fidReg.intrinsics->value().matrix();
+			
+			std::vector<cv::Point3f> fidPoints = MatrixToPoints( fidReg.intrinsics->value().matrix() );
+			std::vector<cv::Point2f> imgPoints = MsgToPoints( detection.points );
+			PoseSE3 relPose = EstimateArrayPose( imgPoints, nullptr, fidPoints );
+			const PoseSE3& camExt = extrinsicsManager.GetExtrinsics( camName );
+			const PoseSE3& fidExt = extrinsicsManager.GetExtrinsics( fidName );
+			
+			ROS_INFO_STREAM( "Fiducial detected at: " << relPose );
+			
+			if( !camFrameReg.initialized )
 			{
-				continue;
+				isam::PoseSE3_Node::Ptr fidFrameNode = fidFrameReg.poses->GetNodeInterpolate( timestamp );
+				if( !fidFrameNode ) 
+				{ 
+					ROS_WARN_STREAM( "Could not interpolate fiducial frame pose." );
+					continue; 
+				}
+				PoseSE3 fidFramePose = fidFrameNode->value().pose;
+				PoseSE3 camFramePose = fidFramePose * fidExt * relPose.Inverse() * camExt.Inverse();
+				camFrameReg.poses->Initialize( timestamp, camFramePose );
+				camFrameReg.poses->AddPrior( timestamp, camFramePose, isam::Covariance( 1E6 * isam::eye(6) ) );
+				camFrameReg.initialized = true;
+			}
+			else
+			{
+				isam::PoseSE3_Node::Ptr camFrameNode = camFrameReg.poses->GetNodeInterpolate( timestamp );
+				if( !camFrameNode ) { 
+					ROS_WARN_STREAM( "Could not interpolate camera frame pose." );
+					continue; 
+				}
+				PoseSE3 camFramePose = camFrameNode->value().pose;
+				PoseSE3 fidFramePose = camFramePose * camExt * relPose * fidExt.Inverse();
+				ROS_INFO_STREAM( "cam pose: " << camFramePose );
+				ROS_INFO_STREAM( "fid pose: " << fidFramePose );
+				fidFrameReg.poses->Initialize( timestamp, fidFramePose );
+				fidFrameReg.poses->AddPrior( timestamp, fidFramePose, isam::Covariance( 1E6 * isam::eye(6) ) );
+				fidFrameReg.initialized = true;
 			}
 		}
-		FiducialRegistration& fiducialRegistration = fiducialRegistry[ fiducialName ];
 		
-		std::string fiducialFrameName = extrinsicsManager.GetReferenceFrame( fiducialName );
-		FrameRegistration& fiducialFrameRegistration = frameRegistry[ fiducialFrameName ];
-		ros::Time latestFiducialTime = get_highest_key( fiducialFrameRegistration.poses->timeSeries );
-		
-		ROS_INFO_STREAM( "Message stamp: " << msg->header.stamp << " last cam: " 
-		    << latestCamTime << " last fid: " << latestFiducialTime );
-		
+		// If the message postdates the last camera odometry, we have to discard it
+		ros::Time latestCamTime = get_highest_key( camFrameReg.poses->timeSeries );
+		if( msg->header.stamp > latestCamTime ) { return; }
+			
 		// If the message postdates the latest fiducial odometry, we have to discard it
-		if( msg->header.stamp > latestFiducialTime )
-		{
-			ROS_WARN_STREAM( "Dropping detection from " << cameraName << " at time "
-			    << msg->header.stamp << " after latest fiducial odometry at " << latestFiducialTime );
-			return;
-		}
+		ros::Time latestFiducialTime = get_highest_key( fidFrameReg.poses->timeSeries );
+		if( msg->header.stamp > latestFiducialTime ) { return; }
 		
-		CreateObservationFactor( cameraRegistration, cameraFrameRegistration,
-		                         fiducialRegistration, fiducialFrameRegistration,
+		CreateObservationFactor( camReg, camFrameReg,
+		                         fidReg, fidFrameReg,
 		                         detection, msg->header.stamp );
-		
 	}
 	
+	slam->batch_optimization();
+	std::cout << "===== Iteration: " << observations.size() << std::endl;
+	slam->write( std::cout );
 	
+	if( observations.size() >= 5 ) { exit( 0 ); }
 }
 
 void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
@@ -190,12 +192,11 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 	isam::FiducialDetection det( detectionVector );
 	isam::Noise cov = isam::Covariance( 10 * isam::eye( 2*detection.points.size() ) );
 	
-	// TODO Pull these flags from the parameter server?
 	isam::FiducialFactor::Properties props; 
-	props.optCamReference = true;
+	props.optCamReference = cameraFrame.optimizePoses;
 	props.optCamIntrinsics = camera.optimizeIntrinsics;
 	props.optCamExtrinsics = camera.optimizeExtrinsics;
-	props.optFidReference = true;
+	props.optFidReference = fiducialFrame.optimizePoses;
 	props.optFidIntrinsics = fiducial.optimizeIntrinsics;
 	props.optFidExtrinsics = fiducial.optimizeExtrinsics;
 	
@@ -218,86 +219,108 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 	
 }
 
-bool ArrayCalibrator::InitializeFrame( const std::string& frameName, ros::Time t )
+void ArrayCalibrator::CreateFrame( const std::string& frameName, const ros::Time& t )
 {
-	if( frameRegistry.count( frameName ) > 0 ) { return true; }
+	if( frameRegistry.count( frameName ) > 0 ) { return; }
 	
-	ROS_INFO_STREAM( "Initializing new frame: " << frameName << " at time " << t );
-	
+	ROS_INFO_STREAM( "Creating new reference frame: " << frameName );
 	FrameRegistration registration;
+	registration.initialized = false;
 	registration.optimizePoses = true; // TODO
 	registration.poses = std::make_shared<OdometryGraphSE3>( slam );
-	registration.poses->Initialize( t, 
-	                                isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ),
-	                                isam::Covariance( 1E3 * isam::eye(6) ) ); // TODO
+	
+	if( frameRegistry.size() == 0 )
+	{
+		// TODO
+		ROS_INFO_STREAM( "Anchoring first reference frame: " << frameName );
+		isam::PoseSE3 init( 0, 0, 0, 1, 0, 0, 0 );
+		registration.poses->Initialize( t, init );
+		registration.poses->AddPrior( t, init, isam::Covariance( isam::eye(6) ) );
+		registration.initialized = true;
+	}
+	
 	frameRegistry[ frameName ] = registration;
-	return true;
 }
 
-bool ArrayCalibrator::InitializeCamera( const std::string& cameraName, ros::Time t )
+void ArrayCalibrator::InitializeCamera( const std::string& cameraName )
 {
 	// Cache the camera lookup information
 	if( !extrinsicsManager.HasMember( cameraName ) )
 	{
 		if( !extrinsicsManager.ReadMemberInformation( cameraName ) )
 		{
-			ROS_WARN_STREAM( "Could not retrieve extrinsics info for camera " << cameraName );
-			return false;
+			ROS_ERROR_STREAM( "Could not retrieve info for camera: " << cameraName );
+			exit( -1 );
 		}
 	}
 	
-	// Retrieve the camera extrinsics and reference frame
-	const std::string& cameraFrameName = extrinsicsManager.GetReferenceFrame( cameraName );
-	const PoseSE3& cameraExtrinsics = extrinsicsManager.GetExtrinsics( cameraName );
-	
-	if( frameRegistry.count( cameraFrameName ) == 0 )
-	{
-		InitializeFrame( cameraFrameName, t );
-	}
+	// Retrieve the camera extrinsics
+	const PoseSE3& cameraExtrinsicsInit = extrinsicsManager.GetExtrinsics( cameraName );
 	
 	ROS_INFO_STREAM( "Registering camera " << cameraName );
 	CameraRegistration registration;
+	registration.optimizeExtrinsics = true; // TODO
+	registration.optimizeIntrinsics = false; // TODO
+	
 	registration.extrinsics = std::make_shared <isam::PoseSE3_Node>();
-	registration.extrinsics->init( cameraExtrinsics );
+	registration.extrinsics->init( cameraExtrinsicsInit );
+	
+	// TODO Only create priors for cameras with initial guesses
+	if( registration.optimizeExtrinsics )
+	{
+		slam->add_node( registration.extrinsics.get() );
+		registration.extrinsicsPrior = std::make_shared <isam::PoseSE3_Prior>(
+		    registration.extrinsics.get(), 
+			cameraExtrinsicsInit,
+			isam::Covariance( 1E6 * isam::eye(6) ) );
+		slam->add_factor( registration.extrinsicsPrior.get() );
+	}
 	
 	registration.intrinsics = std::make_shared <isam::MonocularIntrinsics_Node>();
 	isam::MonocularIntrinsics intrinsics( 1.0, 1.0, Eigen::Vector2d(0,0) );
 	registration.intrinsics->init( intrinsics );
-	
-	registration.optimizeExtrinsics = true; // TODO
-	registration.optimizeIntrinsics = false; // TODO
+	if( registration.optimizeIntrinsics )
+	{
+		slam->add_node( registration.intrinsics.get() );	
+		// TODO priors
+	}
 	
 	cameraRegistry[ cameraName ] = registration;
-	
-	return true;
 }
 
-bool ArrayCalibrator::InitializeFiducial( const std::string& fidName, ros::Time t )
+void ArrayCalibrator::InitializeFiducial( const std::string& fidName )
 {
 	// Cache the fiducial lookup information
 	if( !fiducialManager.HasFiducial( fidName ) )
 	{
-		if( !fiducialManager.ReadFiducialInformation( fidName, false ) )
+		if( !fiducialManager.ReadFiducialInformation( fidName, false ) ||
+			!extrinsicsManager.ReadMemberInformation( fidName, false ) )
 		{
-			ROS_WARN_STREAM( "Could not retrieve fiducial info for " << fidName );
-			return false;
+			ROS_ERROR_STREAM( "Could not retrieve fiducial info for " << fidName );
+			exit( -1 );
 		}
 	}
 	
 	// Retrieve the fiducial extrinsics, intrinsics, and reference frame
 	const Fiducial& fiducial = fiducialManager.GetIntrinsics( fidName );
-	const std::string& fiducialFrameName = extrinsicsManager.GetReferenceFrame( fidName );
 	const PoseSE3& fiducialExtrinsics = extrinsicsManager.GetExtrinsics( fidName );
-	
-	if( frameRegistry.count( fiducialFrameName ) == 0 )
-	{
-		InitializeFrame( fiducialFrameName, t );
-	}
-	
+
 	ROS_INFO_STREAM( "Registering fiducial " << fidName );
 	FiducialRegistration registration;
+	registration.optimizeExtrinsics = false; // TODO
+	registration.optimizeIntrinsics = false;
+	
 	registration.extrinsics = std::make_shared <isam::PoseSE3_Node>();
 	registration.extrinsics->init( fiducialExtrinsics );
+	if( registration.optimizeExtrinsics )
+	{
+		slam->add_node( registration.extrinsics.get() );
+		registration.extrinsicsPrior = std::make_shared <isam::PoseSE3_Prior>(
+		    registration.extrinsics.get(), 
+			isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ),
+			isam::Covariance( 1E6 * isam::eye(6) ) );
+		slam->add_factor( registration.extrinsicsPrior.get() );
+	}
 	
 	std::vector <isam::Point3d> pts;
 	pts.reserve( fiducial.points.size() );
@@ -308,13 +331,13 @@ bool ArrayCalibrator::InitializeFiducial( const std::string& fidName, ros::Time 
 	isam::FiducialIntrinsics intrinsics( pts );
 	registration.intrinsics = std::make_shared <isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );
 	registration.intrinsics->init( intrinsics );
-	
-	registration.optimizeExtrinsics = true;
-	registration.optimizeIntrinsics = false;
+	if( registration.optimizeIntrinsics )
+	{
+		slam->add_node( registration.intrinsics.get() );
+		// TODO priors
+	}
 	
 	fiducialRegistry[ fidName ] = registration;
-	
-	return true;
 }
 
 }

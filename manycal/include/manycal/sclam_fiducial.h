@@ -78,7 +78,7 @@ public:
 	
 	MatrixType matrix() const
 	{
-		Eigen::Map <const MatrixType> mMap( points.data(), 3, points.rows() );
+		Eigen::Map <const MatrixType> mMap( points.data(), 3, points.rows()/3 );
 		return MatrixType( mMap );
 	}
 	
@@ -196,12 +196,14 @@ FiducialDetection Predict( const FiducialIntrinsics& fiducial,
                            const PoseSE3& fiducialToCamera )
 {
 	
+ 	static PoseSE3::PoseType camToObj( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
+	
 	Eigen::Transform <double, 2, Eigen::Affine> cameraMatrix( camera.K().block<2,2>(0,0) );
-	PoseSE3::PoseType::Transform relPose( fiducialToCamera.pose.Inverse().ToTransform() );
+	PoseSE3::PoseType fidToCam = camToObj.Inverse() * fiducialToCamera.pose;
+	PoseSE3::PoseType::Transform relPose( fidToCam.ToTransform() );
 	
 	Eigen::Matrix <double, 3, Eigen::Dynamic> relPoints = relPose * fiducial.matrix();
 	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (cameraMatrix * relPoints).colwise().hnormalized();
-	
 	
 	return FiducialDetection( Eigen::Map <Eigen::VectorXd> ( imgPoints.data(), 2 * imgPoints.cols() ) );
 }
@@ -256,7 +258,8 @@ public:
 	{
 		PoseSE3 relPose( _cam_ext->value(s).pose.Inverse() * _cam_ref->value(s).pose.Inverse() *
 		                 _fid_ref->value(s).pose * _fid_ext->value(s).pose );
-		FiducialDetection predicted = Predict( _fid_int->value(s), _cam_int->value(s), relPose ).vector();
+		FiducialDetection predicted = Predict( _fid_int->value(s), _cam_int->value(s), relPose );
+		
 		return predicted.vector() - _measure.vector();
 	}
 	

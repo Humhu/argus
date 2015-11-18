@@ -1,15 +1,26 @@
 <launch>
   
+  <node pkg="lookup" type="lookup_registrar" name="calibration_registrar">
+    <rosparam>
+      target_name: calibration_target
+      target_namespace: calibration_target
+    </rosparam>
+  </node>
+  
   <group ns="calibration_target">
     
     # AprilTag 36h11 ID 0
-    <rosparam command="load" file="$(env HOME)/.ros/object_info/apriltag_36h11_id0.yaml"/>
-
-    <node pkg="lookup" type="lookup_file_registrar" name="fiducial_registrar">
-      <rosparam subst_value="true" param="file_path">
-        $(find manycal)/launch/calibration_lookup_config.yaml
+    <node pkg="lookup" type="lookup_registrar" name="calibration_registrar">
+      <rosparam>
+        target_name: apriltag_36h11_id0
+        target_namespace: apriltag_36h11_id0
       </rosparam>
     </node>
+    
+    <group ns="apriltag_36h11_id0">
+      <rosparam command="load" file="$(env HOME)/.ros/object_info/apriltag_36h11_id0.yaml"/>
+      <rosparam param="frame_id">calibration_target</rosparam>
+    </group>
 
     <node pkg="manycal" type="dummy_odometry" name="dummy_odometer" output="screen">
       <remap from="displacements" to="odometry"/>

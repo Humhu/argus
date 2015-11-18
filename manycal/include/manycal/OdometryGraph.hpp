@@ -52,20 +52,16 @@ public:
 		return SplitOdometry( ind );
 	}
 	
-	/*! \brief Creates a node and adds a prior. */
-	typename NodeType::Ptr Initialize( const IndexType& ind, const PoseType& pose,
-	                                   const isam::Noise& noise )
+	typename NodeType::Ptr Initialize( const IndexType& ind, const PoseType& pose )
 	{
 		Datum datum;
 		datum.node = std::make_shared <NodeType>();
 		datum.node->init( pose );
 		datum.toPrev = nullptr;
-		datum.prior = std::make_shared <PriorType>( datum.node.get(), pose, noise );
 		
 		timeSeries[ ind ] = datum;
 		
 		slam->add_node( datum.node.get() );
-		slam->add_factor( datum.prior.get() );
 		
 		return datum.node;
 	}
@@ -91,6 +87,16 @@ public:
 		slam->add_factor( next.toPrev.get() );
 		
 		return next.node;
+	}
+	
+	typename NodeType::Ptr AddPrior( const IndexType& ind, const PoseType& pose,
+	                                 const isam::Noise& noise )
+	{
+		if( !GetNodeInterpolate( ind ) ) { return nullptr; }
+		Datum& datum = timeSeries[ ind ];
+		datum.prior = std::make_shared <PriorType>( datum.node.get(), pose, noise );
+		slam->add_factor( datum.prior.get() );
+		return datum.node;
 	}
 	
 	// Inserts a node at the specified index in between two existing nodes.

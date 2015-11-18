@@ -51,9 +51,12 @@ int main( int argc, char** argv )
 	OGraph ograph( slam );
 	
 	std::cout << "Initializing ograph..." << std::endl;
-	isam::PoseSE3_Node::Ptr initNode = ograph.Initialize( ros::Time::now().toBoost(),
-	                                                      isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ),
-	                                                      isam::Covariance( isam::eye(6) ) );
+	ros::Time now = ros::Time::now();
+	isam::PoseSE3_Node::Ptr initNode = ograph.Initialize( now.toBoost(),
+	                                                      isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ) );
+	ograph.AddPrior( now.toBoost(),
+	                 isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ),
+	                 isam::Covariance( isam::eye(6) ) );
 	
 	ros::Duration( 0.5 ).sleep();
 	ros::Time midSleep = ros::Time::now();

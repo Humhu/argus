@@ -57,6 +57,8 @@ private:
 	{
 		std::shared_ptr <isam::PoseSE3_Node> extrinsics;
 		std::shared_ptr <isam::MonocularIntrinsics_Node> intrinsics;
+		std::shared_ptr <isam::PoseSE3_Prior> extrinsicsPrior;
+		std::shared_ptr <isam::MonocularIntrinsics_Prior> intrinsicsPrior;
 		bool optimizeExtrinsics;
 		bool optimizeIntrinsics;
 	};
@@ -65,6 +67,8 @@ private:
 	{
 		std::shared_ptr <isam::PoseSE3_Node> extrinsics;
 		std::shared_ptr <isam::FiducialIntrinsics_Node> intrinsics;
+		std::shared_ptr <isam::PoseSE3_Prior> extrinsicsPrior;
+		std::shared_ptr <isam::FiducialIntrinsics_Prior> intrinsicsPrior;
 		bool optimizeExtrinsics;
 		bool optimizeIntrinsics;
 	};
@@ -72,6 +76,7 @@ private:
 	typedef OdometryGraph<isam::PoseSE3, ros::Time> OdometryGraphSE3;
 	struct FrameRegistration
 	{
+		bool initialized;
 		OdometryGraphSE3::Ptr poses;
 		bool optimizePoses;
 	};
@@ -87,16 +92,15 @@ private:
 	void OdometryCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg );
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	
-	/*! \brief Initialize a new reference frame. Returns success. */
-	bool InitializeFrame( const std::string& frameName, ros::Time t );
+	void CreateFrame( const std::string& frameName, const ros::Time& t );
 	
 	/*! \brief Initialize a new camera. Uses the camera manager to determine parent 
-	 * reference. Returns success. */
-	bool InitializeCamera( const std::string& cameraName, ros::Time t );
+	 * reference. Throws an error if camera cannot be found. */
+	void InitializeCamera( const std::string& cameraName );
 	
 	/*! \brief Initialize a new fiducial. Uses the extrinsics manager to determine 
 	 * parent reference. Returns success. */
-	bool InitializeFiducial( const std::string& fidName, ros::Time t );
+	void InitializeFiducial( const std::string& fidName );
 	
 	void CreateObservationFactor( CameraRegistration& camera,
 	                              FrameRegistration& cameraFrame,
