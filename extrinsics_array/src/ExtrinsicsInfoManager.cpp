@@ -47,15 +47,13 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 	}
 	
 	// Then read reference frame ID
-	YAML::Node reference;
 	std::string referenceKey = memberNamespace + "frame_id";
-	if( !GetYamlParam( nodeHandle, referenceKey, reference ) )
+	if( !nodeHandle.getParam( referenceKey, registration.frameID ) )
 	{
 		ROS_WARN_STREAM( "Could not find reference frame information for: " << memberName
 		    << " at path " << referenceKey );
 		return false;
 	}
-	registration.frameID = reference.as<std::string>();
 	memberRegistry[ memberName ] = registration;
 	return true;
 }
