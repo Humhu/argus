@@ -70,7 +70,57 @@ fiducialManager( lookup ), extrinsicsManager( lookup )
 }
 
 ArrayCalibrator::~ArrayCalibrator()
-{}
+{
+	WriteResults(); 
+}
+
+void ArrayCalibrator::WriteResults()
+{
+	isam::Covariances covs = slam->covariances();
+	std::list<isam::Node*> nodes;
+	
+	Eigen::MatrixXd allCovs = covs.marginal( slam->get_nodes() );
+	ROS_INFO_STREAM( "All covs: " << std::endl << allCovs );
+	
+	BOOST_FOREACH( const CameraRegistry::value_type& item, cameraRegistry )
+	{
+		const std::string& camName = item.first;
+		const CameraRegistration& camReg = item.second;
+		if( camReg.optimizeExtrinsics )
+		{
+			ROS_INFO_STREAM( "Writing extrinsics for camera: " << camName );
+			extrinsicsManager.SetExtrinsics( camName, camReg.extrinsics->value().pose );
+			extrinsicsManager.WriteMemberInformation( camName, true );
+			
+			nodes.clear();
+			nodes.push_back( camReg.extrinsics.get() );
+			Eigen::MatrixXd S = covs.marginal( nodes );
+			ROS_INFO_STREAM( "Covariance: " << std::endl << S );
+		}
+		
+		if( camReg.optimizeIntrinsics )
+		{
+			ROS_INFO_STREAM( "Writing intrinsics for camera: " << camName );
+			// TODO
+		}
+	}
+	
+	BOOST_FOREACH( const FiducialRegistry::value_type& item, fiducialRegistry )
+	{
+		const std::string& fidName = item.first;
+		if( item.second.optimizeExtrinsics )
+		{
+			ROS_INFO_STREAM( "Writing extrinsics for fiducial: " << fidName );
+			extrinsicsManager.SetExtrinsics ( fidName, item.second.extrinsics->value().pose );
+			extrinsicsManager.WriteMemberInformation( fidName, true );
+		}
+		if( item.second.optimizeIntrinsics )
+		{
+			ROS_INFO_STREAM( "Writing intrinsics for fiducial: " << fidName );
+			// TODO
+		}
+	}
+}
 
 // TODO Change this back to relative_pose so we can catch skipped time steps?
 void ArrayCalibrator::OdometryCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg )
@@ -170,11 +220,15 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 		                         detection, msg->header.stamp );
 	}
 	
+	ROS_INFO_STREAM( "Running optimization..." );
 	slam->batch_optimization();
 	std::cout << "===== Iteration: " << observations.size() << std::endl;
 	slam->write( std::cout );
 	
-	if( observations.size() >= 5 ) { exit( 0 ); }
+	if( observations.size() >= 5 ) { 
+		WriteResults();
+		exit( 0 ); 
+	}
 }
 
 void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
@@ -190,7 +244,10 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 		detectionVector.block<2,1>(2*i,0) = Eigen::Vector2d( detection.points[i].x, detection.points[i].y );
 	}
 	isam::FiducialDetection det( detectionVector );
-	isam::Noise cov = isam::Covariance( 10 * isam::eye( 2*detection.points.size() ) );
+	
+	// Assuming 3% image coordinate error
+	double imageCoordinateErr = std::pow( 0.03, 2 );
+	isam::Noise cov = isam::Covariance( imageCoordinateErr * isam::eye( 2*detection.points.size() ) );
 	
 	isam::FiducialFactor::Properties props; 
 	props.optCamReference = cameraFrame.optimizePoses;
@@ -235,29 +292,29 @@ void ArrayCalibrator::CreateFrame( const std::string& frameName, const ros::Time
 		ROS_INFO_STREAM( "Anchoring first reference frame: " << frameName );
 		isam::PoseSE3 init( 0, 0, 0, 1, 0, 0, 0 );
 		registration.poses->Initialize( t, init );
-		registration.poses->AddPrior( t, init, isam::Covariance( isam::eye(6) ) );
+		registration.poses->AddPrior( t, init, isam::Covariance( 1E-6 * isam::eye(6) ) );
 		registration.initialized = true;
 	}
 	
 	frameRegistry[ frameName ] = registration;
 }
 
-void ArrayCalibrator::InitializeCamera( const std::string& cameraName )
+void ArrayCalibrator::InitializeCamera( const std::string& camName )
 {
 	// Cache the camera lookup information
-	if( !extrinsicsManager.HasMember( cameraName ) )
+	if( !extrinsicsManager.HasMember( camName ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( cameraName ) )
+		if( !extrinsicsManager.ReadMemberInformation( camName ) )
 		{
-			ROS_ERROR_STREAM( "Could not retrieve info for camera: " << cameraName );
+			ROS_ERROR_STREAM( "Could not retrieve info for camera: " << camName );
 			exit( -1 );
 		}
 	}
 	
 	// Retrieve the camera extrinsics
-	const PoseSE3& cameraExtrinsicsInit = extrinsicsManager.GetExtrinsics( cameraName );
+	const PoseSE3& cameraExtrinsicsInit = extrinsicsManager.GetExtrinsics( camName );
 	
-	ROS_INFO_STREAM( "Registering camera " << cameraName );
+	ROS_INFO_STREAM( "Registering camera " << camName );
 	CameraRegistration registration;
 	registration.optimizeExtrinsics = true; // TODO
 	registration.optimizeIntrinsics = false; // TODO
@@ -285,7 +342,7 @@ void ArrayCalibrator::InitializeCamera( const std::string& cameraName )
 		// TODO priors
 	}
 	
-	cameraRegistry[ cameraName ] = registration;
+	cameraRegistry[ camName ] = registration;
 }
 
 void ArrayCalibrator::InitializeFiducial( const std::string& fidName )

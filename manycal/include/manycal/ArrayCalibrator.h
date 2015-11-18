@@ -36,6 +36,8 @@ public:
 	ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	~ArrayCalibrator();
 	
+	void WriteResults();
+	
 private:
 	
 	ros::NodeHandle nodeHandle;
@@ -85,9 +87,12 @@ private:
 	std::vector<isam::FiducialFactor::Ptr> observations;
 	
 	/*! \brief Map from frame names to registrations. */
-	std::unordered_map <std::string, FrameRegistration> frameRegistry;
-	std::unordered_map <std::string, CameraRegistration> cameraRegistry;
-	std::unordered_map <std::string, FiducialRegistration> fiducialRegistry;
+	typedef std::unordered_map <std::string, FrameRegistration> FrameRegistry;
+	FrameRegistry frameRegistry;
+	typedef std::unordered_map <std::string, CameraRegistration> CameraRegistry;
+	CameraRegistry cameraRegistry;
+	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
+	FiducialRegistry fiducialRegistry;
 	
 	void OdometryCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg );
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );

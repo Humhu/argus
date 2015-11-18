@@ -7,23 +7,70 @@
 
 using namespace argus_utils;
 
-void TimerCallback( const ros::TimerEvent& event,
-                    ros::Publisher& pub,
-                    const std::string& frame_id )
+class DummyOdometer
 {
+public:
 	
-	PoseSE3 displacement; // Zero
-	PoseSE3::CovarianceMatrix cov = PoseSE3::CovarianceMatrix::Identity();
+	DummyOdometer( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
+	: nodeHandle( nh ), privHandle( ph )
+	{
+		double rate;
+		privHandle.param( "rate", rate, 10.0 );
+		
+		if( !privHandle.getParam( "frame_id", frameID ) )
+		{
+			ROS_ERROR_STREAM( "Please specify frame_id" );
+		}
+		
+		std::vector<double> cov;
+		if( !privHandle.getParam( "covariance_rate", cov ) )
+		{
+			covRate = PoseSE3::CovarianceMatrix::Identity();
+		}
+		else
+		{
+			if( !ParseMatrix( cov, covRate ) )
+			{
+				ROS_ERROR_STREAM( "Could not parse covariance rate matrix." );
+				exit( -1 );
+			}
+		}
+		
+		dispPub = nodeHandle.advertise<geometry_msgs::PoseWithCovarianceStamped>
+		    ( "displacements", rate );
 	
-	geometry_msgs::PoseWithCovarianceStamped msg;
-	msg.header.stamp = event.current_real;
-	msg.header.frame_id = frame_id;
+		timer = std::make_shared<ros::Timer>( 
+		    nh.createTimer( ros::Duration( 1.0/rate ), 
+	                        boost::bind( &DummyOdometer::TimerCallback, this, _1 ) ) );
+	}
 	
-	msg.pose.pose = PoseToMsg( displacement );
-	SerializeMatrix( cov, msg.pose.covariance );
+	void TimerCallback( const ros::TimerEvent& event )
+	{
+		PoseSE3 displacement; // Zero
+		
+		geometry_msgs::PoseWithCovarianceStamped msg;
+		msg.header.stamp = event.current_real;
+		msg.header.frame_id = frameID;
+		
+		msg.pose.pose = PoseToMsg( displacement );
+		
+		double dt = (event.current_real - event.last_real).toSec();
+		SerializeMatrix( dt * covRate, msg.pose.covariance );
+		
+		dispPub.publish( msg );
+	}
 	
-	pub.publish( msg );
-}
+private:
+	
+	ros::NodeHandle nodeHandle;
+	ros::NodeHandle privHandle;
+	std::shared_ptr<ros::Timer> timer;
+	ros::Publisher dispPub;
+	
+	std::string frameID;
+	PoseSE3::CovarianceMatrix covRate;
+	
+};
 
 int main( int argc, char** argv )
 {
@@ -31,25 +78,7 @@ int main( int argc, char** argv )
 	ros::init( argc, argv, "dummy_odometry" );
 	
 	ros::NodeHandle nh, ph( "~" );
-	
-	double rate;
-	ph.param( "rate", rate, 10.0 );
-	
-	std::string source;
-	if( !ph.getParam( "frame_id", source ) )
-	{
-		ROS_ERROR_STREAM( "Please specify frame_id" );
-	}
-	
-	ros::Publisher pub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>
-	    ( "displacements", rate );
-	
-	ros::Timer timer = nh.createTimer( ros::Duration( 1.0/rate ), 
-	                                   boost::bind( &TimerCallback, 
-	                                                _1, 
-	                                                boost::ref( pub ),
-	                                                boost::cref( source ) ) );
-	
+	DummyOdometer odometer( nh, ph );
 	ros::spin();
-	
+	return 0;
 }

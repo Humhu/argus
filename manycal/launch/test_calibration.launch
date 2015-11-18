@@ -27,6 +27,12 @@
       <rosparam>
         rate: 10.0
         frame_id: calibration_target
+        covariance_rate: [ 0.1, 0, 0, 0, 0, 0,
+                           0, 0.1, 0, 0, 0, 0,
+                           0, 0, 0.1, 0, 0, 0,
+                           0, 0, 0, 0.1, 0, 0,
+                           0, 0, 0, 0, 0.1, 0,
+                           0, 0, 0, 0, 0, 0.1 ]
       </rosparam>
     </node>
 

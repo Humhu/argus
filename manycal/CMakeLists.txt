@@ -9,8 +9,9 @@ find_package(catkin REQUIRED
 	COMPONENTS		camera_info_manager
 					message_generation
 					roscpp
-					sensor_msgs
 					std_msgs
+					sensor_msgs
+					visualization_msgs
 					argus_utils
 					argus_msgs
 					image_transport
@@ -44,8 +45,9 @@ catkin_package(
 					
 	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
-					sensor_msgs 
 					std_msgs
+					sensor_msgs
+					visualization_msgs
 					argus_utils
 					argus_msgs
 					image_transport
@@ -117,7 +119,13 @@ add_dependencies( dummy_odometry ${PROJECT_NAME}_gencfg )
 target_link_libraries( dummy_odometry
 	${isam_LIBRARIES}
 	${catkin_LIBRARIES}
-	manycal )	
+	manycal )
+	
+add_executable( extrinsics_visualizer nodes/extrinsics_visualizer.cpp )
+add_dependencies( extrinsics_visualizer ${PROJECT_NAME}_gencfg )
+target_link_libraries( extrinsics_visualizer 
+	${catkin_LIBRARIES}
+	manycal )
 	
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
