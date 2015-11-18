@@ -13,18 +13,18 @@ namespace fiducials
 bool ParseFiducialCalibration( const YAML::Node& yaml, FiducialInfo& info )
 {
 	// Only the point are required
-	if( !yaml["intrinsics"]["points_x"] ||
-		!yaml["intrinsics"]["points_y"] ||
-		!yaml["intrinsics"]["points_z"] )
+	if( !yaml["points_x"] ||
+		!yaml["points_y"] ||
+		!yaml["points_z"] )
 	{
 		std::cerr << "Could not read fiducial info from YAML." << std::endl;
 		return false;
 	}
 	
 	// Parse the points
-	std::vector<double> pointsX = yaml["intrinsics"]["points_x"].as< std::vector<double> >();
-	std::vector<double> pointsY = yaml["intrinsics"]["points_y"].as< std::vector<double> >();
-	std::vector<double> pointsZ = yaml["intrinsics"]["points_z"].as< std::vector<double> >();
+	std::vector<double> pointsX = yaml["points_x"].as< std::vector<double> >();
+	std::vector<double> pointsY = yaml["points_y"].as< std::vector<double> >();
+	std::vector<double> pointsZ = yaml["points_z"].as< std::vector<double> >();
 	if( (pointsX.size() != pointsY.size()) && (pointsY.size() != pointsZ.size()) )
 	{
 		std::cerr << "Point fields must have same number of elements." << std::endl;

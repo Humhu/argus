@@ -26,7 +26,6 @@ argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imageP
 		cameraMat = cv::Matx33f::eye();
 	}
 	
-	// TODO Figure out why this is no good!
 	// Initialize guess
 	cv::Mat rvec;
 	cv::Mat tvec( 3, 1, CV_64FC1 ); // Must allocate tvec
@@ -42,6 +41,7 @@ argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imageP
 	}
 	cv::Rodrigues( R, rvec );
 	
+	// TODO Figure out why guess causes it to fail
 	cv::solvePnP( fiducialPoints, imagePoints, cameraMat, distortionCoeffs, rvec, tvec, false );
 	
 	cv::Rodrigues( rvec, R );
@@ -50,10 +50,10 @@ argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imageP
 	     R(2,0), R(2,1), R(2,2), tvec.at<double>(2),
 	          0,      0,      0,      1;
 	
-	static argus_utils::PoseSE3 postrotation( 0, 0, 0, 0.5, -0.5, 0.5, 0.5 );
+	// Compensate for difference between x-forward and z-forward convention
 	static argus_utils::PoseSE3 prerotation( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
 	
-	return prerotation * argus_utils::PoseSE3( H );// * postrotation;
+	return prerotation * argus_utils::PoseSE3( H );
 }
 	
 }
