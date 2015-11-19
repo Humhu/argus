@@ -84,10 +84,10 @@ target_link_libraries( velocity_integrator
 	fieldtrack
 	${catkin_LIBRARIES} )
 
-add_executable( static_pose_converter
-	nodes/static_pose_converter.cpp )
-add_dependencies( static_pose_converter ${PROJECT_NAME}_gencfg )
-target_link_libraries( static_pose_converter
+add_executable( pose_reference_resolver
+	nodes/pose_reference_resolver.cpp )
+add_dependencies( pose_reference_resolver ${PROJECT_NAME}_gencfg )
+target_link_libraries( pose_reference_resolver
 	fieldtrack
 	${catkin_LIBRARIES} )
 

@@ -32,7 +32,8 @@ bool FiducialPoseEstimator::RetrieveCameraInfo( const std::string& cameraName )
 {
 	if( !extrinsicsManager.HasMember( cameraName ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( cameraName ) ) { return false; }
+		// Force lookup of cameras, since any cameras we receive data from should be onboard
+		if( !extrinsicsManager.ReadMemberInformation( cameraName, true ) ) { return false; }
 	}
 	return true;
 }
@@ -41,7 +42,8 @@ bool FiducialPoseEstimator::RetrieveFiducialInfo( const std::string& fidName )
 {
 	if( !extrinsicsManager.HasMember( fidName ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( fidName ) ) { return false; }
+		// Don't force lookup of fiducials since there may be "rogue" fiducials
+		if( !extrinsicsManager.ReadMemberInformation( fidName, false ) ) { return false; }
 	}
 		
 	if( !fiducialManager.HasFiducial( fidName ) )
