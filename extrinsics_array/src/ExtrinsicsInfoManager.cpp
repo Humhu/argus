@@ -29,12 +29,14 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 	{
 		ROS_WARN_STREAM( "Could not find extrinsics information for: " << memberName 
 		    << " at path " << extrinsicsKey );
+		failedQueries.insert( memberName );
 		return false;
 	}
 	if( !GetPoseYaml( extrinsics, registration.extrinsics ) )
 	{
 		ROS_WARN_STREAM( "Could not parse extrinsics information for: " << memberName
 		    << " at key: " << extrinsicsKey );
+		failedQueries.insert( memberName );
 		return false;
 	}
 	
@@ -44,6 +46,7 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 	{
 		ROS_WARN_STREAM( "Could not find reference frame information for: " << memberName
 		    << " at path " << referenceKey );
+		failedQueries.insert( memberName );
 		return false;
 	}
 	memberRegistry[ memberName ] = registration;
