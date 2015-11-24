@@ -74,7 +74,7 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 			if( HasExtrinsicsPrior( detection.name ) && HasIntrinsicsPrior( detection.name ) )
 			{
 				const PoseSE3& prior = extrinsicsManager.GetExtrinsics( detection.name );
-				if( !RegisterFiducial( detection.name, prior ) ) { continue; }
+				if( !RegisterFiducial( detection.name, prior, true ) ) { continue; }
 			}
 		}
 		
@@ -177,7 +177,8 @@ bool FiducialArrayCalibrator::HasIntrinsicsPrior( const std::string& name )
 }
 
 bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
-                                                const PoseSE3& pose )
+                                                const PoseSE3& pose,
+                                                bool addPrior )
 {
 	if( fiducialRegistry.count( name ) > 0 ) { return true; }
 	
@@ -195,12 +196,15 @@ bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
 	registration.extrinsics->init( isam::PoseSE3( pose ) );
 	slam->add_node( registration.extrinsics.get() );
 	
-	isam::Noise priorCov = isam::Covariance( 1E3 * isam::eye(6) );
-	registration.extrinsicsPrior = 
-		std::make_shared<isam::PoseSE3_Prior>( registration.extrinsics.get(),
-		                                       isam::PoseSE3( pose ),
-											   priorCov );
-	slam->add_factor( registration.extrinsicsPrior.get() );
+	if( addPrior )
+	{
+		isam::Noise priorCov = isam::Covariance( 1E3 * isam::eye(6) );
+		registration.extrinsicsPrior = 
+			std::make_shared<isam::PoseSE3_Prior>( registration.extrinsics.get(),
+			                                       isam::PoseSE3( pose ),
+			                                       priorCov );
+		slam->add_factor( registration.extrinsicsPrior.get() );
+	}
 
 	fiducialRegistry[ name ] = registration;
 	return true;
