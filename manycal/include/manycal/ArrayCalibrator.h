@@ -5,11 +5,9 @@
 #include <tf/transform_broadcaster.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-#include "manycal/slam3d.h"
 #include "manycal/sclam_fiducial.h"
-#include "manycal/OdometryGraph.hpp"
-
 #include <isam/sclam_monocular.h>
+#include "manycal/OdometryGraph.hpp"
 
 #include "lookup/LookupInterface.h"
 #include "argus_msgs/ImageFiducialDetections.h"
@@ -21,12 +19,6 @@
 
 namespace manycal 
 {
-	
-template <>
-double index_difference <ros::Time>( const ros::Time& a, const ros::Time& b )
-{
-	return (a - b).toSec();
-}
 	
 /*! \brief Calibrates arrays of cameras and fiducials. */
 class ArrayCalibrator
@@ -47,6 +39,8 @@ private:
 	fiducials::FiducialInfoManager fiducialManager;
 	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 	
+	int targetNumObservations;
+	
 	/*! \brief Stores subscriptions to odometry and detection inputs. */
 	struct TargetRegistration
 	{
@@ -57,6 +51,7 @@ private:
 	
 	struct CameraRegistration
 	{
+		std::string name;
 		std::shared_ptr <isam::PoseSE3_Node> extrinsics;
 		std::shared_ptr <isam::MonocularIntrinsics_Node> intrinsics;
 		std::shared_ptr <isam::PoseSE3_Prior> extrinsicsPrior;
@@ -67,6 +62,7 @@ private:
 	
 	struct FiducialRegistration
 	{
+		std::string name;
 		std::shared_ptr <isam::PoseSE3_Node> extrinsics;
 		std::shared_ptr <isam::FiducialIntrinsics_Node> intrinsics;
 		std::shared_ptr <isam::PoseSE3_Prior> extrinsicsPrior;

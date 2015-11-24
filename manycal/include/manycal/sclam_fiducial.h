@@ -1,7 +1,13 @@
 #pragma once
 
+#include <isam/Point3d.h>
+#include <isam/Point2d.h>
+#include <Eigen/Dense>
+#include <iostream>
+
+#include "manycal/slamse3.h"
+#include "isam/slam_monocular.h"
 #include "isam/sclam_monocular.h"
-#include "manycal/slam3d.h"
 
 namespace isam
 {
@@ -19,79 +25,33 @@ public:
 	// We have fixed-size Eigen members
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	
-	static const char* name() { return "FiducialIntrinsics"; }
+	static const char* name();
 	
 	/*! \brief Construct a fiducial from a vector of points. */
-	FiducialIntrinsics( const std::vector <isam::Point3d>& pts )
-	{
-		if( pts.size() == 0 )
-		{
-			throw std::runtime_error( "Cannot create fiducial with zero points." );
-		}
-		
-		points = VectorType( 3 * pts.size() );
-		for( unsigned int i = 0; i < pts.size(); i++ )
-		{
-			points.block<3,1>( 3*i, 0 ) = PointType( pts[i].x(), pts[i].y(), pts[i].z() );
-		}
-	}
+	FiducialIntrinsics( const std::vector <isam::Point3d>& pts );
 	
-	FiducialIntrinsics( const VectorType& v )
-	: points( v ) {}
+	/*! \brief Construct from a stacked vector of points. */
+	FiducialIntrinsics( const VectorType& v );
 	
 	/*! \brief Create a new fiducial by applying a small change to this fiducial. 
 	 * The change should be aggregated X Y and Z for each point in order. */
-	FiducialIntrinsics exmap( const Eigen::VectorXd& delta )
-	{
-		if( delta.rows() != points.rows() )
-		{
-			throw std::runtime_error( "Cannot apply delta of size " 
-			    + std::to_string( delta.rows() ) + " to fiducial of size " 
-			    + std::to_string( points.rows() ) );
-		}
-		return FiducialIntrinsics( points + delta );
-	}
+	FiducialIntrinsics exmap( const Eigen::VectorXd& delta );
 	
 	/*! \brief Returns the dimensionality, equal to 3 times the number of points. */
-	int dim() const
-	{
-		return points.rows();
-	}
+	int dim() const;
 	
 	/*! \brief Set the fiducial point positions. */
-	void set( const Eigen::VectorXd& v )
-	{
-		if( v.rows() != points.rows() )
-		{
-			throw std::runtime_error( "Cannot set arg of size " 
-			    + std::to_string( v.rows() ) + " to fiducial of size " 
-			    + std::to_string( points.rows() ) );
-		}
-		points = v;
-	}
+	void set( const Eigen::VectorXd& v );
 	
 	/*! \brief Returns boolean vector indicating angle elements. */
-	Eigen::VectorXb is_angle() const
-	{
-		return Eigen::VectorXb::Constant( points.rows()/3, 1, false );
-	}
+	Eigen::VectorXb is_angle() const;
 	
-	MatrixType matrix() const
-	{
-		Eigen::Map <const MatrixType> mMap( points.data(), 3, points.rows()/3 );
-		return MatrixType( mMap );
-	}
+	MatrixType matrix() const;
 	
 	/*! \brief Returns aggregated X Y and Z point coordinates. */
-	Eigen::VectorXd vector() const
-	{
-		return points;
-	}
+	Eigen::VectorXd vector() const;
 	
-	void write( std::ostream& out ) const
-	{
-		out << "(points: " << points.transpose() << ")";
-	}
+	void write( std::ostream& out ) const;
 	
 private:
 
@@ -99,12 +59,39 @@ private:
 	
 };
 
-std::ostream& operator<<( std::ostream& out, const FiducialIntrinsics& in )
-{
-	in.write( out );
-	return out;
-}
+std::ostream& operator<<( std::ostream& out, const FiducialIntrinsics& in );
 
+/*! \brief Represents the image or camera coordinate detections of a fiducial. 
+ * The points are expected to be ordered uniquely such that naively comparing
+ * detections is appropriate. */
+class FiducialDetection
+{
+public:
+	
+	/*! \brief Construct a detection from aggregated point x y. */
+	FiducialDetection( const Eigen::VectorXd& p );
+	
+	/*! \brief Return the total dimensionality equal to the number of points times 2. */
+	int dim() const;
+	
+	/*! \brief Return the detection in aggregate vector form. */
+	Eigen::VectorXd vector() const;
+	
+	void write( std::ostream& out ) const;
+	
+private:
+	
+	Eigen::VectorXd points;
+	
+};
+
+std::ostream& operator<<( std::ostream& out, const FiducialDetection& det );
+
+
+FiducialDetection Predict( const FiducialIntrinsics& fiducial,
+                           const MonocularIntrinsics& camera,
+                           const PoseSE3& fiducialToCamera );
+	
 typedef NodeT <FiducialIntrinsics> FiducialIntrinsics_Node;
 
 /*! \brief Provides a prior on a fiducial intrinsic. */
@@ -145,71 +132,9 @@ private:
 	
 };
 
-/*! \brief Represents the image or camera coordinate detections of a fiducial. 
- * The points are expected to be ordered uniquely such that naively comparing
- * detections is appropriate. */
-class FiducialDetection
-{
-public:
-	
-	/*! \brief Construct a detection from aggregated point x y. */
-	FiducialDetection( const Eigen::VectorXd& p )
-	{
-		if( p.rows() % 2 != 0 )
-		{
-			throw std::runtime_error( "FiducialDetection: Uneven vector size." );
-		}
-		points = p;
-	}
-	
-	/*! \brief Return the total dimensionality equal to the number of points times 2. */
-	int dim() const
-	{
-		return points.rows();
-	}
-	
-	/*! \brief Return the detection in aggregate vector form. */
-	Eigen::VectorXd vector() const
-	{
-		return points;
-	}
-	
-	void write( std::ostream& out ) const
-	{
-		out << "(points: " << points.transpose() << ")";
-	}
-	
-private:
-	
-	Eigen::VectorXd points;
-	
-};
-
-std::ostream& operator<<( std::ostream& out, const FiducialDetection& det )
-{
-	det.write( out );
-	return out;
-}
-
-FiducialDetection Predict( const FiducialIntrinsics& fiducial,
-                           const MonocularIntrinsics& camera,
-                           const PoseSE3& fiducialToCamera )
-{
-	
- 	static PoseSE3::PoseType camToObj( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
-	
-	Eigen::Transform <double, 2, Eigen::Affine> cameraMatrix( camera.K().block<2,2>(0,0) );
-	PoseSE3::PoseType fidToCam = camToObj.Inverse() * fiducialToCamera.pose;
-	PoseSE3::PoseType::Transform relPose( fidToCam.ToTransform() );
-	
-	Eigen::Matrix <double, 3, Eigen::Dynamic> relPoints = relPose * fiducial.matrix();
-	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (cameraMatrix * relPoints).colwise().hnormalized();
-	
-	return FiducialDetection( Eigen::Map <Eigen::VectorXd> ( imgPoints.data(), 2 * imgPoints.cols() ) );
-}
-
 /*! \brief Factor that allows full camera and fiducial intrinsic and extrinsic
- * calibration and estimation.*/
+ * calibration and estimation. If camExt or fidExt are nullptr, then their transforms
+ * are assumed to be identity. */
 class FiducialFactor 
 : public FactorT <FiducialDetection>
 {
@@ -237,6 +162,11 @@ public:
 	_fid_ref( fidRef ), _fid_int( fidInt ), _fid_ext( fidExt ),
 	properties( prop )
 	{
+		require( !properties.optCamExtrinsics || _cam_ext != nullptr,
+		         "Cannot optimize camera extrinsics for null extrinsics node." );
+		require( !properties.optFidExtrinsics || _fid_ext != nullptr,
+		         "Cannot optimize fiducial extrinsics for null extrinsics node." );
+		
 		if( properties.optCamReference ) { _nodes.push_back( _cam_ref ); }
 		if( properties.optCamIntrinsics ) { _nodes.push_back( _cam_int ); }
 		if( properties.optCamExtrinsics ) { _nodes.push_back( _cam_ext ); }
@@ -248,16 +178,25 @@ public:
 	
 	void initialize()
 	{
+		bool fidExtOk = ( _fid_ext == nullptr ) || _fid_ext->initialized();
+		bool camExtOk = ( _cam_ext == nullptr ) || _cam_ext->initialized();
+		
 		require( _cam_ref->initialized() && _cam_int->initialized() && 
-		         _cam_ext->initialized() && _fid_ref->initialized() &&
-		         _fid_int->initialized() && _fid_ext->initialized(),
+		         camExtOk && _fid_ref->initialized() &&
+		         _fid_int->initialized() && fidExtOk,
 		         "FiducialFactor requires all nodes to be initialized." );
 	}
 	
 	Eigen::VectorXd basic_error( Selector s = ESTIMATE ) const
 	{
-		PoseSE3 relPose( _cam_ext->value(s).pose.Inverse() * _cam_ref->value(s).pose.Inverse() *
-		                 _fid_ref->value(s).pose * _fid_ext->value(s).pose );
+		PoseSE3::PoseType camExtPose;
+		if( _cam_ext ) { camExtPose = _cam_ext->value(s).pose; }
+		
+		PoseSE3::PoseType fidExtPose;
+		if( _fid_ext ) { fidExtPose = _fid_ext->value(s).pose; }
+		
+		PoseSE3 relPose( camExtPose.Inverse() * _cam_ref->value(s).pose.Inverse() *
+                         _fid_ref->value(s).pose * fidExtPose );
 		FiducialDetection predicted = Predict( _fid_int->value(s), _cam_int->value(s), relPose );
 		
 		return predicted.vector() - _measure.vector();

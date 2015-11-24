@@ -68,7 +68,10 @@ add_library( manycal
  	src/ArrayCalibrator.cpp
 # 	src/ArrayCapturer.cpp
 	src/ArraySynchronizer.cpp
+	src/FiducialArrayCalibrator.cpp
 	src/ManycalCommon.cpp
+	src/sclam_fiducial.cpp
+	src/slamse3.cpp
 )
 
 # add_dependencies( manycal ${manycal_EXPORTED_TARGETS} )
@@ -82,6 +85,13 @@ target_link_libraries( manycal
 add_executable( array_calibrator_node nodes/array_calibrator.cpp )
 add_dependencies( array_calibrator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( array_calibrator_node 
+	${isam_LIBRARIES}
+	${catkin_LIBRARIES} 	
+	manycal )
+	
+add_executable( fiducial_array_calibrator_node nodes/fiducial_array_calibrator.cpp )
+add_dependencies( fiducial_array_calibrator_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( fiducial_array_calibrator_node 
 	${isam_LIBRARIES}
 	${catkin_LIBRARIES} 	
 	manycal )

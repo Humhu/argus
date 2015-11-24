@@ -1,4 +1,4 @@
-#include <manycal/slam3d.h>
+#include <manycal/slamse3.h>
 #include <manycal/sclam_fiducial.h>
 
 #include <isam/SlamInterface.h>

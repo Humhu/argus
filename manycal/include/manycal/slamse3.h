@@ -1,17 +1,18 @@
 #pragma once
 
+#include <isam/Node.h>
+#include <isam/Factor.h>
+#include <Eigen/Dense>
+
 #include <argus_utils/PoseSE3.h>
 #include <argus_utils/GeometryUtils.h>
-
-#include "isam/Node.h"
-#include "isam/Factor.h"
-#include "isam/slam3d.h"
 
 namespace isam
 {
 
+typedef Eigen::Matrix <double,6,1> Vector6d;
 typedef Eigen::Matrix <double,7,1> Vector7d;
-	
+
 /*! \brief 3D pose. */
 class PoseSE3
 {
@@ -23,51 +24,24 @@ public:
 	
 	PoseType pose;
 	
-	PoseSE3() {}
+	PoseSE3();
 	
-	PoseSE3( const PoseType& p )
-	: pose( p ) {}
+	PoseSE3( const PoseType& p );
 	
-	PoseSE3( double x, double y, double z, double qw, double qx, double qy, double qz )
-	: pose( x, y, z, qw, qx, qy, qz ) {}
+	PoseSE3( double x, double y, double z, double qw, double qx, double qy, double qz );
 	
-	Vector7d vector() const
-	{
-		PoseType::Translation position = pose.GetTranslation();
-		Vector7d ret;
-		PoseType::Quaternion quaternion = pose.GetQuaternion();
-		ret << position.x(), position.y(), position.z(), quaternion.w(), quaternion.x(),
-		    quaternion.y(), quaternion.z();
-		return ret;
-	}
+	Vector7d vector() const;
 	
-	Eigen::VectorXb is_angle() const
-	{
-		return Eigen::VectorXb::Constant(7, 1, false);
-	}
+	Eigen::VectorXb is_angle() const;
 	
-	PoseSE3 exmap( const Vector6d& delta ) const
-	{
-		return PoseSE3( pose * PoseType::Exp( delta ) );
-	}
+	PoseSE3 exmap( const Vector6d& delta ) const;
 	
-	void write( std::ostream& out ) const
-	{
-		out << "( " << vector().transpose() << " )";
-	}
+	void write( std::ostream& out ) const;
 	
-	void set( const Vector7d& v )
-	{
-		pose = PoseType( v(0), v(1), v(2), v(3), v(4), v(5), v(6) );
-	}
-	
+	void set( const Vector7d& v );
 };
 
-std::ostream& operator<<( std::ostream& out, const PoseSE3& pose )
-{
-	pose.write( out );
-	return out;
-}
+std::ostream& operator<<( std::ostream& out, const PoseSE3& pose );
 
 typedef NodeT<PoseSE3> PoseSE3_Node;
 

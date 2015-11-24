@@ -37,6 +37,8 @@ fiducialManager( lookup ), extrinsicsManager( lookup )
 		ROS_ERROR_STREAM( "Calibration targets must be specified." );
 	}
 	
+	ph.param( "target_num_observations", targetNumObservations, 100 );
+	
 	BOOST_FOREACH( const std::string& targetName, targets )
 	{
 		if( targetRegistry.count( targetName ) > 0 )
@@ -166,11 +168,10 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 		// If one of the two frames is uninitialized, we initialize it using PNP
 		if( !camFrameReg.initialized || !fidFrameReg.initialized )
 		{
-			isam::FiducialIntrinsics::MatrixType fidPointsMat = fidReg.intrinsics->value().matrix();
+			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
+			                                     nullptr,
+			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
 			
-			std::vector<cv::Point3f> fidPoints = MatrixToPoints( fidReg.intrinsics->value().matrix() );
-			std::vector<cv::Point2f> imgPoints = MsgToPoints( detection.points );
-			PoseSE3 relPose = EstimateArrayPose( imgPoints, nullptr, fidPoints );
 			const PoseSE3& camExt = extrinsicsManager.GetExtrinsics( camName );
 			const PoseSE3& fidExt = extrinsicsManager.GetExtrinsics( fidName );
 			
@@ -220,12 +221,18 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 		                         detection, msg->header.stamp );
 	}
 	
-	ROS_INFO_STREAM( "Running optimization..." );
+// 	ROS_INFO_STREAM( "Running optimization..." );
 	slam->batch_optimization();
-	std::cout << "===== Iteration: " << observations.size() << std::endl;
-	slam->write( std::cout );
+// 	std::cout << "===== Iteration: " << observations.size() << std::endl;
+// 	slam->write( std::cout );
 	
-	if( observations.size() >= 5 ) { 
+	char buff[50];
+	sprintf( buff, "%3.2f", observations.size() * 100.0 / targetNumObservations );
+	std::string percentage( buff );
+	
+	ROS_INFO_STREAM( "Observations: [" << observations.size() << "/" << targetNumObservations 
+	    << "] (" << percentage << "%");
+	if( observations.size() >= targetNumObservations ) {
 		WriteResults();
 		exit( 0 ); 
 	}
@@ -238,12 +245,8 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
                                                const FiducialDetection& detection, 
                                                ros::Time t )
 {
-	Eigen::VectorXd detectionVector = Eigen::VectorXd( 2*detection.points.size() );
-	for( unsigned int i = 0; i < detection.points.size(); i++ )
-	{
-		detectionVector.block<2,1>(2*i,0) = Eigen::Vector2d( detection.points[i].x, detection.points[i].y );
-	}
-	isam::FiducialDetection det( detectionVector );
+	ROS_INFO_STREAM( "Creating factor for camera " << camera.name << " and fiducial " << fiducial.name );
+	isam::FiducialDetection det = DetectionToIsam( detection );
 	
 	// Assuming 3% image coordinate error
 	double imageCoordinateErr = std::pow( 0.03, 2 );
@@ -316,6 +319,7 @@ void ArrayCalibrator::InitializeCamera( const std::string& camName )
 	
 	ROS_INFO_STREAM( "Registering camera " << camName );
 	CameraRegistration registration;
+	registration.name = camName;
 	registration.optimizeExtrinsics = true; // TODO
 	registration.optimizeIntrinsics = false; // TODO
 	
@@ -364,6 +368,7 @@ void ArrayCalibrator::InitializeFiducial( const std::string& fidName )
 
 	ROS_INFO_STREAM( "Registering fiducial " << fidName );
 	FiducialRegistration registration;
+	registration.name = fidName;
 	registration.optimizeExtrinsics = false; // TODO
 	registration.optimizeIntrinsics = false;
 	

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "manycal/slam3d.h"
+#include "manycal/slamse3.h"
 
 namespace isam
 {

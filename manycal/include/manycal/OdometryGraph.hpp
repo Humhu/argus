@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ros/time.h>
 #include "argus_utils/MapUtils.hpp"
 #include "isam/Slam.h"
 
@@ -16,6 +17,12 @@ double index_difference <boost::posix_time::ptime>( const boost::posix_time::pti
                                                     const boost::posix_time::ptime& b )
 {
 	return (a - b).total_microseconds() * 1E-6;
+}
+
+template <>
+double index_difference <ros::Time>( const ros::Time& a, const ros::Time& b )
+{
+	return (a - b).toSec();
 }
 
 /*! \brief Provides an interface for managing a linked set of pose nodes. Allows
@@ -70,7 +77,7 @@ public:
 	typename NodeType::Ptr AddOdometry( const IndexType& ind, const PoseType& displacement, 
 	                                    const NoiseType& noise )
 	{
-		if( ind <= argus_utils::get_lowest_key( timeSeries ) ) { return nullptr; }
+		if( ind <= argus_utils::get_highest_key( timeSeries ) ) { return nullptr; }
 		
 		typename TimeSeries::iterator iter;
 		if( !argus_utils::get_closest_lower( timeSeries, ind, iter) ) { return nullptr; }
