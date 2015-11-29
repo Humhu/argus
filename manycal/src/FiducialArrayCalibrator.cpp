@@ -21,6 +21,12 @@ extrinsicsManager( lookupInterface )
 		exit( -1 );
 	}
 	
+	if( !ph.getParam( "reference_frame", referenceFrame ) )
+	{
+		ROS_ERROR_STREAM( "Must specify reference frame ID." );
+		exit( -1 );
+	}
+	
 	cameraIntrinsics = std::make_shared <isam::MonocularIntrinsics_Node>();
 	cameraIntrinsics->init( isam::MonocularIntrinsics( 1.0, 1.0, Eigen::Vector2d( 0, 0 ) ) );
 	
@@ -43,14 +49,18 @@ extrinsicsManager( lookupInterface )
 FiducialArrayCalibrator::~FiducialArrayCalibrator() 
 {}
 
-void FiducialArrayCalibrator::PrintResults() 
+void FiducialArrayCalibrator::WriteResults() 
 {
-	slam->batch_optimization();
 	BOOST_FOREACH( const FiducialRegistry::value_type& item, fiducialRegistry )
 	{
 		const std::string& name = item.first;
 		const FiducialRegistration& registration = item.second;
-		std::cout << "Fiducial " << name << " pose " << registration.extrinsics->value().pose << std::endl;
+		PoseSE3 extrinsics = registration.extrinsics->value().pose;
+		std::cout << "Fiducial " << name << " pose " << extrinsics << std::endl;
+		
+		extrinsicsManager.SetExtrinsics( name, extrinsics );
+		extrinsicsManager.SetReferenceFrame( name, referenceFrame );
+		extrinsicsManager.WriteMemberInformation( name );
 	}
 }
 
@@ -153,9 +163,10 @@ bool FiducialArrayCalibrator::HasExtrinsicsPrior( const std::string& name )
 {
 	if( !extrinsicsManager.HasMember( name ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( name, false ) )
-		{
-			return false;
+		if( !extrinsicsManager.ReadMemberInformation( name, false ) ||
+		    extrinsicsManager.GetReferenceFrame( name ) != referenceFrame )
+		{ 
+			return false; 
 		}
 		ROS_INFO_STREAM( "Found extrinsics prior for " << name );
 	}
@@ -185,7 +196,6 @@ bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
 	ROS_INFO_STREAM( "Registering fiducial " << name << " with pose " << pose );
 	
 	FiducialRegistration registration;
-	registration.name = name;
 	isam::FiducialIntrinsics intrinsics = FiducialToIsam( fiducialManager.GetIntrinsics( name ) );
 	registration.intrinsics = 
 	    std::make_shared<isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );

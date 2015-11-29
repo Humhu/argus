@@ -1,0 +1,111 @@
+<launch>
+  
+  <node pkg="lookup" type="lookup_registrar" name="apriltag_36h11_id0_registrar">
+    <rosparam>
+      target_name: apriltag_36h11_id0
+      target_namespace: apriltag_36h11_id0
+    </rosparam>
+  </node>
+  
+  <rosparam>
+    apriltag_36h11_id0:
+      intrinsics:
+        points_x: [0, 0, 0, 0]
+        points_y: [-0.0479, 0.0479, 0.0479, -0.0479]
+        points_z: [-0.0479, -0.0479, 0.0479, 0.0479]
+  </rosparam>
+  
+  <node pkg="lookup" type="lookup_registrar" name="pseye_047_registrar">
+    <rosparam>
+      target_name: pseye_047_wide
+      target_namespace: pseye_047_wide
+    </rosparam>
+  </node>
+  
+  <node pkg="camplex" type="camera_node" name="pseye_047_wide" output="screen">
+    <remap from="~/image_raw" to="image_raw"/>
+    <rosparam>
+      frame_id: test_array
+      extrinsics:
+        position:
+          x: 0
+          y: 0
+          z: 0
+        orientation:
+          yaw: 0
+          pitch: 0
+          roll: 0
+      camera_name: pseye_047_wide
+      device_path: /dev/argus/camera2
+      frame_resolution: [640, 480]
+      frame_rate: 15
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="lookup" type="lookup_registrar" name="pseye_043_registrar">
+    <rosparam>
+      target_name: pseye_043_wide
+      target_namespace: pseye_043_wide
+    </rosparam>
+  </node>
+  
+  <node pkg="camplex" type="camera_node" name="pseye_043_wide" output="screen">
+    <remap from="~/image_raw" to="image_raw"/>
+    <rosparam>
+      frame_id: robot
+      camera_name: pseye_043_wide
+      device_path: /dev/argus/camera0
+      frame_resolution: [640, 480]
+      frame_rate: 15
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="lookup" type="lookup_registrar" name="pseye_049_registrar">
+    <rosparam>
+      target_name: pseye_049_wide
+      target_namespace: pseye_049_wide
+    </rosparam>
+  </node>
+  
+  <node pkg="camplex" type="camera_node" name="pseye_049_wide" output="screen">
+    <remap from="~/image_raw" to="image_raw"/>
+    <rosparam>
+      frame_id: robot
+      camera_name: pseye_049_wide
+      device_path: /dev/argus/camera4
+      frame_resolution: [640, 480]
+      frame_rate: 15
+      stream_on_start: false
+    </rosparam>
+  </node>
+  
+  <node pkg="manycal" type="array_synchronizer_node" name="synchronizer">
+    <remap from="image_input" to="image_raw"/>
+    <remap from="~/image_output" to="~/image_synchronized"/>
+    <rosparam>
+      camera_names: [pseye_047_wide, pseye_043_wide, pseye_049_wide]
+      num_simultaneous_captures: 2
+    </rosparam>
+  </node>
+  
+  <node pkg="atags" type="detector_node" name="detector" output="screen">
+    <remap from="image" to="synchronizer/image_synchronized"/>
+    <remap from="~/detections_raw" to="detections_raw"/>
+    <remap from="~/detections_processed" to="detections_processed"/>
+    <rosparam>
+      enable_undistortion: true
+      enable_normalization: true
+      tag_family: 36h11
+    </rosparam>
+  </node>
+    
+  <node pkg="manycal" type="camera_array_calibrator_node" name="calibrator" output="screen">
+    <remap from="detections" to="detections_processed"/>
+    <rosparam>
+      reference_frame: test_array
+    </rosparam>
+  </node>
+  
+</launch>

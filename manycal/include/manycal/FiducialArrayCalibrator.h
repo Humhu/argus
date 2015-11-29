@@ -14,6 +14,7 @@
 namespace manycal
 {
 
+// TODO Add service calls to write results
 /*! \brief Uses a single camera to estimate the extrinsics for an array of fiducials. 
  * Fiducials are initialized as they are observed by the camera, with the first
  * fiducial placed at the origin. Consecutive observations are initialized by using
@@ -25,7 +26,7 @@ public:
 	FiducialArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	~FiducialArrayCalibrator();
 	
-	void PrintResults();
+	void WriteResults();
 	
 private:
 	
@@ -38,11 +39,11 @@ private:
 	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 
 	std::string sourceCamera;
+	std::string referenceFrame;
 	isam::MonocularIntrinsics_Node::Ptr cameraIntrinsics;
 	
 	struct FiducialRegistration
 	{
-		std::string name;
 		isam::PoseSE3_Node::Ptr extrinsics;
 		isam::FiducialIntrinsics_Node::Ptr intrinsics;
 		isam::PoseSE3_Prior::Ptr extrinsicsPrior;

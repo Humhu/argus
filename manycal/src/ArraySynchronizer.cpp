@@ -32,17 +32,11 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		std::string captureServiceName = cameraName + "/capture_frames";
 		ros::service::waitForService( captureServiceName );
 		registration.captureClient = nodeHandle.serviceClient<camplex::CaptureFrames>( captureServiceName );
-// 		registration.imagePub = publicPort.advertiseCamera( "image_synchronized", 2 );
 		
 		cameraRegistry[ cameraName ] = ( registration );
-		
-		// Have to push registration into registry before we can get the reference to it
-// 		std::string cameraTopic = cameraName + "/image_raw";
-// 		cameraRegistry.back().imageSub = publicPort.subscribeCamera( cameraTopic, 1, 
-// 		    boost::bind( &ArraySynchronizer::ImageCallback, this, _1, _2, boost::ref(cameraRegistry.back()) ) );
 	}
 	
-	imagePub = privatePort.advertiseCamera( "image_synchronized", 2*cameraNames.size() );
+	imagePub = privatePort.advertiseCamera( "image_output", 2*cameraNames.size() );
 	imageSub = publicPort.subscribeCamera( "image_input", 2*cameraNames.size(), &ArraySynchronizer::ImageCallback, this );
 		
 	captureServer = privHandle.advertiseService( "capture_array", &ArraySynchronizer::CaptureArrayCallback, this );
@@ -67,21 +61,22 @@ bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req,
 	}
 
 	// TODO Handle timeouts
-// 	ROS_INFO( "Dispatched all jobs. Waiting on semaphore." );
+	ROS_INFO( "Dispatched all jobs. Waiting on semaphore." );
 	completedJobs.Decrement( cameraRegistry.size() ); // Wait for all jobs to complete
 	
 	ros::Time now = ros::Time::now();
 	
-	std_msgs::Header header;
-	header.stamp = now;
-// 	static unsigned int sequence = 0;
 	BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
 	{
+		std_msgs::Header header;
+		header.stamp = now;
+		
 		CameraRegistration& registration = item.second;
 		if( !registration.data.image )
 		{
 			ROS_ERROR_STREAM( "Null buffered data!" );
 		}
+		
 		header.frame_id = registration.data.image->header.frame_id;
 		header.seq = registration.data.image->header.seq;
 		registration.data.image->header = header;
@@ -114,7 +109,7 @@ void ArraySynchronizer::ImageCallback( const sensor_msgs::Image::ConstPtr& image
 		
 	}
  	CameraRegistration& registration = cameraRegistry[ image->header.frame_id ];
-// 	ROS_INFO( "Image received." );
+	ROS_INFO_STREAM( "Image received from " << image->header.frame_id );
 	registration.data.image = boost::make_shared<sensor_msgs::Image>( *image );
 	registration.data.info = boost::make_shared<sensor_msgs::CameraInfo>( *info );
 	

@@ -45,19 +45,16 @@
         points_y: [-0.1, 0.1, 0.1, -0.1]
         points_z: [-0.1, -0.1, 0.1, 0.1]
     apriltag_36h11_id1:
-      frame_id: test_array
       intrinsics:
           points_x: [0, 0, 0, 0]
           points_y: [-0.1, 0.1, 0.1, -0.1]
           points_z: [-0.1, -0.1, 0.1, 0.1]
     apriltag_36h11_id2:
-      frame_id: test_array
       intrinsics:
           points_x: [0, 0, 0, 0]
           points_y: [-0.1, 0.1, 0.1, -0.1]
           points_z: [-0.1, -0.1, 0.1, 0.1]
     apriltag_36h11_id3:
-      frame_id: test_array
       intrinsics:
           points_x: [0, 0, 0, 0]
           points_y: [-0.1, 0.1, 0.1, -0.1]
@@ -93,6 +90,7 @@
     <remap from="detections" to="detections_processed"/>
     <rosparam>
       source_camera: pseye_047_wide
+      reference_frame: test_array
     </rosparam>
   </node>
   
