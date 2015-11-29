@@ -1,3 +1,0 @@
-<launch>
-  <node name="vonode" pkg="odoflow" type="VisualOdometryNode" launch-prefix="xterm -e gdb --args" />
-</launch>
