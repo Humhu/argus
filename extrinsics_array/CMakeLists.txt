@@ -37,7 +37,7 @@ generate_messages(
 catkin_package(
 	INCLUDE_DIRS 	include
 	
-	LIBRARIES 		extrinsics_array
+	LIBRARIES 		lib_extrinsics_array
 					
 	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
@@ -57,19 +57,19 @@ include_directories( include
 					 ${catkin_INCLUDE_DIRS}
 )
 
-add_library( extrinsics_array
+add_library( lib_extrinsics_array
 	src/ExtrinsicsArray.cpp
 	src/ExtrinsicsArrayCalibrationParsers.cpp
 	src/ExtrinsicsInfoManager.cpp
 )
-add_dependencies( extrinsics_array ${extrinsics_array_EXPORTED_TARGETS} )
-target_link_libraries( extrinsics_array
+add_dependencies( lib_extrinsics_array ${${PROJECT_NAME}_EXPORTED_TARGETS} )
+target_link_libraries( lib_extrinsics_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS extrinsics_array
+install(TARGETS lib_extrinsics_array
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

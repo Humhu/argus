@@ -17,6 +17,7 @@ namespace fieldtrack
 class TargetTracker
 {
 public:
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	
 	TargetTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	

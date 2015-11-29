@@ -1,6 +1,7 @@
 #include "fiducials/FiducialInfoManager.h"
 #include "fiducials/FiducialCalibrationParsers.h"
 
+#include "argus_utils/ParamUtils.h"
 #include "argus_utils/YamlUtils.h"
 
 #include <boost/foreach.hpp>
@@ -52,6 +53,7 @@ bool FiducialInfoManager::WriteFiducialInformation( const std::string& fidName,
 	if( !GetNamespace( fidName, fidNamespace, forceLookup ) ) { return false; }
 	std::string intrinsicsKey = GenerateIntrinsicsKey( fidNamespace );
 	SetYamlParam( nodeHandle, intrinsicsKey, yaml );
+	return true;
 }
 
 bool FiducialInfoManager::HasFiducial( const std::string& fidName ) const
