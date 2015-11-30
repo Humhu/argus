@@ -1,6 +1,7 @@
 #include "fieldtrack/TargetTracker.h"
 #include "geometry_msgs/PoseStamped.h" // TODO Publish covariance also!
 
+#include "argus_utils/ParamUtils.h"
 #include "argus_utils/YamlUtils.h"
 
 #include <boost/foreach.hpp>

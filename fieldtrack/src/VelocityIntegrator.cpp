@@ -1,5 +1,6 @@
 #include "fieldtrack/VelocityIntegrator.h"
 #include "argus_utils/GeometryUtils.h"
+#include "argus_utils/ParamUtils.h"
 #include "argus_utils/YamlUtils.h"
 
 using namespace argus_utils;

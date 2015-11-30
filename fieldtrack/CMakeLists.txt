@@ -11,6 +11,7 @@ find_package(catkin REQUIRED
 					roscpp
 					std_msgs
 					sensor_msgs
+					nav_msgs
 					argus_utils
 					extrinsics_array
 					fiducials
@@ -30,6 +31,7 @@ catkin_package(
 	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
 					std_msgs
+					nav_msgs
 					argus_utils
 					extrinsics_array
 					fiducials
@@ -47,6 +49,7 @@ include_directories( include
 add_library( fieldtrack
 	src/ArrayPoseEstimator.cpp
 	src/FiducialPoseEstimator.cpp
+	src/SimpleStateEstimator.cpp
 	src/TargetTracker.cpp
 	src/VelocityIntegrator.cpp
 )
@@ -88,6 +91,13 @@ add_executable( pose_reference_resolver
 	nodes/pose_reference_resolver.cpp )
 add_dependencies( pose_reference_resolver ${PROJECT_NAME}_gencfg )
 target_link_libraries( pose_reference_resolver
+	fieldtrack
+	${catkin_LIBRARIES} )
+
+add_executable( state_estimator_node
+	nodes/state_estimator_node.cpp )
+add_dependencies( state_estimator_node ${ROJECT_NAME}_gencfg )
+target_link_libraries( state_estimator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
