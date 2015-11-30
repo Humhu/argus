@@ -17,12 +17,11 @@ public:
 	/*! \brief Tracks points in first image to second image. If guess is empty,
 		* firstPoints are used as initialization. */
 	virtual void TrackInterestPoints( const cv::Mat& firstImage,
-									  const cv::Mat& secondImage,
-									  const InterestPoints& firstPoints,
-									  const InterestPoints& secondPointsGuess,
-									  std::vector<bool>& mask,
-									  InterestPoints& firstInliers,
-									  InterestPoints& secondInliers ) = 0;
+	                                  const cv::Mat& secondImage,
+	                                  const InterestPoints& firstPoints,
+	                                  const InterestPoints& secondPointsGuess,
+	                                  InterestPoints& firstInliers,
+                                      InterestPoints& secondInliers ) = 0;
 protected:
 	
 	ros::NodeHandle nodeHandle;

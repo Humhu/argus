@@ -27,7 +27,6 @@ namespace odoflow
 											  const cv::Mat& secondImage,
 											  const InterestPoints& firstPoints,
 											  const InterestPoints& secondPointsGuess,
-											  std::vector<bool>& mask,
 											  InterestPoints& firstInliers,
 											  InterestPoints& secondInliers )
 	{
@@ -69,15 +68,11 @@ namespace odoflow
 		// 2. Grab good matches
 		firstInliers.reserve( firstPoints.size() );
 		secondInliers.reserve( firstPoints.size() );
-		mask.reserve( firstPoints.size() );
-		mask.clear();
 		for( unsigned int i = 0; i < firstPoints.size(); i++)
 		{
 			if( !status[i] ) { 
-				mask.push_back( false );
 				continue; 
 			}
-			mask.push_back( true );
 			firstInliers.push_back( InterestPoint( firstConvertedPoints[i].x, firstConvertedPoints[i].y ) );
 			secondInliers.push_back( InterestPoint( secondConvertedPoints[i].x, secondConvertedPoints[i].y ) );
 		}

@@ -161,67 +161,67 @@ int cv::RecoverPose( InputArray E, InputArray _points1, InputArray _points2, Out
 
 namespace odoflow
 {
-	InterestPoints ParsePointMatrix( const cv::Mat& mat )
+InterestPoints ParsePointMatrix( const cv::Mat& mat )
+{
+	InterestPoints points( mat.cols*mat.rows );
+	if( mat.type() == CV_32FC2 )
 	{
-		InterestPoints points( mat.cols*mat.rows );
-		if( mat.type() == CV_32FC2 )
+		cv::Vec2f p;
+		if( mat.rows == 1 )
 		{
-			cv::Vec2f p;
-			if( mat.rows == 1 )
+			for( unsigned int i = 0; i < mat.cols; i++ )
 			{
-				for( unsigned int i = 0; i < mat.cols; i++ )
-				{
-					p = mat.at<cv::Vec2f>(0,i);
-					points[i] = InterestPoint( p[0], p[1] );
-				}
-			}
-			else
-			{
-				for( unsigned int i = 0; i < mat.rows; i++ )
-				{
-					p = mat.at<cv::Vec2f>(i,0);
-					points[i] = InterestPoint( p[0], p[1] );
-				}
-			}
-		}
-		else if( mat.type() == CV_64FC2 )
-		{
-			cv::Vec2d p;
-			if( mat.rows == 1 )
-			{
-				for( unsigned int i = 0; i < mat.cols; i++ )
-				{
-					p = mat.at<cv::Vec2d>(0,i);
-					points[i] = InterestPoint( p[0], p[1] );
-				}
-			}
-			else
-			{
-				for( unsigned int i = 0; i < mat.rows; i++ )
-				{
-					p = mat.at<cv::Vec2d>(i,0);
-					points[i] = InterestPoint( p[0], p[1] );
-				}
+				p = mat.at<cv::Vec2f>(0,i);
+				points[i] = InterestPoint( p[0], p[1] );
 			}
 		}
 		else
 		{
-			throw std::runtime_error( "Invalid mat type." );
+			for( unsigned int i = 0; i < mat.rows; i++ )
+			{
+				p = mat.at<cv::Vec2f>(i,0);
+				points[i] = InterestPoint( p[0], p[1] );
+			}
 		}
-		return points;
 	}
-	
-	cv::Mat ParsePointVector( const InterestPoints& points )
+	else if( mat.type() == CV_64FC2 )
 	{
-		
-		cv::Mat mat( points.size(), 1, CV_64FC2 );
-		for( unsigned int i = 0; i < points.size(); i++ )
+		cv::Vec2d p;
+		if( mat.rows == 1 )
 		{
-			cv::Vec2d p;
-			p[0] = points[i].x;
-			p[1] = points[i].y;
-			mat.at<cv::Vec2d>(i,0) = p;
+			for( unsigned int i = 0; i < mat.cols; i++ )
+			{
+				p = mat.at<cv::Vec2d>(0,i);
+				points[i] = InterestPoint( p[0], p[1] );
+			}
 		}
-		return mat;
+		else
+		{
+			for( unsigned int i = 0; i < mat.rows; i++ )
+			{
+				p = mat.at<cv::Vec2d>(i,0);
+				points[i] = InterestPoint( p[0], p[1] );
+			}
+		}
 	}
+	else
+	{
+		throw std::runtime_error( "Invalid mat type." );
+	}
+	return points;
+}
+
+cv::Mat ParsePointVector( const InterestPoints& points )
+{
+	
+	cv::Mat mat( points.size(), 1, CV_64FC2 );
+	for( unsigned int i = 0; i < points.size(); i++ )
+	{
+		cv::Vec2d p;
+		p[0] = points[i].x;
+		p[1] = points[i].y;
+		mat.at<cv::Vec2d>(i,0) = p;
+	}
+	return mat;
+}
 }

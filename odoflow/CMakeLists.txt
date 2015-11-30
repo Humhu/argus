@@ -14,6 +14,8 @@ find_package(catkin REQUIRED
 					image_geometry
 					argus_utils
 					camplex
+					lookup
+					extrinsics_array
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -33,15 +35,17 @@ catkin_package(
 	INCLUDE_DIRS 	include
 	LIBRARIES 		odoflow
 	CATKIN_DEPENDS 	roscpp 
-					image_transport 
 					sensor_msgs 
 					geometry_msgs 
 					cv_bridge 
+					image_transport 
 					std_msgs 
 					message_runtime
 					argus_utils
 					camplex
-										
+					lookup
+					extrinsics_array
+					
 	DEPENDS 		Boost 
 					OpenCV 
 					Eigen3
@@ -58,18 +62,20 @@ include_directories(
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 
-add_library(odoflow
+add_library( odoflow
 	src/CornerPointDetector.cpp
 	src/FASTPointDetector.cpp
 	src/FixedPointDetector.cpp
 	src/LKPointTracker.cpp
+	src/OdoflowCommon.cpp
 	src/OpenCVMod.cpp
 	src/RigidEstimator.cpp
 	src/VisualOdometryPipeline.cpp
 )
-add_dependencies( odoflow ${odoflow_EXPORTED_TARGETS} odoflow_gencfg)
-target_link_libraries(odoflow
+#add_dependencies( odoflow ${${PROJECT_NAME}_EXPORTED_TARGETS})
+target_link_libraries( odoflow
 	${OpenCV_LIBS}
+	${catkin_LIBRARIES}
 )
 
 add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )

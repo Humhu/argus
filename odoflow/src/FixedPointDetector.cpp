@@ -1,5 +1,7 @@
 #include "odoflow/FixedPointDetector.h"
 
+#include "argus_utils/ParamUtils.h"
+
 #include <boost/foreach.hpp>
 
 #include <iostream>
@@ -10,10 +12,14 @@ namespace odoflow
 	FixedPointDetector::FixedPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: InterestPointDetector( nh, ph )
 	{
-		int width, height;
-		privHandle.param( "detector/grid_width", width, 3 );
-		privHandle.param( "detector/grid_height", height, 3 );
-		// TODO arg range checking
+		unsigned int width = 3;
+		unsigned int height = 3;
+		std::vector<int> gridSize;
+		if( privHandle.getParam( "detector/grid_size", gridSize ) )
+		{
+			width = static_cast<unsigned int>( gridSize[0] );
+			height = static_cast<unsigned int>( gridSize[1] );
+		}
 		
 		for( unsigned int i = 0; i < width; i++ )
 		{

@@ -18,12 +18,11 @@ public:
 	LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	virtual void TrackInterestPoints( const cv::Mat& firstImage,
-										const cv::Mat& secondImage,
-										const InterestPoints& firstPoints,
-										const InterestPoints& secondPointsGuess,
-										std::vector<bool>& mask,
-										InterestPoints& firstInliers,
-										InterestPoints& secondInliers );
+	                                  const cv::Mat& secondImage,
+	                                  const InterestPoints& firstPoints,
+	                                  const InterestPoints& secondPointsGuess,
+	                                  InterestPoints& firstInliers,
+	                                  InterestPoints& secondInliers );
 	
 	void SetFlowCriteria( int maxIters, double epsilon );
 	void SetFlowWindow( int width, int height );

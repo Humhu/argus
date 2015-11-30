@@ -26,6 +26,8 @@
   <build_depend>image_geometry</build_depend>
   <build_depend>argus_utils</build_depend>
   <build_depend>camplex</build_depend>
+  <build_depend>lookup</build_depend>
+  <build_depend>extrinsics_array</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
@@ -37,13 +39,7 @@
   <run_depend>message_runtime</run_depend>
   <run_depend>argus_utils</run_depend>
   <run_depend>camplex</run_depend>
-
-  <!-- The export tag contains other, unspecified, tags -->
-  <export>
-    <!-- You can specify that this package is a metapackage here: -->
-    <!-- <metapackage/> -->
-
-    <!-- Other tools can request additional information be placed here -->
-
-  </export>
+  <run_depend>lookup</run_depend>
+  <run_depend>extrinsics_array</run_depend>
+  
 </package>
