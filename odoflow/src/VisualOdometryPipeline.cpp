@@ -94,7 +94,7 @@ extrinsicsManager( lookupInterface )
 		debugPub = imagePort.advertise( "image_debug", 1 );
 	}
 	imageSub = imagePort.subscribeCamera( "image", 1, &VisualOdometryPipeline::ImageCallback, this );
-	dispPub = nodeHandle.advertise<geometry_msgs::PoseWithCovarianceStamped>( "/displacements", 10 );
+	dispPub = nodeHandle.advertise<geometry_msgs::PoseWithCovarianceStamped>( "displacements", 10 );
 
 }
 
