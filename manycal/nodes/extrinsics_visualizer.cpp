@@ -2,6 +2,7 @@
 
 #include "argus_utils/PoseSE3.h"
 #include "argus_utils/GeometryUtils.h"
+#include "argus_utils/ParamUtils.h"
 #include "argus_utils/YamlUtils.h"
 #include "visualization_msgs/Marker.h"
 
