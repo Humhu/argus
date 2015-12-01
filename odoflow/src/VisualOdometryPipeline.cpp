@@ -128,12 +128,15 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// Initialization catch
 	if( registration.keyframe.empty() )
 	{
+	  ROS_INFO_STREAM( "Initializing keyframe." );
 		SetKeyframe( registration, currentFrame, cameraModel, now );
 		return;
 	}
 	
 	// Track interest points into current frame
 	InterestPoints keyframeInliersImage, currentInliersImage;
+	ROS_INFO_STREAM( "Keyframe points size: " << registration.keyframePointsImage.size() );
+	ROS_INFO_STREAM( "Last points size: " << registration.lastPointsImage.size() );
 	tracker->TrackInterestPoints( registration.keyframe, currentFrame, 
 	                              registration.keyframePointsImage, registration.lastPointsImage,
 	                              keyframeInliersImage, currentInliersImage );
@@ -150,7 +153,8 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Undistort and normalize tracked inliers
 	InterestPoints currentPointsImage, currentPointsNormalized;
-	UndistortPoints( currentInliersImage, cameraModel, true, false, currentPointsImage );
+	//UndistortPoints( currentInliersImage, cameraModel, true, false, currentPointsImage );
+	currentPointsImage = currentInliersImage;
 	UndistortPoints( currentPointsImage, cameraModel, false, true, currentPointsNormalized );
 	
 	// TODO Assuming camera model does not change here to normalize keyframe inliers
@@ -174,9 +178,13 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	double dt = ( now - registration.lastPointsTimestamp ).toSec();
     PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
 	const PoseSE3& cameraExtrinsics = extrinsicsManager.GetExtrinsics( cameraName );
-	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement );
+	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraExtrinsics ) * cameraVelocity;
-	
+	ROS_INFO_STREAM( "Camera displacement " << cameraName << ": " << cameraDisplacement );
+	ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
+	ROS_INFO_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
+
+
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = now;
 	tmsg.header.frame_id = extrinsicsManager.GetReferenceFrame( cameraName );
@@ -187,6 +195,8 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	registration.lastPointsTimestamp = now;
 	registration.lastPointsImage = currentInliersImage;
 	registration.lastPointsPose = currentPose;
+
+	if( showOutput ) { VisualizeFrame( registration, currentFrame, now ); }
 	
 	// If we don't have enough inlier interest points, redetect on our keyframe
 	if( registration.keyframePointsImage.size() < redetectionThreshold )
@@ -194,8 +204,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		ROS_INFO_STREAM( "Not enough keyframe points. Resetting keyframe." );
 		SetKeyframe( registration, currentFrame, cameraModel, now );
 	}
-	
-	if( showOutput ) { VisualizeFrame( registration, currentFrame, now ); }
+       
 }
 	
 void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& registration, 
@@ -276,9 +285,10 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& registration,
 	registration.keyframeTimestamp = timestamp;
 	registration.lastPointsImage.clear();
 	registration.lastPointsTimestamp = timestamp;
-	registration.lastPointsPose = extrinsicsManager.GetExtrinsics( registration.name ).Inverse(); //PoseSE3();
+	registration.lastPointsPose = PoseSE3(); //extrinsicsManager.GetExtrinsics( registration.name ).Inverse(); //PoseSE3();
 	InterestPoints detected = detector->FindInterestPoints( registration.keyframe );
-	UndistortPoints( detected, model, true, false, registration.keyframePointsImage );
+	//UndistortPoints( detected, model, true, false, registration.keyframePointsImage );
+	registration.keyframePointsImage = detected;
 	ROS_INFO_STREAM( "Found " << registration.keyframePointsImage.size() << " points." );	
 }
 
