@@ -23,7 +23,7 @@ public:
 	
 private:
 	
-	double outputScale;
+	double scale;
 };
 
 } // end namespace odoflow

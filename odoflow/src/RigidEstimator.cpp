@@ -8,7 +8,9 @@ namespace odoflow
 
 	RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: MotionEstimator( nh, ph )
-	{}
+	{
+	  ph.param<double>( "estimator/scale", scale, 1.0 );
+	}
 	
 	bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 										 const InterestPoints& dstPoints,
@@ -30,8 +32,8 @@ namespace odoflow
 		
 		Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
 		H.block<2,2>(1,1) = Ab.block<2,2>(0,0);
-		H(1,3) = -Ab(0,2); // Image x corresponds to camera -y
-		H(2,3) = -Ab(1,2); // Image y corresponds to camera -z
+		H(1,3) = -Ab(0,2) * scale; // Image x corresponds to camera -y
+		H(2,3) = -Ab(1,2) * scale; // Image y corresponds to camera -z
 		
 		transform = PoseSE3(H);
 		return true;
