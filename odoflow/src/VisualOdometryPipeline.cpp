@@ -13,7 +13,7 @@
 #include "argus_utils/MatrixUtils.h"
 #include "argus_utils/ParamUtils.h"
 
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -94,7 +94,7 @@ extrinsicsManager( lookupInterface )
 		debugPub = imagePort.advertise( "image_debug", 1 );
 	}
 	imageSub = imagePort.subscribeCamera( "image", 1, &VisualOdometryPipeline::ImageCallback, this );
-	dispPub = nodeHandle.advertise<geometry_msgs::PoseWithCovarianceStamped>( "displacements", 10 );
+	dispPub = nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( "velocity", 10 );
 
 }
 
@@ -172,24 +172,21 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Have to calculate dt before getting timestamp
 	double dt = ( now - registration.lastPointsTimestamp ).toSec();
-        //PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
+    PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
 	const PoseSE3& cameraExtrinsics = extrinsicsManager.GetExtrinsics( cameraName );
-	PoseSE3 framePose = currentPose * cameraExtrinsics.Inverse();
-	PoseSE3 frameDisplacement = registration.lastPointsPose.Inverse() * framePose;
-	//PoseSE3 frameDisplacement = cameraPose * cameraDisplacement * cameraPose.Inverse();
-	//ROS_INFO_STREAM( "Camera displacement for " << cameraName << ": " << cameraDisplacement );
-	ROS_INFO_STREAM( "Frame displacement for " << cameraName << ": " << frameDisplacement );
+	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement );
+	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraExtrinsics ) * cameraVelocity;
 	
-	geometry_msgs::PoseWithCovarianceStamped tmsg;
+	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = now;
 	tmsg.header.frame_id = extrinsicsManager.GetReferenceFrame( cameraName );
-	tmsg.pose.pose= PoseToMsg( frameDisplacement );
-	SerializeMatrix( covarianceRate * dt, tmsg.pose.covariance );
+	tmsg.twist.twist= TangentToMsg( frameVelocity );
+	SerializeMatrix( covarianceRate * dt, tmsg.twist.covariance );
 	dispPub.publish( tmsg );
 	
 	registration.lastPointsTimestamp = now;
 	registration.lastPointsImage = currentInliersImage;
-	registration.lastPointsPose = framePose; //currentPose;
+	registration.lastPointsPose = currentPose;
 	
 	// If we don't have enough inlier interest points, redetect on our keyframe
 	if( registration.keyframePointsImage.size() < redetectionThreshold )

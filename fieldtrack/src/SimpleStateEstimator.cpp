@@ -64,11 +64,11 @@ SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh,
 		poseCovarianceRate = PoseFilter::StateCovariance::Identity();
 	}
 	
-	dispSub = nodeHandle.subscribe( "displacements", 
-	                                10, 
-	                                &SimpleStateEstimator::DisplacementCallback,
-	                                this );
-	poseSub = nodeHandle.subscribe( "poses", 
+	velSub = nodeHandle.subscribe( "velocity", 
+	                               10, 
+	                               &SimpleStateEstimator::VelocityCallback,
+	                               this );
+	poseSub = nodeHandle.subscribe( "pose", 
 	                                10, 
 	                                &SimpleStateEstimator::PoseCallback,
 	                                this );
@@ -82,33 +82,29 @@ SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh,
 		                        this ) );
 }
 	
-void SimpleStateEstimator::DisplacementCallback( const PoseWithCovarianceStamped::ConstPtr& msg )
+void SimpleStateEstimator::VelocityCallback( const TwistWithCovarianceStamped::ConstPtr& msg )
 {
 	if( msg->header.frame_id != bodyFrame ) { return; }
 	
 	double dt = ( msg->header.stamp - lastVelocityUpdate ).toSec();
 	if( dt < 0 )
 	{
-		ROS_WARN_STREAM( "Received displacement message from before last update." );
+		ROS_WARN_STREAM( "Received velocity message from before last update." );
 		return;
 	}
+	lastVelocityUpdate = msg->header.stamp;
 	
 	// Velocity update
 	velocityFilter.Predict( velocityCovarianceRate * dt );
 	
-	PoseSE3 displacement = MsgToPose( msg->pose.pose );
-	VelocityFilter::ObservationVector z = PoseSE3::Log( displacement );
+	VelocityFilter::ObservationVector z = MsgToTangent( msg->twist.twist );
 	PoseSE3::CovarianceMatrix cov;
-	ParseMatrix( msg->pose.covariance, cov );
+	ParseMatrix( msg->twist.covariance, cov );
 	velocityFilter.Update( z, cov );
 	
-	lastVelocityUpdate = msg->header.stamp;
-	
-	// Pose displacement
-	poseFilter.PredictBody( displacement, cov + poseCovarianceRate * dt, BodyFrame );
-	lastPoseUpdate = msg->header.stamp;
 }
 
+// TODO Check last pose update time
 void SimpleStateEstimator::PoseCallback( const PoseWithCovarianceStamped::ConstPtr& msg )
 {
 	if( msg->header.frame_id != referenceFrame ) { return; }
@@ -121,42 +117,31 @@ void SimpleStateEstimator::PoseCallback( const PoseWithCovarianceStamped::ConstP
 
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
-	// TODO This might be slow...
-	// Initialize copies for estimating
-	VelocityFilter velocityEstimator( velocityFilter );
-	PoseFilter poseEstimator( poseFilter );
-	ros::Time velEstimateTime = lastVelocityUpdate;
-	ros::Time poseEstimateTime = lastPoseUpdate;
-	
 	// Use velocity to estimate displacement
-	double poseDt = ( event.current_real - poseEstimateTime ).toSec();
-	double velDt = ( event.current_real - velEstimateTime ).toSec();
-	if( poseDt < 0 || velDt < 0 )
+	double poseDt = ( event.current_real - lastPoseUpdate ).toSec();
+	if( poseDt < 0 )
 	{
 		ROS_WARN_STREAM( "Estimates are ahead of update timer." );
 		return;
 	}
+	lastPoseUpdate = event.current_real;
 	
 	// Forward-predict pose with velocity
-	PoseSE3 displacement = PoseSE3::Exp( poseDt * velocityEstimator.EstimateMean() );
-	PoseSE3::CovarianceMatrix displacementCov = poseDt * velocityEstimator.EstimateCovariance();
-	poseEstimator.PredictBody( displacement, 
-	                           displacementCov + poseCovarianceRate * poseDt, 
-	                           BodyFrame );
-	
-	// Predict velocity
-	velocityEstimator.Predict( velocityCovarianceRate * velDt );
+	PoseSE3 displacement = PoseSE3::Exp( poseDt * velocityFilter.EstimateMean() );
+	poseFilter.PredictBody( displacement, 
+	                        ( velocityFilter.EstimateCovariance() + poseCovarianceRate ) * poseDt, 
+	                        BodyFrame );
 	
 	Odometry msg;
 	msg.header.frame_id = referenceFrame;
 	msg.header.stamp = event.current_real;
 	msg.child_frame_id = bodyFrame;
 	
-	msg.pose.pose = PoseToMsg( poseEstimator.EstimateMean() );
-	SerializeMatrix( poseEstimator.EstimateCovariance(), msg.pose.covariance );
+	msg.pose.pose = PoseToMsg( poseFilter.EstimateMean() );
+	SerializeMatrix( poseFilter.EstimateCovariance(), msg.pose.covariance );
 	
-	msg.twist.twist = TangentToMsg( velocityEstimator.EstimateMean() );
-	SerializeMatrix( velocityEstimator.EstimateCovariance(), msg.twist.covariance );
+	msg.twist.twist = TangentToMsg( velocityFilter.EstimateMean() );
+	SerializeMatrix( velocityFilter.EstimateCovariance(), msg.twist.covariance );
 	
 	odomPub.publish( msg );
 }
