@@ -174,7 +174,9 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	double dt = ( now - registration.lastPointsTimestamp ).toSec();
 	PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
 	const PoseSE3& cameraPose = extrinsicsManager.GetExtrinsics( cameraName );
-	PoseSE3 frameDisplacement = cameraPose * cameraDisplacement * cameraPose.Inverse();
+	PoseSE3 frameDisplacement = cameraPose.Inverse() * cameraDisplacement * cameraPose;
+	// ROS_INFO_STREAM( "Camera displacement for " << cameraName << ": " << cameraDisplacement );
+	// ROS_INFO_STREAM( "Frame displacement for " << cameraName << ": " << frameDisplacement );
 	
 	geometry_msgs::PoseWithCovarianceStamped tmsg;
 	tmsg.header.stamp = now;
