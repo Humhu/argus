@@ -14,6 +14,7 @@ add_message_files(
 				Point2D.msg
 				Point2D_32.msg 
 				RelativePose.msg
+				RelativePoseWithCovariance.msg
 				TagDetection.msg 
 				TagDetectionsStamped.msg
 )

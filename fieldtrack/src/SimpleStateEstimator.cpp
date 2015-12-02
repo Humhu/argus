@@ -2,6 +2,7 @@
 #include "argus_utils/GeometryUtils.h"
 #include "argus_utils/MatrixUtils.h"
 
+using namespace argus_msgs;
 using namespace geometry_msgs;
 using namespace nav_msgs;
 using namespace argus_utils;
@@ -68,7 +69,7 @@ SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh,
 	                               10, 
 	                               &SimpleStateEstimator::VelocityCallback,
 	                               this );
-	poseSub = nodeHandle.subscribe( "pose", 
+	poseSub = nodeHandle.subscribe( "relative_pose", 
 	                                10, 
 	                                &SimpleStateEstimator::PoseCallback,
 	                                this );
@@ -105,13 +106,29 @@ void SimpleStateEstimator::VelocityCallback( const TwistWithCovarianceStamped::C
 }
 
 // TODO Check last pose update time
-void SimpleStateEstimator::PoseCallback( const PoseWithCovarianceStamped::ConstPtr& msg )
+void SimpleStateEstimator::PoseCallback( const RelativePoseWithCovariance::ConstPtr& msg )
 {
-	if( msg->header.frame_id != referenceFrame ) { return; }
+	PoseSE3 pose;
+	if( msg->relative_pose.observer_name == referenceFrame && 
+	    msg->relative_pose.target_name == bodyFrame )
+	{
+		pose = MsgToPose( msg->relative_pose.relative_pose );
+	}
+	else if( msg->relative_pose.observer_name == bodyFrame && 
+	         msg->relative_pose.target_name == referenceFrame )
+	{
+		pose = MsgToPose( msg->relative_pose.relative_pose ).Inverse();
+	}
+	else { 
+		ROS_WARN_STREAM( "Observer " << msg->relative_pose.observer_name 
+		    << " and target " << msg->relative_pose.target_name 
+		    << " do not match reference " << referenceFrame 
+		    << " and body " << bodyFrame );
+		return; 
+	}
 	
-	PoseSE3 pose = MsgToPose( msg->pose.pose );
 	PoseSE3::CovarianceMatrix cov;
-	ParseMatrix( msg->pose.covariance, cov );
+	ParseMatrix( msg->covariance, cov );
 	poseFilter.UpdateBody( pose, cov, BodyFrame );
 }
 

@@ -1,6 +1,7 @@
 #include "fieldtrack/FiducialPoseEstimator.h"
 #include "argus_utils/YamlUtils.h"
-#include "argus_msgs/RelativePose.h"
+#include "argus_utils/MatrixUtils.h"
+#include "argus_msgs/RelativePoseWithCovariance.h"
 
 #include "extrinsics_array/ExtrinsicsArray.h"
 #include "fiducials/FiducialArray.h"
@@ -24,8 +25,22 @@ FiducialPoseEstimator::FiducialPoseEstimator( ros::NodeHandle& nh, ros::NodeHand
 	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
+	std::vector<double> covData;
+	if( !ph.getParam( "pose_covariance", covData ) )
+	{
+		covariance = PoseSE3::CovarianceMatrix::Identity();
+	}
+	else
+	{
+		if( !ParseMatrix( covData, covariance ) )
+		{
+			ROS_ERROR_STREAM( "Could not parse covariance matrix." );
+			exit( -1 );
+		}
+	}
+	
 	detSub = nh.subscribe( "detections", 20, &FiducialPoseEstimator::DetectionsCallback, this );
-	posePub = nh.advertise<argus_msgs::RelativePose>( "relative_poses", 20 );
+	posePub = nh.advertise<argus_msgs::RelativePoseWithCovariance>( "relative_poses", 20 );
 }
 
 bool FiducialPoseEstimator::RetrieveCameraInfo( const std::string& cameraName )
@@ -124,12 +139,15 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		//ROS_INFO_STREAM( "Relative orientation of target to camera: " << euler );
 		//ROS_INFO_STREAM( "Relative orientation of target to robot: " << finalEuler );
 
-		argus_msgs::RelativePose poseMsg;
-		poseMsg.observer_name = cameraFrameName;
-		poseMsg.observer_time = msg->header.stamp;
-		poseMsg.target_name = fiducialFrameName;
-		poseMsg.target_time = msg->header.stamp;
-		poseMsg.relative_pose = PoseToMsg( frameRelativePose );
+		argus_msgs::RelativePoseWithCovariance poseMsg;
+		poseMsg.header.stamp = msg->header.stamp;
+		poseMsg.header.frame_id = msg->header.frame_id;
+		poseMsg.relative_pose.observer_name = cameraFrameName;
+		poseMsg.relative_pose.observer_time = msg->header.stamp;
+		poseMsg.relative_pose.target_name = fiducialFrameName;
+		poseMsg.relative_pose.target_time = msg->header.stamp;
+		poseMsg.relative_pose.relative_pose = PoseToMsg( frameRelativePose );
+		SerializeMatrix( covariance, poseMsg.covariance );
 		posePub.publish( poseMsg );
 	}
 }

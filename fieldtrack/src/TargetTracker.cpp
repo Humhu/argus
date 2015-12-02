@@ -95,9 +95,6 @@ void TargetTracker::DisplacementCallback( const RelativePose::ConstPtr& msg )
 
 void TargetTracker::TimerCallback( const ros::TimerEvent& event )
 {
-	// Don't predict on first iteration because dt is not defined
-	firstIteration = false;
-	
 	double dt = ( event.current_real - event.last_real ).toSec();
 	
 	// TODO Predict step to current time?
@@ -118,6 +115,9 @@ void TargetTracker::TimerCallback( const ros::TimerEvent& event )
 		msg.relative_pose = PoseToMsg( filter.EstimateMean() );
 		publishers[ targetName ].publish( msg );
 	}
+	
+	// Don't predict on first iteration because dt is not defined
+	firstIteration = false;
 }
 
 void TargetTracker::PoseCallback( const RelativePose::ConstPtr& msg )

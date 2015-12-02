@@ -1,6 +1,3 @@
-# Message header
-std_msgs/Header header
-
 # Observer frame and timestamp
 string observer_name
 time observer_time

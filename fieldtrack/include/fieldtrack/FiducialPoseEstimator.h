@@ -1,5 +1,6 @@
 #pragma once
 
+#include "argus_utils/PoseSE3.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
 #include "fiducials/FiducialInfoManager.h"
@@ -13,6 +14,8 @@ class FiducialPoseEstimator
 {
 public:
 	
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+	
 	FiducialPoseEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 private:
@@ -25,6 +28,9 @@ private:
 	lookup::LookupInterface lookupInterface;
 	fiducials::FiducialInfoManager fiducialManager;
 	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	
+	// TODO
+	argus_utils::PoseSE3::CovarianceMatrix covariance;
 	
 	std::unordered_map<std::string, fiducials::Fiducial> transformedFiducials;
 	

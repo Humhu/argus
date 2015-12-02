@@ -10,6 +10,42 @@
   # Test robot, should be named in actual deployment
   <group ns="robot">
     
+    <node pkg="fieldtrack" type="state_estimator_node" name="vo_filter" output="screen">
+      <remap from="relative_pose" to="relative_poses"/>
+      <rosparam>
+        reference_frame: world
+        body_frame: robot
+        update_rate: 20.0
+        velocity_covariance_rate: [0.1, 0, 0, 0, 0, 0,
+                                   0, 0.1, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0,
+                                   0, 0, 0, 0, 0, 0.1]
+        pose_covariance_rate: [0.1, 0, 0, 0, 0, 0,
+                               0, 0.1, 0, 0, 0, 0,
+                               0, 0, 0, 0, 0, 0,
+                               0, 0, 0, 0, 0, 0,
+                               0, 0, 0, 0, 0, 0,
+                               0, 0, 0, 0, 0, 0.1]
+      </rosparam>
+    </node>
+    
+    <node pkg="atags" type="detector_node" name="detector" output="screen">
+      <remap from="image" to="cameras/image_raw"/>
+      <remap from="~/detections_raw" to="detections_raw"/>
+      <remap from="~/detections_processed" to="detections_processed"/>
+      <rosparam>
+        enable_undistortion: true
+        enable_normalization: true
+        tag_family: 36h11
+      </rosparam>
+    </node>
+    
+    <node pkg="fieldtrack" type="fiducial_pose_estimator" name="fiducial_pose_estimator" output="screen">
+      <remap from="detections" to="detections_processed"/>
+    </node>
+    
     # Asynchronous redundant camera array (ARCA)
     <group ns="cameras">
 
@@ -23,9 +59,17 @@
       
       <node pkg="camplex" type="camera_node" name="pseye_043" output="screen">
         <remap from="~/image_raw" to="image_raw"/>
-        <rosparam command="load" file="$(env HOME)/.ros/object_info/pseye_043.yaml"/>
         <rosparam>
           frame_id: robot
+          extrinsics:
+            position:
+              x: 0
+              y: 0
+              z: 0
+            orientation:
+              yaw: 0
+              pitch: 0
+              roll: 0
           camera_name: pseye_043_wide
           device_path: /dev/argus/camera1
           frame_resolution: [640, 480]
@@ -44,9 +88,17 @@
       
       <node pkg="camplex" type="camera_node" name="pseye_047" output="screen">
         <remap from="~/image_raw" to="image_raw"/>
-        <rosparam command="load" file="$(env HOME)/.ros/object_info/pseye_047.yaml"/>
         <rosparam>
           frame_id: robot
+          extrinsics:
+            position:
+              x: 0
+              y: 0
+              z: 0
+            orientation:
+              yaw: 0
+              pitch: 0
+              roll: 0
           camera_name: pseye_047_wide
           device_path: /dev/argus/camera2
           frame_resolution: [640, 480]
@@ -56,31 +108,6 @@
       </node>
       
     </group>
-  
-    <node pkg="atags" type="detector_node" name="detector" output="screen">
-      <remap from="image" to="cameras/image_raw"/>
-      <remap from="~/detections_raw" to="detections_raw"/>
-      <remap from="~/detections_processed" to="detections_processed"/>
-      <rosparam>
-        enable_undistortion: true
-        enable_normalization: true
-        tag_family: 36h11
-      </rosparam>
-    </node>
-    
-    <node pkg="manycal" type="dummy_odometry" name="dummy_odometer" output="screen">
-      <remap from="displacements" to="odometry"/>
-      <rosparam>
-        rate: 10.0
-        frame_id: robot
-        covariance_rate: [ 0.1, 0, 0, 0, 0, 0,
-                           0, 0.1, 0, 0, 0, 0,
-                           0, 0, 0.1, 0, 0, 0,
-                           0, 0, 0, 0.1, 0, 0,
-                           0, 0, 0, 0, 0.1, 0,
-                           0, 0, 0, 0, 0, 0.1 ]
-      </rosparam>
-    </node>
     
   </group>
   

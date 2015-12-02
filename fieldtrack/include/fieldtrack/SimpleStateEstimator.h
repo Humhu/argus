@@ -2,7 +2,7 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include "argus_msgs/RelativePoseWithCovariance.h"
 #include <nav_msgs/Odometry.h>
 
 #include "argus_utils/KalmanFilter.hpp"
@@ -12,7 +12,7 @@
 namespace fieldtrack
 {
 
-/*! \brief Subscribes to velocities from odometers and absolute pose estimates
+/*! \brief Subscribes to velocities from odometers and relative pose estimates
  * from localization sensors. Outputs nav_msgs::Odometry */
 class SimpleStateEstimator
 {
@@ -41,11 +41,11 @@ private:
 	std::shared_ptr<ros::Timer> updateTimer;
 	
 	ros::Subscriber velSub; // Subscribes to geometry_msgs::TwistWithCovarianceStamped
-	ros::Subscriber poseSub; // Subscribes to geometry_msgs::PoseWithCovarianceStamped
+	ros::Subscriber poseSub; // Subscribes to argus_msgs::RelativePose
 	ros::Publisher odomPub; // Publishes nav_msgs::Odometry
 	
 	void VelocityCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg );
-	void PoseCallback( const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg );
+	void PoseCallback( const argus_msgs::RelativePoseWithCovariance::ConstPtr& msg );
 	void TimerCallback( const ros::TimerEvent& event );
 	
 };
