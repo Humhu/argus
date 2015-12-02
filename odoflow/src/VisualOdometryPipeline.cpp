@@ -153,8 +153,8 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Undistort and normalize tracked inliers
 	InterestPoints currentPointsImage, currentPointsNormalized;
-	//UndistortPoints( currentInliersImage, cameraModel, true, false, currentPointsImage );
-	currentPointsImage = currentInliersImage;
+	UndistortPoints( currentInliersImage, cameraModel, true, false, currentPointsImage );
+	//currentPointsImage = currentInliersImage;
 	UndistortPoints( currentPointsImage, cameraModel, false, true, currentPointsNormalized );
 	
 	// TODO Assuming camera model does not change here to normalize keyframe inliers
@@ -298,8 +298,8 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& registration,
 	registration.lastPointsTimestamp = timestamp;
 	registration.lastPointsPose = PoseSE3(); //extrinsicsManager.GetExtrinsics( registration.name ).Inverse(); //PoseSE3();
 	InterestPoints detected = detector->FindInterestPoints( registration.keyframe );
-	//UndistortPoints( detected, model, true, false, registration.keyframePointsImage );
-	registration.keyframePointsImage = detected;
+	UndistortPoints( detected, model, true, false, registration.keyframePointsImage );
+	//registration.keyframePointsImage = detected;
 	ROS_INFO_STREAM( "Found " << registration.keyframePointsImage.size() << " points." );	
 }
 
