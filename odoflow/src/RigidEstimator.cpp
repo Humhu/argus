@@ -37,6 +37,9 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 	Eigen::JacobiSVD<Eigen::Matrix2d> svd( A, Eigen::ComputeFullU | Eigen::ComputeFullV );
 	Eigen::Matrix2d R = svd.matrixU() * svd.matrixV().transpose();
 	
+	ROS_INFO_STREAM( "Ab: " << std::endl << Ab );
+	ROS_INFO_STREAM( "R: " << std::endl << R );
+	
 	Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
 	H.block<2,2>(1,1) = R;
 	H(1,3) = -Ab(0,2) * scale; // Image x corresponds to camera -y
