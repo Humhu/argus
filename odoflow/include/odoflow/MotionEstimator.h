@@ -22,8 +22,9 @@ public:
 	/*! \brief Estimates the transform that turns srcPoints into dstPoints.
 	 * Returns success. */
 	virtual bool EstimateMotion( const InterestPoints& srcPoints,
-									const InterestPoints& dstPoints,
-									argus_utils::PoseSE3& transform ) = 0;
+	                             const InterestPoints& dstPoints,
+	                             std::vector<uchar>& inliers,
+	                             argus_utils::PoseSE3& transform ) = 0;
 
 	/*! \brief Rectifies points into normalized camera coordinates. */
 	// TODO Use undistortion parameters?

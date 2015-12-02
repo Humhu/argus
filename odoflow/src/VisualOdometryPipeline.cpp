@@ -166,13 +166,25 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 
 	// Estimate motion between frames
 	PoseSE3 currentPose;
-	if( !estimator->EstimateMotion( currentPointsNormalized, keyframePointsNormalized, currentPose ) )
+	std::vector<uchar> motionInliers;
+	if( !estimator->EstimateMotion( currentPointsNormalized, keyframePointsNormalized, 
+	                                motionInliers, currentPose ) )
 	{
 		ROS_WARN_STREAM( "Could not estimate motion between frames. Resetting keyframe." );
 		SetKeyframe( registration, currentFrame, cameraModel, now );
 		return;
 	}
-	registration.keyframePointsImage = keyframeInliersImage;
+	
+	InterestPoints currentMotionInliers, keyframeMotionInliers;
+	currentMotionInliers.reserve( currentInliersImage.size() );
+	keyframeMotionInliers.reserve( keyframeInliersImage.size() );
+	for( unsigned int i = 0; i < currentPointsNormalized.size(); i++ )
+	{
+		if( !motionInliers[i] ) { continue; }
+		keyframeMotionInliers.push_back( keyframeInliersImage[i] );
+		currentMotionInliers.push_back( currentInliersImage[i] );
+	}
+	registration.keyframePointsImage = keyframeMotionInliers;
 	
 	// Have to calculate dt before getting timestamp
 	double dt = ( now - registration.lastPointsTimestamp ).toSec();
@@ -180,7 +192,6 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	const PoseSE3& cameraExtrinsics = extrinsicsManager.GetExtrinsics( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraExtrinsics ) * cameraVelocity;
-	ROS_INFO_STREAM( "Camera displacement " << cameraName << ": " << cameraDisplacement );
 	ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
 	ROS_INFO_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
 
@@ -193,7 +204,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	dispPub.publish( tmsg );
 	
 	registration.lastPointsTimestamp = now;
-	registration.lastPointsImage = currentInliersImage;
+	registration.lastPointsImage = currentMotionInliers;
 	registration.lastPointsPose = currentPose;
 
 	if( showOutput ) { VisualizeFrame( registration, currentFrame, now ); }

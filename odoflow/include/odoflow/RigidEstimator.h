@@ -16,14 +16,15 @@ public:
 	RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	virtual bool EstimateMotion( const InterestPoints& srcPoints,
-									const InterestPoints& dstPoints,
-									argus_utils::PoseSE3& transform );
-	
-	void SetOutputScale( double scale );
+	                             const InterestPoints& dstPoints,
+	                             std::vector<uchar>& inliers,
+	                             argus_utils::PoseSE3& transform );
 	
 private:
 	
 	double scale;
+	double reprojThreshold;
+	
 };
 
 } // end namespace odoflow
