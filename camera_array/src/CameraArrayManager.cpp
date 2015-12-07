@@ -26,7 +26,9 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		exit( -1 );
 	}
 	
-	GetParamDefault<unsigned int>( nodeHandle, "max_num_active", maxNumActive, 1 );
+	GetParamDefault<unsigned int>( privHandle, "max_num_active", maxNumActive, 1 );
+	cameraWorkers.SetNumWorkers( maxNumActive );
+	cameraWorkers.StartWorkers();
 	
 	BOOST_FOREACH( const std::string& name, members )
 	{
@@ -66,8 +68,16 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		registration.setStreaming = 
 			nodeHandle.serviceClient<camplex::SetStreaming>( setStreamingName );
 		cameraRegistry[name] = registration;
+		
+		SetStreaming( name, false, true );
 	}
 	
+}
+
+CameraArrayManager::~CameraArrayManager()
+{
+	cameraWorkers.StopWorkers();
+	cameraWorkers.WaitOnJobs();
 }
 
 unsigned int CameraArrayManager::MaxActiveCameras() const
@@ -82,39 +92,47 @@ bool CameraArrayManager::IsActive( const std::string& name ) const
 
 const CameraSet& CameraArrayManager::ActiveCameras() const
 {
+	ReadLock lock( mutex );
 	return activeCameras;
 }
 
-bool CameraArrayManager::SetStreaming( const std::string& name, bool mode )
+bool CameraArrayManager::SetStreaming( const std::string& name, bool mode, bool force )
 {
+	WriteLock lock( mutex );
+	
 	if( cameraRegistry.count( name ) == 0 ) { return false; }
 	
 	// If the current status already matches, return
 	CameraRegistration& registration = cameraRegistry[ name ];
-	if( IsActive( name ) == mode ) { return true; }
+	if( IsActive( name ) == mode && !force ) { return true; }
 	
 	if( mode && activeCameras.size() >= maxNumActive )
 	{
-		ROS_ERROR_STREAM( "Cannot activate cameras. Already max num active." );
+		ROS_ERROR_STREAM( "Cannot activate camera " << name << ". Already max num active." );
 		return false;
 	}
 	
 	// Call the set streaming service and update the active set
 	camplex::SetStreaming srv;
 	srv.request.enableStreaming = mode;
+	lock.unlock();
+	
+	// Need this section to be out of lock or else all our service calls will be serial
 	if( !registration.setStreaming.call( srv ) )
 	{
 		ROS_WARN_STREAM( "Could not set streaming for camera " << name );
 		return false;
 	}
 	
+	lock.lock();
 	if( mode )
 	{
 		activeCameras.insert( name );
 	}
 	else
 	{
-		activeCameras.erase( activeCameras.find( name ) );
+		CameraSet::iterator iter = activeCameras.find( name );
+		if( iter != activeCameras.end() ) { activeCameras.erase( iter ); }
 	}
 	
 	return true;
@@ -144,21 +162,22 @@ bool CameraArrayManager::SetActiveCameras( const CameraSet& ref )
 	unsigned int mid = std::min( toActivate.size(), toDisable.size() );
 	for( unsigned int i = 0; i < mid; i++ )
 	{
-		if( !SwitchStreaming( toDisable[i], toActivate[i] ) ) { return false; }
+		RequestSwitchStreaming( toDisable[i], toActivate[i] );
 	}
 	for( unsigned int i = mid; i < toActivate.size(); i++ )
 	{
-		if( !SetStreaming( toActivate[i], true ) ) { return false; }
+		RequestSetStreaming( toActivate[i], true );
 	}
 	for( unsigned int i = mid; i < toDisable.size(); i++ )
 	{
-		if( !SetStreaming( toDisable[i], false ) ) { return false; }
+		RequestSetStreaming( toDisable[i], false );
 	}
+	cameraWorkers.WaitOnJobs();
 	return true;
 }
 
 bool CameraArrayManager::SwitchStreaming( const std::string& toDisable, 
-                                   const std::string& toEnable )
+                                          const std::string& toEnable )
 {
 	if( toDisable == toEnable ) { return true; }
 	
@@ -178,5 +197,40 @@ bool CameraArrayManager::SwitchStreaming( const std::string& toDisable,
 	return true;
 }
 
+void CameraArrayManager::SetStreamingJob( const std::string& name, bool mode )
+{
+	if( !SetStreaming( name, mode ) )
+	{
+		ROS_WARN( "Set streaming job failed." );
+	}
+}
+
+void CameraArrayManager::SwitchStreamingJob( const std::string& toDisable, 
+                                             const std::string& toEnable )
+{
+	if( !SwitchStreaming( toDisable, toEnable ) )
+	{
+		ROS_WARN( "Switch streaming job failed." );
+	}
+}
+
+void CameraArrayManager::RequestSetStreaming( const std::string& name, bool mode )
+{
+	WorkerPool::Job job = boost::bind( &CameraArrayManager::SetStreamingJob,
+	                                   this,
+	                                   name,
+	                                   mode );
+	cameraWorkers.EnqueueJob( job );
+}
+
+void CameraArrayManager::RequestSwitchStreaming( const std::string& toDisable,
+                                                 const std::string& toEnable )
+{
+	WorkerPool::Job job = boost::bind( &CameraArrayManager::SwitchStreamingJob,
+	                                   this,
+	                                   toDisable,
+	                                   toEnable );
+	cameraWorkers.EnqueueJob( job );
+}
 
 }
