@@ -9,11 +9,15 @@ set(CMAKE_BUILD_TYPE Release)
 find_package(catkin REQUIRED 
 	COMPONENTS		roscpp
 					argus_utils
+					extrinsics_array
 					image_geometry
+					lookup
+					nav_msgs
 )
 
 # Use Boost for most utilities, threading
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED 
+	COMPONENTS random )
 
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
@@ -22,11 +26,14 @@ catkin_package(
 	INCLUDE_DIRS 	include
 	
 	LIBRARIES 		camera_array
-					
+	
 	CATKIN_DEPENDS 	roscpp 
 					argus_utils
+					extrinsics_array
 					image_geometry
-					
+					lookup
+					nav_msgs
+	
 	DEPENDS 		Boost 
 					system_lib
 )
@@ -38,13 +45,18 @@ include_directories( include
 )
 
 add_library( camera_array
- 	src/PinholeCameraArrayModel.cpp
+	src/CameraArrayManager.cpp
+	src/RandomArrayManager.cpp
 )
-add_dependencies( camera_array ${camera_array_EXPORTED_TARGETS} )
 target_link_libraries( camera_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
+
+add_executable( camera_array_manager nodes/camera_array_manager.cpp )
+add_dependencies( camera_array_manager camera_array_gencfg )
+target_link_libraries( camera_array_manager camera_array
+											${catkin_LIBRARIES} )
 
 ## Mark executables and/or libraries for installation
 install(TARGETS 

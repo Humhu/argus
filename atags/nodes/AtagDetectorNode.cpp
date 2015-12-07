@@ -108,7 +108,6 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		double eprod = elarge * esmall;
 		if( eprod < minAreaProduct ) { continue; }
 		
-		
 		fidDetections.push_back( atags::TagToFiducial( tagDetections[i], tagFamily ) );
 	}
 	if( fidDetections.empty() ) { return; }

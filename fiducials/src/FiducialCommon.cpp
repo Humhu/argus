@@ -1,6 +1,8 @@
 #include "fiducials/FiducialCommon.h"
 #include <boost/foreach.hpp>
 
+using namespace argus_utils;
+
 namespace fiducials
 {
 
@@ -227,6 +229,55 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 		undistorted.push_back( det );
 	}
 	return true;
+}
+
+argus_msgs::FiducialDetection 
+ProjectDetection( const Fiducial& fiducial, const std::string& fidName,
+                  const image_geometry::PinholeCameraModel& cameraModel,
+                  const PoseSE3& fiducialToCam )
+{
+	argus_msgs::FiducialDetection detection;
+	detection.name = fidName;
+	detection.undistorted = true;
+	detection.normalized = false;
+	
+	Eigen::Matrix <double, 3, Eigen::Dynamic> fidPoints = MsgToMatrix( fiducial.points );
+	Eigen::Matrix2d K = Eigen::Matrix2d::Zero();
+	K(0,0) = cameraModel.fx();
+	K(1,1) = cameraModel.fy();
+	K(0,2) = cameraModel.cx();
+	K(1,2) = cameraModel.cy();
+	
+	// Have to switch to z-forward coordinates
+	static PoseSE3 camToObj( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
+	Eigen::Transform <double, 2, Eigen::Affine> cameraMatrix( K );
+	PoseSE3 fidToCam = camToObj.Inverse() * fiducialToCam;
+	
+	Eigen::Matrix <double, 3, Eigen::Dynamic> relPoints = fidToCam.ToTransform() * fidPoints;
+	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (cameraMatrix * relPoints).colwise().hnormalized();
+	
+	detection.points = MatrixToMsg( imgPoints );
+	return detection;
+}
+
+double FindMinDistance( const std::vector <argus_msgs::Point2D>& points )
+{
+	if( points.empty() ) { return 0; }
+	
+	double minSeen = std::numeric_limits<double>::infinity();
+	for( unsigned int i = 0; i < points.size(); i++ )
+	{
+		const argus_msgs::Point2D& pi = points[i];
+		for( unsigned int j = i + 1; j < points.size(); j++ )
+		{
+			const argus_msgs::Point2D& pj = points[j];
+			double dx = pi.x - pj.x;
+			double dy = pi.y - pj.y;
+			double dist = dx*dx + dy*dy;
+			if( dist < minSeen ) { minSeen = dist; }
+		}
+	}
+	return std::sqrt( minSeen );
 }
 
 } // end namespace fiducials

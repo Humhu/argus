@@ -7,6 +7,9 @@
 #include "argus_msgs/FiducialDetection.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
+#include "argus_utils/PoseSE3.h"
+
+#include "fiducials/Fiducial.h"
 #include "fiducials/FiducialInfo.h"
 
 namespace fiducials
@@ -38,9 +41,20 @@ Eigen::Matrix <double, 3, Eigen::Dynamic> MsgToMatrix( const std::vector <geomet
 
 /*! \brief Undistort and normalize fiducial detections in-place. Assumes all detections
  * have the same undistortion/normalization status. */
-bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
+bool UndistortDetections( const std::vector <argus_msgs::FiducialDetection>& detections,
                           const image_geometry::PinholeCameraModel& cameraModel, 
                           bool undistort, bool normalize,
                           std::vector< argus_msgs::FiducialDetection >& undistorted );
+
+/*! \brief Simulates a fiducial detection. */
+argus_msgs::FiducialDetection 
+ProjectDetection( const Fiducial& fiducial,
+                  const std::string& fidName,
+                  const image_geometry::PinholeCameraModel& cameraModel,
+                  const argus_utils::PoseSE3& fiducialToCam );
+
+/*! \brief Returns the min distance between a set of 2D points. Useful for estimating
+ * if a fiducial detection will be valid. */
+double FindMinDistance( const std::vector <argus_msgs::Point2D>& points );
 
 }
