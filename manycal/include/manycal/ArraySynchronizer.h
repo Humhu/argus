@@ -3,8 +3,8 @@
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
 
-#include "argus_utils/Semaphore.hpp"
-#include "argus_utils/WorkerPool.hpp"
+#include "argus_utils/Semaphore.h"
+#include "argus_utils/WorkerPool.h"
 
 #include "manycal/CaptureArray.h"
 
