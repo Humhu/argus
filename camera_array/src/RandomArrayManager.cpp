@@ -11,6 +11,7 @@ RandomArrayManager::RandomArrayManager( const ros::NodeHandle& nh,
                                         const ros::NodeHandle& ph )
 : CameraArrayManager( nh, ph )
 {
+
 	boost::random::random_device rng;
 	generator.seed( rng );
 		
@@ -19,6 +20,14 @@ RandomArrayManager::RandomArrayManager( const ros::NodeHandle& nh,
 	{
 		cameraNames.push_back( item.first );
 	}
+
+  double updateRate;
+  ph.param<double>( "update_rate", updateRate, 1.0 );
+  timer = std::make_shared<ros::Timer>
+    ( nodeHandle.createTimer( ros::Duration( 1.0/updateRate ),
+			      &RandomArrayManager::TimerCallback,
+			      this ) );
+
 }
 
 void RandomArrayManager::TimerCallback( const ros::TimerEvent& event )
@@ -30,6 +39,7 @@ void RandomArrayManager::TimerCallback( const ros::TimerEvent& event )
 	for( unsigned int i = 0; i < cameraInds.size(); i++ )
 	{
 		active.insert( cameraNames[ cameraInds[i] ] );
+		ROS_INFO_STREAM( "Activating " << cameraNames[ cameraInds[i] ] );
 	}
 	SetActiveCameras( active );
 }

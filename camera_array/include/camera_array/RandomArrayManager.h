@@ -22,6 +22,7 @@ protected:
 	
 	boost::random::mt19937 generator;
 	std::vector<std::string> cameraNames;
+	std::shared_ptr<ros::Timer> timer;
 	
 	virtual void TimerCallback( const ros::TimerEvent& event );
 	
