@@ -59,6 +59,8 @@ void ConstantVelocityFilter::Predict( const ros::Time& until )
 	PoseSE3::CovarianceMatrix covRate = velocityFilter.EstimateCovariance() + poseCovarianceRate;
 	poseFilter.PredictBody( displacement, covRate * dt, BodyFrame );
 	filterTimestamp = until;
+
+	velocityFilter.Predict( velocityCovarianceRate * dt );
 }
 
 void ConstantVelocityFilter::DisplaceReference( const PoseSE3& displacement,
