@@ -11,18 +11,14 @@ find_package(catkin REQUIRED
 ## Generate service files
 add_message_files(
 	FILES		CompactOdometry.msg
+				CompactOdometryArray.msg
+				CompactPoseWithCovariance.msg
+				CompactTwistWithCovariance.msg
 				FiducialDetection.msg
 				ImageFiducialDetections.msg
 				Point2D.msg
-				Point2D_32.msg 
-				PoseWithCompactCovariance.msg
 				RelativePose.msg
 				RelativePoseWithCovariance.msg
-				TagDetection.msg 
-				TagDetectionsStamped.msg
-				TargetState.msg 
-				TargetStates.msg
-				TwistWithCompactCovariance.msg
 )
 
 generate_messages(

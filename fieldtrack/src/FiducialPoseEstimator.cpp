@@ -40,7 +40,7 @@ FiducialPoseEstimator::FiducialPoseEstimator( ros::NodeHandle& nh, ros::NodeHand
 	}
 	
 	detSub = nh.subscribe( "detections", 20, &FiducialPoseEstimator::DetectionsCallback, this );
-	posePub = nh.advertise<argus_msgs::RelativePoseWithCovariance>( "relative_poses", 20 );
+	posePub = nh.advertise<argus_msgs::RelativePoseWithCovariance>( "relative_pose", 20 );
 }
 
 bool FiducialPoseEstimator::RetrieveCameraInfo( const std::string& cameraName )
@@ -147,7 +147,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		poseMsg.relative_pose.target_name = fiducialFrameName;
 		poseMsg.relative_pose.target_time = msg->header.stamp;
 		poseMsg.relative_pose.relative_pose = PoseToMsg( frameRelativePose );
-		SerializeMatrix( covariance, poseMsg.covariance );
+		SerializeSymmetricMatrix( covariance, poseMsg.covariance );
 		posePub.publish( poseMsg );
 	}
 }

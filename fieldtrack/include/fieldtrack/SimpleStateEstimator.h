@@ -5,6 +5,8 @@
 #include "argus_msgs/RelativePoseWithCovariance.h"
 #include <nav_msgs/Odometry.h>
 
+#include "fieldtrack/ConstantVelocityFilter.h"
+
 #include "argus_utils/KalmanFilter.hpp"
 #include "argus_utils/ManifoldKalmanFilter.hpp"
 #include "argus_utils/PoseSE3.h"
@@ -22,19 +24,10 @@ public:
 	
 private:
 	
-	// 6D state, no controls, 6D observations
-	typedef argus_utils::KalmanFilter<double, 6, Eigen::Dynamic, 6> VelocityFilter;
-	VelocityFilter velocityFilter;
-	VelocityFilter::StateCovariance velocityCovarianceRate;
-	ros::Time lastVelocityUpdate;
-	
-	typedef argus_utils::ManifoldKalmanFilter<argus_utils::PoseSE3, argus_utils::BodyFrame> PoseFilter;
-	PoseFilter poseFilter;
-	PoseFilter::StateCovariance poseCovarianceRate;
-	ros::Time lastPoseUpdate;
-	
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
+	
+	ConstantVelocityFilter filter;
 	
 	std::string referenceFrame;
 	std::string bodyFrame;

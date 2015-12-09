@@ -48,9 +48,11 @@ include_directories( include
 
 add_library( fieldtrack
 	src/ArrayPoseEstimator.cpp
+	src/BodyFrameTracker.cpp
+	src/ConstantVelocityFilter.cpp
 	src/FiducialPoseEstimator.cpp
+	src/FixedFrameTracker.cpp
 	src/SimpleStateEstimator.cpp
-	src/TargetTracker.cpp
 	src/VelocityIntegrator.cpp
 )
 # add_dependencies( fieldtrack ${fieldtrack_EXPORTED_TARGETS} )
@@ -73,17 +75,24 @@ target_link_libraries( fiducial_pose_estimator
 	fieldtrack
 	${catkin_LIBRARIES} )
 
-add_executable( target_tracker
-	nodes/target_tracker.cpp )
-add_dependencies( target_tracker ${PROJECT_NAME}_gencfg )
-target_link_libraries( target_tracker
+add_executable( fixed_frame_tracker
+	nodes/fixed_frame_tracker.cpp )
+add_dependencies( fixed_frame_tracker ${PROJECT_NAME}_gencfg )
+target_link_libraries( fixed_frame_tracker
 	fieldtrack
 	${catkin_LIBRARIES} )
 
-add_executable( velocity_integrator
-	nodes/velocity_integrator.cpp )
-add_dependencies( velocity_integrator ${PROJECT_NAME}_gencfg )
-target_link_libraries( velocity_integrator
+add_executable( body_frame_tracker
+	nodes/body_frame_tracker.cpp )
+add_dependencies( body_frame_tracker ${PROJECT_NAME}_gencfg )
+target_link_libraries( body_frame_tracker
+	fieldtrack
+	${catkin_LIBRARIES} )
+
+add_executable( velocity_integrator_node
+	nodes/velocity_integrator_node.cpp )
+add_dependencies( velocity_integrator_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( velocity_integrator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 

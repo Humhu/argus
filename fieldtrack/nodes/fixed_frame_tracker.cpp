@@ -1,15 +1,15 @@
 #include <ros/ros.h>
 
-#include "fieldtrack/TargetTracker.h"
+#include "fieldtrack/FixedFrameTracker.h"
 
 int main( int argc, char** argv )
 {
-	ros::init( argc, argv, "target_tracker" );
+	ros::init( argc, argv, "fixed_frame_tracker" );
 	
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	fieldtrack::TargetTracker tracker( nh, ph );
+	fieldtrack::FixedFrameTracker tracker( nh, ph );
 	
 	ros::spin();
 	return 0;
