@@ -56,7 +56,7 @@ void ArrayPoseEstimator::RelativePoseCallback( const argus_msgs::RelativePose::C
 	{
 		// We allow cached lookup here so that we don't keep querying the master
 		// for an untrackable object
-		if( !extrinsicsManager.ReadMemberInformation( targetName, false ) )
+		if( !extrinsicsManager.ReadMemberInfo( targetName, false ) )
 		{
 // 			ROS_WARN_STREAM( "Could not retrieve extrinsics info for " << targetName );
 			return;
@@ -64,15 +64,14 @@ void ArrayPoseEstimator::RelativePoseCallback( const argus_msgs::RelativePose::C
 	}
 	
 	// Convert obsPose to be between the frames referenceName and target's parent array frame
-	const std::string& targetFrameName = extrinsicsManager.GetReferenceFrame( targetName );
-	const PoseSE3& targetExtrinsics = extrinsicsManager.GetExtrinsics( targetName );
+	const ExtrinsicsInfo& targetInfo = extrinsicsManager.GetInfo( targetName );
 	
-	PoseSE3 relPose = obsPose * targetExtrinsics.Inverse();
+	PoseSE3 relPose = obsPose * targetInfo.extrinsics.Inverse();
 	
 	// Create publisher if needed
-	if( relPosePubs.count( targetFrameName ) == 0 )
+	if( relPosePubs.count( targetInfo.referenceFrame ) == 0 )
 	{
-		relPosePubs[ targetFrameName ] = 
+		relPosePubs[ targetInfo.referenceFrame ] = 
 		    nodeHandle.advertise<argus_msgs::RelativePose>( "output_poses", 10 );
 	}
 	
@@ -80,10 +79,10 @@ void ArrayPoseEstimator::RelativePoseCallback( const argus_msgs::RelativePose::C
 	argus_msgs::RelativePose pMsg;
 	pMsg.observer_name = referenceName;
 	pMsg.observer_time = msg->observer_time;
-	pMsg.target_name = targetFrameName;
+	pMsg.target_name = targetInfo.referenceFrame;
 	pMsg.target_time = msg->target_time;
 	pMsg.relative_pose = PoseToMsg( relPose );
-	relPosePubs[ targetFrameName ].publish( pMsg );
+	relPosePubs[ targetInfo.referenceFrame ].publish( pMsg );
 	
 }
 	

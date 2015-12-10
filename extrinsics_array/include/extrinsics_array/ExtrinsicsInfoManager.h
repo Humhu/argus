@@ -2,7 +2,7 @@
 
 #include "extrinsics_array/ExtrinsicsArray.h"
 #include "extrinsics_array/ExtrinsicsArrayInfo.h"
-#include "lookup/LookupInterface.h"
+#include "lookup/InfoManager.h"
 
 #include <ros/ros.h>
 #include <unordered_map>
@@ -11,10 +11,17 @@
 namespace extrinsics_array
 {
 	
+struct ExtrinsicsInfo 
+{
+	std::string referenceFrame;
+	argus_utils::PoseSE3 extrinsics;
+};
+	
 /*! \brief Stores, retrieves, and caches extrinsics information from the ROS
  * parameter server. */
 // TODO Provide services for saving extrinsics to disk?
 class ExtrinsicsInfoManager
+: public lookup::InfoManager<ExtrinsicsInfo>
 {
 public:
 	
@@ -24,38 +31,13 @@ public:
 	 * the lookup table. Overwrites existing cached values. If memberName has been
 	 * queried before and failed, this method skips querying the parameter server unless
 	 * forceLookup is set. Returns success. */
-	bool ReadMemberInformation( const std::string& memberName, bool forceLookup = false );
-	bool WriteMemberInformation( const std::string& memberName, bool forceLookup = false );
-	
-	/*! \brief Returns whether the member is cached. */
-	bool HasMember( const std::string& memberName ) const;
-	
-	/*! \brief Return the extrinsics and parent reference frame from the cache. 
-	 * Throws an exception if not cached. */
-	const argus_utils::PoseSE3& GetExtrinsics( const std::string& memberName ) const;
-	const std::string& GetReferenceFrame( const std::string& memberName ) const;
-	
-	/*! \brief Set the cached extrinsics and parent reference frame. */
-	void SetExtrinsics( const std::string& memberName, const argus_utils::PoseSE3& ext );
-	void SetReferenceFrame( const std::string& memberName, const std::string& refFrame );
+	virtual bool ReadMemberInfo( const std::string& memberName, bool forceLookup = false );
+	virtual bool WriteMemberInfo( const std::string& memberName, bool forceLookup = false );
 	
 protected:
 	
 	ros::NodeHandle nodeHandle;
-	lookup::LookupInterface& lookupInterface;
 	
-	/*! \brief Records array queries that have failed before. */
-	std::unordered_set< std::string > failedQueries;
-	
-	struct MemberRegistration
-	{
-		argus_utils::PoseSE3 extrinsics;
-		std::string frameID;
-	};
-	
-	std::unordered_map< std::string, MemberRegistration > memberRegistry;
-	
-	bool GetNamespace( const std::string& memberName, std::string& ns, bool forceLookup );
 	static std::string GenerateExtrinsicsKey( const std::string& ns );
 	static std::string GenerateRefFrameKey( const std::string& ns );
 	

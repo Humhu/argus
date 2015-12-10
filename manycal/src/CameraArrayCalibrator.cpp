@@ -38,9 +38,9 @@ void CameraArrayCalibrator::WriteResults()
 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
 		std::cout << "Camera " << name << " pose " << extrinsics << std::endl;
 		
-		extrinsicsManager.SetExtrinsics( name, extrinsics );
-		extrinsicsManager.SetReferenceFrame( name, referenceFrame );
-		extrinsicsManager.WriteMemberInformation( name );
+		extrinsicsManager.GetInfo( name ).extrinsics = extrinsics;
+		extrinsicsManager.GetInfo( name ).referenceFrame = referenceFrame;
+		extrinsicsManager.WriteMemberInfo( name );
 	}
 }
 
@@ -135,7 +135,7 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 	// First see if this camera has an extrinsics prior
 	if( LoadExtrinsicsPrior( cameraName ) )
 	{
-		const PoseSE3& extrinsics = extrinsicsManager.GetExtrinsics( cameraName );
+		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( cameraName ).extrinsics;
 		RegisterCamera( cameraName, extrinsics, true );
 	}
 	// If not, see if there if any observed fiducial have poses
@@ -163,9 +163,9 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 
 bool CameraArrayCalibrator::LoadFiducialIntrinsics( const std::string& name )
 {
-	if( !fiducialManager.HasFiducial( name ) )
+	if( !fiducialManager.HasMember( name ) )
 	{
-		if( !fiducialManager.ReadFiducialInformation( name, false ) ) { return false; }
+		if( !fiducialManager.ReadMemberInfo( name, false ) ) { return false; }
 		ROS_INFO_STREAM( "Found fiducial intrinsics for " << name );
 	}
 	return true;
@@ -175,10 +175,10 @@ bool CameraArrayCalibrator::LoadExtrinsicsPrior( const std::string& name )
 {
 	if( !extrinsicsManager.HasMember( name ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( name, false ) ) { return false; }
-		if( extrinsicsManager.GetReferenceFrame( name ) != referenceFrame ) { return false; }
+		if( !extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
+		if( extrinsicsManager.GetInfo( name ).referenceFrame != referenceFrame ) { return false; }
 		
-		const PoseSE3& extrinsics = extrinsicsManager.GetExtrinsics( name );
+		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( name ).extrinsics;
 		ROS_INFO_STREAM( "Found extrinsics " << extrinsics << " for " << name );
 	}
 	return true;
@@ -221,7 +221,7 @@ void CameraArrayCalibrator::RegisterFiducial( const std::string& name )
 	ROS_INFO_STREAM( "Registering fiducial " << name );
 	
 	FiducialRegistration registration;
-	isam::FiducialIntrinsics intrinsics = FiducialToIsam( fiducialManager.GetIntrinsics( name ) );
+	isam::FiducialIntrinsics intrinsics = FiducialToIsam( fiducialManager.GetInfo( name ) );
 	registration.intrinsics = 
 	    std::make_shared<isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );
 	registration.intrinsics->init( intrinsics );

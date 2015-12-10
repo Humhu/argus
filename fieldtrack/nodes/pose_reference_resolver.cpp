@@ -47,7 +47,7 @@ private:
 	bool CheckName( const std::string& name )
 	{
 		if( extrinsicsManager.HasMember( name ) ) { return true; }
-		return extrinsicsManager.ReadMemberInformation( name, false );
+		return extrinsicsManager.ReadMemberInfo( name, false );
 	}
 	
 	void ProcessInversionAndSend( RelativePose& msg )
@@ -83,10 +83,10 @@ private:
 		PoseSE3 transformed;
 		if( CheckName( observerName ) )
 		{
-			std::string observerReference = extrinsicsManager.GetReferenceFrame( observerName );
+			std::string observerReference = extrinsicsManager.GetInfo( observerName ).referenceFrame;
 			if( observerReference == referenceName )
 			{
-				const PoseSE3& observerExtrinsics = extrinsicsManager.GetExtrinsics( observerName );
+				const PoseSE3& observerExtrinsics = extrinsicsManager.GetInfo( observerName ).extrinsics;
 				transformed = observerExtrinsics * relative;
 				msgCopy.observer_name = observerReference;
 			}
@@ -94,10 +94,10 @@ private:
 		
 		if( CheckName( targetName ) )
 		{
-			std::string targetReference = extrinsicsManager.GetReferenceFrame( targetName );
+			std::string targetReference = extrinsicsManager.GetInfo( targetName ).referenceFrame;
 			if( targetReference == referenceName )
 			{
-				const PoseSE3& targetExtrinsics = extrinsicsManager.GetExtrinsics( targetName );
+				const PoseSE3& targetExtrinsics = extrinsicsManager.GetInfo( targetName ).extrinsics;
 				transformed = relative * targetExtrinsics.Inverse();
 				msgCopy.target_name = targetReference;
 			}
