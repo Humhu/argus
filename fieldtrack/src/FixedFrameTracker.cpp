@@ -16,7 +16,7 @@ namespace fieldtrack
 {
 	
 FixedFrameTracker::FixedFrameTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph )
+: nodeHandle( nh ), privHandle( ph ), targetManager( lookupInterface )
 {
 	
 	if( !privHandle.getParam( "reference_frame", referenceFrame ) )
@@ -24,6 +24,10 @@ FixedFrameTracker::FixedFrameTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		ROS_ERROR_STREAM( "Must specify reference frame." );
 		exit( -1 );
 	}
+	
+	std::string lookupNamespace;
+	privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
+	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
 	double pubFreq;
 	ph.param<double>( "update_rate", pubFreq, 10.0 );

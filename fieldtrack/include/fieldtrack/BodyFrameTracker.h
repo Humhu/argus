@@ -7,7 +7,7 @@
 #include "argus_msgs/RelativePoseWithCovariance.h"
 
 #include "fieldtrack/ConstantVelocityFilter.h"
-
+#include "fieldtrack/TargetInfoManager.h"
 #include "argus_utils/SynchronizationUtils.h"
 
 #include <unordered_map>
@@ -31,6 +31,8 @@ private:
 	ros::NodeHandle privHandle;
 	
 	std::string referenceFrame;
+	lookup::LookupInterface lookupInterface;
+	TargetInfoManager targetManager;
 	
 	ros::Publisher targetPub;
 	ros::Subscriber refOdomSub;
