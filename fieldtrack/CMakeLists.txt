@@ -15,6 +15,7 @@ find_package(catkin REQUIRED
 					argus_utils
 					extrinsics_array
 					fiducials
+					lookup
 )
 
 # Use Boost for most utilities, threading
@@ -35,6 +36,7 @@ catkin_package(
 					argus_utils
 					extrinsics_array
 					fiducials
+					lookup
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -53,6 +55,7 @@ add_library( fieldtrack
 	src/FiducialPoseEstimator.cpp
 	src/FixedFrameTracker.cpp
 	src/SimpleStateEstimator.cpp
+	src/TargetInfoManager.cpp
 	src/VelocityIntegrator.cpp
 )
 # add_dependencies( fieldtrack ${fieldtrack_EXPORTED_TARGETS} )

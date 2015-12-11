@@ -12,16 +12,16 @@ namespace extrinsics_array
 {
 	
 ExtrinsicsInfoManager::ExtrinsicsInfoManager( lookup::LookupInterface& interface )
-: lookupInterface( interface )
+: InfoManager( interface )
 {}
 
-bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName,
-                                                   bool forceLookup )
+bool ExtrinsicsInfoManager::ReadMemberInfo( const std::string& memberName,
+                                            bool forceLookup )
 {
 	std::string memberNamespace;
 	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
 
-	MemberRegistration registration;
+	ExtrinsicsInfo registration;
 	
 	// Read extrinsics first
 	YAML::Node extrinsics;
@@ -30,86 +30,44 @@ bool ExtrinsicsInfoManager::ReadMemberInformation( const std::string& memberName
 	{
 		ROS_WARN_STREAM( "Could not find extrinsics information for: " << memberName 
 		    << " at path " << extrinsicsKey );
-		failedQueries.insert( memberName );
+		RecordFailure( memberName );
 		return false;
 	}
 	if( !GetPoseYaml( extrinsics, registration.extrinsics ) )
 	{
 		ROS_WARN_STREAM( "Could not parse extrinsics information for: " << memberName
 		    << " at key: " << extrinsicsKey );
-		failedQueries.insert( memberName );
+		RecordFailure( memberName );
 		return false;
 	}
 	
 	// Then read reference frame ID
 	std::string referenceKey = GenerateRefFrameKey( memberNamespace );
-	if( !nodeHandle.getParam( referenceKey, registration.frameID ) )
+	if( !nodeHandle.getParam( referenceKey, registration.referenceFrame ) )
 	{
 		ROS_WARN_STREAM( "Could not find reference frame information for: " << memberName
 		    << " at path " << referenceKey );
-		failedQueries.insert( memberName );
+		RecordFailure( memberName );
 		return false;
 	}
-	memberRegistry[ memberName ] = registration;
+	
+	RegisterMember( memberName, registration );
 	return true;
 }
 
-bool ExtrinsicsInfoManager::WriteMemberInformation( const std::string& memberName,
-                                                    bool forceLookup )
+bool ExtrinsicsInfoManager::WriteMemberInfo( const std::string& memberName,
+                                             bool forceLookup )
 {
 	// Can't write info if we don't have it cached!
-	if( memberRegistry.count( memberName ) == 0 ) { return false; }
+	if( !HasMember( memberName ) ) { return false; }
 	
 	std::string memberNamespace;
 	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
 	
-	MemberRegistration& registration = memberRegistry[ memberName ];
+	ExtrinsicsInfo& registration = GetInfo( memberName );
 	YAML::Node extrinsics = SetPoseYaml( registration.extrinsics );
 	SetYamlParam( nodeHandle, GenerateExtrinsicsKey( memberNamespace ), extrinsics );
-	nodeHandle.setParam( GenerateRefFrameKey( memberNamespace ), registration.frameID );
-	return true;
-}
-
-bool ExtrinsicsInfoManager::HasMember( const std::string& memberName ) const
-{
-	return memberRegistry.count( memberName ) != 0;
-}
-
-const PoseSE3& ExtrinsicsInfoManager::GetExtrinsics( const std::string& memberName ) const
-{
-	return memberRegistry.at( memberName ).extrinsics;
-}
-
-const std::string& ExtrinsicsInfoManager::GetReferenceFrame( const std::string& memberName ) const
-{
-	return memberRegistry.at( memberName ).frameID;
-}
-
-void ExtrinsicsInfoManager::SetExtrinsics( const std::string& memberName, 
-                                           const PoseSE3& ext )
-{
-	memberRegistry[ memberName ].extrinsics = ext;
-}
-
-void ExtrinsicsInfoManager::SetReferenceFrame( const std::string& memberName, 
-                                               const std::string& refFrame )
-{
-	memberRegistry[ memberName ].frameID = refFrame;
-}
-
-bool ExtrinsicsInfoManager::GetNamespace( const std::string& memberName,
-                                          std::string& ns,
-                                          bool forceLookup )
-{
-	// Fast-fail using cache
-	if( !forceLookup && failedQueries.count( memberName ) > 0 ) { return false; }
-	
-	if( !lookupInterface.ReadNamespace( memberName, ns ) )
-	{
-		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
-		failedQueries.insert( memberName );
-		return false;
-	}
+	nodeHandle.setParam( GenerateRefFrameKey( memberNamespace ), registration.referenceFrame );
 	return true;
 }
 

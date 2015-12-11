@@ -91,8 +91,8 @@ void ArrayCalibrator::WriteResults()
 		if( camReg.optimizeExtrinsics )
 		{
 			ROS_INFO_STREAM( "Writing extrinsics for camera: " << camName );
-			extrinsicsManager.SetExtrinsics( camName, camReg.extrinsics->value().pose );
-			extrinsicsManager.WriteMemberInformation( camName, true );
+			extrinsicsManager.GetInfo( camName ).extrinsics = camReg.extrinsics->value().pose;
+			extrinsicsManager.WriteMemberInfo( camName, true );
 			
 			nodes.clear();
 			nodes.push_back( camReg.extrinsics.get() );
@@ -113,8 +113,8 @@ void ArrayCalibrator::WriteResults()
 		if( item.second.optimizeExtrinsics )
 		{
 			ROS_INFO_STREAM( "Writing extrinsics for fiducial: " << fidName );
-			extrinsicsManager.SetExtrinsics ( fidName, item.second.extrinsics->value().pose );
-			extrinsicsManager.WriteMemberInformation( fidName, true );
+			extrinsicsManager.GetInfo( fidName ).extrinsics = item.second.extrinsics->value().pose;
+			extrinsicsManager.WriteMemberInfo( fidName, true );
 		}
 		if( item.second.optimizeIntrinsics )
 		{
@@ -151,9 +151,12 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 	if( cameraRegistry.count( camName ) == 0 ) { InitializeCamera( camName ); }
 	CameraRegistration& camReg = cameraRegistry[ camName ];
 	
-	std::string camFrameName = extrinsicsManager.GetReferenceFrame( camName );
-	if( frameRegistry.count( camFrameName ) == 0 ) { CreateFrame( camFrameName, timestamp ); }
-	FrameRegistration& camFrameReg = frameRegistry[ camFrameName ];
+	const extrinsics_array::ExtrinsicsInfo& camInfo = extrinsicsManager.GetInfo( camName );
+	if( frameRegistry.count( camInfo.referenceFrame ) == 0 ) 
+	{ 
+		CreateFrame( camInfo.referenceFrame, timestamp ); 
+	}
+	FrameRegistration& camFrameReg = frameRegistry[ camInfo.referenceFrame ];
 	
 	BOOST_FOREACH( const FiducialDetection& detection, msg->detections )
 	{
@@ -161,9 +164,12 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 		if( fiducialRegistry.count( fidName ) == 0 ) { InitializeFiducial( fidName ); }
 		FiducialRegistration& fidReg = fiducialRegistry[ fidName ];
 		
-		std::string fidFrameName = extrinsicsManager.GetReferenceFrame( fidName );
-		if( frameRegistry.count( fidFrameName ) == 0 ) { CreateFrame( fidFrameName, timestamp ); }
-		FrameRegistration& fidFrameReg = frameRegistry[ fidFrameName ];
+		const extrinsics_array::ExtrinsicsInfo& fidInfo = extrinsicsManager.GetInfo( fidName );
+		if( frameRegistry.count( fidInfo.referenceFrame ) == 0 ) 
+		{ 
+			CreateFrame( fidInfo.referenceFrame, timestamp ); 
+		}
+		FrameRegistration& fidFrameReg = frameRegistry[ fidInfo.referenceFrame ];
 		
 		// If one of the two frames is uninitialized, we initialize it using PNP
 		if( !camFrameReg.initialized || !fidFrameReg.initialized )
@@ -171,9 +177,6 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
 			                                     nullptr,
 			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
-			
-			const PoseSE3& camExt = extrinsicsManager.GetExtrinsics( camName );
-			const PoseSE3& fidExt = extrinsicsManager.GetExtrinsics( fidName );
 			
 			ROS_INFO_STREAM( "Fiducial detected at: " << relPose );
 			
@@ -186,9 +189,12 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 					continue; 
 				}
 				PoseSE3 fidFramePose = fidFrameNode->value().pose;
-				PoseSE3 camFramePose = fidFramePose * fidExt * relPose.Inverse() * camExt.Inverse();
+				PoseSE3 camFramePose = fidFramePose * fidInfo.extrinsics 
+					* relPose.Inverse() * camInfo.extrinsics.Inverse();
 				camFrameReg.poses->Initialize( timestamp, camFramePose );
-				camFrameReg.poses->AddPrior( timestamp, camFramePose, isam::Covariance( 1E6 * isam::eye(6) ) );
+				camFrameReg.poses->AddPrior( timestamp, 
+				                             camFramePose, 
+				                             isam::Covariance( 1E6 * isam::eye(6) ) );
 				camFrameReg.initialized = true;
 			}
 			else
@@ -199,7 +205,8 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 					continue; 
 				}
 				PoseSE3 camFramePose = camFrameNode->value().pose;
-				PoseSE3 fidFramePose = camFramePose * camExt * relPose * fidExt.Inverse();
+				PoseSE3 fidFramePose = camFramePose * camInfo.extrinsics 
+					* relPose * fidInfo.extrinsics.Inverse();
 				ROS_INFO_STREAM( "cam pose: " << camFramePose );
 				ROS_INFO_STREAM( "fid pose: " << fidFramePose );
 				fidFrameReg.poses->Initialize( timestamp, fidFramePose );
@@ -307,7 +314,7 @@ void ArrayCalibrator::InitializeCamera( const std::string& camName )
 	// Cache the camera lookup information
 	if( !extrinsicsManager.HasMember( camName ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( camName ) )
+		if( !extrinsicsManager.ReadMemberInfo( camName ) )
 		{
 			ROS_ERROR_STREAM( "Could not retrieve info for camera: " << camName );
 			exit( -1 );
@@ -315,7 +322,7 @@ void ArrayCalibrator::InitializeCamera( const std::string& camName )
 	}
 	
 	// Retrieve the camera extrinsics
-	const PoseSE3& cameraExtrinsicsInit = extrinsicsManager.GetExtrinsics( camName );
+	const PoseSE3& cameraExtrinsicsInit = extrinsicsManager.GetInfo( camName ).extrinsics;
 	
 	ROS_INFO_STREAM( "Registering camera " << camName );
 	CameraRegistration registration;
@@ -352,10 +359,10 @@ void ArrayCalibrator::InitializeCamera( const std::string& camName )
 void ArrayCalibrator::InitializeFiducial( const std::string& fidName )
 {
 	// Cache the fiducial lookup information
-	if( !fiducialManager.HasFiducial( fidName ) )
+	if( !fiducialManager.HasMember( fidName ) )
 	{
-		if( !fiducialManager.ReadFiducialInformation( fidName, false ) ||
-			!extrinsicsManager.ReadMemberInformation( fidName, false ) )
+		if( !fiducialManager.ReadMemberInfo( fidName, false ) ||
+			!extrinsicsManager.ReadMemberInfo( fidName, false ) )
 		{
 			ROS_ERROR_STREAM( "Could not retrieve fiducial info for " << fidName );
 			exit( -1 );
@@ -363,8 +370,8 @@ void ArrayCalibrator::InitializeFiducial( const std::string& fidName )
 	}
 	
 	// Retrieve the fiducial extrinsics, intrinsics, and reference frame
-	const Fiducial& fiducial = fiducialManager.GetIntrinsics( fidName );
-	const PoseSE3& fiducialExtrinsics = extrinsicsManager.GetExtrinsics( fidName );
+	const Fiducial& fiducial = fiducialManager.GetInfo( fidName );
+	const PoseSE3& fiducialExtrinsics = extrinsicsManager.GetInfo( fidName ).extrinsics;
 
 	ROS_INFO_STREAM( "Registering fiducial " << fidName );
 	FiducialRegistration registration;

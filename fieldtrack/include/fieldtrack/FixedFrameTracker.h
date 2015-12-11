@@ -7,6 +7,7 @@
 
 #include "argus_msgs/RelativePoseWithCovariance.h"
 #include "fieldtrack/ConstantVelocityFilter.h"
+#include "fieldtrack/TargetInfoManager.h"
 
 #include <unordered_map>
 
@@ -34,6 +35,9 @@ private:
 	ros::Subscriber targetPoseSub;
 	ros::Subscriber targetVelSub;
 	std::shared_ptr<ros::Timer> timer;
+	
+	lookup::LookupInterface lookupInterface;
+	TargetInfoManager targetManager;
 	
 	std::string referenceFrame;
 

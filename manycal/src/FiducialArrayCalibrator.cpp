@@ -58,9 +58,9 @@ void FiducialArrayCalibrator::WriteResults()
 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
 		std::cout << "Fiducial " << name << " pose " << extrinsics << std::endl;
 		
-		extrinsicsManager.SetExtrinsics( name, extrinsics );
-		extrinsicsManager.SetReferenceFrame( name, referenceFrame );
-		extrinsicsManager.WriteMemberInformation( name );
+		extrinsicsManager.GetInfo( name ).extrinsics = extrinsics;
+		extrinsicsManager.GetInfo( name ).referenceFrame = referenceFrame;
+		extrinsicsManager.WriteMemberInfo( name );
 	}
 }
 
@@ -83,7 +83,7 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		{
 			if( HasExtrinsicsPrior( detection.name ) && HasIntrinsicsPrior( detection.name ) )
 			{
-				const PoseSE3& prior = extrinsicsManager.GetExtrinsics( detection.name );
+				const PoseSE3& prior = extrinsicsManager.GetInfo( detection.name ).extrinsics;
 				if( !RegisterFiducial( detection.name, prior, true ) ) { continue; }
 			}
 		}
@@ -125,7 +125,7 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		{
 			if( !HasIntrinsicsPrior( detection.name ) ) { continue; }
 			
-			const Fiducial& intrinsics = fiducialManager.GetIntrinsics( detection.name );
+			const Fiducial& intrinsics = fiducialManager.GetInfo( detection.name );
 			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
 			                                     nullptr,
 			                                     MsgToPoints( intrinsics.points ) );
@@ -163,8 +163,8 @@ bool FiducialArrayCalibrator::HasExtrinsicsPrior( const std::string& name )
 {
 	if( !extrinsicsManager.HasMember( name ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( name, false ) ||
-		    extrinsicsManager.GetReferenceFrame( name ) != referenceFrame )
+		if( !extrinsicsManager.ReadMemberInfo( name, false ) ||
+		    extrinsicsManager.GetInfo( name ).referenceFrame != referenceFrame )
 		{ 
 			return false; 
 		}
@@ -175,9 +175,9 @@ bool FiducialArrayCalibrator::HasExtrinsicsPrior( const std::string& name )
 
 bool FiducialArrayCalibrator::HasIntrinsicsPrior( const std::string& name )
 {
-	if( !fiducialManager.HasFiducial( name ) )
+	if( !fiducialManager.HasMember( name ) )
 	{
-		if( !fiducialManager.ReadFiducialInformation( name, false ) )
+		if( !fiducialManager.ReadMemberInfo( name, false ) )
 		{
 			ROS_WARN_STREAM( "Could not retrieve fiducial info for " << name );
 			return false;
@@ -196,7 +196,7 @@ bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
 	ROS_INFO_STREAM( "Registering fiducial " << name << " with pose " << pose );
 	
 	FiducialRegistration registration;
-	isam::FiducialIntrinsics intrinsics = FiducialToIsam( fiducialManager.GetIntrinsics( name ) );
+	isam::FiducialIntrinsics intrinsics = FiducialToIsam( fiducialManager.GetInfo( name ) );
 	registration.intrinsics = 
 	    std::make_shared<isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );
 	registration.intrinsics->init( intrinsics );

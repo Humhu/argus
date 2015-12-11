@@ -16,7 +16,15 @@ namespace camera_array
 	
 typedef std::set <std::string> CameraSet;
 
-// TODO Threadify streaming calls to allow parallel calls
+/*! \brief Describes the state of a camera array. Active and inactive cameras
+ * are given as sets for easy querying and iterating. */
+struct CameraArrayState
+{
+	CameraSet activeCameras;
+	CameraSet inactiveCameras;
+	std::unordered_map<std::string, argus_utils::PoseSE3> extrinsics;
+};
+
 /*! \brief The base camera array manager class. Contains basic functionality for
  * registering member cameras and getting pose updates. */
 class CameraArrayManager
@@ -35,11 +43,10 @@ public:
 	/*! \brief Returns the upper bound on the number of active cameras. */
 	unsigned int MaxActiveCameras() const;
 	
-	/*! \brief Returns the set of currently active cameras. */
-	const CameraSet& ActiveCameras() const;
-	
 	void RequestSetStreaming( const std::string& name, bool mode );
 	void RequestSwitchStreaming( const std::string& toDisable, const std::string& toEnable );
+
+	const CameraArrayState& GetState() const;
 	
 protected:
 	
@@ -61,7 +68,9 @@ protected:
 	};
 	typedef std::unordered_map <std::string, CameraRegistration> CameraRegistry;
 	CameraRegistry cameraRegistry;
-	CameraSet activeCameras;
+	
+	CameraArrayState currentState;
+	
 	unsigned int maxNumActive;
 	argus_utils::WorkerPool cameraWorkers;
 	

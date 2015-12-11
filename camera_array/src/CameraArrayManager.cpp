@@ -48,17 +48,18 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 			exit( -1 );
 		}
 		
-		if( !extrinsicsManager.ReadMemberInformation( name ) )
+		if( !extrinsicsManager.ReadMemberInfo( name ) )
 		{
 			ROS_ERROR_STREAM( "Could not get extrinsics for camera " << name );
 			exit( -1 );
 		}
 		
-		const std::string camRefFrame = extrinsicsManager.GetReferenceFrame( name );
-		if( camRefFrame != bodyFrame )
+		const extrinsics_array::ExtrinsicsInfo& cameraInfo = 
+			extrinsicsManager.GetInfo( name );
+		if( cameraInfo.referenceFrame != bodyFrame )
 		{
 			ROS_ERROR_STREAM( "Reference frame for camera " << name 
-				<< " of " << camRefFrame 
+				<< " of " << cameraInfo.referenceFrame 
 				<< " does not match body frame " << bodyFrame );
 			exit( -1 );
 		}
@@ -70,8 +71,10 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		cameraRegistry[name] = registration;
 		
 		SetStreaming( name, false, true );
+		
+		currentState.inactiveCameras.insert( name );
+		currentState.extrinsics[ name ] = cameraInfo.extrinsics;
 	}
-	
 }
 
 CameraArrayManager::~CameraArrayManager()
@@ -87,13 +90,12 @@ unsigned int CameraArrayManager::MaxActiveCameras() const
 
 bool CameraArrayManager::IsActive( const std::string& name ) const
 {
-	return activeCameras.count( name ) > 0;
+	return currentState.activeCameras.count( name ) > 0;
 }
 
-const CameraSet& CameraArrayManager::ActiveCameras() const
+const CameraArrayState& CameraArrayManager::GetState() const
 {
-	ReadLock lock( mutex );
-	return activeCameras;
+	return currentState;
 }
 
 bool CameraArrayManager::SetStreaming( const std::string& name, bool mode, bool force )
@@ -106,7 +108,7 @@ bool CameraArrayManager::SetStreaming( const std::string& name, bool mode, bool 
 	CameraRegistration& registration = cameraRegistry[ name ];
 	if( IsActive( name ) == mode && !force ) { return true; }
 	
-	if( mode && activeCameras.size() >= maxNumActive )
+	if( mode && currentState.activeCameras.size() >= maxNumActive )
 	{
 		ROS_ERROR_STREAM( "Cannot activate camera " << name << ". Already max num active." );
 		return false;
@@ -127,12 +129,13 @@ bool CameraArrayManager::SetStreaming( const std::string& name, bool mode, bool 
 	lock.lock();
 	if( mode )
 	{
-		activeCameras.insert( name );
+		currentState.inactiveCameras.erase( currentState.inactiveCameras.find( name ) );
+		currentState.activeCameras.insert( name );
 	}
 	else
 	{
-		CameraSet::iterator iter = activeCameras.find( name );
-		if( iter != activeCameras.end() ) { activeCameras.erase( iter ); }
+		currentState.activeCameras.erase( currentState.activeCameras.find( name ) );
+		currentState.inactiveCameras.insert( name );
 	}
 	
 	return true;
@@ -154,7 +157,7 @@ bool CameraArrayManager::SetActiveCameras( const CameraSet& ref )
 	}
 	
 	std::vector<std::string> toDisable;
-	BOOST_FOREACH( const std::string& name, activeCameras )
+	BOOST_FOREACH( const std::string& name, currentState.activeCameras )
 	{
 		if( ref.count( name ) == 0 ) { toDisable.push_back( name ); }
 	}

@@ -189,16 +189,16 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// Have to calculate dt before getting timestamp
 	double dt = ( now - registration.lastPointsTimestamp ).toSec();
     PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
-	const PoseSE3& cameraExtrinsics = extrinsicsManager.GetExtrinsics( cameraName );
+	const extrinsics_array::ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
-	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraExtrinsics ) * cameraVelocity;
+	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
 	ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
 	ROS_INFO_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
 
 
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = now;
-	tmsg.header.frame_id = extrinsicsManager.GetReferenceFrame( cameraName );
+	tmsg.header.frame_id = cameraInfo.referenceFrame;
 	tmsg.twist.twist= TangentToMsg( frameVelocity );
 	SerializeMatrix( covarianceRate * dt, tmsg.twist.covariance );
 	dispPub.publish( tmsg );
@@ -276,7 +276,7 @@ bool VisualOdometryPipeline::RegisterCamera( const std::string& name )
 	
 	if( !extrinsicsManager.HasMember( name ) )
 	{
-		if( !extrinsicsManager.ReadMemberInformation( name, false ) ) { return false; }
+		if( !extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
 	}
 	
 	CameraRegistration registration;

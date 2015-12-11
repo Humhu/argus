@@ -11,16 +11,6 @@ struct RobotState
 	argus_utils::PoseSE3::CovarianceMatrix velocityCovariance;	
 };
 
-struct CameraState
-{
-	CameraSet activeCameras;
-	std::vector<std::string> names;
-	std::vector<image_geometry::PinholeCameraModel> intrinsics;
-	std::vector<argus_utils::PoseSE3> extrinsics;
-};
-
-
-
 class CameraPolicy
 {
 public:

@@ -11,13 +11,17 @@ namespace fieldtrack
 {
 
 BodyFrameTracker::BodyFrameTracker( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph )
+: nodeHandle( nh ), privHandle( ph ), targetManager( lookupInterface )
 {
 	if( !privHandle.getParam( "reference_frame", referenceFrame ) )
 	{
 		ROS_ERROR_STREAM( "Must specify reference frame." );
 		exit( -1 );
 	}
+	
+	std::string lookupNamespace;
+	privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
+	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
 	targetPub = nodeHandle.advertise<CompactOdometryArray>( "target_states", 5 );
 	refOdomSub = nodeHandle.subscribe( "reference_odometry",
@@ -126,7 +130,7 @@ void BodyFrameTracker::RegisterTarget( const std::string& name )
 {
 	if( targetRegistry.count( name ) > 0 ) { return; }
 	
-	// TODO Look up target information
+	// TODO Look up target information to set motion model
 	TargetRegistration registration;
 	registration.filter = std::make_shared<ConstantVelocityFilter>();
 	registration.poseInitialized = false;
