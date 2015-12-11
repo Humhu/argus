@@ -1,11 +1,8 @@
 #pragma once
 
 #include <ros/ros.h>
-#include <unordered_map>
-#include <unordered_set>
 
 #include "lookup/InfoManager.h"
-
 #include "fiducials/Fiducial.h"
 
 namespace fiducials

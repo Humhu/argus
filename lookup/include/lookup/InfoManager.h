@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lookup/LookupInterface.h"
+#include <unordered_map>
 #include <unordered_set>
 
 namespace lookup

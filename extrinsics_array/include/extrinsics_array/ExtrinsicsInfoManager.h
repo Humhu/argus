@@ -5,8 +5,6 @@
 #include "lookup/InfoManager.h"
 
 #include <ros/ros.h>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace extrinsics_array
 {
