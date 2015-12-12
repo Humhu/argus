@@ -14,7 +14,7 @@
 
 namespace camera_array
 {
-
+	
 /*! \brief The base camera array manager class. Contains basic functionality for
  * registering member cameras and managing streaming. */
 class CameraArrayManager
@@ -30,11 +30,10 @@ public:
 	 * Disables non-specified active cameras and enables specified cameras. */
 	bool SetActiveCameras( const CameraSet& ref );
 	
+	void RequestSetStreaming( const std::string& name, bool mode );
+	
 	/*! \brief Returns the upper bound on the number of active cameras. */
 	unsigned int MaxActiveCameras() const;
-	
-	void RequestSetStreaming( const std::string& name, bool mode );
-	void RequestSwitchStreaming( const std::string& toDisable, const std::string& toEnable );
 
 	const CameraArrayState& GetState() const;
 	
@@ -66,13 +65,10 @@ protected:
 	bool IsActive( const std::string& name ) const;
 	
 	/*! \brief Set the streaming state of a camera. */
-	bool SetStreaming( const std::string& name, bool mode, bool force = false );
-	bool SwitchStreaming( const std::string& toDisable, const std::string& toEnable );
-	
+	bool SetStreaming( const std::string& name, bool mode );
+
+	/*! \brief Jobs for the threadpool. */
 	void SetStreamingJob( const std::string& name, bool mode );
-	void SwitchStreamingJob( const std::string& toDisable, const std::string& toEnable );
-	
-	
 	
 };
 	

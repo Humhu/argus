@@ -80,6 +80,12 @@ SwitchingCameraActionGenerator::GetActions( const CameraArrayState& state )
 			actions.push_back( action );
 		}
 	}
+	// Otherwise allow null action
+	else
+	{
+		action.type = CameraArrayAction::DO_NOTHING;
+		actions.push_back( action );	
+	}
 	
 	// Now switch for all combinations
 	action.type = CameraArrayAction::SWITCH_CAMERAS;
@@ -92,10 +98,6 @@ SwitchingCameraActionGenerator::GetActions( const CameraArrayState& state )
 			actions.push_back( action );
 		}
 	}
-	
-	// Always leave the option of doing othing
-	action.type = CameraArrayAction::DO_NOTHING;
-	actions.push_back( action );
 	
 	return actions;
 }

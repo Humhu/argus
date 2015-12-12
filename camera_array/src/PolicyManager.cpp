@@ -66,16 +66,19 @@ void PolicyManager::TimerCallback( const ros::TimerEvent& event )
 {
 	// TODO Fast-forward states to current time
 	
-	if( !lastOdometry || !lastTargets ) { return; }
+	if( !lastOdometry  ) { return; }
 	
 	RobotTargetState state;
 	state.array = manager->GetState();
 	state.robot = fieldtrack::OdomToTarget( *lastOdometry );
 	
-	for( unsigned int i = 0; i < lastTargets->odometry.size(); i++ )
+	if( lastTargets )
 	{
-		const std::string& name = lastTargets->odometry[i].child_frame_id;
-		state.targets[ name ] = fieldtrack::CompactOdomToTarget( lastTargets->odometry[i] );
+		for( unsigned int i = 0; i < lastTargets->odometry.size(); i++ )
+		{
+			const std::string& name = lastTargets->odometry[i].child_frame_id;
+			state.targets[ name ] = fieldtrack::CompactOdomToTarget( lastTargets->odometry[i] );
+		}
 	}
 	
 	std::vector<CameraArrayAction> arrayActions = arrayActionGenerator->GetActions( state.array );
@@ -84,17 +87,21 @@ void PolicyManager::TimerCallback( const ros::TimerEvent& event )
 	switch( action.type )
 	{
 		case CameraArrayAction::ACTIVATE_CAMERA:
+			ROS_INFO_STREAM( "Activating camera " << action.toActivate );
 			manager->RequestSetStreaming( action.toActivate, true );
 			break;
 		case CameraArrayAction::DEACTIVATE_CAMERA:
+			ROS_INFO_STREAM( "Deactivating camera " << action.toActivate );
 			manager->RequestSetStreaming( action.toDeactivate, false );
 			break;
 		case CameraArrayAction::SWITCH_CAMERAS:
-			ROS_INFO_STREAM( "Switching cameras " << action.toDeactivate << 
-				" and " << action.toActivate );
-			manager->RequestSwitchStreaming( action.toDeactivate, action.toActivate );
+			ROS_INFO_STREAM( "Switching camera " << action.toDeactivate << 
+				" to " << action.toActivate );
+			manager->RequestSetStreaming( action.toDeactivate, false );
+			manager->RequestSetStreaming( action.toActivate, true );
 			break;
 		case CameraArrayAction::DO_NOTHING:
+			ROS_INFO_STREAM( "Doing nothing." );
 			break;
 	}
 }
