@@ -1,4 +1,5 @@
 #include "fiducials/FiducialCommon.h"
+#include <opencv2/imgproc/imgproc.hpp>
 #include <boost/foreach.hpp>
 
 using namespace argus_utils;
@@ -170,7 +171,7 @@ Eigen::Matrix <double, 3, Eigen::Dynamic> MsgToMatrix( const std::vector <geomet
 }
 
 bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& detections,
-                          const image_geometry::PinholeCameraModel& cameraModel, 
+                          const camplex::CameraCalibration& cameraModel,
                           bool undistort, bool normalize,
                           std::vector< argus_msgs::FiducialDetection >& undistorted )
 {
@@ -184,7 +185,7 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 	{ return true; }
 	
 	// Quick catch of uncalibrated camera model
-	if( std::isnan( cameraModel.fx() ) ) { return false; }
+	if( std::isnan( cameraModel.GetFx() ) ) { return false; }
 	
 	// TODO Preallocate size?
 	std::vector< cv::Point2f > points2d, undistortedPoints;
@@ -201,10 +202,10 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 	cv::Mat distortionCoeffs;
 	cv::Matx33d outputCameraMatrix;
 	
-	if( undistort ) { distortionCoeffs = cameraModel.distortionCoeffs(); }
-	outputCameraMatrix = normalize ? cv::Matx33d::eye() : cameraModel.intrinsicMatrix();
+	if( undistort ) { distortionCoeffs = cameraModel.GetDistortionCoeffs(); }
+	outputCameraMatrix = normalize ? cv::Matx33d::eye() : cameraModel.GetIntrinsicMatrix();
 	
-	cv::undistortPoints( points2d, undistortedPoints, cameraModel.intrinsicMatrix(),
+	cv::undistortPoints( points2d, undistortedPoints, cameraModel.GetIntrinsicMatrix(),
 	                     distortionCoeffs, cv::noArray(), outputCameraMatrix );
 	
 	// Assign to undistorted output 
@@ -233,7 +234,7 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 
 argus_msgs::FiducialDetection 
 ProjectDetection( const Fiducial& fiducial, const std::string& fidName,
-                  const image_geometry::PinholeCameraModel& cameraModel,
+                  const camplex::CameraCalibration& cameraModel,
                   const PoseSE3& fiducialToCam )
 {
 	argus_msgs::FiducialDetection detection;
@@ -241,23 +242,33 @@ ProjectDetection( const Fiducial& fiducial, const std::string& fidName,
 	detection.undistorted = true;
 	detection.normalized = false;
 	
-	Eigen::Matrix <double, 3, Eigen::Dynamic> fidPoints = MsgToMatrix( fiducial.points );
-	Eigen::Matrix2d K = Eigen::Matrix2d::Zero();
-	K(0,0) = cameraModel.fx();
-	K(1,1) = cameraModel.fy();
-	K(0,2) = cameraModel.cx();
-	K(1,2) = cameraModel.cy();
+	Eigen::Matrix<double, 3, Eigen::Dynamic> fidPoints = MsgToMatrix( fiducial.points );
+	Eigen::Matrix3d K = Eigen::Matrix3d::Identity();
+	K(0,0) = cameraModel.GetFx();
+	K(1,1) = cameraModel.GetFy();
+	K(0,2) = cameraModel.GetCx();
+	K(1,2) = cameraModel.GetCy();
 	
 	// Have to switch to z-forward coordinates
 	static PoseSE3 camToObj( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
-	Eigen::Transform <double, 2, Eigen::Affine> cameraMatrix( K );
+// 	Eigen::Transform <double, 2, Eigen::Affine> cameraMatrix( K.block<2,2>(0,0) );
 	PoseSE3 fidToCam = camToObj.Inverse() * fiducialToCam;
 	
 	Eigen::Matrix <double, 3, Eigen::Dynamic> relPoints = fidToCam.ToTransform() * fidPoints;
-	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (cameraMatrix * relPoints).colwise().hnormalized();
+	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (K * relPoints).colwise().hnormalized();
 	
 	detection.points = MatrixToMsg( imgPoints );
 	return detection;
+}
+
+bool CheckDetectionROI( const argus_msgs::FiducialDetection& det, const cv::Rect& roi )
+{
+	BOOST_FOREACH( const argus_msgs::Point2D& point, det.points )
+	{
+		if( point.x < 0 || point.x > roi.width ||
+		    point.y < 0 || point.y > roi.height ) { return false; }
+	}
+	return true;
 }
 
 double FindMinDistance( const std::vector <argus_msgs::Point2D>& points )

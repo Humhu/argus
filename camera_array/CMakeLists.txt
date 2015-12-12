@@ -13,6 +13,8 @@ find_package(catkin REQUIRED
 					image_geometry
 					lookup
 					nav_msgs
+					fieldtrack
+					camplex
 )
 
 # Use Boost for most utilities, threading
@@ -33,6 +35,8 @@ catkin_package(
 					image_geometry
 					lookup
 					nav_msgs
+					fieldtrack
+					camplex
 	
 	DEPENDS 		Boost 
 					system_lib
@@ -46,7 +50,12 @@ include_directories( include
 
 add_library( camera_array
 	src/CameraArrayManager.cpp
+	src/FiducialDetectionModel.cpp
+	src/FiducialRewardFunction.cpp
+	src/PolicyManager.cpp
 	src/RandomArrayManager.cpp
+	src/SystemModels.cpp
+	src/SystemStates.cpp
 )
 target_link_libraries( camera_array
 	${Boost_LIBRARIES}

@@ -1,4 +1,7 @@
 #include "camera_array/RandomArrayManager.h"
+#include "camera_array/PolicyManager.h"
+
+using namespace camera_array;
 
 int main( int argc, char** argv )
 {
@@ -7,14 +10,20 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	camera_array::CameraArrayManager::Ptr manager;
+	CameraArrayManager::Ptr manager;
+	PolicyManager::Ptr policy;
 	
 	std::string managerType;
 	ph.param<std::string>( "manager_type", managerType, "random" );
 	
 	if( managerType == "random" )
 	{
-		manager = std::make_shared<camera_array::RandomArrayManager>( nh, ph );
+		manager = std::make_shared<RandomArrayManager>( nh, ph );
+	}
+	else if( managerType == "greedy" )
+	{
+		manager = std::make_shared<CameraArrayManager>( nh, ph );
+		policy = std::make_shared<PolicyManager>( nh, ph, manager );
 	}
 	else
 	{

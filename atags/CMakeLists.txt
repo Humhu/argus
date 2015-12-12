@@ -15,10 +15,10 @@ find_package(catkin REQUIRED
 					roscpp
 					sensor_msgs
 					std_msgs
-					image_geometry
 					argus_utils
 					argus_msgs
 					fiducials
+					camplex
 )
 
 message( STATUS ${CATKIN_DEVEL_PREFIX} )
@@ -53,9 +53,9 @@ catkin_package(
 					roscpp 
 					sensor_msgs 
 					std_msgs
-					image_geometry
 					argus_utils
 					fiducials
+					camplex
 					
 	DEPENDS 		Boost 
 					system_lib

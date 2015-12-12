@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
 					geometry_msgs
 					argus_utils
 					lookup
+					camplex
 )
 
 # Use Boost for most utilities, threading
@@ -47,6 +48,7 @@ catkin_package(
 					geometry_msgs
 					argus_utils
 					lookup
+					camplex
 					
 	DEPENDS 		Boost 
 					system_lib

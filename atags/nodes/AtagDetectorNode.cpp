@@ -12,6 +12,7 @@
 
 #include "atags/AtagCommon.h"
 #include "argus_msgs/ImageFiducialDetections.h"
+#include "camplex/CameraCalibration.h"
 #include "fiducials/FiducialCommon.h"
 
 /*! \brief A single-threaded AprilTag detector. */
@@ -86,8 +87,7 @@ image_transport::CameraSubscriber cameraSub;
 void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
                     const sensor_msgs::CameraInfo::ConstPtr& info )
 {
-	image_geometry::PinholeCameraModel cameraModel;
-	cameraModel.fromCameraInfo( info );
+	camplex::CameraCalibration cameraModel( "camear", *info );
 	
 	// Detection occurs in grayscale
 	cv::Mat frame = cv_bridge::toCvShare( msg, "mono8" )->image;
@@ -123,7 +123,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	if( enableUndistortion || enableNormalization )
 	{
 		// Check for uncalibrated camera
-		if( cameraModel.fx() == 0 || cameraModel.fy() == 0 ) { 
+		if( cameraModel.GetFx() == 0 || cameraModel.GetFy() == 0 ) { 
 			ROS_WARN_STREAM( "Cannot undistort or normalize detection with uninitialized camera." );
 			return; 
 		}

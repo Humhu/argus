@@ -36,6 +36,8 @@ bool TargetInfoManager::ReadMemberInfo( const std::string& memberName,
 	// Parse fiducial names
 	std::string fiducialsKey = GenerateFiducialsKey( memberNamespace );
 	nodeHandle.param( fiducialsKey, registration.fiducialNames, std::vector<std::string>() );
+	
+	RegisterMember( memberName, registration );
 	return true;
 }
 

@@ -13,6 +13,13 @@ InfoManager<InfoStruct>::~InfoManager()
 {}
 
 template <typename InfoStruct>
+bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName, bool forceLookup )
+{
+	if( HasMember( memberName ) ) { return true; }
+	return ReadMemberInfo( memberName, forceLookup );
+}
+
+template <typename InfoStruct>
 bool InfoManager<InfoStruct>::HasMember( const std::string& memberName ) const
 {
 	return registry.count( memberName ) > 0;

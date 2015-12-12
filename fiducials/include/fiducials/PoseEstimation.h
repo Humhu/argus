@@ -15,7 +15,7 @@ namespace fiducials
  * (z-forward) for imagePoints and object convention (x-forward) for input and returned
  * poses. */
 argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
-                                        const image_geometry::PinholeCameraModel* cameraModel,
+                                        const camplex::CameraCalibration* cameraModel,
                                         const std::vector< cv::Point3f >& fiducialPoints,
                                         const argus_utils::PoseSE3& guess = argus_utils::PoseSE3() );
 

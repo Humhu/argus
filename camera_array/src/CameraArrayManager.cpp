@@ -10,7 +10,7 @@ namespace camera_array
 	
 CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
                                         const ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), extrinsicsManager( lookupInterface )
+: nodeHandle( nh ), privHandle( ph )
 {
 	std::vector<std::string> members;
 	if( !ph.getParam( "cameras", members ) )
@@ -26,7 +26,7 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		exit( -1 );
 	}
 	
-	GetParamDefault<unsigned int>( privHandle, "max_num_active", maxNumActive, 1 );
+	GetParamDefault<unsigned int>( privHandle, "max_active_cameras", maxNumActive, 1 );
 	cameraWorkers.SetNumWorkers( maxNumActive );
 	cameraWorkers.StartWorkers();
 	
@@ -48,32 +48,15 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 			exit( -1 );
 		}
 		
-		if( !extrinsicsManager.ReadMemberInfo( name ) )
-		{
-			ROS_ERROR_STREAM( "Could not get extrinsics for camera " << name );
-			exit( -1 );
-		}
-		
-		const extrinsics_array::ExtrinsicsInfo& cameraInfo = 
-			extrinsicsManager.GetInfo( name );
-		if( cameraInfo.referenceFrame != bodyFrame )
-		{
-			ROS_ERROR_STREAM( "Reference frame for camera " << name 
-				<< " of " << cameraInfo.referenceFrame 
-				<< " does not match body frame " << bodyFrame );
-			exit( -1 );
-		}
-		
 		ROS_INFO_STREAM( "Registering camera " << name );
 		registration.name = name;
 		registration.setStreaming = 
 			nodeHandle.serviceClient<camplex::SetStreaming>( setStreamingName );
 		cameraRegistry[name] = registration;
 		
+		// HACK to allow forcing streaming off
+		currentState.activeCameras.insert( name );
 		SetStreaming( name, false, true );
-		
-		currentState.inactiveCameras.insert( name );
-		currentState.extrinsics[ name ] = cameraInfo.extrinsics;
 	}
 }
 
@@ -149,18 +132,20 @@ bool CameraArrayManager::SetActiveCameras( const CameraSet& ref )
 		    << maxNumActive );
 		return false;
 	}
-	
+
 	std::vector<std::string> toActivate;
 	BOOST_FOREACH( const std::string& name, ref )
 	{
 		if( !IsActive( name ) ) { toActivate.push_back( name ); }
 	}
-	
 	std::vector<std::string> toDisable;
 	BOOST_FOREACH( const std::string& name, currentState.activeCameras )
 	{
 		if( ref.count( name ) == 0 ) { toDisable.push_back( name ); }
 	}
+	
+	// Can't start activating until current jobs are done
+	cameraWorkers.WaitOnJobs();
 	
 	unsigned int mid = std::min( toActivate.size(), toDisable.size() );
 	for( unsigned int i = 0; i < mid; i++ )
@@ -175,7 +160,6 @@ bool CameraArrayManager::SetActiveCameras( const CameraSet& ref )
 	{
 		RequestSetStreaming( toDisable[i], false );
 	}
-	cameraWorkers.WaitOnJobs();
 	return true;
 }
 

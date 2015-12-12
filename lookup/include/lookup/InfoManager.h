@@ -20,6 +20,10 @@ public:
 	InfoManager( lookup::LookupInterface& interface );
 	virtual ~InfoManager();
 	
+	/*! \brief Checks to see if information is cached. If it is not, attempts
+	 * to read the information. Returns whether the information is now cached. */
+	bool CheckMemberInfo( const std::string& memberName, bool forceLookup = false );
+	
 	/*! \brief Attempt to read information for the specified member name. Fast-returns
 	 * if previous lookup failures exist and the forceLookup flag is not set. 
 	 * Returns success. */

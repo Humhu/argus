@@ -10,6 +10,7 @@ namespace fiducials
 /*! \brief Tools for reading/writing fiducial calibration files.
  * 
  * Fiducial Calibration YAML format:
+ * 
  * intrinsics:
  *   points_x: [x0, x1, ...]
  *   points_y: [y0, y1, ...]

@@ -7,26 +7,16 @@
 #include "argus_utils/WorkerPool.h"
 #include "argus_utils/SynchronizationUtils.h"
 
+#include "camera_array/SystemStates.h"
+
 #include <unordered_map>
-#include <set>
 #include <memory>
 
 namespace camera_array
 {
-	
-typedef std::set <std::string> CameraSet;
-
-/*! \brief Describes the state of a camera array. Active and inactive cameras
- * are given as sets for easy querying and iterating. */
-struct CameraArrayState
-{
-	CameraSet activeCameras;
-	CameraSet inactiveCameras;
-	std::unordered_map<std::string, argus_utils::PoseSE3> extrinsics;
-};
 
 /*! \brief The base camera array manager class. Contains basic functionality for
- * registering member cameras and getting pose updates. */
+ * registering member cameras and managing streaming. */
 class CameraArrayManager
 {
 public:
@@ -57,7 +47,6 @@ protected:
 	std::string bodyFrame;
 	
 	lookup::LookupInterface lookupInterface;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 
 	mutable argus_utils::Mutex mutex;
 	
