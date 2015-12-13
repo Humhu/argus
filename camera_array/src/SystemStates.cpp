@@ -35,4 +35,24 @@ AccelerationAction::AccelerationAction()
 : acceleration( fieldtrack::TargetState::VelocityType::Zero() )
 {}
 
+std::ostream& operator<<( std::ostream& os, const CameraArrayAction& action )
+{
+  switch( action.type )
+  {
+  case CameraArrayAction::DO_NOTHING:
+    os << "(Do nothing)";
+  break;
+ case CameraArrayAction::ACTIVATE_CAMERA:
+   os << "(Activate " << action.toActivate << ")";
+   break;
+ case CameraArrayAction::DEACTIVATE_CAMERA:
+   os << "(Deactivate " << action.toDeactivate << ")";
+   break;
+ case CameraArrayAction::SWITCH_CAMERAS:
+   os << "(Switch " << action.toDeactivate << " to " << action.toActivate << ")";
+   break;
+}
+  return os;
+}
+
 }

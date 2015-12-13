@@ -54,6 +54,7 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 		if( !valid ) { continue; }
 		double minDist = fiducials::FindMinDistance( detection.points );
 		if( minDist < minPointSeparation ) { continue; }
+		//		ROS_INFO_STREAM( "Camera " << cameraName << " detects " << fidName );
 		detections.push_back( detection );
 	}
 	

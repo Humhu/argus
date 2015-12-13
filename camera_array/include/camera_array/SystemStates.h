@@ -45,6 +45,8 @@ struct CameraArrayAction
 	
 };
 
+std::ostream& operator<<( std::ostream& os, const CameraArrayAction& action );
+
 // TODO Rename to TargetAction?
 /*! \brief An acceleration command for a target. */
 struct AccelerationAction
