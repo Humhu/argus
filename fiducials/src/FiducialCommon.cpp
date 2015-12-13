@@ -232,13 +232,12 @@ bool UndistortDetections( const std::vector< argus_msgs::FiducialDetection >& de
 	return true;
 }
 
-argus_msgs::FiducialDetection 
-ProjectDetection( const Fiducial& fiducial, const std::string& fidName,
+bool 
+ProjectDetection( const Fiducial& fiducial,
                   const camplex::CameraCalibration& cameraModel,
-                  const PoseSE3& fiducialToCam )
+                  const PoseSE3& fiducialToCam,
+                  argus_msgs::FiducialDetection& detection )
 {
-	argus_msgs::FiducialDetection detection;
-	detection.name = fidName;
 	detection.undistorted = true;
 	detection.normalized = false;
 	
@@ -255,10 +254,17 @@ ProjectDetection( const Fiducial& fiducial, const std::string& fidName,
 	PoseSE3 fidToCam = camToObj.Inverse() * fiducialToCam;
 	
 	Eigen::Matrix <double, 3, Eigen::Dynamic> relPoints = fidToCam.ToTransform() * fidPoints;
-	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (K * relPoints).colwise().hnormalized();
+	for( unsigned int i = 0; i < relPoints.cols(); i++ )
+	{
+		if( relPoints(0,i) < 0 ) { return false; }
+	}
 	
+	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (K * relPoints).colwise().hnormalized();
 	detection.points = MatrixToMsg( imgPoints );
-	return detection;
+	
+	if( !CheckDetectionROI( detection, cameraModel.GetRoi() ) ) { return false; }
+		
+	return true;
 }
 
 bool CheckDetectionROI( const argus_msgs::FiducialDetection& det, const cv::Rect& roi )

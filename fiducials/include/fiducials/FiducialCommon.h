@@ -46,15 +46,16 @@ bool UndistortDetections( const std::vector <argus_msgs::FiducialDetection>& det
                           bool undistort, bool normalize,
                           std::vector< argus_msgs::FiducialDetection >& undistorted );
 
-/*! \brief Simulates a fiducial detection. Ignores ROI constraints. */
-argus_msgs::FiducialDetection 
-ProjectDetection( const Fiducial& fiducial,
-                  const std::string& fidName,
-                  const camplex::CameraCalibration& cameraModel,
-                  const argus_utils::PoseSE3& fiducialToCam );
+/*! \brief Simulates a fiducial detection. Ignores ROI constraints. Does not
+ populate name field of detection. Returns success. */
+bool ProjectDetection( const Fiducial& fiducial,
+                       const camplex::CameraCalibration& cameraModel,
+                       const argus_utils::PoseSE3& fiducialToCam,
+                       argus_msgs::FiducialDetection& detection );
 
 /*! \brief Returns whether the detected points are entirely in the ROI. */
-bool CheckDetectionROI( const argus_msgs::FiducialDetection& det, const cv::Rect& roi );
+bool CheckDetectionROI( const argus_msgs::FiducialDetection& det, 
+                        const cv::Rect& roi );
 
 /*! \brief Returns the min distance between a set of 2D points. Useful for estimating
  * if a fiducial detection will be valid. */

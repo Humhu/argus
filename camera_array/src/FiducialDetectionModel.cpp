@@ -35,10 +35,12 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 		const PoseSE3& fidExtrinsics = extrinsicsManager.GetInfo( fidName ).extrinsics;
 		const fiducials::Fiducial& fidIntrinsics = fiducialManager.GetInfo( fidName );
 		PoseSE3 fidToCam = targetToCam * fidExtrinsics;
-		FiducialDetection detection = fiducials::ProjectDetection( fidIntrinsics, 
-		                                                           fidName,
-		                                                           cameraModel,
-		                                                           fidToCam );
+		FiducialDetection detection;
+		detection.name = fidName;
+		bool valid = fiducials::ProjectDetection( fidIntrinsics, 
+                                                  cameraModel,
+                                                  fidToCam,
+		                                          detection );
 // 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
 // 			<< " rel pose " << fidToCam );
 // 		for( unsigned int i = 0; i < detection.points.size(); i++ )
@@ -46,12 +48,7 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 // 			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
 // 				<< ", " << detection.points[i].y );
 // 		}
-		
-		if( fiducials::CheckDetectionROI( detection, cameraModel.GetRoi() ) ) 
-		{ 
-			detections.push_back( detection ); 
-		}
-		
+		if( valid ) { detections.push_back( detection );  }
 	}
 	
 	return detections;
