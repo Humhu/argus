@@ -256,7 +256,7 @@ ProjectDetection( const Fiducial& fiducial,
 	Eigen::Matrix <double, 3, Eigen::Dynamic> relPoints = fidToCam.ToTransform() * fidPoints;
 	for( unsigned int i = 0; i < relPoints.cols(); i++ )
 	{
-		if( relPoints(0,i) < 0 ) { return false; }
+		if( relPoints(2,i) < 0 ) { return false; }
 	}
 	
 	Eigen::Matrix <double, 2, Eigen::Dynamic> imgPoints = (K * relPoints).colwise().hnormalized();
