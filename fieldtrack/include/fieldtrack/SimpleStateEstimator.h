@@ -28,6 +28,8 @@ private:
 	ros::NodeHandle privHandle;
 	
 	ConstantVelocityFilter filter;
+
+	bool twoDimensional;
 	
 	std::string referenceFrame;
 	std::string bodyFrame;
@@ -40,7 +42,7 @@ private:
 	void VelocityCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg );
 	void PoseCallback( const argus_msgs::RelativePoseWithCovariance::ConstPtr& msg );
 	void TimerCallback( const ros::TimerEvent& event );
-	
+	void EnforceTwoDimensionality();
 };
 	
 }
