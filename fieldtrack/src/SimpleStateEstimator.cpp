@@ -53,6 +53,8 @@ SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh,
 	{
 		filter.PoseCovarianceRate() = PoseSE3::CovarianceMatrix::Identity();
 	}
+
+	privHandle.param<bool>( "two_dimensional", twoDimensional, false );
 	
 	velSub = nodeHandle.subscribe( "velocity", 
 	                               10, 
@@ -114,6 +116,7 @@ void SimpleStateEstimator::PoseCallback( const RelativePoseWithCovariance::Const
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	filter.Predict( event.current_real );
+	if( twoDimensional ) { EnforceTwoDimensionality(); }
 	
 	Odometry msg;
 	msg.header.frame_id = referenceFrame;
@@ -129,6 +132,19 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	SerializeMatrix( velocityFilter.EstimateCovariance(), msg.twist.covariance );
 	
 	odomPub.publish( msg );
+}
+
+void SimpleStateEstimator::EnforceTwoDimensionality()
+{
+  PoseSE3::Vector poseVector = filter.PoseFilter().EstimateMean().ToVector();
+  PoseSE3 mean( poseVector(0), poseVector(1), 0, poseVector(3), 0, 0, poseVector(6) );
+  filter.PoseFilter().EstimateMean() = mean;
+
+  PoseSE3::TangentVector velocity = filter.VelocityFilter().EstimateMean();
+  velocity(2) = 0;
+  velocity(3) = 0;
+  velocity(4) = 0;
+  filter.VelocityFilter().EstimateMean() = velocity;
 }
 
 }

@@ -1,4 +1,5 @@
 #include "camera_array/FiducialRewardFunction.h"
+#include "fiducials/FiducialCommon.h"
 #include <boost/foreach.hpp>
 
 using namespace argus_utils;
@@ -14,15 +15,17 @@ FiducialRewardFunction::FiducialRewardFunction( const FiducialDetectionModel::Pt
 double FiducialRewardFunction::CalculateReward( const RobotTargetState& state, 
                                                 const CameraArrayAction& action )
 {
-	typedef std::vector<argus_msgs::FiducialDetection> Detections;
+  typedef argus_msgs::FiducialDetection Detection;
+	typedef std::vector<Detection> Detections;
 	
 	RobotTargetState next = transitionFunction->Transition( state, action );
 	
-	double numDetections = 0;
+	double reward = 0;
 	
 	// Calculate observations for each active camera
 	BOOST_FOREACH( const std::string cameraName, next.array.activeCameras )
 	{
+	  double cameraSum = 0;
 		BOOST_FOREACH( const RobotTargetState::TargetMap::value_type& item, next.targets )
 		{
 			const std::string& targetName = item.first;
@@ -31,11 +34,16 @@ double FiducialRewardFunction::CalculateReward( const RobotTargetState& state,
 				detectionModel->GenerateDetections( cameraName,
 				                                    targetName,
 				                                    targetRelPose );
-			numDetections += detections.size();
+			BOOST_FOREACH( Detection& detection, detections )
+			{
+			  double r = fiducials::FindMinDistance( detection.points );
+			  reward += r;
+			  cameraSum += r;
+			}
 		}
 		
 	}
-	return numDetections;
+	return reward;
 }
 
 }

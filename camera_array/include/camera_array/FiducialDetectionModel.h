@@ -34,6 +34,8 @@ private:
 	mutable extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 	mutable fiducials::FiducialInfoManager fiducialManager;
 	mutable fieldtrack::TargetInfoManager targetManager;
+
+	double minPointSeparation;
 	
 	void CheckCamera( const std::string& cameraName );
 	void CheckTarget( const std::string& targetName );

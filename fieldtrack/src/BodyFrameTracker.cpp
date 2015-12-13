@@ -129,7 +129,9 @@ void BodyFrameTracker::TargetPoseCallback( const RelativePoseWithCovariance::Con
 void BodyFrameTracker::RegisterTarget( const std::string& name )
 {
 	if( targetRegistry.count( name ) > 0 ) { return; }
-	
+
+	ROS_INFO_STREAM( "Registering target " << name );
+
 	// TODO Look up target information to set motion model
 	TargetRegistration registration;
 	registration.filter = std::make_shared<ConstantVelocityFilter>();
