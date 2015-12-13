@@ -11,7 +11,10 @@ namespace camera_array
 FiducialDetectionModel::FiducialDetectionModel( lookup::LookupInterface& interface )
 : extrinsicsManager( interface ), fiducialManager( interface ), 
 targetManager( interface )
-{}
+{
+  // TODO
+  minPointSeparation = 10.0;
+}
 
 FiducialDetectionModel::Detections
 FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
@@ -39,18 +42,19 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 		                                                           fidName,
 		                                                           cameraModel,
 		                                                           fidToCam );
-// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
-// 			<< " rel pose " << fidToCam );
-// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
-// 		{
-// 			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
+		// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
+				 // 			<< " rel pose " << fidToCam );
+		// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
+		  // 		{
+		  //			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
 // 				<< ", " << detection.points[i].y );
 // 		}
 		
-		if( fiducials::CheckDetectionROI( detection, cameraModel.GetRoi() ) ) 
-		{ 
-			detections.push_back( detection ); 
-		}
+		if( !fiducials::CheckDetectionROI( detection, cameraModel.GetRoi() ) ) { continue; }
+		double minDist = fiducials::FindMinDistance( detection.points );
+		if( minDist < minPointSeparation ) { continue; }
+
+		detections.push_back( detection ); 
 		
 	}
 	
