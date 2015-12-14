@@ -1,4 +1,7 @@
 #include "camera_array/CameraArrayManager.h"
+#include "camera_array/CameraArrayStatus.h"
+#include "camera_array/CameraStatus.h"
+
 #include "argus_utils/ParamUtils.h"
 #include "camplex/SetStreaming.h" // TODO Move into argus_msgs?
 #include <boost/foreach.hpp>
@@ -10,7 +13,7 @@ namespace camera_array
 	
 CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
                                         const ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph )
+: nodeHandle( nh ), privHandle( ph ), numActiveCameras( 0 )
 {
 	std::vector<std::string> members;
 	if( !ph.getParam( "cameras", members ) )
@@ -30,6 +33,7 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 	cameraWorkers.SetNumWorkers( maxNumActive );
 	cameraWorkers.StartWorkers();
 	
+	WriteLock lock( mutex );
 	BOOST_FOREACH( const std::string& name, members )
 	{
 		CameraRegistration registration;
@@ -49,15 +53,25 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		}
 		
 		ROS_INFO_STREAM( "Registering camera " << name );
+		// HACK to allow forcing streaming off
 		registration.name = name;
+		registration.status = CAMERA_ACTIVE;
 		registration.setStreaming = 
 			nodeHandle.serviceClient<camplex::SetStreaming>( setStreamingName );
 		cameraRegistry[name] = registration;
 		
-		// HACK to allow forcing streaming off
-		currentState.activeCameras.insert( name );
-		SetStreaming( name, false );
+		numActiveCameras++;
+		RequestSetStreaming( name, false, lock );
 	}
+	
+	statusPub = nodeHandle.advertise<CameraArrayStatus>( "array_status", 5 );
+	
+	double controlRate;
+	ph.param<double>( "control_rate", controlRate, 5.0 );
+	controllerTimer = std::make_shared<ros::Timer>
+	    ( nodeHandle.createTimer( ros::Duration( 1.0/controlRate ),
+		                          &CameraArrayManager::TimerCallback,
+		                          this ) );
 }
 
 CameraArrayManager::~CameraArrayManager()
@@ -71,58 +85,66 @@ unsigned int CameraArrayManager::MaxActiveCameras() const
 	return maxNumActive;
 }
 
-bool CameraArrayManager::IsActive( const std::string& name ) const
+CameraArrayState CameraArrayManager::GetState() const
 {
-	return currentState.activeCameras.count( name ) > 0;
-}
-
-const CameraArrayState& CameraArrayManager::GetState() const
-{
-	return currentState;
-}
-
-bool CameraArrayManager::SetStreaming( const std::string& name, bool mode )
-{
+	WriteLock lock( mutex );
 	
-	if( cameraRegistry.count( name ) == 0 ) { return false; }
+	CameraArrayState state;
+	BOOST_FOREACH( const CameraRegistry::value_type& item, cameraRegistry )
+	{
+		switch( item.second.status )
+		{
+			case CAMERA_INACTIVE:
+			case CAMERA_DEACTIVATING:
+				state.inactiveCameras.insert( item.first );
+				break;
+			case CAMERA_ACTIVE:
+			case CAMERA_ACTIVATING:
+				state.activeCameras.insert( item.first );
+				break;
+			default:
+				ROS_ERROR_STREAM( "Invalid status for " << item.first );
+		}
+	}
+	if( state.activeCameras.size() > maxNumActive )
+	{
+		ROS_ERROR_STREAM( "Invalid state!" );
+	}
+	return state;
+}
+
+void CameraArrayManager::TimerCallback( const ros::TimerEvent& event )
+{
 	
 	WriteLock lock( mutex );
 	
-	// If the current status already matches, return
-	CameraRegistration& registration = cameraRegistry[ name ];
-	if( IsActive( name ) == mode ) { return true; }
-	
-	// If we're at capacity, return
-	if( mode && currentState.activeCameras.size() >= maxNumActive )
+	CameraArrayStatus arrayStatus;
+	arrayStatus.header.stamp = event.current_real;
+	BOOST_FOREACH( const CameraRegistry::value_type& item, cameraRegistry )
 	{
-		ROS_WARN_STREAM( "Cannot activate camera " << name << ". Already max num active." );
-		return false;
+		const std::string& cameraName = item.first;
+		
+		camera_array::CameraStatus camStatus;
+		camStatus.name = cameraName;
+		camStatus.status = StatusToString( item.second.status );
+		arrayStatus.status.push_back( camStatus );
+		
+		if( referenceActiveCameras.count( cameraName ) > 0 )
+		{
+			if( numActiveCameras < maxNumActive )
+			{
+				RequestSetStreaming( cameraName, true, lock );
+			}
+		}
+		else
+		{
+			RequestSetStreaming( cameraName, false, lock );
+		}
 	}
+	// TODO Check return values
 	
-	if( mode )
-	{
-		currentState.inactiveCameras.erase( currentState.inactiveCameras.find( name ) );
-		currentState.activeCameras.insert( name );
-	}
-	else
-	{
-		currentState.activeCameras.erase( currentState.activeCameras.find( name ) );
-		currentState.inactiveCameras.insert( name );
-	}
-	
-	// Call the set streaming service and update the active set
-	camplex::SetStreaming srv;
-	srv.request.enableStreaming = mode;
 	lock.unlock();
-	
-	// Need this section to be out of lock or else all our service calls will be serial
-	if( !registration.setStreaming.call( srv ) )
-	{
-		ROS_WARN_STREAM( "Could not set streaming for camera " << name );
-		return false;
-	}
-	
-	return true;
+	statusPub.publish( arrayStatus );
 }
 
 bool CameraArrayManager::SetActiveCameras( const CameraSet& ref )
@@ -133,44 +155,99 @@ bool CameraArrayManager::SetActiveCameras( const CameraSet& ref )
 		    << maxNumActive );
 		return false;
 	}
-
-	std::vector<std::string> toActivate;
-	BOOST_FOREACH( const std::string& name, ref )
-	{
-		if( !IsActive( name ) ) { toActivate.push_back( name ); }
-	}
-	std::vector<std::string> toDisable;
-	BOOST_FOREACH( const std::string& name, currentState.activeCameras )
-	{
-		if( ref.count( name ) == 0 ) { toDisable.push_back( name ); }
-	}
 	
-	for( unsigned int i = 0; i < toDisable.size(); i++ )
-	{
-		RequestSetStreaming( toDisable[i], false );
-	}
-	for( unsigned int i = 0; i < toActivate.size(); i++ )
-	{
-		RequestSetStreaming( toActivate[i], true );
-	}
+	WriteLock lock( mutex );
+	referenceActiveCameras = ref;
+	
 	return true;
 }
 
-void CameraArrayManager::RequestSetStreaming( const std::string& name, bool mode )
+bool CameraArrayManager::RequestSetStreaming( const std::string& name, 
+                                              bool mode,
+                                              const WriteLock& lock )
 {
+	
+	// TODO Make sure owned mutex is same
+	// TODO Move into argus_utils/SynchronizationUtils.h
+	if( !lock.owns_lock() )
+	{
+		throw std::runtime_error( "Invalid external lock." );
+	}
+
+	if( cameraRegistry.count( name ) == 0 ) { return false; }
+	
+	// If the current status already matches, return
+	// If busy, return
+	CameraRegistration& registration = cameraRegistry[ name ];
+	switch( registration.status )
+	{
+		case CAMERA_ACTIVE:
+			if( mode ) { return true; }
+			break;
+		case CAMERA_INACTIVE:
+			if( !mode ) { return true; }
+			break;
+		case CAMERA_ACTIVATING:
+			return mode;
+		case CAMERA_DEACTIVATING:
+			return !mode;
+		default:
+			ROS_ERROR_STREAM( "Invalid status for camera " << name );
+			exit( -1 );
+	}
+	
+	// If we're at capacity, return
+	if( mode && numActiveCameras >= maxNumActive )
+	{
+		ROS_WARN_STREAM( "Cannot activate camera " << name << ". Already max num active." );
+		return false;
+	}
+	
+	// Set status to busy
+	registration.status = mode ? CAMERA_ACTIVATING : CAMERA_DEACTIVATING;
+	if( mode ) { numActiveCameras++; }
+	
 	WorkerPool::Job job = boost::bind( &CameraArrayManager::SetStreamingJob,
 	                                   this,
 	                                   name,
 	                                   mode );
 	cameraWorkers.EnqueueJob( job );
+	return true;
 }
 
-void CameraArrayManager::SetStreamingJob( const std::string& name, bool mode )
+void CameraArrayManager::SetStreamingJob( const std::string& name, 
+                                          bool mode )
 {
-	if( !SetStreaming( name, mode ) )
+	camplex::SetStreaming srv;
+	srv.request.enableStreaming = mode;
+	
+	CameraRegistration& registration = cameraRegistry.at( name );
+	if( !registration.setStreaming.call( srv ) )
 	{
-		ROS_WARN( "Set streaming job failed." );
+		ROS_WARN_STREAM( "Could not set streaming for camera " << name );
+		return;
+	}
+	
+	WriteLock lock( mutex );
+	registration.status = mode ? CAMERA_ACTIVE : CAMERA_INACTIVE;
+	if( !mode ) { numActiveCameras--; }
+}
+
+std::string CameraArrayManager::StatusToString( CameraStatus status )
+{
+	switch( status )
+	{
+		case CAMERA_INACTIVE:
+			return "inactive";
+		case CAMERA_ACTIVE:
+			return "active";
+		case CAMERA_DEACTIVATING:
+			return "deactivating";
+		case CAMERA_ACTIVATING:
+			return "activating";
+		default:
+			return "error";
 	}
 }
 
-}
+} // end namespace camera_array

@@ -8,13 +8,25 @@ set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED 
 	COMPONENTS		roscpp
+					message_generation
+					std_msgs
+					nav_msgs
+					visualization_msgs
 					argus_utils
 					extrinsics_array
 					image_geometry
 					lookup
-					nav_msgs
 					fieldtrack
 					camplex
+)
+
+add_message_files(
+	FILES		CameraStatus.msg
+				CameraArrayStatus.msg 
+)
+
+generate_messages(
+	DEPENDENCIES 	std_msgs
 )
 
 # Use Boost for most utilities, threading
@@ -30,11 +42,14 @@ catkin_package(
 	LIBRARIES 		camera_array
 	
 	CATKIN_DEPENDS 	roscpp 
+					message_runtime
+					std_msgs
+					nav_msgs
+					visualization_msgs
 					argus_utils
 					extrinsics_array
 					image_geometry
 					lookup
-					nav_msgs
 					fieldtrack
 					camplex
 	
@@ -57,6 +72,7 @@ add_library( camera_array
 	src/SystemModels.cpp
 	src/SystemStates.cpp
 )
+add_dependencies( camera_array ${camera_array_EXPORTED_TARGETS} )
 target_link_libraries( camera_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
@@ -66,6 +82,11 @@ add_executable( camera_array_manager nodes/camera_array_manager.cpp )
 add_dependencies( camera_array_manager camera_array_gencfg )
 target_link_libraries( camera_array_manager camera_array
 											${catkin_LIBRARIES} )
+
+add_executable( array_visualizer nodes/array_visualizer.cpp )
+add_dependencies( array_visualizer camera_array_gencfg )
+target_link_libraries( array_visualizer camera_array
+										${catkin_LIBRARIES} )
 
 ## Mark executables and/or libraries for installation
 install(TARGETS 

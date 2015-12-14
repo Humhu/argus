@@ -84,26 +84,29 @@ void PolicyManager::TimerCallback( const ros::TimerEvent& event )
 	std::vector<CameraArrayAction> arrayActions = arrayActionGenerator->GetActions( state.array );
 	
 	CameraArrayAction action = policy->ChooseAction( state, arrayActions );
+	CameraSet activeReference = state.array.activeCameras;
 	switch( action.type )
 	{
 		case CameraArrayAction::ACTIVATE_CAMERA:
+			activeReference.insert( action.toActivate );
 			ROS_INFO_STREAM( "Activating camera " << action.toActivate );
-			manager->RequestSetStreaming( action.toActivate, true );
+			manager->SetActiveCameras( activeReference );
 			break;
 		case CameraArrayAction::DEACTIVATE_CAMERA:
-			ROS_INFO_STREAM( "Deactivating camera " << action.toActivate );
-			manager->RequestSetStreaming( action.toDeactivate, false );
+			activeReference.erase( activeReference.find( action.toDeactivate ) );
+			ROS_INFO_STREAM( "Deactivating camera " << action.toDeactivate );
 			break;
 		case CameraArrayAction::SWITCH_CAMERAS:
+			activeReference.insert( action.toActivate );
+			activeReference.erase( activeReference.find( action.toDeactivate ) );
 			ROS_INFO_STREAM( "Switching camera " << action.toDeactivate << 
 				" to " << action.toActivate );
-			manager->RequestSetStreaming( action.toDeactivate, false );
-			manager->RequestSetStreaming( action.toActivate, true );
 			break;
 		case CameraArrayAction::DO_NOTHING:
 			ROS_INFO_STREAM( "Doing nothing." );
 			break;
 	}
+	manager->SetActiveCameras( activeReference );
 }
 	
 }

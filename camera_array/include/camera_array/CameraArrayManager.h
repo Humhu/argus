@@ -14,9 +14,10 @@
 
 namespace camera_array
 {
-	
+
+// TODO Documentation
 /*! \brief The base camera array manager class. Contains basic functionality for
- * registering member cameras and managing streaming. */
+ * registering member cameras and managing streaming. Broadcasts the status. */
 class CameraArrayManager
 {
 public:
@@ -26,22 +27,23 @@ public:
 	CameraArrayManager( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	virtual ~CameraArrayManager();
 	
-	/*! \brief Takes the necessary actions to make the specified cameras the active set.
+	/*! \brief Sets the desired active camera set. Controller takes the necessary 
+	 * actions to make the specified cameras the active set.
 	 * Disables non-specified active cameras and enables specified cameras. */
 	bool SetActiveCameras( const CameraSet& ref );
-	
-	void RequestSetStreaming( const std::string& name, bool mode );
 	
 	/*! \brief Returns the upper bound on the number of active cameras. */
 	unsigned int MaxActiveCameras() const;
 
-	const CameraArrayState& GetState() const;
+	CameraArrayState GetState() const;
 	
 protected:
 	
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
-		
+	ros::Publisher statusPub;
+	std::shared_ptr<ros::Timer> controllerTimer;
+	
 	std::string referenceFrame;
 	std::string bodyFrame;
 	
@@ -49,26 +51,38 @@ protected:
 
 	mutable argus_utils::Mutex mutex;
 	
+	enum CameraStatus
+	{
+		CAMERA_INACTIVE = 0,
+		CAMERA_ACTIVE,
+		CAMERA_DEACTIVATING,
+		CAMERA_ACTIVATING
+	};
+	
 	struct CameraRegistration
 	{
 		std::string name;
+		CameraStatus status;
 		ros::ServiceClient setStreaming;
 	};
 	typedef std::unordered_map <std::string, CameraRegistration> CameraRegistry;
 	CameraRegistry cameraRegistry;
+	unsigned int numActiveCameras;
 	
-	CameraArrayState currentState;
+	CameraSet referenceActiveCameras;
 	
 	unsigned int maxNumActive;
 	argus_utils::WorkerPool cameraWorkers;
 	
-	bool IsActive( const std::string& name ) const;
+	void TimerCallback( const ros::TimerEvent& event );
 	
-	/*! \brief Set the streaming state of a camera. */
-	bool SetStreaming( const std::string& name, bool mode );
-
+	bool RequestSetStreaming( const std::string& name, bool mode,
+							  const argus_utils::WriteLock& lock );
+	
 	/*! \brief Jobs for the threadpool. */
 	void SetStreamingJob( const std::string& name, bool mode );
+	
+	static std::string StatusToString( CameraStatus status );
 	
 };
 	
