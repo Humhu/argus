@@ -54,6 +54,7 @@ catkin_package(
 					sensor_msgs 
 					std_msgs
 					argus_utils
+					argus_msgs
 					fiducials
 					camplex
 					
