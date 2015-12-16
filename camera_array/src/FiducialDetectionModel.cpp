@@ -30,7 +30,7 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 	PoseSE3 targetToCam = cameraExtrinsics.Inverse() * targetToCameraRef;
 	
 	// TODO 
-	camplex::CameraCalibration cameraModel( "fake", 600, 600, 320, 240, 640, 480 );
+	camplex::CameraCalibration cameraModel( "fake", 550, 550, 320, 240, 640, 480 );
 	
 	std::vector<std::string> fidNames = targetManager.GetInfo( targetName ).fiducialNames;
 	BOOST_FOREACH( const std::string& fidName, fidNames )
@@ -44,13 +44,13 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
                                                   cameraModel,
                                                   fidToCam,
 		                                          detection );
-// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
-// 			<< " rel pose " << fidToCam );
-// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
-// 		{
-// 			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
-// 				<< ", " << detection.points[i].y );
-// 		}
+		// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
+				 // 			<< " rel pose " << fidToCam );
+		// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
+		  // 		{
+		  // 			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
+					 //	<< ", " << detection.points[i].y );
+			// 		}
 		if( !valid ) { continue; }
 		double minDist = fiducials::FindMinDistance( detection.points );
 		if( minDist < minPointSeparation ) { continue; }
