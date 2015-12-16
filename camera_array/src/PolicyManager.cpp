@@ -45,7 +45,7 @@ PolicyManager::PolicyManager( const ros::NodeHandle& nh, const ros::NodeHandle& 
 	                                this );
 	
 	double updateRate;
-	ph.param<double>( "update_rate", updateRate, 1.0 );
+	ph.param<double>( "policy_update_rate", updateRate, 1.0 );
 	updateTimer = std::make_shared<ros::Timer>
 		( nodeHandle.createTimer( ros::Duration( 1.0/updateRate ),
 	                              &PolicyManager::TimerCallback,

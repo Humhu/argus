@@ -114,6 +114,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		// Collect all fiducial points from all detections in order
 		std::vector<cv::Point3f> fiducialFramePoints;
 		std::vector<cv::Point2f> imageFramePoints;
+		double sumMinDists = 0;
 		BOOST_FOREACH( const argus_msgs::FiducialDetection& detection, detections )
 		{
 			const std::string& fiducialName = detection.name;
@@ -123,7 +124,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 				    << " from camera: " << cameraName );
 				return;
 			}
-			
+			sumMinDists += FindMinDistance( detection.points );
 			const Fiducial& fiducial = transformedFiducials[ fiducialName ];
 			const std::vector<cv::Point3f>& fidPoints = MsgToPoints( fiducial.points );
 			fiducialFramePoints.insert( fiducialFramePoints.end(), fidPoints.begin(), fidPoints.end() );
@@ -133,6 +134,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		}
 		
 		PoseSE3 cameraRelativePose = EstimateArrayPose( imageFramePoints, nullptr, fiducialFramePoints );
+		
 		PoseSE3 frameRelativePose = cameraInfo.extrinsics * cameraRelativePose;
 
 		//EulerAngles euler = QuaternionToEuler( cameraRelativePose.GetQuaternion() );
@@ -148,7 +150,8 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		poseMsg.relative_pose.target_name = fiducialFrameName;
 		poseMsg.relative_pose.target_time = msg->header.stamp;
 		poseMsg.relative_pose.relative_pose = PoseToMsg( frameRelativePose );
-		SerializeSymmetricMatrix( covariance, poseMsg.covariance );
+		double quality = sumMinDists / detections.size();
+		SerializeSymmetricMatrix( covariance / quality, poseMsg.covariance );
 		posePub.publish( poseMsg );
 	}
 }

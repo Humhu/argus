@@ -67,7 +67,7 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 	statusPub = nodeHandle.advertise<CameraArrayStatus>( "array_status", 5 );
 	
 	double controlRate;
-	ph.param<double>( "control_rate", controlRate, 5.0 );
+	ph.param<double>( "manager_update_rate", controlRate, 5.0 );
 	controllerTimer = std::make_shared<ros::Timer>
 	    ( nodeHandle.createTimer( ros::Duration( 1.0/controlRate ),
 		                          &CameraArrayManager::TimerCallback,
@@ -220,13 +220,16 @@ void CameraArrayManager::SetStreamingJob( const std::string& name,
 {
 	camplex::SetStreaming srv;
 	srv.request.enableStreaming = mode;
-	
+
+	//	ros::Time start = ros::Time::now();
 	CameraRegistration& registration = cameraRegistry.at( name );
 	if( !registration.setStreaming.call( srv ) )
 	{
 		ROS_WARN_STREAM( "Could not set streaming for camera " << name );
 		return;
 	}
+	//	double dt = (ros::Time::now() - start).toSec();
+	//	ROS_INFO_STREAM( "Turning on streaming took " << dt );
 	
 	WriteLock lock( mutex );
 	registration.status = mode ? CAMERA_ACTIVE : CAMERA_INACTIVE;
