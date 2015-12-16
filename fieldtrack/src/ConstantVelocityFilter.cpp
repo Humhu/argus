@@ -84,20 +84,28 @@ void ConstantVelocityFilter::PoseUpdate( const PoseSE3& pose,
                                          const PoseSE3::CovarianceMatrix& cov,
                                          const ros::Time& timestamp )
 {
+  double dt = (filterTimestamp - timestamp).toSec();
+  //  ROS_INFO_STREAM( "Pose observation of: " << pose << " of age " << dt );
+  //  ROS_INFO_STREAM( "Velocity is: " << velocityFilter.EstimateMean().transpose() );
 	// If observation is from before current time, rewind pose, update,
 	// and then forward predict again
 	if( timestamp < filterTimestamp )
 	{
+
 		ros::Time current = filterTimestamp;
 		DisplaceTo( timestamp );
+		//		ROS_INFO_STREAM( "Before update: " << poseFilter.EstimateMean() );
 		poseFilter.UpdateBody( pose, cov, BodyFrame );
+		//		ROS_INFO_STREAM( "After update: " << poseFilter.EstimateMean() );
 		DisplaceTo( current );
 	}
 	// Else if observation is from after current time, predict forward and update
 	else
 	{
+	  //	  ROS_INFO_STREAM( "Before update: " << poseFilter.EstimateMean() );
 		Predict( timestamp );
 		poseFilter.UpdateBody( pose, cov, BodyFrame );
+		//		ROS_INFO_STREAM( "After update: " << poseFilter.EstimateMean() );
 	}
 }
 
