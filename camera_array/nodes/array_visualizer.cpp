@@ -6,6 +6,7 @@
 #include "camera_array/CameraArrayStatus.h"
 #include "camera_array/CameraStatus.h"
 #include "argus_utils/GeometryUtils.h"
+#include "argus_utils/ParamUtils.h"
 #include <boost/foreach.hpp>
 
 using namespace camera_array;
@@ -23,7 +24,9 @@ xSize( 0.04 ), ySize( 0.04 ), zSize( 0.04 )
 	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
-	visPub = nodeHandle.advertise<visualization_msgs::Marker>( "status_markers", 1 );
+	unsigned int bufferSize;
+	GetParamDefault<unsigned int>( privHandle, "buffer_size", bufferSize, 50 );
+	visPub = nodeHandle.advertise<visualization_msgs::Marker>( "status_markers", bufferSize );
 	statusSub = nodeHandle.subscribe( "array_status", 
 	                                  1,
 	                                  &Visualizer::StatusCallback,
@@ -53,7 +56,8 @@ void StatusCallback( const CameraArrayStatus::ConstPtr& smsg )
 		msg.scale.z = zSize;
 		msg.color.a = 1.0;
 		msg.id = 0;
-		msg.pose = PoseToMsg( info.extrinsics );
+		static PoseSE3 offset( 0, 0, 0, 1, 0, 1, 0 );
+		msg.pose = PoseToMsg( info.extrinsics * offset );
 		
 		if( status.status == "active" )
 		{
@@ -64,7 +68,7 @@ void StatusCallback( const CameraArrayStatus::ConstPtr& smsg )
 		else if( status.status == "activating" )
 		{
 			msg.color.r = 0.3;
-			msg.color.g = 0.8;
+			msg.color.g = 0.6;
 			msg.color.b = 0.3;
 		}
 		else if( status.status == "inactive" )
@@ -75,9 +79,9 @@ void StatusCallback( const CameraArrayStatus::ConstPtr& smsg )
 		}
 		else if( status.status == "deactivating" )
 		{
-			msg.color.r = 0.1;
-			msg.color.g = 0.8;
-			msg.color.b = 0.1;
+			msg.color.r = 0.6;
+			msg.color.g = 0.3;
+			msg.color.b = 0.6;
 		}
 		else
 		{

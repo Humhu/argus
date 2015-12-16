@@ -19,16 +19,26 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
                                      std::vector<uchar>& inliers,
                                      PoseSE3& transform )
 {
-	
-// 		cv::Mat Hest = cv::estimateRigidTransform( srcPoints,
-// 												   dstPoints, false );
-	std::vector<uchar> status;
-	cv::Mat Hest = cv::findHomography( srcPoints, dstPoints, inliers, cv::RANSAC, reprojThreshold );
-	
-	if( Hest.empty() )
+       
+
+	cv::Mat Hxest = cv::findHomography( srcPoints, dstPoints, inliers, cv::RANSAC, reprojThreshold );
+
+	if( Hxest.empty() )
 	{
 		return false;
 	}
+
+	InterestPoints srcInliers, dstInliers;
+	for( unsigned int i = 0; i < srcPoints.size(); i++ )
+	  {
+	    if( inliers[i] ) 
+	      {
+		srcInliers.push_back( srcPoints[i] );
+		dstInliers.push_back( dstPoints[i] );
+	      }
+	  }
+
+        cv::Mat Hest = cv::estimateRigidTransform( srcInliers, dstInliers, false );
 	
 	Eigen::Matrix<double,2,3> Ab = MatToEigen<double,2,3>( Hest );
 	

@@ -35,17 +35,17 @@ extrinsicsManager( lookupInterface )
 	GetParamDefault<unsigned int>( ph, "min_num_inliers", minNumInliers, 10 );
 	
 	std::vector<double> covarianceData;
-	if( ph.getParam( "covariance_rate", covarianceData ) )
+	if( ph.getParam( "velocity_covariance", covarianceData ) )
 	{
-		if( !ParseMatrix( covarianceData, covarianceRate ) )
+		if( !ParseMatrix( covarianceData, obsCovariance ) )
 		{
-			ROS_ERROR_STREAM( "Could not parse covariance rate matrix." );
+			ROS_ERROR_STREAM( "Could not parse observation covariance matrix." );
 			exit( -1 );
 		}
 	}
 	else
 	{
-		covarianceRate = PoseSE3::CovarianceMatrix::Identity();
+		obsCovariance = PoseSE3::CovarianceMatrix::Identity();
 	}
 		
 	std::string detectorType, trackerType, estimatorType;
@@ -200,7 +200,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	tmsg.header.stamp = now;
 	tmsg.header.frame_id = cameraInfo.referenceFrame;
 	tmsg.twist.twist= TangentToMsg( frameVelocity );
-	SerializeMatrix( covarianceRate * dt, tmsg.twist.covariance );
+	SerializeMatrix( obsCovariance, tmsg.twist.covariance );
 	dispPub.publish( tmsg );
 	
 	registration.lastPointsTimestamp = now;
