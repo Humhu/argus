@@ -65,10 +65,12 @@ include_directories( include
 
 add_library( camera_array
 	src/CameraArrayManager.cpp
+	src/ExpectationPolicy.cpp
 	src/FiducialDetectionModel.cpp
 	src/FiducialRewardFunction.cpp
 	src/PolicyManager.cpp
 	src/RandomArrayManager.cpp
+	src/SystemDistributions.cpp
 	src/SystemModels.cpp
 	src/SystemStates.cpp
 )

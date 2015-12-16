@@ -2,6 +2,10 @@
 #include "argus_utils/ParamUtils.h"
 #include "fieldtrack/FieldtrackCommon.h"
 
+#include "camera_array/StochasticGreedyPolicy.hpp"
+#include "camera_array/ExpectationPolicy.h"
+
+
 using namespace argus_utils;
 
 namespace camera_array
@@ -28,11 +32,14 @@ PolicyManager::PolicyManager( const ros::NodeHandle& nh, const ros::NodeHandle& 
 		
 	// TODO Set up lookup namespace
 	fiducialModel = std::make_shared<FiducialDetectionModel>( lookupInterface );
+	
+	// Reward function sampling
 	rewardFunction = std::make_shared<FiducialRewardFunction>( fiducialModel, systemTransitionFunction );
-		
-	double rewardScale;
-	ph.param<double>( "reward_scale", rewardScale, 1.0 );
-	policy = std::make_shared<Policy>( rewardFunction, rewardScale );
+	
+	unsigned int numSamples;
+	GetParamDefault<unsigned int>( privHandle, "num_samples", numSamples, 10 );
+	
+	policy = std::make_shared<ExpectationPolicy>( rewardFunction, numSamples );
 	
 	targetSub = nodeHandle.subscribe( "target_states", 
 	                                  1,

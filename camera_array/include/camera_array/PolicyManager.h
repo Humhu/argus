@@ -2,9 +2,9 @@
 
 #include "camera_array/CameraArrayManager.h"
 #include "camera_array/SystemModels.h"
-#include "camera_array/StochasticGreedyPolicy.hpp"
 #include "camera_array/FiducialDetectionModel.h"
 #include "camera_array/FiducialRewardFunction.h"
+#include "camera_array/SystemDistributions.h"
 
 #include "lookup/LookupInterface.h"
 
@@ -20,7 +20,6 @@ class PolicyManager
 public:
 
 	typedef std::shared_ptr<PolicyManager> Ptr;
-	typedef StochasticGreedyPolicy<RobotTargetState, CameraArrayAction> Policy;
 	
 	PolicyManager( const ros::NodeHandle& nh, const ros::NodeHandle& ph,
 	               const CameraArrayManager::Ptr& cam );
@@ -45,7 +44,9 @@ protected:
 	TargetTransitionFunction::Ptr targetTransitionFunction;
 	RobotArrayTransitionFunction::Ptr systemTransitionFunction;
 	ArrayActionGenerator::Ptr arrayActionGenerator;
+	
 	RobotArrayReward::Ptr rewardFunction;
+	
 	RobotArrayPolicy::Ptr policy;
 	
 	void TargetCallback( const argus_msgs::CompactOdometryArray::ConstPtr& msg );
