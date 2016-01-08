@@ -1,5 +1,4 @@
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
-#include "extrinsics_array/ExtrinsicsArrayCalibrationParsers.h"
 
 #include "argus_utils/YamlUtils.h"
 #include "argus_utils/ParamUtils.h"

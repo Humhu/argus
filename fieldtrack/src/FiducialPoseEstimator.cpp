@@ -3,7 +3,6 @@
 #include "argus_utils/MatrixUtils.h"
 #include "argus_msgs/RelativePoseWithCovariance.h"
 
-#include "extrinsics_array/ExtrinsicsArray.h"
 #include "fiducials/FiducialArray.h"
 #include "fiducials/PoseEstimation.h"
 

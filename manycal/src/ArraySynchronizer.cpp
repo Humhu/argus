@@ -17,6 +17,10 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		exit( -1 );
 	}
 	
+	std::string lookupNamespace;
+	privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
+	lookupInterface.SetLookupNamespace( lookupNamespace );
+	
 	cameraRegistry.reserve( cameraNames.size() );
 	BOOST_FOREACH( const std::string& cameraName, cameraNames )
 	{
@@ -29,7 +33,12 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		CameraRegistration registration;
 		registration.name = cameraName;
 		
-		std::string captureServiceName = cameraName + "/capture_frames";
+		std::string cameraNamespace;
+		if( !lookupInterface.ReadNamespace( cameraName, cameraNamespace ) )
+		{
+			ROS_ERROR_STREAM( "Could not find namespace for " << cameraName );
+		}
+		std::string captureServiceName = cameraNamespace + "/capture_frames";
 		ros::service::waitForService( captureServiceName );
 		registration.captureClient = nodeHandle.serviceClient<camplex::CaptureFrames>( captureServiceName );
 		

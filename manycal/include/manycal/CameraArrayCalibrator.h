@@ -9,28 +9,31 @@
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 #include "manycal/ManycalCommon.h"
+#include "manycal/WriteCalibration.h"
 #include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
 namespace manycal
 {
 
-/*! \brief Calibrates an array of synchronized cameras. Assumes independent
- * fiducial detections. */
+/*! \brief Calibrates an array of synchronized cameras. Assumes fiducials can move
+ * around arbitrarily. */
 class CameraArrayCalibrator
 {
 public:
 	
 	CameraArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	
-	void WriteResults();
+	bool WriteResults( WriteCalibration::Request& req, 
+	                   WriteCalibration::Response& res );
 	
 private:
 	
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	ros::Subscriber detSub;
-	
+	ros::ServiceServer writeServer;
+
 	lookup::LookupInterface lookupInterface;
 	fiducials::FiducialInfoManager fiducialManager;
 	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
@@ -58,7 +61,7 @@ private:
 	
 	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
 	FiducialRegistry fiducialRegistry;
-	
+
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	bool ProcessDetection( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	bool InitializeCamera( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );

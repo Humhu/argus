@@ -19,6 +19,7 @@ find_package(catkin REQUIRED
 # 					graphopt
 					extrinsics_array
 					fiducials
+					lookup
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -32,6 +33,7 @@ message( STATUS ${isam_LIBRARIES} )
 
 add_service_files(
 	FILES           CaptureArray.srv
+	                WriteCalibration.srv
 )
 
 generate_messages(
@@ -55,6 +57,7 @@ catkin_package(
 # 					graphopt
 					extrinsics_array
 					fiducials
+					lookup
 					
 	DEPENDS 		Boost 
 					OpenCV
@@ -66,7 +69,6 @@ include_directories( include )
 
 add_library( manycal
  	src/ArrayCalibrator.cpp
-# 	src/ArrayCapturer.cpp
 	src/ArraySynchronizer.cpp
 	src/CameraArrayCalibrator.cpp
 	src/FiducialArrayCalibrator.cpp
@@ -103,13 +105,6 @@ target_link_libraries( camera_array_calibrator_node
 	${isam_LIBRARIES}
 	${catkin_LIBRARIES} 	
 	manycal )
-	
-# add_executable( array_capturer_node nodes/array_capture_node.cpp )
-# add_dependencies( array_capturer_node ${PROJECT_NAME}_gencfg )
-# target_link_libraries( array_capturer_node
-# 	${isam_LIBRARIES}
-# 	${catkin_LIBRARIES} 	
-# 	manycal )
 
 add_executable( isam_test tests/IsamTest.cpp )
 add_dependencies( isam_test ${PROJECT_NAME}_gencfg )

@@ -5,6 +5,7 @@
 
 #include "argus_utils/Semaphore.h"
 #include "argus_utils/WorkerPool.h"
+#include "lookup/LookupInterface.h"
 
 #include "manycal/CaptureArray.h"
 
@@ -36,16 +37,17 @@ private:
 	{
 		std::string name;
 		ros::ServiceClient captureClient;
-// 		image_transport::CameraSubscriber imageSub;
-// 		image_transport::CameraPublisher imagePub;
 		BufferedData data;
 	};
 	
 	image_transport::CameraPublisher imagePub;
 	image_transport::CameraSubscriber imageSub;
 	
-	ros::NodeHandle nodeHandle, privHandle;
+	ros::NodeHandle nodeHandle;
+	ros::NodeHandle privHandle;
 	ros::ServiceServer captureServer;
+	
+	lookup::LookupInterface lookupInterface;
 	
 	typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
 	CameraRegistry cameraRegistry;

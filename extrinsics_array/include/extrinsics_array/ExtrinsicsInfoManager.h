@@ -1,7 +1,6 @@
 #pragma once
 
-#include "extrinsics_array/ExtrinsicsArray.h"
-#include "extrinsics_array/ExtrinsicsArrayInfo.h"
+#include "argus_utils/PoseSE3.h"
 #include "lookup/InfoManager.h"
 
 #include <ros/ros.h>
