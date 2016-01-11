@@ -41,6 +41,7 @@ public:
 	{
 		if( node ) { RemoveNode( IndexType() ); }
 		node = std::make_shared<NodeType>();
+		slam->add_node( node.get() );
 		node->init( pose );
 		return node;
 	}
