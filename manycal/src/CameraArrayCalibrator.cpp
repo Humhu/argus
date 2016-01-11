@@ -1,3 +1,4 @@
+#include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
 #include "manycal/CameraArrayCalibrator.h"
 #include "fiducials/PoseEstimation.h"
 #include <boost/foreach.hpp>
@@ -26,22 +27,43 @@ extrinsicsManager( lookupInterface )
 	privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
+	writeServer = privHandle.advertiseService( "write_results", 
+	                                           &CameraArrayCalibrator::WriteResults,
+	                                           this );
+
 	detSub = nodeHandle.subscribe( "detections", 10, &CameraArrayCalibrator::DetectionCallback, this );
 }
 	
-void CameraArrayCalibrator::WriteResults()
+bool CameraArrayCalibrator::WriteResults( WriteCalibration::Request& req,
+                                          WriteCalibration::Response& res )
 {
+	YAML::Node yaml;
+
 	BOOST_FOREACH( const CameraRegistry::value_type& item, cameraRegistry )
 	{
 		const std::string& name = item.first;
 		const CameraRegistration& registration = item.second;
 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
-		std::cout << "Camera " << name << " pose " << extrinsics << std::endl;
+		ROS_INFO_STREAM( "Camera " << name << " pose " << extrinsics );
 		
 		extrinsicsManager.GetInfo( name ).extrinsics = extrinsics;
 		extrinsicsManager.GetInfo( name ).referenceFrame = referenceFrame;
 		extrinsicsManager.WriteMemberInfo( name );
+
+		YAML::Node node;
+		PopulateExtrinsicsCalibration( extrinsicsManager.GetInfo( name ), node );
+		yaml[name] = node;
 	}
+
+	std::ofstream resultsFile( req.calibrationPath );
+	if( !resultsFile.is_open() )
+	{
+		ROS_ERROR_STREAM( "Could not open results file at: " << req.calibrationPath );
+		return false;
+	}
+	ROS_INFO_STREAM( "Writing results to " << req.calibrationPath );
+	resultsFile << yaml;
+	return true;
 }
 
 void CameraArrayCalibrator::ProcessCache()
@@ -72,7 +94,11 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections::Con
 		const std::string& fiducialName = detection.name;
 		if( fiducialRegistry.count( fiducialName ) == 0 )
 		{
-			if( !LoadFiducialIntrinsics( fiducialName ) ) { continue; }
+			if( !fiducialManager.CheckMemberInfo( fiducialName ) ) 
+			{ 
+				ROS_WARN_STREAM( "Could not find info for detected fiducial " << fiducialName );
+				continue; 
+			}
 			RegisterFiducial( fiducialName );
 		}
 	}
@@ -97,9 +123,11 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections::Con
 		                                         nullptr,
 		                                         MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
 			PoseSE3 fiducialPose = cameraPose * relPose;
+			ROS_INFO_STREAM( "Initializing fiducial at pose: " << fiducialPose );
 			isam::PoseSE3_Node::Ptr fidNode = std::make_shared<isam::PoseSE3_Node>();
 			fidNode->init( isam::PoseSE3( fiducialPose ) );
 			fidReg.poses[ now ] = fidNode;
+			slam->add_node( fidNode.get() );
 		}
 		
 		isam::PoseSE3_Node::Ptr fidNode = fidReg.poses[ now ];
@@ -119,6 +147,7 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections::Con
 			( camReg.extrinsics.get(), camReg.intrinsics.get(), nullptr,
 			  fidNode.get(), fidReg.intrinsics.get(), nullptr,
 			  DetectionToIsam( detection ), cov, props );
+		ROS_INFO_STREAM( "Adding detection" );
 		slam->add_factor( factor.get() );
 		observations.push_back( factor );
 	}
@@ -133,7 +162,7 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 	if( cameraRegistry.count( cameraName ) > 0 ) { return true; }
 	
 	// First see if this camera has an extrinsics prior
-	if( LoadExtrinsicsPrior( cameraName ) )
+	if( extrinsicsManager.CheckMemberInfo( cameraName ) )
 	{
 		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( cameraName ).extrinsics;
 		RegisterCamera( cameraName, extrinsics, true );
@@ -151,37 +180,14 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 			
 			PoseSE3 fiducialPose = fidReg.poses[now]->value().pose;
 			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-		                                         nullptr,
-		                                         MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
+			                                     nullptr,
+			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
 			PoseSE3 cameraPose = fiducialPose * relPose.Inverse();
 			RegisterCamera( cameraName, cameraPose, false );
 			break;
 		}
 	}
 	return cameraRegistry.count( cameraName ) > 0;
-}
-
-bool CameraArrayCalibrator::LoadFiducialIntrinsics( const std::string& name )
-{
-	if( !fiducialManager.HasMember( name ) )
-	{
-		if( !fiducialManager.ReadMemberInfo( name, false ) ) { return false; }
-		ROS_INFO_STREAM( "Found fiducial intrinsics for " << name );
-	}
-	return true;
-}
-
-bool CameraArrayCalibrator::LoadExtrinsicsPrior( const std::string& name )
-{
-	if( !extrinsicsManager.HasMember( name ) )
-	{
-		if( !extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
-		if( extrinsicsManager.GetInfo( name ).referenceFrame != referenceFrame ) { return false; }
-		
-		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( name ).extrinsics;
-		ROS_INFO_STREAM( "Found extrinsics " << extrinsics << " for " << name );
-	}
-	return true;
 }
 
 void CameraArrayCalibrator::RegisterCamera( const std::string& name, const PoseSE3& pose,
@@ -202,6 +208,7 @@ void CameraArrayCalibrator::RegisterCamera( const std::string& name, const PoseS
 	
 	if( addPrior )
 	{
+		ROS_INFO_STREAM( "Adding a prior for " << name );
 		// TODO
 		isam::Noise priorCov = isam::Covariance( isam::eye(6) );
 		registration.extrinsicsPrior = 

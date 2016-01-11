@@ -1,5 +1,4 @@
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
-#include "extrinsics_array/ExtrinsicsArrayCalibrationParsers.h"
 
 #include "argus_utils/YamlUtils.h"
 #include "argus_utils/ParamUtils.h"
@@ -16,10 +15,14 @@ ExtrinsicsInfoManager::ExtrinsicsInfoManager( lookup::LookupInterface& interface
 {}
 
 bool ExtrinsicsInfoManager::ReadMemberInfo( const std::string& memberName,
-                                            bool forceLookup )
+                                            bool forceLookup,
+	                                        const ros::Duration& timeout )
 {
 	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
+	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
 
 	ExtrinsicsInfo registration;
 	
@@ -56,13 +59,17 @@ bool ExtrinsicsInfoManager::ReadMemberInfo( const std::string& memberName,
 }
 
 bool ExtrinsicsInfoManager::WriteMemberInfo( const std::string& memberName,
-                                             bool forceLookup )
+                                             bool forceLookup,
+	                                         const ros::Duration& timeout )
 {
 	// Can't write info if we don't have it cached!
 	if( !HasMember( memberName ) ) { return false; }
 	
 	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
+	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
 	
 	ExtrinsicsInfo& registration = GetInfo( memberName );
 	YAML::Node extrinsics = SetPoseYaml( registration.extrinsics );

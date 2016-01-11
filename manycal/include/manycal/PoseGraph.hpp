@@ -1,152 +1,125 @@
-#ifndef _MANYCAL_POSE_GRAPH_H_
-#define _MANYCAL_POSE_GRAPH_H_
+#pragma once
 
-#include "isam/SlamInterface.h"
+#include <ros/time.h>
+#include <memory>
+#include "isam/Slam.h"
 
-#include "argus_utils/ArgusTypes.h"
-#include "argus_utils/TimeSeries.hpp"
-
-#include <unordered_map>
-
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-namespace manycal 
+namespace manycal
 {
+
+/*! \brief Defines basic properties and operators for time indices. */
+template <typename IndexType>
+struct IndexTraits
+{
+	static double Difference( const IndexType& a, const IndexType& b ) 
+	{ 
+		return (double)( a - b ); 
+	}
 	
-/*! \brief Presents a convenient pose graph wrapper around an iSAM Slam object. */
-template< class PoseNode, class UnaryFactor, class BinaryFactor >
+	/*! \brief Returns the earliest representable time. */
+	static IndexType Earliest() 
+	{ 
+		return std::numeric_limits<IndexType>::min(); 
+	}
+	
+	/*!\brief Returns the latest representable time. */
+	static IndexType Latest() 
+	{ 
+		return std::numeric_limits<IndexType>::max(); 
+	}
+};
+
+template <>
+struct IndexTraits <boost::posix_time::ptime>
+{
+	typedef boost::posix_time::ptime Time;
+	
+	static double Difference( const Time& a, const Time& b )
+	{
+		// TODO Set precision
+		return (a - b).total_microseconds() * 1E-6;
+	}
+
+	static Time Earliest() 
+	{
+		return Time( boost::posix_time::min_date_time );
+	}
+
+	static Time Latest()
+	{
+		return Time( boost::posix_time::max_date_time );
+	}
+};
+
+template <>
+struct IndexTraits <ros::Time>
+{
+
+	static double Difference( const ros::Time& a, const ros::Time& b )
+	{
+		return (a - b).toSec();
+	}
+
+	static ros::Time Earliest()
+	{
+		return ros::Time::fromBoost( IndexTraits<boost::posix_time::ptime>::Earliest() );
+	}
+
+	static ros::Time Latest()
+	{
+		return ros::Time::fromBoost( IndexTraits<boost::posix_time::ptime>::Latest() );
+	}
+};
+
+/*! \brief Interface for pose graphs grouping all pose variables for a dynamic
+ * system indexable by time. */
+template <class P, typename IndexType = boost::posix_time::ptime>
 class PoseGraph
 {
 public:
-	
-	typedef argus_utils::Time Time;
+
+	typedef typename isam::Slam_Traits<P>::PoseType PoseType;
+	typedef typename isam::Slam_Traits<P>::NodeType NodeType;
+	typedef typename isam::Slam_Traits<P>::PriorType PriorType;
+	typedef typename isam::Slam_Traits<P>::EdgeType EdgeType;
+	typedef isam::Noise NoiseType;
 	typedef std::shared_ptr<PoseGraph> Ptr;
-	typedef PoseNode PoseNodeType; // Represents all poses
-	typedef UnaryFactor PriorType; // Used for priors
-	typedef BinaryFactor EdgeType; // Used for odometry
-	typedef argus_utils::TimeSeries< typename PoseNode::Ptr > DynamicSeries;
-	
-	PoseGraph( isam::SlamInterface& _slam )
-		: slam( _slam )
-	{}
-	
-	/*! \brief Add a new static object. */
-	typename PoseNode::Ptr AddStatic( const std::string& name, 
-	                                  const typename PoseNode::DataType& data )
-	{
-		typename PoseNode::Ptr node = std::make_shared<PoseNode>();
-		node->init( data );
-		staticMap[ name ] = node;
-		slam.add_node( node );
-		return node;
-	}
-	
-	/*! \brief Retrieve a static object. */
-	typename PoseNode::Ptr GetStatic( const std::string& name ) const
-	{
-		return staticMap.at( name );
-	}
-	
-	/*! \brief Add a prior to a static object. */
-	typename UnaryFactor::Ptr AddStaticPrior( const std::string& name, 
-	                                          const typename UnaryFactor::DataType& data,
-	                                          const isam::Noise& noise )
-	{
-		typename PoseNode::Ptr pose = GetStatic( name );
-		if( !pose )
-		{
-			throw std::out_of_range( "Cannot add prior to non-existant static object." );
-		}
-		typename UnaryFactor::Ptr unary = std::make_shared<UnaryFactor>( pose.get(), data, noise );
-		slam.add_factor( unary );
-		return unary;
-	}
-	
-	/*! \brief Add a new dynamic object pose. */
-	typename PoseNode::Ptr AddDynamic( const std::string& name, Time time, 
-	                                   const typename PoseNode::DataType& data )
-	{
-		if( dynamicMap.count( name ) == 0 )
-		{
-			dynamicMap[ name ] = std::make_shared<DynamicSeries>();
-		}
-		
-		typename PoseNode::Ptr pose = std::make_shared<PoseNode>();
-		pose->init( data );
-		dynamicMap[ name ]->AddTimepoint( time, pose );
-		slam.add_node( pose );
-		return pose;
-	}
-	
-	/*! \brief Retrieve a dynamic pose at a specified time if it exists. */
-	typename PoseNode::Ptr GetDynamic( const std::string& name, Time time ) const
-	{
-		typename PoseNode::Ptr pos;
-		try
-		{
-			pos = dynamicMap.at( name )->GetExact( time ).point;
-		}
-		catch( std::out_of_range e ) {}
-		
-		return pos;
-	}
-	
-	/*! \brief Return the entire time series for a dynamic object. */
-	typename PoseGraph::DynamicSeries::Ptr GetDynamicSeries( const std::string& name ) const
-	{
-		typename DynamicSeries::Ptr series;
-		try
-		{
-			series = dynamicMap.at( name );
-		}
-		catch( std::out_of_range e ) {}
-		
-		return series;
-	}
-	
-	/*! \brief Adds a prior to an existing dynamic pose. */
-	typename UnaryFactor::Ptr AddDynamicPrior( const std::string& name, Time time, 
-	                                           const typename UnaryFactor::DataType& data,
-	                                           const isam::Noise& noise )
-	{
-		typename PoseNode::Ptr pose = GetDynamic( name, time );
-		if( !pose )
-		{
-			throw std::out_of_range( "Cannot add prior to non-existant dynamic object." );
-		}
-		typename UnaryFactor::Ptr unary = std::make_shared<UnaryFactor>( pose.get(), data, noise );
-		slam.add_factor( unary );
-		return unary;
-	}
-	
-	/*! \brief Creates a new dynamic pose at the specified time and links it to its time
-	 * predecessor with a binary factor. */
-	typename PoseNode::Ptr AddDynamicOdometry( const std::string& name, Time time, 
-	                                           const typename BinaryFactor::DataType& data,
-	                                           const isam::Noise& noise )
-	{
-		typename PoseNode::Ptr older = dynamicMap.at( name )->GetClosestLower( time ).point;
-		typename PoseNode::DataType init = older->value().oplus( data );
-		typename PoseNode::Ptr newer = AddDynamic( name, time, init );
-		
-		typename BinaryFactor::Ptr binary = std::make_shared<BinaryFactor>
-			( older.get(), newer.get(), data, noise );
-		slam.add_factor( binary );
-		return newer;
-	}
-	
-protected:
-	
-	std::unordered_map< std::string, typename DynamicSeries::Ptr > dynamicMap;
-	std::unordered_map< std::string, typename PoseNode::Ptr > staticMap;
-	
-	isam::SlamInterface& slam;
-	
+
+	PoseGraph() {}
+
+	virtual ~PoseGraph() {}
+
+	/*! \brief Return the earliest index in the pose graph. */
+	virtual IndexType EarliestIndex() const = 0;
+
+	/*! \brief Return the latest index in the pose graph. */
+	virtual IndexType LatestIndex() const = 0;
+
+	/*! \brief Return whether the (hypothetical) node at the time index is grounded.
+	 * If not and the node will be optimized, a prior should be added. */
+	virtual bool IsGrounded( const IndexType& ind ) const = 0;
+
+	/*! \brief Creates a node at the specified index. */
+	virtual typename NodeType::Ptr CreateNode( const IndexType& ind, 
+	                                           const PoseType& pose ) = 0;
+
+	/*! \brief Retrieve the node corresponding to the specified index, creating
+	 * if necessary. Returns null if no correspondence and index invalid. */
+	virtual typename NodeType::Ptr RetrieveNode( const IndexType& ind ) = 0;
+
+	/*! \brief Remove the node at the specified index if it exists. */
+	virtual void RemoveNode( const IndexType& ind ) = 0;
+
+	/*! \brief Remove all nodes. */
+	virtual void ClearNodes() = 0;
+
+	/*! \brief Create a prior for the specified index. */
+	virtual void CreatePrior( const IndexType& ind, const PoseType& pose,
+	                          const NoiseType& noise ) = 0;
+
+	virtual void CreateEdge( const IndexType& from, const IndexType& to,
+	                         const PoseType& pose, const NoiseType& noise ) = 0;
+
 };
 
-typedef PoseGraph<isam::Pose3d_Node, isam::Pose3d_Factor, isam::Pose3d_Pose3d_Factor> PoseGraph3d;
-typedef PoseGraph<isam::Pose2d_Node, isam::Pose2d_Factor, isam::Pose2d_Pose2d_Factor> PoseGraph2d;
-
 }
-
-#endif

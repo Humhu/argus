@@ -3,6 +3,9 @@
 #include <isam/Pose3d.h>
 #include <isam/Point3d.h>
 
+#include <ros/time.h>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+
 #include "fiducials/Fiducial.h"
 #include "manycal/sclam_fiducial.h"
 #include "argus_utils/PoseSE3.h"

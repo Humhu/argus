@@ -7,10 +7,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 set(CMAKE_BUILD_TYPE Release)
 
 find_package(catkin REQUIRED 
-	COMPONENTS		message_generation
-					roscpp
-					std_msgs
-					geometry_msgs
+	COMPONENTS		roscpp
 					argus_utils
 					lookup
 )
@@ -25,24 +22,12 @@ add_definitions( "-DOPENCV3=1" )
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
 
-add_message_files(
-	FILES			ExtrinsicsArrayInfo.msg
-)
-
-generate_messages(
-	DEPENDENCIES	std_msgs
-					geometry_msgs
-)
-
 catkin_package(
 	INCLUDE_DIRS 	include
 	
 	LIBRARIES 		lib_extrinsics_array
 					
-	CATKIN_DEPENDS 	message_runtime 
-					roscpp 
-					std_msgs
-					geometry_msgs
+	CATKIN_DEPENDS 	roscpp 
 					argus_utils
 					lookup
 					
@@ -58,11 +43,9 @@ include_directories( include
 )
 
 add_library( lib_extrinsics_array
-	src/ExtrinsicsArray.cpp
-	src/ExtrinsicsArrayCalibrationParsers.cpp
+	src/ExtrinsicsCalibrationParsers.cpp
 	src/ExtrinsicsInfoManager.cpp
 )
-add_dependencies( lib_extrinsics_array ${${PROJECT_NAME}_EXPORTED_TARGETS} )
 target_link_libraries( lib_extrinsics_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}

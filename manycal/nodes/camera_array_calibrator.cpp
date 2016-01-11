@@ -11,12 +11,7 @@ int main( int argc, char** argv )
 	
 	manycal::CameraArrayCalibrator calibrator( nh, ph );
 	
-	while( ros::ok() )
-	{
-		ros::spinOnce();
-	}
-	
-	calibrator.WriteResults();
+	ros::spin();
 	
 	return 0;
 }

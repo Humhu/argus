@@ -1,7 +1,6 @@
 #pragma once
 
-#include "extrinsics_array/ExtrinsicsArray.h"
-#include "extrinsics_array/ExtrinsicsArrayInfo.h"
+#include "argus_utils/PoseSE3.h"
 #include "lookup/InfoManager.h"
 
 #include <ros/ros.h>
@@ -29,8 +28,12 @@ public:
 	 * the lookup table. Overwrites existing cached values. If memberName has been
 	 * queried before and failed, this method skips querying the parameter server unless
 	 * forceLookup is set. Returns success. */
-	virtual bool ReadMemberInfo( const std::string& memberName, bool forceLookup = false );
-	virtual bool WriteMemberInfo( const std::string& memberName, bool forceLookup = false );
+	virtual bool ReadMemberInfo( const std::string& memberName, 
+	                             bool forceLookup = false,
+	                             const ros::Duration& timeout = ros::Duration( 0 ) );
+	virtual bool WriteMemberInfo( const std::string& memberName, 
+	                             bool forceLookup = false,
+	                             const ros::Duration& timeout = ros::Duration( 0 ) );
 	
 protected:
 	
