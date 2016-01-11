@@ -13,7 +13,7 @@ FiducialDetectionModel::FiducialDetectionModel( lookup::LookupInterface& interfa
 targetManager( interface )
 {
   // TODO
-  minPointSeparation = 10.0;
+  minPointSeparation = 60.0;
 }
 
 FiducialDetectionModel::Detections

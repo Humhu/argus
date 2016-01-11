@@ -62,7 +62,7 @@ RobotTargetDistribution::SamplePose( const PoseSE3& mean,
                                      const PoseSE3::CovarianceMatrix& cov )
 {
 	gaussian.SetCovariance( cov );
-	PoseSE3::TangentVector d = gaussian.Sample(); // Truncates to 3 standard deviations
+	PoseSE3::TangentVector d = gaussian.Sample(2.0); // Truncates to 3 standard deviations
 	return mean * PoseSE3::Exp( d );
 }
 
