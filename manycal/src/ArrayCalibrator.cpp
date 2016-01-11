@@ -49,6 +49,8 @@ slam( std::make_shared<isam::Slam>() )
 	writeServer = privHandle.advertiseService( "write_results", 
 	                                           &ArrayCalibrator::WriteResults,
 	                                           this );
+
+	slam->write( std::cout );
 }
 
 bool ArrayCalibrator::WriteResults( WriteCalibration::Request& req,
@@ -356,7 +358,8 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 		                         fidReg, fidFrameReg,
 		                         detection, msg->header.stamp );
 	}
-	
+
+	ROS_INFO_STREAM( "Running optimization..." );
 	slam->batch_optimization();
 // 	std::cout << "===== Iteration: " << observations.size() << std::endl;
 // 	slam->write( std::cout );
@@ -447,7 +450,7 @@ void ArrayCalibrator::RegisterCamera( const std::string& camName, bool calibrate
 		registration.extrinsicsPrior = std::make_shared <isam::PoseSE3_Prior>
 		    ( registration.extrinsics.get(), 
 		      isam::PoseSE3( extrinsicsInfo.extrinsics ),
-		      isam::Covariance( 1E6 * isam::eye(6) ) );
+		      isam::Covariance( 1E-2 * isam::eye(6) ) );
 		slam->add_factor( registration.extrinsicsPrior.get() );
 	}
 	
@@ -497,7 +500,7 @@ void ArrayCalibrator::RegisterFiducial( const std::string& fidName, bool calibra
 		registration.extrinsicsPrior = std::make_shared <isam::PoseSE3_Prior>
 		    ( registration.extrinsics.get(), 
 			  isam::PoseSE3( extrinsicsInfo.extrinsics ),
-			  isam::Covariance( 1E6 * isam::eye(6) ) );
+			  isam::Covariance( 1E-2 * isam::eye(6) ) );
 		slam->add_factor( registration.extrinsicsPrior.get() );
 	}
 	

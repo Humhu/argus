@@ -12,8 +12,11 @@ int main( int argc, char** argv )
 	
 	manycal::ArraySynchronizer cap( nodeHandle, privHandle );
 	
-	ros::AsyncSpinner spinner( 2 );
-	spinner.start();
-	ros::waitForShutdown();
+	//	ros::AsyncSpinner spinner( 2 );
+	// spinner.start();
+	//ros::waitForShutdown();
+	ros::spin();
+	return 0;
+
 	
 }

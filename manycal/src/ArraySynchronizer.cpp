@@ -50,7 +50,6 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		
 	captureServer = privHandle.advertiseService( "capture_array", &ArraySynchronizer::CaptureArrayCallback, this );
 	
-	int numSimultaneous;
 	privHandle.param( "num_simultaneous_captures", numSimultaneous, 1 );
 	cameraTokens.Increment( numSimultaneous );
 	pool.SetNumWorkers( numSimultaneous );
@@ -60,7 +59,14 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req, 
                                               CaptureArray::Response& res )
 {
-	
+  // TODO Figure out why images are getting dropped
+  int diff = numSimultaneous - cameraTokens.Query();
+  if( diff > 0 )
+    {
+      cameraTokens.Increment( diff );
+    }
+  receivedImages = 0;
+  clampTime = ros::Time::now();
 	// TODO Make sure buffer is cleared?
 	BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
 	{
@@ -70,29 +76,8 @@ bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req,
 	}
 
 	// TODO Handle timeouts
-	ROS_INFO( "Dispatched all jobs. Waiting on semaphore." );
-	completedJobs.Decrement( cameraRegistry.size() ); // Wait for all jobs to complete
-	
-	ros::Time now = ros::Time::now();
-	
-	BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
-	{
-		std_msgs::Header header;
-		header.stamp = now;
-		
-		CameraRegistration& registration = item.second;
-		if( !registration.data.image )
-		{
-			ROS_ERROR_STREAM( "Null buffered data!" );
-		}
-		
-		header.frame_id = registration.data.image->header.frame_id;
-		header.seq = registration.data.image->header.seq;
-		registration.data.image->header = header;
-		registration.data.info->header = header;
-		imagePub.publish( registration.data.image, registration.data.info );
-	}
-	
+	//ROS_INFO( "Dispatched all jobs. Waiting on semaphore." );
+	//completedJobs.Decrement( cameraRegistry.size() ); // Wait for all jobs to complete
 	return true;
 }
 
@@ -123,7 +108,10 @@ void ArraySynchronizer::ImageCallback( const sensor_msgs::Image::ConstPtr& image
 	registration.data.info = boost::make_shared<sensor_msgs::CameraInfo>( *info );
 	
 	cameraTokens.Increment();
-	completedJobs.Increment();
+	//completedJobs.Increment();
+	registration.data.image->header.stamp = clampTime;
+	registration.data.info->header.stamp = clampTime;
+	imagePub.publish( registration.data.image, registration.data.info );
 }
 	
 } // end namespace manycal
