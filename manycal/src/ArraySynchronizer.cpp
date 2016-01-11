@@ -34,7 +34,7 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		registration.name = cameraName;
 		
 		std::string cameraNamespace;
-		if( !lookupInterface.ReadNamespace( cameraName, cameraNamespace ) )
+		if( !lookupInterface.ReadNamespace( cameraName, cameraNamespace, ros::Duration( 5.0 ) ) )
 		{
 			ROS_ERROR_STREAM( "Could not find namespace for " << cameraName );
 		}

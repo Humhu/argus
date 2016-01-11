@@ -13,10 +13,35 @@ InfoManager<InfoStruct>::~InfoManager()
 {}
 
 template <typename InfoStruct>
-bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName, bool forceLookup )
+bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName, 
+                                               bool forceLookup,
+                                               const ros::Duration& timeout )
 {
-	if( HasMember( memberName ) ) { return true; }
-	return ReadMemberInfo( memberName, forceLookup );
+	if( HasMember( memberName ) ) 
+	{ 
+		ClearFailures( memberName );
+		return true; 
+	}
+	
+	ros::Time start = ros::Time::now();
+	if( ReadMemberInfo( memberName, forceLookup ) ) 
+	{ 
+		ClearFailures( memberName );
+		return true; 
+	}
+	else if( timeout.toSec() == 0.0 ) { return false; }
+
+	while( true )
+	{
+		if( ReadMemberInfo( memberName, forceLookup ) ) 
+		{ 
+			ClearFailures( memberName );
+			return true; 
+		}
+		ROS_INFO_STREAM( "Lookup failed. Retrying..." );
+		ros::Duration( 0.5 ).sleep();
+		if( ros::Time::now() > start + timeout ) { return false; }
+	}
 }
 
 template <typename InfoStruct>
@@ -40,7 +65,8 @@ const InfoStruct& InfoManager<InfoStruct>::GetInfo( const std::string& memberNam
 template <typename InfoStruct>
 bool InfoManager<InfoStruct>::GetNamespace( const std::string& memberName,
                                             std::string& ns,
-                                            bool forceLookup )
+                                            bool forceLookup,
+                                            const ros::Duration& timeout )
 {
 	// Fast-fail using cache
 	if( !forceLookup && HasFailures( memberName ) > 0 ) 
@@ -50,12 +76,14 @@ bool InfoManager<InfoStruct>::GetNamespace( const std::string& memberName,
 		return false; 
 	}
 	
-	if( !lookupInterface.ReadNamespace( memberName, ns ) )
+	if( !lookupInterface.ReadNamespace( memberName, ns, timeout ) )
 	{
 		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
 		RecordFailure( memberName );
 		return false;
 	}
+
+	ClearFailures( memberName );
 	return true;
 }
 
@@ -63,6 +91,12 @@ template <typename InfoStruct>
 void InfoManager<InfoStruct>::RecordFailure( const std::string& memberName )
 {
 	failedQueries.insert( memberName );
+}
+
+template <typename InfoStruct>
+void InfoManager<InfoStruct>::ClearFailures( const std::string& memberName )
+{
+	failedQueries.erase( memberName );
 }
 
 template <typename InfoStruct>

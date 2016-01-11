@@ -20,6 +20,7 @@ find_package(catkin REQUIRED
 					extrinsics_array
 					fiducials
 					lookup
+					fieldtrack
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -58,6 +59,7 @@ catkin_package(
 					extrinsics_array
 					fiducials
 					lookup
+					fieldtrack
 					
 	DEPENDS 		Boost 
 					OpenCV

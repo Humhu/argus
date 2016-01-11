@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ros/duration.h>
 #include "lookup/LookupInterface.h"
 #include <unordered_map>
 #include <unordered_set>
@@ -22,19 +23,22 @@ public:
 	
 	/*! \brief Checks to see if information is cached. If it is not, attempts
 	 * to read the information. Returns whether the information is now cached. */
-	bool CheckMemberInfo( const std::string& memberName, bool forceLookup = false );
+	bool CheckMemberInfo( const std::string& memberName, bool forceLookup = false,
+	                      const ros::Duration& timeout = ros::Duration( 0 ) );
 	
 	/*! \brief Attempt to read information for the specified member name. Fast-returns
 	 * if previous lookup failures exist and the forceLookup flag is not set. 
 	 * Returns success. */
 	virtual bool ReadMemberInfo( const std::string& memberName,
-	                             bool forceLookup = false ) = 0;
+	                             bool forceLookup = false,
+	                             const ros::Duration& timeout = ros::Duration( 0 ) ) = 0;
 	
 	/*! \brief Attempt to write cached information for the specified member name. 
 	 * Fast-returns if previous lookup failures exist and the forceLookup flag 
 	 * is not set. Returns success. */
 	virtual bool WriteMemberInfo( const std::string& memberName,
-	                              bool forceLookup = false ) = 0;
+	                              bool forceLookup = false,
+	                              const ros::Duration& timeout = ros::Duration( 0 ) ) = 0;
 	
 	/*! \brief Returns whether the member information is cached. */
 	bool HasMember( const std::string& memberName ) const;
@@ -46,10 +50,14 @@ public:
 protected:
 	
 	/*! \brief Returns the prefix namespace for the specified member. */
-	bool GetNamespace( const std::string& memberName, std::string& ns, bool forceLookup );
+	bool GetNamespace( const std::string& memberName, std::string& ns, 
+	                   bool forceLookup, const ros::Duration& timeout );
 	
 	/*! \brief Record a failed lookup for the specified member. */
 	void RecordFailure( const std::string& memberName );
+
+	/*! \brief Purge failures for the specified member. */
+	void ClearFailures( const std::string& memberName );
 	
 	/*! \brief Returns whether the specified member has failed lookups on record. */
 	bool HasFailures( const std::string& memberName ) const;

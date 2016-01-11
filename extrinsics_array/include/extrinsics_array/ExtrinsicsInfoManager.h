@@ -28,8 +28,12 @@ public:
 	 * the lookup table. Overwrites existing cached values. If memberName has been
 	 * queried before and failed, this method skips querying the parameter server unless
 	 * forceLookup is set. Returns success. */
-	virtual bool ReadMemberInfo( const std::string& memberName, bool forceLookup = false );
-	virtual bool WriteMemberInfo( const std::string& memberName, bool forceLookup = false );
+	virtual bool ReadMemberInfo( const std::string& memberName, 
+	                             bool forceLookup = false,
+	                             const ros::Duration& timeout = ros::Duration( 0 ) );
+	virtual bool WriteMemberInfo( const std::string& memberName, 
+	                             bool forceLookup = false,
+	                             const ros::Duration& timeout = ros::Duration( 0 ) );
 	
 protected:
 	

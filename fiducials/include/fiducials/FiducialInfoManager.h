@@ -17,8 +17,12 @@ public:
 	
 	FiducialInfoManager( lookup::LookupInterface& interface );
 	
-	virtual bool ReadMemberInfo( const std::string& fidName, bool forceLookup = false );
-	virtual bool WriteMemberInfo( const std::string& fidName, bool forceLookup = false );
+	virtual bool ReadMemberInfo( const std::string& fidName, 
+	                             bool forceLookup = false,
+	                             const ros::Duration& timeout = ros::Duration( 0 ) );
+	virtual bool WriteMemberInfo( const std::string& fidName, 
+	                              bool forceLookup = false,
+	                              const ros::Duration& timeout = ros::Duration( 0 ) );
 		
 private:
 	

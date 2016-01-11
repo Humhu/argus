@@ -19,8 +19,10 @@ public:
 	/*! \brief Fully resolves the namespace and registers it to the target name. */
 	void WriteNamespace( const std::string& targetName, const std::string& ns );
 	
-	/*! \brief Tries to look up the corresponding namespace. Namespaces end in /. Returns success. */
-	bool ReadNamespace( const std::string& key, std::string& ns );
+	/*! \brief Tries to look up the corresponding namespace. Namespaces end in /. 
+	 * Returns success. */
+	bool ReadNamespace( const std::string& key, std::string& ns,
+	                    const ros::Duration& timeout = ros::Duration( 0.0 ) );
 	
 private:
 	

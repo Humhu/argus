@@ -28,6 +28,7 @@
   <build_depend>extrinsics_array</build_depend>
   <build_depend>fiducials</build_depend>
   <build_depend>lookup</build_depend>
+  <build_depend>fieldtrack</build_depend>
   
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
@@ -44,5 +45,6 @@
   <run_depend>extrinsics_array</run_depend>
   <run_depend>fiducials</run_depend>
   <run_depend>lookup</run_depend>
+  <run_depend>fieldtrack</run_depend>
   
 </package>

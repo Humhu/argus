@@ -25,9 +25,21 @@ void LookupInterface::WriteNamespace( const std::string& targetName, const std::
 }
 
 bool LookupInterface::ReadNamespace( const std::string& targetName, 
-                                     std::string& resolvedNamespace )
+                                     std::string& resolvedNamespace,
+                                     const ros::Duration& timeout )
 {
-	return nodeHandle.getParam( FormLookupPath( targetName ), resolvedNamespace );
+	std::string path = FormLookupPath( targetName );
+	if( nodeHandle.getParam( path, resolvedNamespace ) ) { return true; }
+	else if( timeout.toSec() == 0.0 ) { return false; }
+
+	ros::Time start = ros::Time::now();
+	do
+	{
+		ros::Duration( 0.5 ).sleep();
+		if( nodeHandle.getParam( path, resolvedNamespace ) ) { return true; }
+	} while( ros::Time::now() < start + timeout );
+	
+	return false;
 }
 
 std::string LookupInterface::CleanPath( const std::string& path )

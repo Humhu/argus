@@ -4,6 +4,7 @@
 
 using namespace argus_msgs;
 using namespace argus_utils;
+using namespace fieldtrack;
 
 namespace camera_array
 {
@@ -32,30 +33,33 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 	// TODO 
 	camplex::CameraCalibration cameraModel( "fake", 550, 550, 320, 240, 640, 480 );
 	
-	std::vector<std::string> fidNames = targetManager.GetInfo( targetName ).fiducialNames;
-	BOOST_FOREACH( const std::string& fidName, fidNames )
+	const TargetInfo& info = targetManager.GetInfo( targetName );
+	BOOST_FOREACH( const TargetInfo::FiducialGroupRegistry::value_type& group, info.fiducialGroups )
 	{
-		const PoseSE3& fidExtrinsics = extrinsicsManager.GetInfo( fidName ).extrinsics;
-		const fiducials::Fiducial& fidIntrinsics = fiducialManager.GetInfo( fidName );
-		PoseSE3 fidToCam = targetToCam * fidExtrinsics;
-		FiducialDetection detection;
-		detection.name = fidName;
-		bool valid = fiducials::ProjectDetection( fidIntrinsics, 
-                                                  cameraModel,
-                                                  fidToCam,
-		                                          detection );
-		// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
-				 // 			<< " rel pose " << fidToCam );
-		// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
-		  // 		{
-		  // 			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
-					 //	<< ", " << detection.points[i].y );
-			// 		}
-		if( !valid ) { continue; }
-		double minDist = fiducials::FindMinDistance( detection.points );
-		if( minDist < minPointSeparation ) { continue; }
-		//		ROS_INFO_STREAM( "Camera " << cameraName << " detects " << fidName );
-		detections.push_back( detection );
+		BOOST_FOREACH( const std::string& fidName, group.second.fiducials )
+		{
+			const PoseSE3& fidExtrinsics = extrinsicsManager.GetInfo( fidName ).extrinsics;
+			const fiducials::Fiducial& fidIntrinsics = fiducialManager.GetInfo( fidName );
+			PoseSE3 fidToCam = targetToCam * fidExtrinsics;
+			FiducialDetection detection;
+			detection.name = fidName;
+			bool valid = fiducials::ProjectDetection( fidIntrinsics, 
+	                                                  cameraModel,
+	                                                  fidToCam,
+			                                          detection );
+			// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
+					 // 			<< " rel pose " << fidToCam );
+			// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
+			  // 		{
+			  // 			ROS_INFO_STREAM( "Detected point: " << detection.points[i].x
+						 //	<< ", " << detection.points[i].y );
+				// 		}
+			if( !valid ) { continue; }
+			double minDist = fiducials::FindMinDistance( detection.points );
+			if( minDist < minPointSeparation ) { continue; }
+			//		ROS_INFO_STREAM( "Camera " << cameraName << " detects " << fidName );
+			detections.push_back( detection );
+		}
 	}
 	
 	return detections;
@@ -87,19 +91,22 @@ void FiducialDetectionModel::CheckTarget( const std::string& targetName )
 		exit( -1 );
 	}
 	
-	const std::vector<std::string>& fiducialNames = 
-		targetManager.GetInfo( targetName ).fiducialNames;
-	BOOST_FOREACH( const std::string& fiducialName, fiducialNames )
+	TargetInfo& info = targetManager.GetInfo( targetName );
+	BOOST_FOREACH( const TargetInfo::FiducialGroupRegistry::value_type& group, 
+	               info.fiducialGroups )
 	{
-		if( !fiducialManager.CheckMemberInfo( fiducialName ) )
+		BOOST_FOREACH( const std::string& fiducialName, group.second.fiducials )
 		{
-			ROS_ERROR_STREAM( "Could not read fiducial info for: " << fiducialName );
-			exit( -1 );
-		}
-		if( !extrinsicsManager.CheckMemberInfo( fiducialName ) )
-		{
-			ROS_ERROR_STREAM( "Could not read fiducial extrinsics for: " << fiducialName );
-			exit( -1 );
+			if( !fiducialManager.CheckMemberInfo( fiducialName ) )
+			{
+				ROS_ERROR_STREAM( "Could not read fiducial info for: " << fiducialName );
+				exit( -1 );
+			}
+			if( !extrinsicsManager.CheckMemberInfo( fiducialName ) )
+			{
+				ROS_ERROR_STREAM( "Could not read fiducial extrinsics for: " << fiducialName );
+				exit( -1 );
+			}
 		}
 	}
 }

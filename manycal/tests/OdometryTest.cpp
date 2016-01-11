@@ -52,11 +52,11 @@ int main( int argc, char** argv )
 	
 	std::cout << "Initializing ograph..." << std::endl;
 	ros::Time now = ros::Time::now();
-	isam::PoseSE3_Node::Ptr initNode = ograph.Initialize( now.toBoost(),
+	isam::PoseSE3_Node::Ptr initNode = ograph.CreateNode( now.toBoost(),
 	                                                      isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ) );
-	ograph.AddPrior( now.toBoost(),
-	                 isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ),
-	                 isam::Covariance( isam::eye(6) ) );
+	ograph.CreatePrior( now.toBoost(),
+	                    isam::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ),
+	                    isam::Covariance( isam::eye(6) ) );
 	
 	ros::Duration( 0.5 ).sleep();
 	ros::Time midSleep = ros::Time::now();
@@ -64,12 +64,16 @@ int main( int argc, char** argv )
 	
 	// Add a node at the specified time and displacement
 	std::cout << "Adding odometry..." << std::endl;
-	isam::PoseSE3_Node::Ptr lastNode = ograph.AddOdometry( ros::Time::now().toBoost(),
-	                                                       isam::PoseSE3( 1, 0, 0, 1, 0, 0, 0 ), 
-	                                                       isam::Covariance( isam::eye(6) ) );
+
+	ros::Time prev = now;
+	now = ros::Time::now();
+	isam::PoseSE3_Node::Ptr lastNode = ograph.CreateNode( now.toBoost(), isam::PoseSE3() );
+	ograph.CreateEdge( prev.toBoost(), now.toBoost(),
+	                   isam::PoseSE3( 1, 0, 0, 1, 0, 0, 0 ), 
+	                   isam::Covariance( isam::eye(6) ) );
 	
 	std::cout << "Splitting odometry..." << std::endl;
-	isam::PoseSE3_Node::Ptr midNode = ograph.SplitOdometry( midSleep.toBoost() );
+	isam::PoseSE3_Node::Ptr midNode = ograph.RetrieveNode( midSleep.toBoost() );
 	
 	// Print results
 	std::cout << "Dumping results..." << std::endl;

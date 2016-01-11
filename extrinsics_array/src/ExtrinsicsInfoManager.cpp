@@ -15,10 +15,14 @@ ExtrinsicsInfoManager::ExtrinsicsInfoManager( lookup::LookupInterface& interface
 {}
 
 bool ExtrinsicsInfoManager::ReadMemberInfo( const std::string& memberName,
-                                            bool forceLookup )
+                                            bool forceLookup,
+	                                        const ros::Duration& timeout )
 {
 	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
+	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
 
 	ExtrinsicsInfo registration;
 	
@@ -55,13 +59,17 @@ bool ExtrinsicsInfoManager::ReadMemberInfo( const std::string& memberName,
 }
 
 bool ExtrinsicsInfoManager::WriteMemberInfo( const std::string& memberName,
-                                             bool forceLookup )
+                                             bool forceLookup,
+	                                         const ros::Duration& timeout )
 {
 	// Can't write info if we don't have it cached!
 	if( !HasMember( memberName ) ) { return false; }
 	
 	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup ) ) { return false; }
+	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
 	
 	ExtrinsicsInfo& registration = GetInfo( memberName );
 	YAML::Node extrinsics = SetPoseYaml( registration.extrinsics );

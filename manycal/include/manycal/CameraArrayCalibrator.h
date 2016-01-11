@@ -67,8 +67,6 @@ private:
 	bool InitializeCamera( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	void ProcessCache();
 	
-	bool LoadFiducialIntrinsics( const std::string& name );
-	bool LoadExtrinsicsPrior( const std::string& name );
 	void RegisterCamera( const std::string& name, const argus_utils::PoseSE3& pose,
 						 bool addPrior = false );
 	void RegisterFiducial( const std::string& name );

@@ -7,6 +7,8 @@
 #include <argus_utils/PoseSE3.h>
 #include <argus_utils/GeometryUtils.h>
 
+#include "manycal/slam_traits.h"
+
 namespace isam
 {
 
@@ -142,9 +144,6 @@ private:
 	
 };
 
-template <typename P>
-class Slam_Traits {};
-
 /*! \brief Traits template that describes types for PoseSE3. */
 template <>
 class Slam_Traits<PoseSE3>
@@ -155,7 +154,19 @@ public:
 	typedef PoseSE3_Node NodeType;
 	typedef PoseSE3_Prior PriorType;
 	typedef PoseSE3_Factor EdgeType;
+	typedef PoseType::PoseType::CovarianceMatrix CovarianceType;
 	
+	// TODO Use manifold Noise type from ManifoldKalmanFilter?
+	/*! \brief Combines two displacements together. Currently assumes post-appended noise,
+	 * i.e. disp = mean * noise. */
+	static void ComposeDisplacement( const PoseSE3& a, const PoseSE3& b,
+	                                 const CovarianceType& A, const CovarianceType& B,
+	                                 PoseSE3& c, CovarianceType& C )
+	{
+		c = PoseSE3( a.pose * b.pose );
+		C = PoseSE3::PoseType::Adjoint( b.pose ) * A + B;
+	}
+
 	/*! \brief Scales a displacement. */
 	static PoseSE3 ScaleDisplacement( const PoseSE3& displacement, double scale )
 	{

@@ -94,7 +94,11 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections::Con
 		const std::string& fiducialName = detection.name;
 		if( fiducialRegistry.count( fiducialName ) == 0 )
 		{
-			if( !LoadFiducialIntrinsics( fiducialName ) ) { continue; }
+			if( !fiducialManager.CheckMemberInfo( fiducialName ) ) 
+			{ 
+				ROS_WARN_STREAM( "Could not find info for detected fiducial " << fiducialName );
+				continue; 
+			}
 			RegisterFiducial( fiducialName );
 		}
 	}
@@ -158,7 +162,7 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 	if( cameraRegistry.count( cameraName ) > 0 ) { return true; }
 	
 	// First see if this camera has an extrinsics prior
-	if( LoadExtrinsicsPrior( cameraName ) )
+	if( extrinsicsManager.CheckMemberInfo( cameraName ) )
 	{
 		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( cameraName ).extrinsics;
 		RegisterCamera( cameraName, extrinsics, true );
@@ -176,37 +180,14 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 			
 			PoseSE3 fiducialPose = fidReg.poses[now]->value().pose;
 			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-		                                         nullptr,
-		                                         MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
+			                                     nullptr,
+			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
 			PoseSE3 cameraPose = fiducialPose * relPose.Inverse();
 			RegisterCamera( cameraName, cameraPose, false );
 			break;
 		}
 	}
 	return cameraRegistry.count( cameraName ) > 0;
-}
-
-bool CameraArrayCalibrator::LoadFiducialIntrinsics( const std::string& name )
-{
-	if( !fiducialManager.HasMember( name ) )
-	{
-		if( !fiducialManager.ReadMemberInfo( name, false ) ) { return false; }
-		ROS_INFO_STREAM( "Found fiducial intrinsics for " << name );
-	}
-	return true;
-}
-
-bool CameraArrayCalibrator::LoadExtrinsicsPrior( const std::string& name )
-{
-	if( !extrinsicsManager.HasMember( name ) )
-	{
-		if( !extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
-		if( extrinsicsManager.GetInfo( name ).referenceFrame != referenceFrame ) { return false; }
-		
-		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( name ).extrinsics;
-		ROS_INFO_STREAM( "Found extrinsics " << extrinsics << " for " << name );
-	}
-	return true;
 }
 
 void CameraArrayCalibrator::RegisterCamera( const std::string& name, const PoseSE3& pose,
