@@ -125,16 +125,14 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	// Publish processed
 	if( enableUndistortion || enableNormalization )
 	{
-		// Check for uncalibrated camera
-		if( cameraModel.GetFx() == 0 || cameraModel.GetFy() == 0 ) { 
-			ROS_WARN_STREAM( "Cannot undistort or normalize detection with uninitialized camera." );
-			return; 
+		
+		if( !fiducials::UndistortDetections( fidDetections, cameraModel,
+		                                     enableUndistortion, enableNormalization,
+		                                     detMsg.detections ) )
+		{
+			ROS_WARN_STREAM( "Could not undistort or normalize detections." );
+			return;
 		}
-		
-		
-		fiducials::UndistortDetections( fidDetections, cameraModel,
-		                                enableUndistortion, enableNormalization,
-		                                detMsg.detections );
 		
 		processedPublisher.publish( detMsg );
 	}
