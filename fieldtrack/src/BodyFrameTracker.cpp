@@ -43,20 +43,20 @@ BodyFrameTracker::BodyFrameTracker( const ros::NodeHandle& nh, const ros::NodeHa
 
 void BodyFrameTracker::TimerCallback( const ros::TimerEvent& event )
 {
-	if( !lastOdometry )
+	PoseSE3 displacement;
+	PoseSE3::CovarianceMatrix displacementCov;
+	if( lastOdometry )
 	{
-		// ROS_WARN_STREAM( "No odometry received yet." );
-		return;
+		double dt = ( event.current_real - event.last_real ).toSec();
+		ReadLock lock( mutex );
+		PoseSE3::TangentVector velocity = MsgToTangent( lastOdometry->twist.twist );
+		PoseSE3::CovarianceMatrix velocityCov;
+		ParseMatrix( lastOdometry->twist.covariance, velocityCov );
+		lock.unlock();
+		displacement = PoseSE3::Exp( dt * velocity );
+		displacementCov = velocityCov * dt;
 	}
-	double dt = ( event.current_real - event.last_real ).toSec();
-	ReadLock lock( mutex );
-	PoseSE3::TangentVector velocity = MsgToTangent( lastOdometry->twist.twist );
-	PoseSE3::CovarianceMatrix velocityCov;
-	ParseMatrix( lastOdometry->twist.covariance, velocityCov );
-	lock.unlock();
-	PoseSE3 displacement = PoseSE3::Exp( dt * velocity );
-	PoseSE3::CovarianceMatrix displacementCov = velocityCov * dt;
-	
+
 	// Publish target states
 	CompactOdometryArray::Ptr msg = boost::make_shared<CompactOdometryArray>();
 	msg->header.stamp = event.current_real;
@@ -70,9 +70,12 @@ void BodyFrameTracker::TimerCallback( const ros::TimerEvent& event )
 		if( !registration.poseInitialized ) { continue; }
 		
 		// Update target pose
-		registration.filter->DisplaceReference( displacement, displacementCov );
-		registration.filter->Predict( event.current_real );
-		
+		if( lastOdometry )
+		{
+			registration.filter->DisplaceReference( displacement, displacementCov );
+			registration.filter->Predict( event.current_real );
+		}
+
 		// Publish state 
 		CompactOdometry odom;
 		odom.header.stamp = event.current_real;
