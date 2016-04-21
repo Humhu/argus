@@ -1,7 +1,8 @@
 #pragma once
 
 #include <ros/ros.h>
-#include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include "argus_utils/PoseSE3.h"
 #include "argus_msgs/RelativePose.h"
@@ -23,21 +24,22 @@ private:
 	ros::NodeHandle privHandle;
 	
 	ros::Subscriber twistSub;
-	ros::Publisher dispPub;
+	ros::Publisher dispPub; // Publishes geometry_msgs::PoseWithCovarianceStamped
 	std::shared_ptr<ros::Timer> timer;
 	
 	std::string referenceName;
 	argus_utils::PoseSE3 integratedPose;
+	argus_utils::PoseSE3::CovarianceMatrix integratedCovariance;
 	argus_utils::PoseSE3 offset;
 	bool initialized;
 	
 	// Trapezoid integration scheme
 	bool twistInitialized;
-	geometry_msgs::TwistStamped lastTwist;
+	geometry_msgs::TwistWithCovarianceStamped lastTwist;
 	double scale;
 	
 	void TimerCallback( const ros::TimerEvent& event );
-	void TwistCallback( const geometry_msgs::TwistStamped::ConstPtr& msg );
+	void TwistCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg );
 	
 };
 	

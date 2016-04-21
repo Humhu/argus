@@ -114,6 +114,13 @@ target_link_libraries( state_estimator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
+add_executable( odometry_converter_node
+	nodes/absolute_to_relative.cpp )
+add_dependencies( odometry_converter_node ${ROJECT_NAME}_gencfg )
+target_link_libraries( odometry_converter_node
+	fieldtrack
+	${catkin_LIBRARIES} )
+
 ## Mark executables and/or libraries for installation
 install(TARGETS 
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

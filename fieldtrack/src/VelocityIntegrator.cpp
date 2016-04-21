@@ -2,6 +2,7 @@
 #include "argus_utils/GeometryUtils.h"
 #include "argus_utils/ParamUtils.h"
 #include "argus_utils/YamlUtils.h"
+#include "argus_utils/MatrixUtils.h"
 
 using namespace argus_utils;
 
@@ -20,8 +21,6 @@ VelocityIntegrator::VelocityIntegrator( ros::NodeHandle& nh, ros::NodeHandle& ph
 			exit( -1 );
 		}
 	}
-	
-	privHandle.param( "scale", scale, 1.0 );
 	
 	if( !privHandle.getParam( "reference_name", referenceName ) )
 	{
@@ -49,29 +48,35 @@ void VelocityIntegrator::TimerCallback( const ros::TimerEvent& event )
 		return;
 	}
 	
-	argus_msgs::RelativePose msg;
-	msg.observer_time = event.last_real;
-	msg.observer_name = referenceName;
-	msg.target_time = event.current_real;
-	msg.target_name = referenceName;
-	msg.relative_pose = PoseToMsg( integratedPose );
+	geometry_msgs::PoseWithCovarianceStamped msg;
+	msg.header.frame_id = referenceName;
+	msg.header.stamp = event.current_real;
+	msg.pose.pose = PoseToMsg( integratedPose );
+	SerializeMatrix( integratedCovariance, msg.pose.covariance );
 	dispPub.publish( msg );
 	
 	integratedPose = PoseSE3();
+	integratedCovariance = PoseSE3::CovarianceMatrix::Zero();
 }
 
-void VelocityIntegrator::TwistCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
+void VelocityIntegrator::TwistCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg )
 {
 	if( twistInitialized )
 	{
-		PoseSE3::TangentVector currVel = MsgToTangent( msg->twist );
-		PoseSE3::TangentVector prevVel = MsgToTangent( lastTwist.twist );
+		PoseSE3::TangentVector currVel = MsgToTangent( msg->twist.twist );
+		PoseSE3::TangentVector prevVel = MsgToTangent( lastTwist.twist.twist );
 		PoseSE3::TangentVector meanVel = 0.5 * ( currVel + prevVel );
 		
 		double dt = ( msg->header.stamp - lastTwist.header.stamp ).toSec();
 		PoseSE3 displacement = 
-		    PoseSE3::Exp( dt * scale * PoseSE3::Adjoint( offset ) * meanVel ).Inverse();
+		    PoseSE3::Exp( dt * PoseSE3::Adjoint( offset ) * meanVel ).Inverse();
 		integratedPose = integratedPose * displacement;
+
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix( msg->twist.covariance, cov );
+
+		PoseSE3::AdjointMatrix adj = PoseSE3::Adjoint( displacement ).inverse();
+		integratedCovariance = adj * integratedCovariance * adj.transpose() + cov;
 	}
 	twistInitialized = true;
 	lastTwist = *msg;
