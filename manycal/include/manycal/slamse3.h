@@ -19,7 +19,7 @@ typedef Eigen::Matrix <double,7,1> Vector7d;
 class PoseSE3
 {
 public:
-	typedef argus_utils::PoseSE3 PoseType;
+	typedef argus::PoseSE3 PoseType;
 	
 	static const int dim = 6;
 	static const char* name() { return "PoseSE3"; }

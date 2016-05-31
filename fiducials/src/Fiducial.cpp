@@ -9,7 +9,7 @@ Fiducial::Fiducial() {}
 Fiducial::Fiducial( const FiducialInfo& info )
 : points( info.points ) {}
 
-Fiducial Fiducial::Transform( const argus_utils::PoseSE3& pose ) const
+Fiducial Fiducial::Transform( const argus::PoseSE3& pose ) const
 {
 	Eigen::Matrix <double, 3, Eigen::Dynamic> p = MsgToMatrix( points );
 	p = pose.ToTransform() * p;

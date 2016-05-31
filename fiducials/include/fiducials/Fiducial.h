@@ -22,7 +22,7 @@ public:
 	Fiducial( const FiducialInfo& info );
 	
 	/*! \brief Returns a fiducial with transformation applied to the points. */
-	Fiducial Transform( const argus_utils::PoseSE3& pose ) const;
+	Fiducial Transform( const argus::PoseSE3& pose ) const;
 		
 	/*! \brief Returns a corresponding info message. */
 	FiducialInfo ToInfo() const;

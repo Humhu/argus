@@ -5,7 +5,7 @@
 using namespace argus_msgs;
 using namespace geometry_msgs;
 using namespace nav_msgs;
-using namespace argus_utils;
+using namespace argus;
 
 namespace fieldtrack
 {

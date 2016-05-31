@@ -24,7 +24,7 @@ public:
 	virtual bool EstimateMotion( const InterestPoints& srcPoints,
 	                             const InterestPoints& dstPoints,
 	                             std::vector<uchar>& inliers,
-	                             argus_utils::PoseSE3& transform ) = 0;
+	                             argus::PoseSE3& transform ) = 0;
 
 	/*! \brief Rectifies points into normalized camera coordinates. */
 	// TODO Use undistortion parameters?

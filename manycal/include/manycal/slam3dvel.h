@@ -9,7 +9,7 @@ namespace isam
 class VelocitySE3
 {
 public:
-	typedef argus_utils::PoseSE3::TangentVector VelocityType;
+	typedef argus::PoseSE3::TangentVector VelocityType;
 
 	static const int dim = 6;
 	static const char* name() { return "VelocitySE3"; }

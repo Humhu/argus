@@ -22,7 +22,7 @@ public:
 	
 	/*! \brief Adds a member. Overwrites existing members. */
 	void AddFiducial( const std::string& fidName, const Fiducial& fid,
-	                  const argus_utils::PoseSE3& extrinsics );
+	                  const argus::PoseSE3& extrinsics );
 	
 	/*! \brief Return the reference frame ID. */
 	const std::string& GetReferenceFrame() const;

@@ -30,7 +30,7 @@ private:
 	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
 	
 	// TODO
-	argus_utils::PoseSE3::CovarianceMatrix covariance;
+	argus::PoseSE3::CovarianceMatrix covariance;
 	
 	std::unordered_map<std::string, fiducials::Fiducial> transformedFiducials;
 	

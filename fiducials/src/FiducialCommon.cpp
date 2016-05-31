@@ -2,7 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace fiducials
 {

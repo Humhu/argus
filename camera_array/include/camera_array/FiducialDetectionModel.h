@@ -27,7 +27,7 @@ public:
 	 * parameters must be lookup-retrievable. */
 	Detections GenerateDetections( const std::string& cameraName,
 	                               const std::string& targetName,
-	                               const argus_utils::PoseSE3& targetToCameraRef );
+	                               const argus::PoseSE3& targetToCameraRef );
 	
 private:
 	

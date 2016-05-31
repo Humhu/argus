@@ -17,7 +17,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace odoflow
 {

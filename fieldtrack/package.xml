@@ -21,6 +21,7 @@
   <build_depend>nav_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>argus_utils</build_depend>
+  <build_depend>argus_filters</build_depend>
   <build_depend>extrinsics_array</build_depend>
   <build_depend>fiducials</build_depend>
   <build_depend>lookup</build_depend>
@@ -32,6 +33,7 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>argus_utils</run_depend>
+  <run_depend>argus_filters</run_depend>
   <run_depend>extrinsics_array</run_depend>
   <run_depend>fiducials</run_depend>
   <run_depend>lookup</run_depend>

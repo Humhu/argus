@@ -8,7 +8,7 @@
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 using namespace argus_msgs;
-using namespace argus_utils;
+using namespace argus;
 
 /*! \brief Translates nav_msgs::Odometry messages from an absolute frame
  * to a RelativePoseMessage. */

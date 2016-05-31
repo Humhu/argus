@@ -13,10 +13,10 @@ namespace cv
 	/*! \brief Modified from OpenCV 3.0's recoverPose to return triangulated
 	 * points and take a distance threshold argument. */
 	int RecoverPose( InputArray E, InputArray points1, InputArray points2,
-					 OutputArray R, OutputArray t, OutputArray triangulated,
-					 double focal = 1.0, Point2d pp = Point2d(0, 0),
-					 InputOutputArray mask = noArray(),
-					 double dist = 50.0 );
+	                 OutputArray R, OutputArray t, OutputArray triangulated,
+	                 double focal = 1.0, Point2d pp = Point2d(0, 0),
+	                 InputOutputArray mask = noArray(),
+	                 double dist = 50.0 );
 }
 
 namespace odoflow

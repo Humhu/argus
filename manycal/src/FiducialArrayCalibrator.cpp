@@ -5,7 +5,7 @@
 
 using namespace fiducials;
 using namespace argus_msgs;
-using namespace argus_utils;
+using namespace argus;
 
 namespace manycal
 {

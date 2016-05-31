@@ -8,7 +8,7 @@
 
 #include "lookup/LookupInterface.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 class Visualizer 
 {

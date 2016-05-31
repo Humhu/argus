@@ -2,7 +2,7 @@
 #include "argus_utils/GeometryUtils.h"
 #include "argus_utils/MatrixUtils.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace fieldtrack
 {

@@ -49,7 +49,7 @@ protected:
 	
 	lookup::LookupInterface lookupInterface;
 
-	mutable argus_utils::Mutex mutex;
+	mutable argus::Mutex mutex;
 	
 	enum CameraStatus
 	{
@@ -72,12 +72,12 @@ protected:
 	CameraSet referenceActiveCameras;
 	
 	unsigned int maxNumActive;
-	argus_utils::WorkerPool cameraWorkers;
+	argus::WorkerPool cameraWorkers;
 	
 	void TimerCallback( const ros::TimerEvent& event );
 	
 	bool RequestSetStreaming( const std::string& name, bool mode,
-							  const argus_utils::WriteLock& lock );
+							  const argus::WriteLock& lock );
 	
 	/*! \brief Jobs for the threadpool. */
 	void SetStreamingJob( const std::string& name, bool mode );

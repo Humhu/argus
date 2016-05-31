@@ -49,7 +49,7 @@ private:
 	typedef std::unordered_map<std::string, TargetRegistration> TargetRegistry;
 	TargetRegistry targetRegistry;
 	
-	mutable argus_utils::Mutex mutex;
+	mutable argus::Mutex mutex;
 	nav_msgs::Odometry::ConstPtr lastOdometry;
 	
 	void TimerCallback( const ros::TimerEvent& event );

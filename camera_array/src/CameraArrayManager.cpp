@@ -6,7 +6,7 @@
 #include "camplex/SetStreaming.h" // TODO Move into argus_msgs?
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace camera_array
 {

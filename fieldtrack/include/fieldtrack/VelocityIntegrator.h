@@ -28,9 +28,9 @@ private:
 	std::shared_ptr<ros::Timer> timer;
 	
 	std::string referenceName;
-	argus_utils::PoseSE3 integratedPose;
-	argus_utils::PoseSE3::CovarianceMatrix integratedCovariance;
-	argus_utils::PoseSE3 offset;
+	argus::PoseSE3 integratedPose;
+	argus::PoseSE3::CovarianceMatrix integratedCovariance;
+	argus::PoseSE3 offset;
 	bool initialized;
 	
 	// Trapezoid integration scheme

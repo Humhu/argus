@@ -23,12 +23,12 @@ public:
 
 	virtual IndexType EarliestIndex() const
 	{
-		return argus_utils::get_lowest_key( data );
+		return argus::get_lowest_key( data );
 	}
 
 	virtual IndexType LatestIndex() const
 	{
-		return argus_utils::get_highest_key( data );
+		return argus::get_highest_key( data );
 	}
 
 	virtual bool IsGrounded( const IndexType& ind ) const

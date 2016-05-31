@@ -64,7 +64,7 @@ private:
 	bool HasIntrinsicsPrior( const std::string& name );
 	
 	/*! \brief Creates the fiducial and reads its intrinsics via lookup. */
-	bool RegisterFiducial( const std::string& name, const argus_utils::PoseSE3& pose,
+	bool RegisterFiducial( const std::string& name, const argus::PoseSE3& pose,
 	                       bool addPrior = false );
 	
 };

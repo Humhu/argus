@@ -10,7 +10,7 @@
 #include <boost/foreach.hpp>
 
 using namespace camera_array;
-using namespace argus_utils;
+using namespace argus;
 
 class Visualizer
 {

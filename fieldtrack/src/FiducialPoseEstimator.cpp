@@ -10,7 +10,7 @@
 
 #include <unordered_map>
 
-using namespace argus_utils;
+using namespace argus;
 using namespace extrinsics_array;
 using namespace fiducials;
 

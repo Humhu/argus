@@ -1,7 +1,7 @@
 #include "fieldtrack/ArrayPoseEstimator.h"
 #include "argus_utils/GeometryUtils.h"
 
-using namespace argus_utils;
+using namespace argus;
 using namespace extrinsics_array;
 
 namespace fieldtrack

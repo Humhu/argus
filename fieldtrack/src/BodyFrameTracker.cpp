@@ -5,7 +5,7 @@
 #include <boost/foreach.hpp>
 
 using namespace argus_msgs;
-using namespace argus_utils;
+using namespace argus;
 
 namespace fieldtrack
 {

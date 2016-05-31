@@ -35,7 +35,7 @@ catkin_package(
 					# TODO It's not happy about this include - change the install path?
 # 					${isam_INCLUDE_DIRS}
 	
-	LIBRARIES 		graphopt
+	LIBRARIES 		${isam_LIBRARIES}
 					
 	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
@@ -83,11 +83,11 @@ include_directories( include
 # )
 
 # Mark executables and/or libraries for installation
-install(TARGETS graphopt
-	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# install(TARGETS graphopt
+# 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+# 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+# 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 install(DIRECTORY include/${PROJECT_NAME}/
 	DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}

@@ -70,7 +70,7 @@ bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req,
 	// TODO Make sure buffer is cleared?
 	BOOST_FOREACH( CameraRegistry::value_type& item, cameraRegistry )
 	{
-		argus_utils::WorkerPool::Job job = boost::bind( &ArraySynchronizer::CaptureJob, 
+		argus::WorkerPool::Job job = boost::bind( &ArraySynchronizer::CaptureJob, 
 		                                                this, boost::ref( item.second ) );
 		pool.EnqueueJob( job );
 	}

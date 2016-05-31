@@ -16,7 +16,7 @@ namespace manycal
 	{
 	public:
 		
-		typedef argus_utils::Time Time;
+		typedef argus::Time Time;
 		typedef std::shared_ptr<PoseGraphPublisher> Ptr;
 		typedef typename PG::DynamicSeries::Timepoint Timepoint;
 		

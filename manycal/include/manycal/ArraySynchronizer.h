@@ -55,11 +55,11 @@ private:
 	image_transport::ImageTransport publicPort;
 	image_transport::ImageTransport privatePort;
 		
-	argus_utils::Semaphore cameraTokens;
-	//argus_utils::Semaphore completedJobs;
+	argus::Semaphore cameraTokens;
+	//argus::Semaphore completedJobs;
 	unsigned int receivedImages;
 	ros::Time clampTime;
-	argus_utils::WorkerPool pool;
+	argus::WorkerPool pool;
 	int numSimultaneous;
 	
 	void ImageCallback( const sensor_msgs::Image::ConstPtr& image,

@@ -22,8 +22,8 @@ public:
 	EightPointEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	virtual bool EstimateMotion( const InterestPoints& firstPoints,
-									const InterestPoints& secondPoints,
-									Transform& transform );
+	                             const InterestPoints& secondPoints,
+	                             Transform& transform );
 	
 private:
 	

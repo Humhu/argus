@@ -9,10 +9,10 @@ namespace fiducials
 {
 
 // TODO if info is null, assume normalized and undistorted detections
-argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
+argus::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
                                         const camplex::CameraCalibration* cameraModel,
                                         const std::vector< cv::Point3f >& fiducialPoints,
-                                        const argus_utils::PoseSE3& guess )
+                                        const argus::PoseSE3& guess )
 {
 	cv::Matx33f cameraMat;
 	cv::Mat distortionCoeffs;
@@ -51,9 +51,9 @@ argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imageP
 	          0,      0,      0,      1;
 	
 	// Compensate for difference between x-forward and z-forward convention
-	static argus_utils::PoseSE3 prerotation( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
+	static argus::PoseSE3 prerotation( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
 	
-	return prerotation * argus_utils::PoseSE3( H );
+	return prerotation * argus::PoseSE3( H );
 }
 	
 }

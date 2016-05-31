@@ -14,9 +14,10 @@ namespace fiducials
  * requires normalized and undistorted detections. Assumes standard camera convention
  * (z-forward) for imagePoints and object convention (x-forward) for input and returned
  * poses. */
-argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
-                                        const camplex::CameraCalibration* cameraModel,
-                                        const std::vector< cv::Point3f >& fiducialPoints,
-                                        const argus_utils::PoseSE3& guess = argus_utils::PoseSE3() );
+argus::PoseSE3 
+EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
+                   const camplex::CameraCalibration* cameraModel,
+                   const std::vector< cv::Point3f >& fiducialPoints,
+                   const argus::PoseSE3& guess = argus::PoseSE3() );
 
 }

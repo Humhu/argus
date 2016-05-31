@@ -34,14 +34,14 @@ private:
 	
 	RobotTargetState base;
 	Properties properties;
-	argus_utils::MultivariateGaussian<6> gaussian; // Default mean zero, identity cov
+	argus::MultivariateGaussian<6> gaussian; // Default mean zero, identity cov
 	
-	argus_utils::PoseSE3 SamplePose( const argus_utils::PoseSE3& mean, 
-	                                 const argus_utils::PoseSE3::CovarianceMatrix& cov );
+	argus::PoseSE3 SamplePose( const argus::PoseSE3& mean, 
+	                           const argus::PoseSE3::CovarianceMatrix& cov );
 	
-	argus_utils::PoseSE3::TangentVector 
-	SampleVelocity( const argus_utils::PoseSE3::TangentVector& mean, 
-	                const argus_utils::PoseSE3::CovarianceMatrix& cov );
+	argus::PoseSE3::TangentVector 
+	SampleVelocity( const argus::PoseSE3::TangentVector& mean, 
+	                const argus::PoseSE3::CovarianceMatrix& cov );
 	
 };
 

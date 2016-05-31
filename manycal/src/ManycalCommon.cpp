@@ -1,20 +1,20 @@
 #include "manycal/ManycalCommon.h"
 #include "fiducials/PoseEstimation.h"
 
-using namespace argus_utils;
+using namespace argus;
 using namespace argus_msgs;
 
 namespace manycal
 {
 	
-isam::Pose3d PoseToIsam( const argus_utils::PoseSE3& pose )
+isam::Pose3d PoseToIsam( const argus::PoseSE3& pose )
 {
 	return isam::Pose3d( pose.ToTransform() );
 }
 
-argus_utils::PoseSE3 IsamToPose( const isam::Pose3d& is )
+argus::PoseSE3 IsamToPose( const isam::Pose3d& is )
 {
-	return argus_utils::PoseSE3( is.wTo() );
+	return argus::PoseSE3( is.wTo() );
 }
 
 isam::Point3d MsgToIsam( const geometry_msgs::Point& msg )

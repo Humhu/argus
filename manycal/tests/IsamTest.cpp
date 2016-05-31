@@ -13,7 +13,7 @@ int main( int argc, char** argv )
 	isam::SlamInterface interface( slam );
 	
 	// Camera extrinsics node
-	isam::PoseSE3 camExtrinsicsInit( argus_utils::PoseSE3( 0, 0, 1, 1, 0, 0, 0 ) );
+	isam::PoseSE3 camExtrinsicsInit( argus::PoseSE3( 0, 0, 1, 1, 0, 0, 0 ) );
 	isam::PoseSE3_Node::Ptr camExtrinsicsNode = std::make_shared <isam::PoseSE3_Node>();
 	camExtrinsicsNode->init( camExtrinsicsInit );
 	
@@ -39,7 +39,7 @@ int main( int argc, char** argv )
 	interface.add_factor( camIntrinsicsPrior );
 	
 	// Fiducial extrinsics node
-	isam::PoseSE3 fidExtrinsicsInit( argus_utils::PoseSE3( 0, 0, 1, 1, 0, 0, 0 ) );
+	isam::PoseSE3 fidExtrinsicsInit( argus::PoseSE3( 0, 0, 1, 1, 0, 0, 0 ) );
 	isam::PoseSE3_Node::Ptr fidExtrinsicsNode = std::make_shared <isam::PoseSE3_Node>();
 	fidExtrinsicsNode->init( fidExtrinsicsInit );
 	
@@ -70,12 +70,12 @@ int main( int argc, char** argv )
 	    ( fidIntrinsicsNode.get(), fidPointsInit, fidIntrinsicsPriorInfo );
 	
 	// Camera reference poses
-	isam::PoseSE3 cameraRefPose1( argus_utils::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ) );
+	isam::PoseSE3 cameraRefPose1( argus::PoseSE3( 0, 0, 0, 1, 0, 0, 0 ) );
 	isam::PoseSE3_Node::Ptr cameraRefNode1 = std::make_shared<isam::PoseSE3_Node>();
 	
 	cameraRefNode1->init( cameraRefPose1 );
 	
-	isam::PoseSE3 cameraRefPose2( argus_utils::PoseSE3( 1, 0, 0, 1, 0, 0, 0 ) );
+	isam::PoseSE3 cameraRefPose2( argus::PoseSE3( 1, 0, 0, 1, 0, 0, 0 ) );
 	isam::PoseSE3_Node::Ptr cameraRefNode2 = std::make_shared<isam::PoseSE3_Node>();
 	cameraRefNode2->init( cameraRefPose1 );
 	
@@ -94,12 +94,12 @@ int main( int argc, char** argv )
 	interface.add_factor( cameraRefVelPrior );
 	
 	// Fiducial reference poses
-	isam::PoseSE3 fidRefPose1( argus_utils::PoseSE3( 1, 0, 0, 1, 0, 0, 0 ) );
+	isam::PoseSE3 fidRefPose1( argus::PoseSE3( 1, 0, 0, 1, 0, 0, 0 ) );
 	isam::PoseSE3_Node::Ptr fidRefNode1 = std::make_shared<isam::PoseSE3_Node>();
 	
 	fidRefNode1->init( fidRefPose1 );
 	
-	isam::PoseSE3 fidRefPose2( argus_utils::PoseSE3( 2, 0, 0, 1, 0, 0, 0 ) );
+	isam::PoseSE3 fidRefPose2( argus::PoseSE3( 2, 0, 0, 1, 0, 0, 0 ) );
 	isam::PoseSE3_Node::Ptr fidRefNode2 = std::make_shared<isam::PoseSE3_Node>();
 	fidRefNode2->init( fidRefPose1 );
 	

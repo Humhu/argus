@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace odoflow
 {

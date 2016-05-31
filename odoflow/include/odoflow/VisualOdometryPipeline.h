@@ -75,13 +75,13 @@ private:
 		InterestPoints keyframePointsImage;
 		ros::Time lastPointsTimestamp;
 		InterestPoints lastPointsImage;
-		argus_utils::PoseSE3 lastPointsPose;
+		argus::PoseSE3 lastPointsPose;
 	};
 	std::unordered_map<std::string, CameraRegistration> cameraRegistry;
 	
 	unsigned int redetectionThreshold;
 	unsigned int minNumInliers;
-	argus_utils::PoseSE3::CovarianceMatrix obsCovariance;
+	argus::PoseSE3::CovarianceMatrix obsCovariance;
 	
 	void VisualizeFrame( const CameraRegistration& registration,
 	                     const cv::Mat& frame,

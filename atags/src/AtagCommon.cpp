@@ -2,7 +2,7 @@
 #include "argus_utils/GeometryUtils.h"
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace atags 
 {
@@ -25,7 +25,7 @@ argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
 	return det;
 }
 
-argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
+PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
                                    double fx, double fy, double px, double py )
 {
 	PoseSE3 pose;

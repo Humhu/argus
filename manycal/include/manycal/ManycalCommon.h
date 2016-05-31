@@ -17,8 +17,8 @@ namespace manycal
 {
 
 /*! \brief Convert to and from the ISAM pose representation. */
-isam::Pose3d PoseToIsam( const argus_utils::PoseSE3& pose );
-argus_utils::PoseSE3 IsamToPose( const isam::Pose3d& is );
+isam::Pose3d PoseToIsam( const argus::PoseSE3& pose );
+argus::PoseSE3 IsamToPose( const isam::Pose3d& is );
 
 /*! \brief Convert to and from the ISAM point representation. */
 isam::Point3d MsgToIsam( const geometry_msgs::Point& msg );

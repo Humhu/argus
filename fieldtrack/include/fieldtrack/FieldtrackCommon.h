@@ -17,9 +17,9 @@ public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	
 	typedef std::shared_ptr<TargetState> Ptr;
-	typedef argus_utils::PoseSE3 PoseType;
-	typedef argus_utils::PoseSE3::TangentVector VelocityType;
-	typedef argus_utils::PoseSE3::CovarianceMatrix CovarianceType;
+	typedef argus::PoseSE3 PoseType;
+	typedef argus::PoseSE3::TangentVector VelocityType;
+	typedef argus::PoseSE3::CovarianceMatrix CovarianceType;
 	
 	PoseType pose;
 	VelocityType velocity;

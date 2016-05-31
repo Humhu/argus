@@ -4,7 +4,7 @@
 #include "argus_utils/YamlUtils.h"
 #include "argus_utils/MatrixUtils.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace fieldtrack
 {

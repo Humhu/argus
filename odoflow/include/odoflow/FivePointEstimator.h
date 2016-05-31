@@ -23,8 +23,8 @@ public:
 	FivePointEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	virtual bool EstimateMotion( const InterestPoints& firstPoints,
-									const InterestPoints& secondPoints,
-									argus_utils::PoseSE3& transform );
+	                             const InterestPoints& secondPoints,
+	                             argus::PoseSE3& transform );
 	
 	/*! \brief Set the method used to estimate the essential matrix. */
 	void SetMethod( Method method );

@@ -18,7 +18,7 @@ public:
 	virtual bool EstimateMotion( const InterestPoints& srcPoints,
 	                             const InterestPoints& dstPoints,
 	                             std::vector<uchar>& inliers,
-	                             argus_utils::PoseSE3& transform );
+	                             argus::PoseSE3& transform );
 	
 private:
 	

@@ -30,12 +30,12 @@ public:
 	
 	virtual IndexType EarliestIndex() const
 	{
-		return argus_utils::get_lowest_key( timeSeries );
+		return argus::get_lowest_key( timeSeries );
 	}
 
 	virtual IndexType LatestIndex() const
 	{
-		return argus_utils::get_highest_key( timeSeries );
+		return argus::get_highest_key( timeSeries );
 	}
 
 	virtual bool IsGrounded( const IndexType& ind ) const
@@ -82,11 +82,11 @@ public:
 		slam->remove_node( datum.node.get() );
 
 		typename TimeSeries::iterator prevIter;
-		bool hasLower = argus_utils::get_closest_lower( timeSeries, ind, prevIter );
+		bool hasLower = argus::get_closest_lower( timeSeries, ind, prevIter );
 		Datum& prev = prevIter->second;
 
 		typename TimeSeries::iterator nextIter;
-		bool hasUpper = argus_utils::get_closest_upper( timeSeries, ind, nextIter );
+		bool hasUpper = argus::get_closest_upper( timeSeries, ind, nextIter );
 		Datum& next = nextIter->second;
 
 		// Fill in hole in graph by joining odometry
@@ -157,6 +157,50 @@ public:
 		slam->add_factor( prior.get() );
 	}
 
+	/*! \brief Removes nodes that have only odometry factors. */
+	void CompressGraph()
+	{
+		std::vector<IndexType> toRemove;
+		BOOST_FOREACH( typename TimeSeries::value_type& iter, timeSeries )
+		{
+			const IndexType& ind = iter.first;
+			const Datum& data = iter.second;
+
+			// Don't remove if there are any priors
+			if( data.priors.count() > 0 ) { continue; }
+
+			// Else collect all the local factors and check against the node's list
+			std::set<isam::Factor*> localFactors;
+
+			if( data.toPrev ) { localFactors.insert( data.toPrev.get() ); }
+
+			typename TimeSeries::iterator nextIter;
+			if( argus::get_closest_upper( timeSeries, ind, nextIter ) )
+			{
+				localFactors.insert( nextIter->toPrev.get() );
+			}
+
+			const std::list<isam::Factor*>& factors = data.node->factors();
+			bool remove = true;
+			BOOST_FOREACH( isam::Factor* factor, factors )
+			{
+				// If the node has a non-local factor, we can't remove it
+				if( localFactors.count( factor ) == 0 )
+				{
+					remove = false;
+					break;
+				}
+			}
+
+			if( remove ) { toRemove.push_back( ind ); }
+		}
+
+		BOOST_FOREACH( const IndexType& ind, toRemove )
+		{
+			RemoveNode( ind );
+		}
+	}
+
 private:
 	
 	// Inserts a node at the specified index in between two existing nodes.
@@ -164,8 +208,8 @@ private:
 	{
 		typename TimeSeries::iterator prevIter, nextIter;
 		// Make sure index has previous and following items
-		if( !argus_utils::get_closest_lower( timeSeries, ind, prevIter ) || 
-		    !argus_utils::get_closest_upper( timeSeries, ind, nextIter ) )
+		if( !argus::get_closest_lower( timeSeries, ind, prevIter ) || 
+		    !argus::get_closest_upper( timeSeries, ind, nextIter ) )
 		{
 			return nullptr;
 		}

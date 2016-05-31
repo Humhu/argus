@@ -5,7 +5,7 @@
 #include "argus_msgs/RelativePose.h"
 
 #include "argus_utils/PoseSE3.h"
-#include "argus_utils/ManifoldKalmanFilter.hpp"
+#include "argus_filters/ManifoldKalmanFilter.hpp"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 #include <unordered_map>

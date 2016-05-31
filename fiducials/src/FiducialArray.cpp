@@ -2,7 +2,7 @@
 #include "fiducials/FiducialCommon.h"
 #include "argus_utils/GeometryUtils.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace fiducials
 {

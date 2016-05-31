@@ -2,8 +2,8 @@
 
 #include <ros/ros.h>
 #include "argus_utils/PoseSE3.h"
-#include "argus_utils/KalmanFilter.hpp"
-#include "argus_utils/ManifoldKalmanFilter.hpp"
+#include "argus_filters/KalmanFilter.hpp"
+#include "argus_filters/ManifoldKalmanFilter.hpp"
 
 namespace fieldtrack
 {
@@ -15,13 +15,13 @@ public:
 	
 	typedef std::shared_ptr<ConstantVelocityFilter> Ptr;
 		
-	typedef argus_utils::KalmanFilter<double, 6, Eigen::Dynamic, 6> VelocityFilterType;
-	typedef argus_utils::ManifoldKalmanFilter<argus_utils::PoseSE3, argus_utils::BodyFrame> PoseFilterType;
+	typedef argus::KalmanFilter<6> VelocityFilterType;
+	typedef argus::ManifoldKalmanFilter<argus::PoseSE3, argus::BodyFrame> PoseFilterType;
 	
 	ConstantVelocityFilter();
 	
-	argus_utils::PoseSE3::CovarianceMatrix& PoseCovarianceRate();
-	argus_utils::PoseSE3::CovarianceMatrix& VelocityCovarianceRate();
+	argus::PoseSE3::CovarianceMatrix& PoseCovarianceRate();
+	argus::PoseSE3::CovarianceMatrix& VelocityCovarianceRate();
 	PoseFilterType& PoseFilter();
 	const PoseFilterType& PoseFilter() const;
 	VelocityFilterType& VelocityFilter();
@@ -31,23 +31,23 @@ public:
 	void Predict( const ros::Time& until );
 	
 	/*! \brief Apply a displacement due to a moving reference frame. */
-	void DisplaceReference( const argus_utils::PoseSE3& displacement,
-	                        const argus_utils::PoseSE3::CovarianceMatrix& cov );
+	void DisplaceReference( const argus::PoseSE3& displacement,
+	                        const argus::PoseSE3::CovarianceMatrix& cov );
 	
 	/*! \brief Applies a pose update. If update is from before current filter time,
 	 * rewinds the filter mean using the current velocity estimate, applies 
 	 * the update, and unrewinds the mean. Otherwise, forward predicts the filter
 	 * mean and covariance and applies the update. */
-	void PoseUpdate( const argus_utils::PoseSE3& pose,
-	                 const argus_utils::PoseSE3::CovarianceMatrix& cov,
+	void PoseUpdate( const argus::PoseSE3& pose,
+	                 const argus::PoseSE3::CovarianceMatrix& cov,
                      const ros::Time& until = ros::Time::now() );
 	
 	/*! \brief Applies a velocity update. If update is from before current filter
 	 * time, rewinds the filter mean using the current velocity estimate ,applies 
 	 * the update, and unrewinds the mean. Otherwise, forward predicts the filter
 	 * mean and covariance and applies the update. */
-	void VelocityUpdate( const argus_utils::PoseSE3::TangentVector& velocity,
-	                     const argus_utils::PoseSE3::CovarianceMatrix& cov,
+	void VelocityUpdate( const argus::PoseSE3::TangentVector& velocity,
+	                     const argus::PoseSE3::CovarianceMatrix& cov,
 	                     const ros::Time& until = ros::Time::now() );
 	
 private:

@@ -13,7 +13,7 @@
 
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 using namespace argus_msgs;
 using namespace extrinsics_array;
 using namespace fiducials;
@@ -318,6 +318,7 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 			
 			if( !camGrounded )
 			{
+				// TODO Buffer observation if can't retrieve node, probably due to odometry lagging
 				isam::PoseSE3_Node::Ptr fidFrameNode = fidFrameReg.poses->RetrieveNode( timestamp );
 				if( !fidFrameNode ) 
 				{ 
@@ -336,6 +337,7 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 			}
 			else if( !fidGrounded )
 			{
+				// TODO Buffer observation if can't retrieve node, probably due to odometry lagging
 				isam::PoseSE3_Node::Ptr camFrameNode = camFrameReg.poses->RetrieveNode( timestamp );
 				if( !camFrameNode ) 
 				{ 
@@ -401,6 +403,7 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 	isam::PoseSE3_Node::Ptr cameraFramePose = cameraFrame.poses->RetrieveNode( t );
 	isam::PoseSE3_Node::Ptr fiducialFramePose = fiducialFrame.poses->RetrieveNode( t );
 	
+	// TODO Buffer observation if can't retrieve node, probably due to odometry lagging
 	if( !cameraFramePose || !fiducialFramePose )
 	{
 		ROS_WARN_STREAM( "Could not retrieve poses to create observation." );
@@ -414,7 +417,6 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 	      det, cov, props );
 	slam->add_factor( factor.get() );
 	observations.push_back( factor );
-	
 }
 
 void ArrayCalibrator::RegisterCamera( const std::string& camName, bool calibrate )
@@ -467,6 +469,7 @@ void ArrayCalibrator::RegisterCamera( const std::string& camName, bool calibrate
 void ArrayCalibrator::RegisterFiducial( const std::string& fidName, bool calibrate )
 {
 	// Cache the fiducial lookup information
+	// TODO Support no-prior startup
 	if( !fiducialManager.CheckMemberInfo( fidName, true, ros::Duration( 5.0 ) )
 	    || !extrinsicsManager.CheckMemberInfo( fidName, true, ros::Duration( 5.0 ) ) )
 	{

@@ -7,8 +7,8 @@
 
 #include "fieldtrack/ConstantVelocityFilter.h"
 
-#include "argus_utils/KalmanFilter.hpp"
-#include "argus_utils/ManifoldKalmanFilter.hpp"
+#include "argus_filters/KalmanFilter.hpp"
+#include "argus_filters/ManifoldKalmanFilter.hpp"
 #include "argus_utils/PoseSE3.h"
 
 namespace fieldtrack

@@ -5,7 +5,7 @@
 #include <fstream>
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace fiducials
 {

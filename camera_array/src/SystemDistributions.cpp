@@ -1,7 +1,7 @@
 #include "camera_array/SystemDistributions.h"
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace camera_array
 {

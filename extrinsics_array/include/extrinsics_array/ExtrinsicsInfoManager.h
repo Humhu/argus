@@ -11,7 +11,7 @@ namespace extrinsics_array
 struct ExtrinsicsInfo 
 {
 	std::string referenceFrame;
-	argus_utils::PoseSE3 extrinsics;
+	argus::PoseSE3 extrinsics;
 };
 	
 /*! \brief Stores, retrieves, and caches extrinsics information from the ROS

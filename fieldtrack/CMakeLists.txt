@@ -13,6 +13,7 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					nav_msgs
 					argus_utils
+					argus_filters
 					extrinsics_array
 					fiducials
 					lookup
@@ -34,6 +35,7 @@ catkin_package(
 					std_msgs
 					nav_msgs
 					argus_utils
+					argus_filters
 					extrinsics_array
 					fiducials
 					lookup

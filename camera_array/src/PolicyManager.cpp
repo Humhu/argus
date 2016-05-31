@@ -6,7 +6,7 @@
 #include "camera_array/ExpectationPolicy.h"
 
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace camera_array
 {

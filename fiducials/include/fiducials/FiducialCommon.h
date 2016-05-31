@@ -50,7 +50,7 @@ bool UndistortDetections( const std::vector <argus_msgs::FiducialDetection>& det
  populate name field of detection. Returns success. */
 bool ProjectDetection( const Fiducial& fiducial,
                        const camplex::CameraCalibration& cameraModel,
-                       const argus_utils::PoseSE3& fiducialToCam,
+                       const argus::PoseSE3& fiducialToCam,
                        argus_msgs::FiducialDetection& detection );
 
 /*! \brief Returns whether the detected points are entirely in the ROI. */

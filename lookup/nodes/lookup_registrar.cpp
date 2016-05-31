@@ -4,7 +4,7 @@
 #include "argus_utils/YamlUtils.h"
 #include "lookup/LookupInterface.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 /*! \brief This node fully resolves a topic and registers it with the lookup service. */
 int main( int argc, char** argv )

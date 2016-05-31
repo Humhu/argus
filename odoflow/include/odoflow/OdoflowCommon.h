@@ -13,6 +13,6 @@ typedef std::vector<InterestPoint> InterestPoints;
 bool UndistortPoints( const InterestPoints& points, 
                       const image_geometry::PinholeCameraModel& model,
                       bool undistort, bool normalize,
-					  InterestPoints& undistorted );
-	
+                      InterestPoints& undistorted );
+
 }
