@@ -31,7 +31,7 @@ find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 catkin_package(
-	INCLUDE_DIRS 	include
+#	INCLUDE_DIRS 	include
 	
 	LIBRARIES 		${isam_LIBRARIES}
 					
