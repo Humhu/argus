@@ -9,22 +9,19 @@
 
 using namespace argus_msgs;
 using namespace argus_utils;
+using namespace extrinsics_array;
 
 /*! \brief Translates nav_msgs::Odometry messages from an absolute frame
  * to a RelativePoseMessage. */
 class OdometryTranslator 
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 	OdometryTranslator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ), lookupInterface(),
 	extrinsicsManager( lookupInterface )
-	{
-		if( !privHandle.getParam( "observer_frame", observerFrame) )
-		{
-			ROS_ERROR_STREAM( "Please specify observer frame name.");
-		}
-		
+	{		
 		std::string lookupNamespace;
 		privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 		lookupInterface.SetLookupNamespace( lookupNamespace );
@@ -33,6 +30,21 @@ public:
 		                                &OdometryTranslator::OdomCallback, 
                                         this );
 		posePub = nodeHandle.advertise<argus_msgs::RelativePoseWithCovariance>( "poses", 10 );
+
+		std::vector<double> covVals;
+		if( !privHandle.getParam( "pose_covariance", covVals ) )
+		  {
+		    poseCov = PoseSE3::CovarianceMatrix::Identity();
+		  }
+		else
+		  {
+
+		    if( !ParseMatrix( covVals, poseCov ) )
+		      {
+			ROS_ERROR_STREAM( "Could not parse pose covariance." );
+			exit( -1 );
+		      }
+		  }
 	}
 
 private:
@@ -45,27 +57,30 @@ private:
 	
 	ros::Publisher posePub;
 	ros::Subscriber odomSub;
-	std::string observerFrame;
+  PoseSE3::CovarianceMatrix poseCov;
 	
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
-		if( !extrinsicsManager.CheckMemberInfo( observerFrame ) )
+	  std::string targetFrame = msg->child_frame_id;
+		if( !extrinsicsManager.CheckMemberInfo( targetFrame ) )
 		{
-			ROS_WARN_STREAM( "Could not find extrinsics for observer " << observerFrame );
+			ROS_WARN_STREAM( "Could not find extrinsics for target " << targetFrame );
 			return;
 		}
-		PoseSE3 obsExt = extrinsicsManager.GetInfo( observerFrame ).extrinsics;
-		PoseSE3 relPose = obsExt * MsgToPose( msg->pose.pose );
+		const ExtrinsicsInfo& extInfo = extrinsicsManager.GetInfo( targetFrame );
+		PoseSE3 relPose =  MsgToPose( msg->pose.pose ) * extInfo.extrinsics.Inverse();
 
 		RelativePoseWithCovariance relMsg;
 		relMsg.header = msg->header;
-		relMsg.relative_pose.observer_name = observerFrame;
+		relMsg.header.stamp = ros::Time::now(); // TODO
+		relMsg.relative_pose.observer_name = msg->header.frame_id; //extInfo.referenceFrame;
 		relMsg.relative_pose.observer_time = msg->header.stamp;
-		relMsg.relative_pose.target_name = msg->header.frame_id;
+		relMsg.relative_pose.target_name = extInfo.referenceFrame; //msg->header.frame_id;
 		relMsg.relative_pose.relative_pose = PoseToMsg( relPose );
-		PoseSE3::CovarianceMatrix cov;
-		ParseMatrix( msg->pose.covariance, cov );
-		SerializeSymmetricMatrix( cov, relMsg.covariance );
+
+		//PoseSE3::CovarianceMatrix poseCov;
+		//ParseMatrix( msg->pose.covariance, poseCov );
+		SerializeSymmetricMatrix( poseCov, relMsg.covariance );
 		posePub.publish( relMsg );
 	}
 };
