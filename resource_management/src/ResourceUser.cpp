@@ -5,7 +5,9 @@
 
 #include <boost/foreach.hpp>
 
-namespace resource_management
+using namespace resource_management;
+
+namespace argus
 {
 	
 	ResourceUser::ResourceUser( ros::NodeHandle& nh, ros::NodeHandle& ph )
@@ -20,9 +22,9 @@ namespace resource_management
 		std::string resourceManager;
 		privHandle.getParam("resource_manager", resourceManager );
 		requestClient = 
-			nodeHandle.serviceClient<RequestResources>( resourceManager + "/request_resources", true );
+			nodeHandle.serviceClient<resource_management::RequestResources>( resourceManager + "/request_resources", true );
 		releaseClient = 
-			nodeHandle.serviceClient<ReleaseResources>( resourceManager + "/release_resources", true );
+			nodeHandle.serviceClient<resource_management::ReleaseResources>( resourceManager + "/release_resources", true );
 			
 		typedef std::map< std::string, int > ResourceMap;
 		ResourceMap resources;

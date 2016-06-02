@@ -4,9 +4,9 @@
 #include <boost/random/random_device.hpp>
 
 #include "camera_array/ModelInterfaces.h"
-#include "argus_utils/RandomUtils.hpp"
+#include "argus_utils/random/RandomUtils.hpp"
 
-namespace camera_array
+namespace argus
 {
 
 template <typename State, typename Action>

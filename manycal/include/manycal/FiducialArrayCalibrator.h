@@ -11,7 +11,7 @@
 #include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
-namespace manycal
+namespace argus
 {
 
 // TODO Add service calls to write results
@@ -34,9 +34,9 @@ private:
 	ros::NodeHandle privHandle;
 	ros::Subscriber detSub;
 
-	lookup::LookupInterface lookupInterface;
-	fiducials::FiducialInfoManager fiducialManager;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
+	FiducialInfoManager fiducialManager;
+	ExtrinsicsInfoManager extrinsicsManager;
 
 	std::string sourceCamera;
 	std::string referenceFrame;

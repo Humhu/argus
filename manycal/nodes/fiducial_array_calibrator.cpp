@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	manycal::FiducialArrayCalibrator calibrator( nh, ph );
+	argus::FiducialArrayCalibrator calibrator( nh, ph );
 	
 	while( ros::ok() )
 	{

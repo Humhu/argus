@@ -1,16 +1,14 @@
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
-#include "argus_utils/YamlUtils.h"
-#include "argus_utils/ParamUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
 
 #include <boost/foreach.hpp>
 
-using namespace argus;
-
-namespace extrinsics_array
+namespace argus
 {
 	
-ExtrinsicsInfoManager::ExtrinsicsInfoManager( lookup::LookupInterface& interface )
+ExtrinsicsInfoManager::ExtrinsicsInfoManager( LookupInterface& interface )
 : InfoManager( interface )
 {}
 

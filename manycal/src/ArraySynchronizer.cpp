@@ -4,7 +4,7 @@
 #include <boost/foreach.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-namespace manycal
+namespace argus
 {
 	
 ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
@@ -56,8 +56,8 @@ ArraySynchronizer::ArraySynchronizer( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	pool.StartWorkers();
 }
 
-bool ArraySynchronizer::CaptureArrayCallback( CaptureArray::Request& req, 
-                                              CaptureArray::Response& res )
+bool ArraySynchronizer::CaptureArrayCallback( manycal::CaptureArray::Request& req, 
+                                              manycal::CaptureArray::Response& res )
 {
   // TODO Figure out why images are getting dropped
   int diff = numSimultaneous - cameraTokens.Query();

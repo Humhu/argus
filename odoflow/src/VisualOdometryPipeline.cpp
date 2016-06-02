@@ -9,17 +9,15 @@
 
 #include "odoflow/RigidEstimator.h"
 
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/MatrixUtils.h"
-#include "argus_utils/ParamUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
 
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
-using namespace argus;
-
-namespace odoflow
+namespace argus
 {
 	
 VisualOdometryPipeline::VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHandle& ph )
@@ -189,7 +187,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// Have to calculate dt before getting timestamp
 	double dt = ( now - registration.lastPointsTimestamp ).toSec();
     PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
-	const extrinsics_array::ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
+	const ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
 	ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );

@@ -3,7 +3,7 @@
 #include "camera_array/SystemModels.h"
 #include "camera_array/FiducialDetectionModel.h"
 
-namespace camera_array
+namespace argus
 {
 
 /*! \brief Rewards observations of fiducials. Uses the fixed poses of the target

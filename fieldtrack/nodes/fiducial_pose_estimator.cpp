@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	fieldtrack::FiducialPoseEstimator estimator( nh, ph );
+	argus::FiducialPoseEstimator estimator( nh, ph );
 	ros::spin();
 	
 	exit( 0 );

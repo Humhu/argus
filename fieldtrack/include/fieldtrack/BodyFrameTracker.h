@@ -6,13 +6,13 @@
 #include "argus_msgs/CompactOdometryArray.h"
 #include "argus_msgs/RelativePoseWithCovariance.h"
 
-#include "fieldtrack/ConstantVelocityFilter.h"
 #include "fieldtrack/TargetInfoManager.h"
-#include "argus_utils/SynchronizationUtils.h"
+#include "argus_utils/synchronization/SynchronizationTypes.h"
+#include "argus_utils/filters/FilterTypes.h"
 
 #include <unordered_map>
 
-namespace fieldtrack
+namespace argus
 {
 
 // TODO Subscribe to body-velocity estimates for targets?
@@ -31,7 +31,7 @@ private:
 	ros::NodeHandle privHandle;
 	
 	std::string referenceFrame;
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 	TargetInfoManager targetManager;
 	
 	ros::Publisher targetPub;
@@ -42,9 +42,14 @@ private:
 	
 	struct TargetRegistration
 	{
-		// ros::Time lastUpdate; // TODO Use somehow
 		bool poseInitialized;
-		ConstantVelocityFilter::Ptr filter;
+		ros::Time filterTime;
+		ConstantVelocityFilterSE3 filter;
+		ConstantVelocityFilterSE3::FullCovType Qrate;
+
+		EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+		TargetRegistration();
 	};
 	typedef std::unordered_map<std::string, TargetRegistration> TargetRegistry;
 	TargetRegistry targetRegistry;

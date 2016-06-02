@@ -1,14 +1,11 @@
 #include "camera_array/PolicyManager.h"
-#include "argus_utils/ParamUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
 #include "fieldtrack/FieldtrackCommon.h"
 
 #include "camera_array/StochasticGreedyPolicy.hpp"
 #include "camera_array/ExpectationPolicy.h"
 
-
-using namespace argus;
-
-namespace camera_array
+namespace argus
 {
 
 PolicyManager::PolicyManager( const ros::NodeHandle& nh, const ros::NodeHandle& ph,
@@ -77,14 +74,14 @@ void PolicyManager::TimerCallback( const ros::TimerEvent& event )
 	
 	RobotTargetState state;
 	state.array = manager->GetState();
-	state.robot = fieldtrack::OdomToTarget( *lastOdometry );
+	state.robot = OdomToTarget( *lastOdometry );
 	
 	if( lastTargets )
 	{
 		for( unsigned int i = 0; i < lastTargets->odometry.size(); i++ )
 		{
 			const std::string& name = lastTargets->odometry[i].child_frame_id;
-			state.targets[ name ] = fieldtrack::CompactOdomToTarget( lastTargets->odometry[i] );
+			state.targets[ name ] = CompactOdomToTarget( lastTargets->odometry[i] );
 		}
 	}
 	

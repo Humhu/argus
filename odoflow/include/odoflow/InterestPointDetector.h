@@ -9,7 +9,7 @@
 
 #include "odoflow/OdoflowCommon.h"
 
-namespace odoflow
+namespace argus
 {
 
 /*! \class InterestPointDetector InterestPointDetector.h
@@ -36,4 +36,4 @@ protected:
 	
 };
 	
-} // end namespace odoflow
+} // end namespace argus

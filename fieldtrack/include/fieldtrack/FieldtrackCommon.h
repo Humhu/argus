@@ -3,11 +3,11 @@
 #include "argus_msgs/CompactOdometry.h"
 #include "nav_msgs/Odometry.h"
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
 #include <memory>
 
-namespace fieldtrack
+namespace argus
 {
 
 class TargetState
@@ -17,9 +17,9 @@ public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	
 	typedef std::shared_ptr<TargetState> Ptr;
-	typedef argus::PoseSE3 PoseType;
-	typedef argus::PoseSE3::TangentVector VelocityType;
-	typedef argus::PoseSE3::CovarianceMatrix CovarianceType;
+	typedef PoseSE3 PoseType;
+	typedef PoseSE3::TangentVector VelocityType;
+	typedef PoseSE3::CovarianceMatrix CovarianceType;
 	
 	PoseType pose;
 	VelocityType velocity;

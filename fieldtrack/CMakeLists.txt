@@ -13,7 +13,6 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					nav_msgs
 					argus_utils
-					argus_filters
 					extrinsics_array
 					fiducials
 					lookup
@@ -35,7 +34,6 @@ catkin_package(
 					std_msgs
 					nav_msgs
 					argus_utils
-					argus_filters
 					extrinsics_array
 					fiducials
 					lookup
@@ -53,7 +51,6 @@ include_directories( include
 add_library( fieldtrack
 	src/ArrayPoseEstimator.cpp
 	src/BodyFrameTracker.cpp
-	src/ConstantVelocityFilter.cpp
 	src/FiducialPoseEstimator.cpp
 	src/FieldtrackCommon.cpp
 	src/FixedFrameTracker.cpp

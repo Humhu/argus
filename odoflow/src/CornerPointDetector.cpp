@@ -1,6 +1,6 @@
 #include "odoflow/CornerPointDetector.h"
 
-namespace odoflow
+namespace argus
 {
 
 CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
@@ -46,4 +46,4 @@ InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
 	return points;
 }
 
-} // end namespace odoflow
+} // end namespace argus

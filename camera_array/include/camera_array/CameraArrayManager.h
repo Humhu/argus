@@ -3,16 +3,16 @@
 #include <ros/ros.h>
 #include "lookup/LookupInterface.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
-#include "argus_utils/PoseSE3.h"
-#include "argus_utils/WorkerPool.h"
-#include "argus_utils/SynchronizationUtils.h"
+#include "argus_utils/geometry/PoseSE3.h"
+#include "argus_utils/synchronization/WorkerPool.h"
+#include "argus_utils/synchronization/SynchronizationTypes.h"
 
 #include "camera_array/SystemStates.h"
 
 #include <unordered_map>
 #include <memory>
 
-namespace camera_array
+namespace argus
 {
 
 // TODO Documentation
@@ -47,7 +47,7 @@ protected:
 	std::string referenceFrame;
 	std::string bodyFrame;
 	
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 
 	mutable argus::Mutex mutex;
 	
@@ -72,7 +72,7 @@ protected:
 	CameraSet referenceActiveCameras;
 	
 	unsigned int maxNumActive;
-	argus::WorkerPool cameraWorkers;
+	WorkerPool cameraWorkers;
 	
 	void TimerCallback( const ros::TimerEvent& event );
 	

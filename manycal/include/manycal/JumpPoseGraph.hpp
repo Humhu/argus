@@ -2,7 +2,7 @@
 
 #include "manycal/PoseGraph.hpp"
 
-namespace manycal
+namespace argus
 {
 
 template <class P, typename IndexType = boost::posix_time::ptime>

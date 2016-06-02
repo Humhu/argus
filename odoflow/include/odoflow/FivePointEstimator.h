@@ -4,7 +4,7 @@
 
 // #include <opencv2/calib3d/calib3d.hpp>
 
-namespace odoflow
+namespace argus
 {
 
 // TODO This is horribly broken and needs to be fixed
@@ -24,7 +24,7 @@ public:
 	
 	virtual bool EstimateMotion( const InterestPoints& firstPoints,
 	                             const InterestPoints& secondPoints,
-	                             argus::PoseSE3& transform );
+	                             PoseSE3& transform );
 	
 	/*! \brief Set the method used to estimate the essential matrix. */
 	void SetMethod( Method method );
@@ -51,4 +51,4 @@ private:
 	
 };
 	
-} // end namespace odoflow
+} // end namespace argus

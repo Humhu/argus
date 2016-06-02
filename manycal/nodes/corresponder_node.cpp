@@ -12,7 +12,7 @@
 
 #include <boost/foreach.hpp>
 
-using namespace manycal;
+using namespace argus;
 
 int kbhit()
 {

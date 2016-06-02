@@ -1,12 +1,10 @@
 #include "fieldtrack/VelocityIntegrator.h"
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/ParamUtils.h"
-#include "argus_utils/YamlUtils.h"
-#include "argus_utils/MatrixUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
 
-using namespace argus;
-
-namespace fieldtrack
+namespace argus
 {
 	
 VelocityIntegrator::VelocityIntegrator( ros::NodeHandle& nh, ros::NodeHandle& ph )

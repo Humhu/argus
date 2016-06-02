@@ -4,13 +4,12 @@
 
 #include "argus_msgs/RelativePose.h"
 
-#include "argus_utils/PoseSE3.h"
-#include "argus_filters/ManifoldKalmanFilter.hpp"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 #include <unordered_map>
 
-namespace fieldtrack
+namespace argus
 {
 	
 /*! \brief Estimates the pose of a frame relative to arrays by fusing observations
@@ -27,8 +26,8 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
-	lookup::LookupInterface lookupInterface;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
+	ExtrinsicsInfoManager extrinsicsManager;
 	
 	/*! \brief The frame this estimator tracks relative to arrays. */
 	std::string referenceName;

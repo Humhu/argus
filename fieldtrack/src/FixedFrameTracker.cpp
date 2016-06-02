@@ -1,20 +1,21 @@
 #include "fieldtrack/FixedFrameTracker.h"
 
-#include "argus_utils/MatrixUtils.h"
-#include "argus_utils/ParamUtils.h"
-#include "argus_utils/YamlUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
 
 #include "argus_msgs/CompactOdometryArray.h"
 
 #include <boost/foreach.hpp>
 
-using namespace argus;
 using namespace argus_msgs;
 using namespace geometry_msgs;
 
-namespace fieldtrack
+namespace argus
 {
-	
+
+typedef ConstantVelocityFilterSE3 CVF3;
+
 FixedFrameTracker::FixedFrameTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), targetManager( lookupInterface )
 {
@@ -52,25 +53,27 @@ void FixedFrameTracker::TimerCallback( const ros::TimerEvent& event )
 {
 	CompactOdometryArray::Ptr msg = boost::make_shared<CompactOdometryArray>();
 	
-	BOOST_FOREACH( const TargetRegistry::value_type& item, targetRegistry )
+	BOOST_FOREACH( TargetRegistry::value_type& item, targetRegistry )
 	{
 		CompactOdometry odom;
 		odom.header.frame_id = referenceFrame;
 		odom.header.stamp = event.current_real;
 		odom.child_frame_id = item.first;
 		
-		const TargetRegistration& registration = item.second;
-		registration.filter->Predict( event.current_real );
+		TargetRegistration& registration = item.second;
+
+		if( event.current_real > registration.filterTime )
+		{
+			double dt = (event.current_real - registration.filterTime).toSec();
+			registration.filter.Predict( registration.Qrate * dt, dt );
+			registration.filterTime = event.current_real;
+		}
 		
-		const ConstantVelocityFilter::PoseFilterType& poseFilter = 
-			registration.filter->PoseFilter();
-		odom.pose.pose = PoseToMsg( poseFilter.EstimateMean() );
-		SerializeSymmetricMatrix( poseFilter.EstimateCovariance(), odom.pose.covariance );
+		odom.pose.pose = PoseToMsg( registration.filter.Pose() );
+		SerializeSymmetricMatrix( registration.filter.PoseCov(), odom.pose.covariance );
 		
-		const ConstantVelocityFilter::VelocityFilterType& velFilter = 
-			registration.filter->VelocityFilter();
-		odom.twist.twist = TangentToMsg( velFilter.EstimateMean() );
-		SerializeSymmetricMatrix( velFilter.EstimateCovariance(), odom.twist.covariance );
+		odom.twist.twist = TangentToMsg( registration.filter.Derivs().head<6>() );
+		SerializeSymmetricMatrix( registration.filter.DerivsCov().topLeftCorner<6,6>(), odom.twist.covariance );
 		
 		msg->odometry.push_back( odom );
 	}
@@ -100,13 +103,20 @@ void FixedFrameTracker::TargetPoseCallback( const RelativePoseWithCovariance::Co
 	
 	if( registration.poseInitialized )
 	{
-		registration.filter->PoseUpdate( pose, relCov, msg->header.stamp );
+		if( msg->header.stamp > registration.filterTime )
+		{
+			double dt = (msg->header.stamp - registration.filterTime).toSec();
+			registration.filter.Predict( registration.Qrate * dt, dt );
+			registration.filterTime = msg->header.stamp;
+		}
+		registration.filter.UpdatePose( pose, relCov );
 	}
 	else
 	{
-		registration.filter->PoseFilter().EstimateMean() = pose;
-		registration.filter->PoseFilter().EstimateCovariance() = relCov;
+		registration.filter.Pose() = pose;
+		registration.filter.PoseCov() = relCov;
 		registration.poseInitialized = true;
+		registration.filterTime = msg->header.stamp;
 	}
 	
 }
@@ -118,10 +128,18 @@ void FixedFrameTracker::TargetVelocityCallback( const TwistWithCovarianceStamped
 	if( targetRegistry.count( targetName ) == 0 ) { RegisterTarget( targetName ); }
 	TargetRegistration& registration = targetRegistry[ targetName ];
 	
+	if( msg->header.stamp > registration.filterTime )
+	{
+		double dt = (msg->header.stamp - registration.filterTime).toSec();
+		registration.filter.Predict( registration.Qrate * dt, dt );
+		registration.filterTime = msg->header.stamp;
+	}
+
 	PoseSE3::TangentVector velocity = MsgToTangent( msg->twist.twist );
 	PoseSE3::CovarianceMatrix velocityCov;
 	ParseMatrix( msg->twist.covariance, velocityCov );
-	registration.filter->VelocityUpdate( velocity, velocityCov, msg->header.stamp );
+	registration.filter.UpdateDerivs( velocity, CVF3::DerivObsMatrix::Identity(6,6),
+	                                  velocityCov );
 	
 }
 
@@ -131,11 +149,14 @@ void FixedFrameTracker::RegisterTarget( const std::string& name )
 	
 	ROS_INFO_STREAM( "Registering target " << name << " for tracking." );
 	
-	TargetRegistration registration;
-	registration.poseInitialized = false;
-	registration.filter = std::make_shared<ConstantVelocityFilter>();
-	targetRegistry[ name ] = registration;
+	targetRegistry[ name ];
 	
 }
+
+FixedFrameTracker::TargetRegistration::TargetRegistration()
+: poseInitialized( false ), filterTime( ros::Time::now() ),
+filter( PoseSE3(), CVF3::DerivsType::Zero(), 10*CVF3::FullCovType::Identity() ),
+Qrate( CVF3::FullCovType::Identity() )
+{}
 
 } // end namespace fieldtrack

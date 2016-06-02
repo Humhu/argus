@@ -32,8 +32,6 @@ find_package(Eigen3 REQUIRED)
 
 catkin_package(
 	INCLUDE_DIRS 	include
-					# TODO It's not happy about this include - change the install path?
-# 					${isam_INCLUDE_DIRS}
 	
 	LIBRARIES 		${isam_LIBRARIES}
 					

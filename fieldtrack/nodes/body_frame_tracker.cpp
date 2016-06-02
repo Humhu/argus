@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	fieldtrack::BodyFrameTracker tracker( nh, ph );
+	argus::BodyFrameTracker tracker( nh, ph );
 	
 	ros::spin();
 	return 0;

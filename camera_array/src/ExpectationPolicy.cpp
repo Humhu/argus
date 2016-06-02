@@ -1,9 +1,10 @@
 #include "camera_array/ExpectationPolicy.h"
+
 #include <boost/foreach.hpp>
 #include <ros/ros.h>
 #include <boost/random/random_device.hpp>
 
-namespace camera_array
+namespace argus
 {
 
 ExpectationPolicy::ExpectationPolicy( const RobotArrayReward::Ptr& r,

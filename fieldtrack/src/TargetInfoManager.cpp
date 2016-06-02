@@ -9,10 +9,10 @@
 #define FIDUCIALGROUP_KEY "fiducial_groups"
 #define FIDUCIALS_KEY "fiducials"
 
-namespace fieldtrack
+namespace argus
 {
 	
-TargetInfoManager::TargetInfoManager( lookup::LookupInterface& interface )
+TargetInfoManager::TargetInfoManager( LookupInterface& interface )
 : InfoManager( interface )
 {}
 

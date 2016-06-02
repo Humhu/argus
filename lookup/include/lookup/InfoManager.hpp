@@ -1,10 +1,10 @@
 #include "lookup/InfoManager.h"
 
-namespace lookup
+namespace argus
 {
 
 template <typename InfoStruct>
-InfoManager<InfoStruct>::InfoManager( lookup::LookupInterface& interface )
+InfoManager<InfoStruct>::InfoManager( LookupInterface& interface )
 : lookupInterface( interface )
 {}
 

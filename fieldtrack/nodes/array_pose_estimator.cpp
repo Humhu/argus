@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	fieldtrack::ArrayPoseEstimator estimator( nh, ph );
+	argus::ArrayPoseEstimator estimator( nh, ph );
 	ros::spin();
 	
 	exit( 0 );

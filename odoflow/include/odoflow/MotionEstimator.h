@@ -3,9 +3,9 @@
 #include <Eigen/Geometry>
 
 #include "odoflow/InterestPointDetector.h"
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
-namespace odoflow
+namespace argus
 {
 	
 typedef Eigen::Transform<double, 3, Eigen::Isometry> Transform;

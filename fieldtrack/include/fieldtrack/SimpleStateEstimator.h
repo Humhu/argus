@@ -5,13 +5,10 @@
 #include "argus_msgs/RelativePoseWithCovariance.h"
 #include <nav_msgs/Odometry.h>
 
-#include "fieldtrack/ConstantVelocityFilter.h"
+#include "argus_utils/filters/FilterTypes.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
-#include "argus_filters/KalmanFilter.hpp"
-#include "argus_filters/ManifoldKalmanFilter.hpp"
-#include "argus_utils/PoseSE3.h"
-
-namespace fieldtrack
+namespace argus
 {
 
 /*! \brief Subscribes to velocities from odometers and relative pose estimates
@@ -20,6 +17,8 @@ class SimpleStateEstimator
 {
 public:
 	
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 	SimpleStateEstimator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	
 private:
@@ -27,7 +26,9 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
-	ConstantVelocityFilter filter;
+	ConstantVelocityFilterSE3 filter;
+	ConstantVelocityFilterSE3::FullCovType Qrate;
+	ros::Time filterTime;
 
 	bool twoDimensional;
 	

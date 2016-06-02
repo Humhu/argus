@@ -10,7 +10,7 @@ int main( int argc, char** argv )
 	
 	ros::NodeHandle nodeHandle, privHandle( "~" );
 	
-	manycal::ArraySynchronizer cap( nodeHandle, privHandle );
+	argus::ArraySynchronizer cap( nodeHandle, privHandle );
 	
 	//	ros::AsyncSpinner spinner( 2 );
 	// spinner.start();

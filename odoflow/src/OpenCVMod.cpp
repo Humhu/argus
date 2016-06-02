@@ -159,7 +159,7 @@ int cv::RecoverPose( InputArray E, InputArray _points1, InputArray _points2, Out
     }
 }
 
-namespace odoflow
+namespace argus
 {
 InterestPoints ParsePointMatrix( const cv::Mat& mat )
 {

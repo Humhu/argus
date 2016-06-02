@@ -1,26 +1,26 @@
 #include "fiducials/Fiducial.h"
 #include "fiducials/FiducialCommon.h"
 
-namespace fiducials
+namespace argus
 {
 	
 Fiducial::Fiducial() {}
 
-Fiducial::Fiducial( const FiducialInfo& info )
+Fiducial::Fiducial( const fiducials::FiducialInfo& info )
 : points( info.points ) {}
 
-Fiducial Fiducial::Transform( const argus::PoseSE3& pose ) const
+Fiducial Fiducial::Transform( const PoseSE3& pose ) const
 {
 	Eigen::Matrix <double, 3, Eigen::Dynamic> p = MsgToMatrix( points );
 	p = pose.ToTransform() * p;
-	FiducialInfo info;
+	fiducials::FiducialInfo info;
 	info.points = MatrixToMsg( p );	
 	return Fiducial( info );
 }
 
-FiducialInfo Fiducial::ToInfo() const
+fiducials::FiducialInfo Fiducial::ToInfo() const
 {
-	FiducialInfo info;
+	fiducials::FiducialInfo info;
 	info.points = points;
 	return info;
 }

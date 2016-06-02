@@ -1,9 +1,9 @@
 #include <ros/ros.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-#include <argus_utils/PoseSE3.h>
-#include <argus_utils/GeometryUtils.h>
-#include <argus_utils/MatrixUtils.h>
+#include <argus_utils/geometry/PoseSE3.h>
+#include <argus_utils/geometry/GeometryUtils.h>
+#include <argus_utils/utils/MatrixUtils.h>
 
 using namespace argus;
 

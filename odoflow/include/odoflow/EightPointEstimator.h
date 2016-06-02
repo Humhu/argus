@@ -2,7 +2,7 @@
 
 #include "odoflow/MotionEstimator.h"
 
-namespace odoflow
+namespace argus
 {
 
 /*! \brief Motion estimator using the OpenCV 8-point algorithm. 
@@ -35,5 +35,5 @@ private:
 	
 };
 
-} // end namespace odoflow
+} // end namespace argus
 

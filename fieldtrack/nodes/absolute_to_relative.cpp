@@ -2,8 +2,8 @@
 
 #include "nav_msgs/Odometry.h"
 #include "argus_msgs/RelativePoseWithCovariance.h"
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/MatrixUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
 #include "lookup/LookupInterface.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
@@ -40,8 +40,8 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
-	lookup::LookupInterface lookupInterface;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
+	ExtrinsicsInfoManager extrinsicsManager;
 	
 	ros::Publisher posePub;
 	ros::Subscriber odomSub;

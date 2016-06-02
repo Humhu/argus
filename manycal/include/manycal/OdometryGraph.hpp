@@ -1,13 +1,13 @@
 #pragma once
 
-#include "argus_utils/MapUtils.hpp"
+#include "argus_utils/utils/MapUtils.hpp"
 #include "manycal/PoseGraph.hpp"
 #include "manycal/slam_traits.h"
 
 #include <boost/foreach.hpp>
 #include <iostream> // TODO
 
-namespace manycal
+namespace argus
 {
 
 /*! \brief Provides an interface for managing a linked set of pose nodes. Allows

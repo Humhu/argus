@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace lookup
+namespace argus
 {
 
 /*! \brief Basic lookup interface for information manager classes that use the
@@ -18,7 +18,7 @@ public:
 	typedef std::shared_ptr<InfoManager> Ptr;
 	typedef InfoStruct InfoType;
 	
-	InfoManager( lookup::LookupInterface& interface );
+	InfoManager( LookupInterface& interface );
 	virtual ~InfoManager();
 	
 	/*! \brief Checks to see if information is cached. If it is not, attempts
@@ -69,7 +69,7 @@ protected:
 	
 private:
 	
-	lookup::LookupInterface& lookupInterface;
+	LookupInterface& lookupInterface;
 	
 	/*! \brief Records array queries that have failed before. */
 	std::unordered_set <std::string> failedQueries;

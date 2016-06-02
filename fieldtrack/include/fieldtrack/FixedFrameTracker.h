@@ -6,12 +6,12 @@
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 
 #include "argus_msgs/RelativePoseWithCovariance.h"
-#include "fieldtrack/ConstantVelocityFilter.h"
 #include "fieldtrack/TargetInfoManager.h"
+#include "argus_utils/filters/FilterTypes.h"
 
 #include <unordered_map>
 
-namespace fieldtrack
+namespace argus
 {
 
 // TODO Make synchronized to allow threaded processing
@@ -36,16 +36,21 @@ private:
 	ros::Subscriber targetVelSub;
 	std::shared_ptr<ros::Timer> timer;
 	
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 	TargetInfoManager targetManager;
 	
 	std::string referenceFrame;
 
 	struct TargetRegistration
 	{
-		ros::Time lastUpdate;
 		bool poseInitialized;
-		ConstantVelocityFilter::Ptr filter;
+		ros::Time filterTime;
+		ConstantVelocityFilterSE3 filter;
+		ConstantVelocityFilterSE3::FullCovType Qrate;
+
+		EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+		TargetRegistration();
 	};
 	
 	typedef std::unordered_map <std::string, TargetRegistration> TargetRegistry;

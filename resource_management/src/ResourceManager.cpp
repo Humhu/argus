@@ -2,7 +2,9 @@
 
 #include <boost/foreach.hpp>
 
-namespace resource_management
+using namespace resource_management;
+
+namespace argus
 {
 	
 	ResourceManager::ResourceManager( ros::NodeHandle& nh, ros::NodeHandle& ph )

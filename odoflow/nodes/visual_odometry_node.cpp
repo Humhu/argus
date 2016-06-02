@@ -8,7 +8,7 @@
 
 #include "odoflow/VisualOdometryPipeline.h"
 
-using namespace odoflow;
+using namespace argus;
 
 int main( int argc, char** argv )
 {

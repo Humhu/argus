@@ -4,10 +4,10 @@
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "argus_msgs/RelativePose.h"
 
-namespace fieldtrack
+namespace argus
 {
 
 /*! \brief Integrates twist velocities to pose displacements at a fixed
@@ -28,9 +28,9 @@ private:
 	std::shared_ptr<ros::Timer> timer;
 	
 	std::string referenceName;
-	argus::PoseSE3 integratedPose;
-	argus::PoseSE3::CovarianceMatrix integratedCovariance;
-	argus::PoseSE3 offset;
+	PoseSE3 integratedPose;
+	PoseSE3::CovarianceMatrix integratedCovariance;
+	PoseSE3 offset;
 	bool initialized;
 	
 	// Trapezoid integration scheme

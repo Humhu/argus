@@ -1,13 +1,11 @@
 #include "fieldtrack/ArrayPoseEstimator.h"
-#include "argus_utils/GeometryUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
 
-using namespace argus;
-using namespace extrinsics_array;
-
-namespace fieldtrack
+namespace argus
 {
 	
-ArrayPoseEstimator::ArrayPoseEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
+ArrayPoseEstimator::ArrayPoseEstimator( ros::NodeHandle& nh, 
+                                        ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), lookupInterface(), 
 extrinsicsManager( lookupInterface )
 {

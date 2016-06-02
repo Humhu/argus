@@ -1,9 +1,7 @@
 #include "camera_array/SystemModels.h"
 #include <boost/foreach.hpp>
 
-using namespace argus;
-
-namespace camera_array
+namespace argus
 {
 
 InstantCameraTransitionFunction::InstantCameraTransitionFunction( unsigned int maxCams )

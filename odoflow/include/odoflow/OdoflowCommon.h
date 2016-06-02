@@ -3,7 +3,7 @@
 #include <opencv2/core.hpp>
 #include <image_geometry/pinhole_camera_model.h>
 
-namespace odoflow
+namespace argus
 {
 
 typedef cv::Point2d InterestPoint;

@@ -7,7 +7,7 @@ int main( int argc, char** argv )
 	
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
-	fieldtrack::SimpleStateEstimator estimator( nh, ph );
+	argus::SimpleStateEstimator estimator( nh, ph );
 	
 	ros::spin();
 }

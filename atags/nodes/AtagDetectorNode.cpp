@@ -15,6 +15,8 @@
 #include "camplex/CameraCalibration.h"
 #include "fiducials/FiducialCommon.h"
 
+using namespace argus;
+
 /*! \brief A single-threaded AprilTag detector. */
 class AtagNode
 {
@@ -100,8 +102,8 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	fidDetections.reserve( tagDetections.size() );
 	for( unsigned int i = 0; i < tagDetections.size(); i++ )
 	{
-		std::pair<double,double> diagLengths = atags::ComputeDiagonals( tagDetections[i] );
-		Eigen::Matrix2d cov = atags::ComputeCovariance( tagDetections[i] );
+		std::pair<double,double> diagLengths = ComputeDiagonals( tagDetections[i] );
+		Eigen::Matrix2d cov = ComputeCovariance( tagDetections[i] );
 		Eigen::Vector2cd eigenvalues = cov.eigenvalues();
 		double elarge = std::max( eigenvalues(0).real(), eigenvalues(1).real() );
 		double esmall = std::min( eigenvalues(0).real(), eigenvalues(1).real() );
@@ -111,7 +113,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 ;		if( eratio > maxSkewnessRatio ) { continue; }
 		if( eprod < minAreaProduct ) { continue; }
 		
-		fidDetections.push_back( atags::TagToFiducial( tagDetections[i], tagFamily ) );
+		fidDetections.push_back( TagToFiducial( tagDetections[i], tagFamily ) );
 	}
 	if( fidDetections.empty() ) { return; }
 	
@@ -126,9 +128,9 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	if( enableUndistortion || enableNormalization )
 	{
 		
-		if( !fiducials::UndistortDetections( fidDetections, cameraModel,
-		                                     enableUndistortion, enableNormalization,
-		                                     detMsg.detections ) )
+		if( !UndistortDetections( fidDetections, cameraModel,
+		                          enableUndistortion, enableNormalization,
+		                          detMsg.detections ) )
 		{
 			ROS_WARN_STREAM( "Could not undistort or normalize detections." );
 			return;

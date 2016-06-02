@@ -9,12 +9,12 @@
 #include "odoflow/InterestPointTracker.h"
 #include "odoflow/MotionEstimator.h"
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
 #include "lookup/LookupInterface.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
-namespace odoflow
+namespace argus
 {
 
 // TODO Output displacement_raw directly from tracking estimates
@@ -58,8 +58,8 @@ private:
 	image_transport::CameraSubscriber imageSub;
 	image_transport::Publisher debugPub;
 	
-	lookup::LookupInterface lookupInterface;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
+	ExtrinsicsInfoManager extrinsicsManager;
 	
 	InterestPointDetector::Ptr detector;
 	InterestPointTracker::Ptr tracker;
@@ -81,7 +81,7 @@ private:
 	
 	unsigned int redetectionThreshold;
 	unsigned int minNumInliers;
-	argus::PoseSE3::CovarianceMatrix obsCovariance;
+	PoseSE3::CovarianceMatrix obsCovariance;
 	
 	void VisualizeFrame( const CameraRegistration& registration,
 	                     const cv::Mat& frame,

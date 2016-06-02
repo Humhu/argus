@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include <yaml-cpp/yaml.h>
-#include "argus_utils/YamlUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
 #include "lookup/LookupInterface.h"
 
 using namespace argus;
@@ -14,7 +14,7 @@ int main( int argc, char** argv )
 	
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 	
 	std::string lookupNamespace;
 	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup/" );

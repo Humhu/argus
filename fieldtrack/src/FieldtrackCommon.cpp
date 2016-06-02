@@ -1,10 +1,8 @@
 #include "fieldtrack/FieldtrackCommon.h"
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/MatrixUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
 
-using namespace argus;
-
-namespace fieldtrack
+namespace argus
 {
 
 TargetState::TargetState()

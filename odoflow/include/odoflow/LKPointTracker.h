@@ -5,7 +5,7 @@
 
 #include "odoflow/InterestPointTracker.h"
 
-namespace odoflow
+namespace argus
 {
 	
 class LKPointTracker
@@ -37,4 +37,4 @@ private:
 	
 };
 
-} // end namespace odoflow
+} // end namespace argus

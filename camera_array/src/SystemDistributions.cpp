@@ -1,9 +1,7 @@
 #include "camera_array/SystemDistributions.h"
 #include <boost/foreach.hpp>
 
-using namespace argus;
-
-namespace camera_array
+namespace argus
 {
 
 RobotTargetDistribution::Properties::Properties( bool targetPose, bool targetVel,
@@ -12,7 +10,7 @@ RobotTargetDistribution::Properties::Properties( bool targetPose, bool targetVel
   sampleRobotPose( robotPose ), sampleRobotVelocity( robotVel ) {}
 
 RobotTargetDistribution::RobotTargetDistribution( Properties props )
-: properties( props )
+: properties( props ), gaussian( 6 )
 {}
 	
 void RobotTargetDistribution::SetMean( const RobotTargetState& b )

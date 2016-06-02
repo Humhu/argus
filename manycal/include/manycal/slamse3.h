@@ -4,8 +4,8 @@
 #include <isam/Factor.h>
 #include <Eigen/Dense>
 
-#include <argus_utils/PoseSE3.h>
-#include <argus_utils/GeometryUtils.h>
+#include <argus_utils/geometry/PoseSE3.h>
+#include <argus_utils/geometry/GeometryUtils.h>
 
 #include "manycal/slam_traits.h"
 

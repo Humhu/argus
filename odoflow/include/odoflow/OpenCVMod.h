@@ -1,5 +1,4 @@
-#ifndef _OFLOW_OPENCVMOD_H_
-#define _OFLOW_OPENCVMOD_H_
+#pragma once
 
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
@@ -19,7 +18,7 @@ namespace cv
 	                 double dist = 50.0 );
 }
 
-namespace odoflow
+namespace argus
 {
 	
 	/*! \brief Converts a Nx1x2 or 1xNx2 mat into a vector of points. */
@@ -80,6 +79,3 @@ namespace odoflow
 	}
 	
 }
-
-
-#endif

@@ -1,10 +1,9 @@
 #include "manycal/ManycalCommon.h"
 #include "fiducials/PoseEstimation.h"
 
-using namespace argus;
 using namespace argus_msgs;
 
-namespace manycal
+namespace argus
 {
 	
 isam::Pose3d PoseToIsam( const argus::PoseSE3& pose )
@@ -57,7 +56,7 @@ FiducialDetection IsamToDetection( const isam::FiducialDetection& detection )
 	return out;
 }
 
-isam::FiducialIntrinsics FiducialToIsam( const fiducials::Fiducial& fid )
+isam::FiducialIntrinsics FiducialToIsam( const Fiducial& fid )
 {
 	std::vector <isam::Point3d> pts;
 	pts.reserve( fid.points.size() );
@@ -69,11 +68,11 @@ isam::FiducialIntrinsics FiducialToIsam( const fiducials::Fiducial& fid )
 	return isam::FiducialIntrinsics( pts );
 }
 
-fiducials::Fiducial IsamToFiducial( const isam::FiducialIntrinsics& fid )
+Fiducial IsamToFiducial( const isam::FiducialIntrinsics& fid )
 {
 	isam::FiducialIntrinsics::MatrixType fidMat;
 	
-	fiducials::Fiducial output;
+	Fiducial output;
 	output.points.reserve( fidMat.cols() );
 	for( unsigned int i = 0; i < fidMat.cols(); i++ )
 	{

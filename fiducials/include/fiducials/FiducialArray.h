@@ -7,7 +7,7 @@
 
 #include <unordered_map>
 
-namespace fiducials
+namespace argus
 {
 
 /*! \brief Stores point representations for a fiducial array.*/
@@ -22,7 +22,7 @@ public:
 	
 	/*! \brief Adds a member. Overwrites existing members. */
 	void AddFiducial( const std::string& fidName, const Fiducial& fid,
-	                  const argus::PoseSE3& extrinsics );
+	                  const PoseSE3& extrinsics );
 	
 	/*! \brief Return the reference frame ID. */
 	const std::string& GetReferenceFrame() const;

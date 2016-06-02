@@ -2,9 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/foreach.hpp>
 
-using namespace argus;
-
-namespace fiducials
+namespace argus
 {
 
 std::vector< cv::Point2f > MsgToPoints( const std::vector< argus_msgs::Point2D >& msg )

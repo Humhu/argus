@@ -1,7 +1,7 @@
 #include "camera_array/RandomArrayManager.h"
 #include "camera_array/PolicyManager.h"
 
-using namespace camera_array;
+using namespace argus;
 
 int main( int argc, char** argv )
 {
