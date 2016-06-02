@@ -2,7 +2,7 @@
 
 #include "odoflow/InterestPointDetector.h"
 
-namespace odoflow
+namespace argus
 {
 
 /*! \class FixedPointDetector FixedPointDetector.h
@@ -36,4 +36,4 @@ private:
 	
 };
 	
-} // end namespace odoflow
+} // end namespace argus

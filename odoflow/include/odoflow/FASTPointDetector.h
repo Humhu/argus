@@ -4,7 +4,7 @@
 
 #include <opencv2/features2d.hpp>
 
-namespace odoflow
+namespace argus
 {
 
 /*! \brief FAST interest point detector. Uses OpenCV implementation. 
@@ -31,4 +31,4 @@ private:
 	
 };
 
-} // end namespace odoflow
+} // end namespace argus

@@ -5,9 +5,8 @@
 
 using namespace fiducials;
 using namespace argus_msgs;
-using namespace argus_utils;
 
-namespace manycal
+namespace argus
 {
 	
 FiducialArrayCalibrator::FiducialArrayCalibrator( const ros::NodeHandle& nh,

@@ -51,7 +51,6 @@ include_directories( include
 add_library( fieldtrack
 	src/ArrayPoseEstimator.cpp
 	src/BodyFrameTracker.cpp
-	src/ConstantVelocityFilter.cpp
 	src/FiducialPoseEstimator.cpp
 	src/FieldtrackCommon.cpp
 	src/FixedFrameTracker.cpp

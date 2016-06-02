@@ -16,7 +16,7 @@ find_package(catkin REQUIRED
 					argus_msgs
 					image_transport
 					cv_bridge
-# 					graphopt
+ 					graphopt
 					extrinsics_array
 					fiducials
 					lookup
@@ -28,9 +28,11 @@ include_directories( ${catkin_INCLUDE_DIRS} )
 find_package(Boost REQUIRED)
 include_directories( ${Boost_INCLUDE_DIRS} )
 
-find_package(isam REQUIRED)
-include_directories( ${isam_INCLUDE_DIRS} )
-message( STATUS ${isam_LIBRARIES} )
+find_package(Eigen3 REQUIRED)
+
+# find_package(isam REQUIRED)
+# include_directories( ${isam_INCLUDE_DIRS} )
+# message( STATUS ${isam_LIBRARIES} )
 
 add_service_files(
 	FILES           CaptureArray.srv
@@ -55,7 +57,7 @@ catkin_package(
 					argus_msgs
 					image_transport
 					cv_bridge
-# 					graphopt
+ 					graphopt
 					extrinsics_array
 					fiducials
 					lookup
@@ -63,11 +65,12 @@ catkin_package(
 					
 	DEPENDS 		Boost 
 					OpenCV
-					isam
+					# isam
 					system_lib
 )
 
-include_directories( include )
+include_directories( include 
+                     ${EIGEN3_INCLUDE_DIR} )
 
 add_library( manycal
  	src/ArrayCalibrator.cpp
@@ -78,8 +81,7 @@ add_library( manycal
 	src/sclam_fiducial.cpp
 	src/slamse3.cpp
 )
-
-# add_dependencies( manycal ${manycal_EXPORTED_TARGETS} )
+add_dependencies( manycal ${manycal_EXPORTED_TARGETS} )
 target_link_libraries( manycal
 	${Boost_LIBRARIES}
 	${OpenCV_LIBS}

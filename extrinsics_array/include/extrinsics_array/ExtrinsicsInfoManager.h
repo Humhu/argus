@@ -1,28 +1,28 @@
 #pragma once
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "lookup/InfoManager.h"
 
 #include <ros/ros.h>
 
-namespace extrinsics_array
+namespace argus
 {
 	
 struct ExtrinsicsInfo 
 {
 	std::string referenceFrame;
-	argus_utils::PoseSE3 extrinsics;
+	PoseSE3 extrinsics;
 };
 	
 /*! \brief Stores, retrieves, and caches extrinsics information from the ROS
  * parameter server. */
 // TODO Provide services for saving extrinsics to disk?
 class ExtrinsicsInfoManager
-: public lookup::InfoManager<ExtrinsicsInfo>
+: public InfoManager<ExtrinsicsInfo>
 {
 public:
 	
-	ExtrinsicsInfoManager( lookup::LookupInterface& interface );
+	ExtrinsicsInfoManager( LookupInterface& interface );
 
 	/*! \brief Load information for the array that contains the specified member using
 	 * the lookup table. Overwrites existing cached values. If memberName has been
@@ -44,4 +44,4 @@ protected:
 	
 };
 	
-} // end namespace extrinsics_array
+} // end namespace argus

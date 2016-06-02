@@ -1,5 +1,4 @@
-#ifndef _OFLOW_OPENCVMOD_H_
-#define _OFLOW_OPENCVMOD_H_
+#pragma once
 
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
@@ -13,13 +12,13 @@ namespace cv
 	/*! \brief Modified from OpenCV 3.0's recoverPose to return triangulated
 	 * points and take a distance threshold argument. */
 	int RecoverPose( InputArray E, InputArray points1, InputArray points2,
-					 OutputArray R, OutputArray t, OutputArray triangulated,
-					 double focal = 1.0, Point2d pp = Point2d(0, 0),
-					 InputOutputArray mask = noArray(),
-					 double dist = 50.0 );
+	                 OutputArray R, OutputArray t, OutputArray triangulated,
+	                 double focal = 1.0, Point2d pp = Point2d(0, 0),
+	                 InputOutputArray mask = noArray(),
+	                 double dist = 50.0 );
 }
 
-namespace odoflow
+namespace argus
 {
 	
 	/*! \brief Converts a Nx1x2 or 1xNx2 mat into a vector of points. */
@@ -80,6 +79,3 @@ namespace odoflow
 	}
 	
 }
-
-
-#endif

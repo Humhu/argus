@@ -1,17 +1,15 @@
 #pragma once
 
 #include "fieldtrack/FieldtrackCommon.h"
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
 
 /*! \brief Contains various models and state representations for camera arrays. */
-namespace camera_array
+namespace argus
 {
 
-typedef fieldtrack::TargetState TargetState;
-	
 /*! \brief Represents a set of cameras. */
 typedef std::unordered_set <std::string> CameraSet;
 

@@ -3,7 +3,7 @@
 #include "camera_array/ModelInterfaces.h"
 #include "camera_array/DistributionInterfaces.h"
 
-namespace camera_array
+namespace argus
 {
 
 // TODO Other sampling techniques
@@ -42,4 +42,4 @@ private:
 	
 };
 	
-} // end namespace camera_array
+} // end namespace argus

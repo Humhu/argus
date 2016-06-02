@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 
-namespace camera_array
+namespace argus
 {
 
 /*! \brief The transition function interface. Should be implemented by system models

@@ -1,18 +1,18 @@
 #include "fiducials/PoseEstimation.h"
-#include "argus_utils/GeometryUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
 
 #include <opencv2/calib3d/calib3d.hpp>
 
 using namespace argus_msgs;
 
-namespace fiducials
+namespace argus
 {
 
 // TODO if info is null, assume normalized and undistorted detections
-argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
-                                        const camplex::CameraCalibration* cameraModel,
-                                        const std::vector< cv::Point3f >& fiducialPoints,
-                                        const argus_utils::PoseSE3& guess )
+PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imagePoints,
+                           const camplex::CameraCalibration* cameraModel,
+                           const std::vector< cv::Point3f >& fiducialPoints,
+                           const PoseSE3& guess )
 {
 	cv::Matx33f cameraMat;
 	cv::Mat distortionCoeffs;
@@ -51,9 +51,9 @@ argus_utils::PoseSE3 EstimateArrayPose( const std::vector< cv::Point2f >& imageP
 	          0,      0,      0,      1;
 	
 	// Compensate for difference between x-forward and z-forward convention
-	static argus_utils::PoseSE3 prerotation( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
+	static PoseSE3 prerotation( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
 	
-	return prerotation * argus_utils::PoseSE3( H );
+	return prerotation * PoseSE3( H );
 }
 	
 }

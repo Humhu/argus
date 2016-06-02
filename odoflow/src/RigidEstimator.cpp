@@ -2,9 +2,7 @@
 #include "odoflow/OpenCVMod.h"
 #include <Eigen/SVD>
 
-using namespace argus_utils;
-
-namespace odoflow
+namespace argus
 {
 
 RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )

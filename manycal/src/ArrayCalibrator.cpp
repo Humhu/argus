@@ -2,24 +2,20 @@
 #include "manycal/ManycalCommon.h"
 #include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
 
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/MatrixUtils.h"
-#include "argus_utils/ParamUtils.h"
-#include "argus_utils/MapUtils.hpp"
-#include "argus_utils/YamlUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
+#include "argus_utils/utils/MapUtils.hpp"
+#include "argus_utils/utils/YamlUtils.h"
 
 #include "fiducials/FiducialCommon.h"
 #include "fiducials/PoseEstimation.h"
 
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
 using namespace argus_msgs;
-using namespace extrinsics_array;
-using namespace fiducials;
-using namespace fieldtrack;
 
-namespace manycal
+namespace argus
 {
 
 ArrayCalibrator::ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
@@ -53,8 +49,8 @@ slam( std::make_shared<isam::Slam>() )
 	slam->write( std::cout );
 }
 
-bool ArrayCalibrator::WriteResults( WriteCalibration::Request& req,
-                                    WriteCalibration::Response& res )
+bool ArrayCalibrator::WriteResults( manycal::WriteCalibration::Request& req,
+                                    manycal::WriteCalibration::Response& res )
 {
 	YAML::Node yaml;
 	isam::Covariances covs = slam->covariances();
@@ -281,7 +277,7 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 	if( cameraRegistry.count( camName ) == 0 ) { return; }
 	CameraRegistration& camReg = cameraRegistry[ camName ];
 	
-	const extrinsics_array::ExtrinsicsInfo& camInfo = extrinsicsManager.GetInfo( camName );
+	const ExtrinsicsInfo& camInfo = extrinsicsManager.GetInfo( camName );
 	
 	// ALready verified target registered during registration
 	TargetRegistration& camFrameReg = targetRegistry[ camInfo.referenceFrame ];
@@ -292,7 +288,7 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 		if( fiducialRegistry.count( fidName ) == 0 ) { return; }
 		FiducialRegistration& fidReg = fiducialRegistry[ fidName ];
 		
-		const extrinsics_array::ExtrinsicsInfo& fidInfo = extrinsicsManager.GetInfo( fidName );
+		const ExtrinsicsInfo& fidInfo = extrinsicsManager.GetInfo( fidName );
 		// Already verified target registered during registration
 		TargetRegistration& fidFrameReg = targetRegistry[ fidInfo.referenceFrame ];
 
@@ -318,6 +314,7 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 			
 			if( !camGrounded )
 			{
+				// TODO Buffer observation if can't retrieve node, probably due to odometry lagging
 				isam::PoseSE3_Node::Ptr fidFrameNode = fidFrameReg.poses->RetrieveNode( timestamp );
 				if( !fidFrameNode ) 
 				{ 
@@ -336,6 +333,7 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 			}
 			else if( !fidGrounded )
 			{
+				// TODO Buffer observation if can't retrieve node, probably due to odometry lagging
 				isam::PoseSE3_Node::Ptr camFrameNode = camFrameReg.poses->RetrieveNode( timestamp );
 				if( !camFrameNode ) 
 				{ 
@@ -401,6 +399,7 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 	isam::PoseSE3_Node::Ptr cameraFramePose = cameraFrame.poses->RetrieveNode( t );
 	isam::PoseSE3_Node::Ptr fiducialFramePose = fiducialFrame.poses->RetrieveNode( t );
 	
+	// TODO Buffer observation if can't retrieve node, probably due to odometry lagging
 	if( !cameraFramePose || !fiducialFramePose )
 	{
 		ROS_WARN_STREAM( "Could not retrieve poses to create observation." );
@@ -414,7 +413,6 @@ void ArrayCalibrator::CreateObservationFactor( CameraRegistration& camera,
 	      det, cov, props );
 	slam->add_factor( factor.get() );
 	observations.push_back( factor );
-	
 }
 
 void ArrayCalibrator::RegisterCamera( const std::string& camName, bool calibrate )
@@ -467,6 +465,7 @@ void ArrayCalibrator::RegisterCamera( const std::string& camName, bool calibrate
 void ArrayCalibrator::RegisterFiducial( const std::string& fidName, bool calibrate )
 {
 	// Cache the fiducial lookup information
+	// TODO Support no-prior startup
 	if( !fiducialManager.CheckMemberInfo( fidName, true, ros::Duration( 5.0 ) )
 	    || !extrinsicsManager.CheckMemberInfo( fidName, true, ros::Duration( 5.0 ) ) )
 	{

@@ -2,7 +2,7 @@
 
 using namespace image_geometry;
 
-namespace odoflow
+namespace argus
 {
 	
 bool UndistortPoints( const InterestPoints& points, 

@@ -1,6 +1,8 @@
 #include "fieldtrack/FiducialPoseEstimator.h"
-#include "argus_utils/YamlUtils.h"
-#include "argus_utils/MatrixUtils.h"
+
+#include "argus_utils/utils/YamlUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
+
 #include "argus_msgs/RelativePoseWithCovariance.h"
 
 #include "fiducials/FiducialArray.h"
@@ -10,11 +12,7 @@
 
 #include <unordered_map>
 
-using namespace argus_utils;
-using namespace extrinsics_array;
-using namespace fiducials;
-
-namespace fieldtrack
+namespace argus
 {
 	
 FiducialPoseEstimator::FiducialPoseEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
@@ -86,8 +84,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		return;
 	}
 	
-	const extrinsics_array::ExtrinsicsInfo& cameraInfo = 
-		extrinsicsManager.GetInfo( cameraName );
+	const ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
 	
 	// 1. Group detected fiducials into arrays
 	for( unsigned int i = 0; i < msg->detections.size(); i++ )

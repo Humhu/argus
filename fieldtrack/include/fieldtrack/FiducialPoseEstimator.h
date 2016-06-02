@@ -1,12 +1,12 @@
 #pragma once
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
 #include "fiducials/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
-namespace fieldtrack
+namespace argus
 {
 
 /*! \brief Listens to fiducial detections and converts them to relative poses. */
@@ -25,14 +25,14 @@ private:
 	
 	ros::Publisher posePub;
 	
-	lookup::LookupInterface lookupInterface;
-	fiducials::FiducialInfoManager fiducialManager;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
+	FiducialInfoManager fiducialManager;
+	ExtrinsicsInfoManager extrinsicsManager;
 	
 	// TODO
-	argus_utils::PoseSE3::CovarianceMatrix covariance;
+	argus::PoseSE3::CovarianceMatrix covariance;
 	
-	std::unordered_map<std::string, fiducials::Fiducial> transformedFiducials;
+	std::unordered_map<std::string, Fiducial> transformedFiducials;
 	
 	void DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg ); 
 	

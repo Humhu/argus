@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace fieldtrack
+namespace argus
 {
 
 enum MotionMode
@@ -42,11 +42,11 @@ struct TargetInfo
 };
 
 class TargetInfoManager
-: public lookup::InfoManager<TargetInfo>
+: public InfoManager<TargetInfo>
 {
 public:
 
-	TargetInfoManager( lookup::LookupInterface& interface );
+	TargetInfoManager( LookupInterface& interface );
 	
 	virtual bool ReadMemberInfo( const std::string& memberName, 
 	                             bool forceLookup = false,

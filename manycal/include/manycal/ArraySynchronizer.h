@@ -3,8 +3,8 @@
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
 
-#include "argus_utils/Semaphore.h"
-#include "argus_utils/WorkerPool.h"
+#include "argus_utils/synchronization/Semaphore.h"
+#include "argus_utils/synchronization/WorkerPool.h"
 #include "lookup/LookupInterface.h"
 
 #include "manycal/CaptureArray.h"
@@ -12,7 +12,7 @@
 #include <boost/thread/thread.hpp>
 #include <unordered_map>
 
-namespace manycal
+namespace argus
 {
 
 /*! \brief Cycles and gathers outputs from the array into synchronized outputs.
@@ -47,7 +47,7 @@ private:
 	ros::NodeHandle privHandle;
 	ros::ServiceServer captureServer;
 	
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 	
 	typedef std::unordered_map< std::string, CameraRegistration > CameraRegistry;
 	CameraRegistry cameraRegistry;
@@ -55,20 +55,20 @@ private:
 	image_transport::ImageTransport publicPort;
 	image_transport::ImageTransport privatePort;
 		
-	argus_utils::Semaphore cameraTokens;
-	//argus_utils::Semaphore completedJobs;
+	Semaphore cameraTokens;
+	//Semaphore completedJobs;
 	unsigned int receivedImages;
 	ros::Time clampTime;
-	argus_utils::WorkerPool pool;
+	WorkerPool pool;
 	int numSimultaneous;
 	
 	void ImageCallback( const sensor_msgs::Image::ConstPtr& image,
-						const sensor_msgs::CameraInfo::ConstPtr& info );
+	                    const sensor_msgs::CameraInfo::ConstPtr& info );
 	
 	void CaptureJob( CameraRegistration& registration );
 	
-	bool CaptureArrayCallback( CaptureArray::Request& req,
-							   CaptureArray::Response& res );
+	bool CaptureArrayCallback( manycal::CaptureArray::Request& req,
+	                           manycal::CaptureArray::Response& res );
 };
 	
 }

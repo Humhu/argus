@@ -2,7 +2,7 @@
 
 #include "odoflow/InterestPointDetector.h"
 
-namespace odoflow
+namespace argus
 {
 	
 class InterestPointTracker
@@ -28,4 +28,4 @@ protected:
 	ros::NodeHandle privHandle;
 };
 
-} // end namespace odoflow
+} // end namespace argus

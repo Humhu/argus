@@ -3,13 +3,11 @@
 #include <boost/foreach.hpp>
 
 using namespace argus_msgs;
-using namespace argus_utils;
-using namespace fieldtrack;
 
-namespace camera_array
+namespace argus
 {
 	
-FiducialDetectionModel::FiducialDetectionModel( lookup::LookupInterface& interface )
+FiducialDetectionModel::FiducialDetectionModel( LookupInterface& interface )
 : extrinsicsManager( interface ), fiducialManager( interface ), 
 targetManager( interface )
 {
@@ -34,19 +32,18 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 	camplex::CameraCalibration cameraModel( "fake", 550, 550, 320, 240, 640, 480 );
 	
 	const TargetInfo& info = targetManager.GetInfo( targetName );
-	BOOST_FOREACH( const TargetInfo::FiducialGroupRegistry::value_type& group, info.fiducialGroups )
+	BOOST_FOREACH( const TargetInfo::FiducialGroupRegistry::value_type& group, 
+	               info.fiducialGroups )
 	{
 		BOOST_FOREACH( const std::string& fidName, group.second.fiducials )
 		{
 			const PoseSE3& fidExtrinsics = extrinsicsManager.GetInfo( fidName ).extrinsics;
-			const fiducials::Fiducial& fidIntrinsics = fiducialManager.GetInfo( fidName );
+			const Fiducial& fidIntrinsics = fiducialManager.GetInfo( fidName );
 			PoseSE3 fidToCam = targetToCam * fidExtrinsics;
 			FiducialDetection detection;
 			detection.name = fidName;
-			bool valid = fiducials::ProjectDetection( fidIntrinsics, 
-	                                                  cameraModel,
-	                                                  fidToCam,
-			                                          detection );
+			bool valid = ProjectDetection( fidIntrinsics, cameraModel,
+	                                       fidToCam, detection );
 			// 		ROS_INFO_STREAM( "Camera " << cameraName << " fiducial " << fidName 
 					 // 			<< " rel pose " << fidToCam );
 			// 		for( unsigned int i = 0; i < detection.points.size(); i++ )
@@ -55,7 +52,7 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 						 //	<< ", " << detection.points[i].y );
 				// 		}
 			if( !valid ) { continue; }
-			double minDist = fiducials::FindMinDistance( detection.points );
+			double minDist = FindMinDistance( detection.points );
 			if( minDist < minPointSeparation ) { continue; }
 			//		ROS_INFO_STREAM( "Camera " << cameraName << " detects " << fidName );
 			detections.push_back( detection );

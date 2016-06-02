@@ -2,7 +2,7 @@
 
 #include "odoflow/MotionEstimator.h"
 
-namespace odoflow
+namespace argus
 {
 
 /*! \brief Motion estimator using the OpenCV 8-point algorithm. 
@@ -22,8 +22,8 @@ public:
 	EightPointEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	virtual bool EstimateMotion( const InterestPoints& firstPoints,
-									const InterestPoints& secondPoints,
-									Transform& transform );
+	                             const InterestPoints& secondPoints,
+	                             Transform& transform );
 	
 private:
 	
@@ -35,5 +35,5 @@ private:
 	
 };
 
-} // end namespace odoflow
+} // end namespace argus
 

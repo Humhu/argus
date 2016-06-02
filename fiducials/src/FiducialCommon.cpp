@@ -2,9 +2,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
-
-namespace fiducials
+namespace argus
 {
 
 std::vector< cv::Point2f > MsgToPoints( const std::vector< argus_msgs::Point2D >& msg )
@@ -271,7 +269,8 @@ bool CheckDetectionROI( const argus_msgs::FiducialDetection& det, const cv::Rect
 {
 	BOOST_FOREACH( const argus_msgs::Point2D& point, det.points )
 	{
-		if( point.x < 0 || point.x > roi.width ||
+		if( std::isnan( point.x ) || std::isnan( point.y ) ||
+			point.x < 0 || point.x > roi.width ||
 		    point.y < 0 || point.y > roi.height ) { return false; }
 	}
 	return true;

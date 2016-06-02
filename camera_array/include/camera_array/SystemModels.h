@@ -4,7 +4,7 @@
 #include "camera_array/SystemStates.h"
 #include "camera_array/ModelInterfaces.h"
 
-namespace camera_array
+namespace argus
 {
 
 typedef TransitionFunction <CameraArrayState, CameraArrayAction> ArrayTransitionFunction;
@@ -27,7 +27,8 @@ public:
 	
 	InstantCameraTransitionFunction( unsigned int maxCams );
 	
-	virtual CameraArrayState Transition( const CameraArrayState& state, const CameraArrayAction& action );
+	virtual CameraArrayState Transition( const CameraArrayState& state, 
+	                                     const CameraArrayAction& action );
 	
 private:
 	

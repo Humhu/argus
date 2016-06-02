@@ -7,12 +7,12 @@
 #include "argus_msgs/FiducialDetection.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
 #include "fiducials/Fiducial.h"
 #include "fiducials/FiducialInfo.h"
 
-namespace fiducials
+namespace argus
 {
 
 /*! \brief Convert ROS message types to OpenCV points. */
@@ -50,7 +50,7 @@ bool UndistortDetections( const std::vector <argus_msgs::FiducialDetection>& det
  populate name field of detection. Returns success. */
 bool ProjectDetection( const Fiducial& fiducial,
                        const camplex::CameraCalibration& cameraModel,
-                       const argus_utils::PoseSE3& fiducialToCam,
+                       const PoseSE3& fiducialToCam,
                        argus_msgs::FiducialDetection& detection );
 
 /*! \brief Returns whether the detected points are entirely in the ROI. */

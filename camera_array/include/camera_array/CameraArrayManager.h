@@ -3,16 +3,16 @@
 #include <ros/ros.h>
 #include "lookup/LookupInterface.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
-#include "argus_utils/PoseSE3.h"
-#include "argus_utils/WorkerPool.h"
-#include "argus_utils/SynchronizationUtils.h"
+#include "argus_utils/geometry/PoseSE3.h"
+#include "argus_utils/synchronization/WorkerPool.h"
+#include "argus_utils/synchronization/SynchronizationTypes.h"
 
 #include "camera_array/SystemStates.h"
 
 #include <unordered_map>
 #include <memory>
 
-namespace camera_array
+namespace argus
 {
 
 // TODO Documentation
@@ -47,9 +47,9 @@ protected:
 	std::string referenceFrame;
 	std::string bodyFrame;
 	
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 
-	mutable argus_utils::Mutex mutex;
+	mutable argus::Mutex mutex;
 	
 	enum CameraStatus
 	{
@@ -72,12 +72,12 @@ protected:
 	CameraSet referenceActiveCameras;
 	
 	unsigned int maxNumActive;
-	argus_utils::WorkerPool cameraWorkers;
+	WorkerPool cameraWorkers;
 	
 	void TimerCallback( const ros::TimerEvent& event );
 	
 	bool RequestSetStreaming( const std::string& name, bool mode,
-							  const argus_utils::WriteLock& lock );
+							  const argus::WriteLock& lock );
 	
 	/*! \brief Jobs for the threadpool. */
 	void SetStreamingJob( const std::string& name, bool mode );

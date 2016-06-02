@@ -1,5 +1,4 @@
-#ifndef _MANYCAL_POSE_GRAPH_PUBLISHER_H_
-#define _MANYCAL_POSE_GRAPH_PUBLISHER_H_
+#pragma once
 
 #include "manycal/PoseGraph.hpp"
 
@@ -8,7 +7,7 @@
 
 #include <type_traits>
 
-namespace manycal
+namespace argus
 {
 	/*! \brief A class that allows easy ros::tf publishing of pose graph contents. */
 	template< class PG >
@@ -16,7 +15,6 @@ namespace manycal
 	{
 	public:
 		
-		typedef argus_utils::Time Time;
 		typedef std::shared_ptr<PoseGraphPublisher> Ptr;
 		typedef typename PG::DynamicSeries::Timepoint Timepoint;
 		
@@ -77,5 +75,3 @@ namespace manycal
 	}
 	
 }
-
-#endif

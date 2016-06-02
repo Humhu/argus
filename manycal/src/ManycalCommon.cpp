@@ -1,20 +1,19 @@
 #include "manycal/ManycalCommon.h"
 #include "fiducials/PoseEstimation.h"
 
-using namespace argus_utils;
 using namespace argus_msgs;
 
-namespace manycal
+namespace argus
 {
 	
-isam::Pose3d PoseToIsam( const argus_utils::PoseSE3& pose )
+isam::Pose3d PoseToIsam( const argus::PoseSE3& pose )
 {
 	return isam::Pose3d( pose.ToTransform() );
 }
 
-argus_utils::PoseSE3 IsamToPose( const isam::Pose3d& is )
+argus::PoseSE3 IsamToPose( const isam::Pose3d& is )
 {
-	return argus_utils::PoseSE3( is.wTo() );
+	return argus::PoseSE3( is.wTo() );
 }
 
 isam::Point3d MsgToIsam( const geometry_msgs::Point& msg )
@@ -57,7 +56,7 @@ FiducialDetection IsamToDetection( const isam::FiducialDetection& detection )
 	return out;
 }
 
-isam::FiducialIntrinsics FiducialToIsam( const fiducials::Fiducial& fid )
+isam::FiducialIntrinsics FiducialToIsam( const Fiducial& fid )
 {
 	std::vector <isam::Point3d> pts;
 	pts.reserve( fid.points.size() );
@@ -69,11 +68,11 @@ isam::FiducialIntrinsics FiducialToIsam( const fiducials::Fiducial& fid )
 	return isam::FiducialIntrinsics( pts );
 }
 
-fiducials::Fiducial IsamToFiducial( const isam::FiducialIntrinsics& fid )
+Fiducial IsamToFiducial( const isam::FiducialIntrinsics& fid )
 {
 	isam::FiducialIntrinsics::MatrixType fidMat;
 	
-	fiducials::Fiducial output;
+	Fiducial output;
 	output.points.reserve( fidMat.cols() );
 	for( unsigned int i = 0; i < fidMat.cols(); i++ )
 	{

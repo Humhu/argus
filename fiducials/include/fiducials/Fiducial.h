@@ -1,10 +1,10 @@
 #pragma once
 
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "fiducials/FiducialInfo.h"
 #include "geometry_msgs/Point.h"
 
-namespace fiducials
+namespace argus
 {
 
 /*! \brief Stores point representations for a fiducial. */
@@ -19,14 +19,14 @@ public:
 	Fiducial();
 	
 	/*! \brief Constructs from a fiducial info message. */
-	Fiducial( const FiducialInfo& info );
+	Fiducial( const fiducials::FiducialInfo& info );
 	
 	/*! \brief Returns a fiducial with transformation applied to the points. */
-	Fiducial Transform( const argus_utils::PoseSE3& pose ) const;
+	Fiducial Transform( const PoseSE3& pose ) const;
 		
 	/*! \brief Returns a corresponding info message. */
-	FiducialInfo ToInfo() const;
+	fiducials::FiducialInfo ToInfo() const;
 	
 };
 	
-} // end namespace fiducials
+} // end namespace argus

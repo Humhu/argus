@@ -2,7 +2,7 @@
 
 #include <ros/ros.h>
 
-namespace lookup
+namespace argus
 {
 
 /*! \brief Provides an interface to a lookup service that resolves unique object

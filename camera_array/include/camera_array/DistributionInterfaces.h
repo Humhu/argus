@@ -2,7 +2,7 @@
 
 #include <memory>
 
-namespace camera_array
+namespace argus
 {
 
 /*! \brief Base distribution interface. */

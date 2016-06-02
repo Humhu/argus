@@ -3,9 +3,9 @@
 #include "camera_array/DistributionInterfaces.h"
 #include "camera_array/SystemStates.h"
 
-#include "argus_utils/MultivariateGaussian.hpp"
+#include "argus_utils/random/MultivariateGaussian.hpp"
 
-namespace camera_array
+namespace argus
 {
 
 class RobotTargetDistribution
@@ -34,14 +34,14 @@ private:
 	
 	RobotTargetState base;
 	Properties properties;
-	argus_utils::MultivariateGaussian<6> gaussian; // Default mean zero, identity cov
+	MultivariateGaussian<> gaussian; // Default mean zero, identity cov
 	
-	argus_utils::PoseSE3 SamplePose( const argus_utils::PoseSE3& mean, 
-	                                 const argus_utils::PoseSE3::CovarianceMatrix& cov );
+	PoseSE3 SamplePose( const PoseSE3& mean, 
+	                    const PoseSE3::CovarianceMatrix& cov );
 	
-	argus_utils::PoseSE3::TangentVector 
-	SampleVelocity( const argus_utils::PoseSE3::TangentVector& mean, 
-	                const argus_utils::PoseSE3::CovarianceMatrix& cov );
+	PoseSE3::TangentVector 
+	SampleVelocity( const PoseSE3::TangentVector& mean, 
+	                const PoseSE3::CovarianceMatrix& cov );
 	
 };
 

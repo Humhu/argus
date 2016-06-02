@@ -1,14 +1,14 @@
 #include <ros/ros.h>
 
-#include "argus_utils/PoseSE3.h"
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/ParamUtils.h"
-#include "argus_utils/YamlUtils.h"
+#include "argus_utils/geometry/PoseSE3.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
 #include "visualization_msgs/Marker.h"
 
 #include "lookup/LookupInterface.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 class Visualizer 
 {
@@ -141,7 +141,7 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 	std::shared_ptr<ros::Timer> timer;
 	
 	double refreshRate;

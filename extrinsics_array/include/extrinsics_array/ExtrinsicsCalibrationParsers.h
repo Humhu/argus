@@ -4,7 +4,7 @@
 
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
-namespace extrinsics_array
+namespace argus
 {
 
 /*! \brief Tools for reading/writing extrinsics calibration files.
@@ -31,4 +31,4 @@ bool PopulateExtrinsicsCalibration( const ExtrinsicsInfo& info,
 bool WriteExtrinsicsCalibration( const std::string& path,
                                  const ExtrinsicsInfo& info );
 
-} // end namespace extrinsics_array
+} // end namespace argus

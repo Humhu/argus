@@ -2,13 +2,11 @@
 #include "camera_array/CameraArrayStatus.h"
 #include "camera_array/CameraStatus.h"
 
-#include "argus_utils/ParamUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
 #include "camplex/SetStreaming.h" // TODO Move into argus_msgs?
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
-
-namespace camera_array
+namespace argus
 {
 	
 CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
@@ -64,7 +62,7 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		RequestSetStreaming( name, false, lock );
 	}
 	
-	statusPub = nodeHandle.advertise<CameraArrayStatus>( "array_status", 5 );
+	statusPub = nodeHandle.advertise<camera_array::CameraArrayStatus>( "array_status", 5 );
 	
 	double controlRate;
 	ph.param<double>( "manager_update_rate", controlRate, 5.0 );
@@ -118,7 +116,7 @@ void CameraArrayManager::TimerCallback( const ros::TimerEvent& event )
 	
 	WriteLock lock( mutex );
 	
-	CameraArrayStatus arrayStatus;
+	camera_array::CameraArrayStatus arrayStatus;
 	arrayStatus.header.stamp = event.current_real;
 	BOOST_FOREACH( const CameraRegistry::value_type& item, cameraRegistry )
 	{

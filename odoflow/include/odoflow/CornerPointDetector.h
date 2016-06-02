@@ -3,7 +3,7 @@
 #include "odoflow/InterestPointDetector.h"
 
 // TODO This class is not thread-safe!
-namespace odoflow
+namespace argus
 {
 
 /*! \class CornerPointDetector CornerPointDetector.h

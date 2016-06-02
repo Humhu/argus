@@ -3,7 +3,7 @@
 #include <opencv2/core.hpp>
 #include <image_geometry/pinhole_camera_model.h>
 
-namespace odoflow
+namespace argus
 {
 
 typedef cv::Point2d InterestPoint;
@@ -13,6 +13,6 @@ typedef std::vector<InterestPoint> InterestPoints;
 bool UndistortPoints( const InterestPoints& points, 
                       const image_geometry::PinholeCameraModel& model,
                       bool undistort, bool normalize,
-					  InterestPoints& undistorted );
-	
+                      InterestPoints& undistorted );
+
 }

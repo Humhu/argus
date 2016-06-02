@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	resource_management::ResourceManager manager( nh, ph );
+	argus::ResourceManager manager( nh, ph );
 	
 	ros::spin();
 	

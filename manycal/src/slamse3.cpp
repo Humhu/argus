@@ -13,9 +13,9 @@ PoseSE3::PoseSE3( double x, double y, double z, double qw, double qx, double qy,
 
 Vector7d PoseSE3::vector() const
 {
-	PoseType::Translation position = pose.GetTranslation();
+	argus::Translation3Type position = pose.GetTranslation();
 	Vector7d ret;
-	PoseType::Quaternion quaternion = pose.GetQuaternion();
+	argus::QuaternionType quaternion = pose.GetQuaternion();
 	ret << position.x(), position.y(), position.z(), quaternion.w(), quaternion.x(),
 	    quaternion.y(), quaternion.z();
 	return ret;

@@ -3,10 +3,10 @@
 #include "camera_array/SystemModels.h"
 #include "camera_array/SystemStates.h"
 #include "camera_array/SystemDistributions.h"
-#include "argus_utils/RandomUtils.hpp"
+#include "argus_utils/random/RandomUtils.hpp"
 #include <boost/random/mersenne_twister.hpp>
 
-namespace camera_array
+namespace argus
 {
 
 class ExpectationPolicy

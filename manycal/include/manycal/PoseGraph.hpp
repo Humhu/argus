@@ -4,7 +4,7 @@
 #include <memory>
 #include "isam/Slam.h"
 
-namespace manycal
+namespace argus
 {
 
 /*! \brief Defines basic properties and operators for time indices. */

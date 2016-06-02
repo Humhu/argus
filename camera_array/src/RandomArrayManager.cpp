@@ -1,10 +1,8 @@
 #include "camera_array/RandomArrayManager.h"
-#include "argus_utils/RandomUtils.hpp"
+#include "argus_utils/random/RandomUtils.hpp"
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
-
-namespace camera_array
+namespace argus
 {
 	
 RandomArrayManager::RandomArrayManager( const ros::NodeHandle& nh,

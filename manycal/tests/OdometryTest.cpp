@@ -7,7 +7,7 @@
 #include <iostream>
 #include <cassert>
 
-typedef manycal::OdometryGraph <isam::PoseSE3> OGraph;
+typedef argus::OdometryGraph <isam::PoseSE3> OGraph;
 
 void TimeSeriesTest()
 {

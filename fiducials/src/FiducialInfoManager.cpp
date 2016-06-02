@@ -1,19 +1,16 @@
 #include "fiducials/FiducialInfoManager.h"
 #include "fiducials/FiducialCalibrationParsers.h"
 
-#include "argus_utils/ParamUtils.h"
-#include "argus_utils/YamlUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
 
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
-
-namespace fiducials
+namespace argus
 {
 
-FiducialInfoManager::FiducialInfoManager( lookup::LookupInterface& interface )
-: InfoManager( interface )
-{}
+FiducialInfoManager::FiducialInfoManager( LookupInterface& interface )
+: InfoManager( interface ) {}
 
 bool FiducialInfoManager::ReadMemberInfo( const std::string& fidName,
                                           bool forceLookup,
@@ -34,7 +31,7 @@ bool FiducialInfoManager::ReadMemberInfo( const std::string& fidName,
 		    << " at path: " << intrinsicsKey );
 		return false;
 	}
-	FiducialInfo info;
+	fiducials::FiducialInfo info;
 	if( !ParseFiducialCalibration( intrinsics, info ) )
 	{
 		ROS_WARN_STREAM( "Could not parse intrinsics information for: " << fidName

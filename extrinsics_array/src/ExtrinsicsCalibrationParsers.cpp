@@ -1,13 +1,11 @@
-#include "argus_utils/YamlUtils.h"
-#include "argus_utils/GeometryUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
 
 #include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
 
 #include <fstream>
 
-using namespace argus_utils;
-
-namespace extrinsics_array
+namespace argus
 {
 
 bool ParseExtrinsicsCalibration( const YAML::Node& yaml,

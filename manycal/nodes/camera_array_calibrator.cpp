@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	manycal::CameraArrayCalibrator calibrator( nh, ph );
+	argus::CameraArrayCalibrator calibrator( nh, ph );
 	
 	ros::spin();
 	

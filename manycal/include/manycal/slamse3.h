@@ -4,8 +4,8 @@
 #include <isam/Factor.h>
 #include <Eigen/Dense>
 
-#include <argus_utils/PoseSE3.h>
-#include <argus_utils/GeometryUtils.h>
+#include <argus_utils/geometry/PoseSE3.h>
+#include <argus_utils/geometry/GeometryUtils.h>
 
 #include "manycal/slam_traits.h"
 
@@ -19,7 +19,7 @@ typedef Eigen::Matrix <double,7,1> Vector7d;
 class PoseSE3
 {
 public:
-	typedef argus_utils::PoseSE3 PoseType;
+	typedef argus::PoseSE3 PoseType;
 	
 	static const int dim = 6;
 	static const char* name() { return "PoseSE3"; }

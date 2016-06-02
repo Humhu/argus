@@ -16,9 +16,11 @@ add_message_files(
 				CompactTwistWithCovariance.msg
 				FiducialDetection.msg
 				ImageFiducialDetections.msg
+				MatrixFloat64.msg
 				Point2D.msg
 				RelativePose.msg
 				RelativePoseWithCovariance.msg
+				SymmetricFloat64.msg
 )
 
 generate_messages(

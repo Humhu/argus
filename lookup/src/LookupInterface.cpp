@@ -1,6 +1,6 @@
 #include "lookup/LookupInterface.h"
 
-namespace lookup
+namespace argus
 {
 
 LookupInterface::LookupInterface()

@@ -7,7 +7,7 @@
 #include "resource_management/RequestResources.h"
 #include "resource_management/ReleaseResources.h"
 
-namespace resource_management
+namespace argus
 {
 
 // NOTE Unsynchronized
@@ -34,7 +34,7 @@ private:
 	ros::ServiceClient requestClient;
 	ros::ServiceClient releaseClient;
 	
-	std::vector<ResourceRequest> resourceRequirements;
+	std::vector<resource_management::ResourceRequest> resourceRequirements;
 	bool hasResources;
 	unsigned int currentGrantID;
 	

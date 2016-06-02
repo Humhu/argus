@@ -5,17 +5,17 @@
 #include "lookup/InfoManager.h"
 #include "fiducials/Fiducial.h"
 
-namespace fiducials
+namespace argus
 {
 	
 /*! \brief Stores and retrieves/caches fiducial intrinsics information from the ROS
  * parameter server. Uses the lookup interface. */
 class FiducialInfoManager
-: public lookup::InfoManager<Fiducial>
+: public InfoManager<Fiducial>
 {
 public:
 	
-	FiducialInfoManager( lookup::LookupInterface& interface );
+	FiducialInfoManager( LookupInterface& interface );
 	
 	virtual bool ReadMemberInfo( const std::string& fidName, 
 	                             bool forceLookup = false,
@@ -23,7 +23,7 @@ public:
 	virtual bool WriteMemberInfo( const std::string& fidName, 
 	                              bool forceLookup = false,
 	                              const ros::Duration& timeout = ros::Duration( 0 ) );
-		
+	
 private:
 	
 	ros::NodeHandle nodeHandle;
@@ -32,4 +32,4 @@ private:
 	
 };
 	
-} // end namespace fiducials
+} // end namespace argus

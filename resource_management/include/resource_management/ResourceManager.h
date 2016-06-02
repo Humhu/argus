@@ -13,7 +13,7 @@
 #include "resource_management/RequestResources.h"
 #include "resource_management/ReleaseResources.h"
 
-namespace resource_management
+namespace argus
 {
 	
 class ResourceManager
@@ -22,11 +22,11 @@ public:
 	
 	ResourceManager( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
-	bool RequestResourcesService( RequestResources::Request& req,
-									RequestResources::Response& res );
+	bool RequestResourcesService( resource_management::RequestResources::Request& req,
+	                              resource_management::RequestResources::Response& res );
 	
-	bool ReleaseResourcesService( ReleaseResources::Request& req,
-									ReleaseResources::Response& res );
+	bool ReleaseResourcesService( resource_management::ReleaseResources::Request& req,
+	                              resource_management::ReleaseResources::Response& res );
 	
 private:
 	
@@ -49,7 +49,7 @@ private:
 	struct GrantEntry
 	{
 		ros::Time startTime;
-		std::vector<ResourceGrant> grants;
+		std::vector<resource_management::ResourceGrant> grants;
 	};
 	
 	std::unordered_map< std::string, ResourceEntry > registry;
@@ -57,9 +57,9 @@ private:
 	
 	unsigned int grantCounter;
 	
-	bool ValidateRequest( const RequestResources::Request& req ) const;
-	bool TestSetResources( const RequestResources::Request& req,
-							RequestResources::Response& res );
+	bool ValidateRequest( const resource_management::RequestResources::Request& req ) const;
+	bool TestSetResources( const resource_management::RequestResources::Request& req,
+	                       resource_management::RequestResources::Response& res );
 	
 };
 	

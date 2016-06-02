@@ -1,14 +1,15 @@
 #include "fieldtrack/BodyFrameTracker.h"
-#include "argus_utils/MatrixUtils.h"
-#include "argus_utils/GeometryUtils.h"
+#include "argus_utils/utils/MatrixUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
 
 #include <boost/foreach.hpp>
 
 using namespace argus_msgs;
-using namespace argus_utils;
 
-namespace fieldtrack
+namespace argus
 {
+
+typedef ConstantVelocityFilterSE3 CVF3;
 
 BodyFrameTracker::BodyFrameTracker( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), targetManager( lookupInterface )
@@ -63,17 +64,20 @@ void BodyFrameTracker::TimerCallback( const ros::TimerEvent& event )
 	msg->header.frame_id = referenceFrame;
 	msg->odometry.reserve( targetRegistry.size() );
 	
-	BOOST_FOREACH( const TargetRegistry::value_type& item, targetRegistry )
+	BOOST_FOREACH( TargetRegistry::value_type& item, targetRegistry )
 	{
 		const std::string& name = item.first;
-		const TargetRegistration& registration = item.second;
+		TargetRegistration& registration = item.second;
 		if( !registration.poseInitialized ) { continue; }
 		
 		// Update target pose
 		if( lastOdometry )
 		{
-			registration.filter->DisplaceReference( displacement, displacementCov );
-			registration.filter->Predict( event.current_real );
+			// TODO This logic might be broken
+			double dt = (event.current_real - registration.filterTime).toSec();
+			registration.filter.Predict( registration.Qrate*dt, dt );
+			registration.filter.WorldDisplace( displacement.Inverse(), displacementCov );
+			registration.filterTime = event.current_real;
 		}
 
 		// Publish state 
@@ -81,11 +85,11 @@ void BodyFrameTracker::TimerCallback( const ros::TimerEvent& event )
 		odom.header.stamp = event.current_real;
 		odom.header.frame_id = referenceFrame;
 		odom.child_frame_id = name;
-		odom.pose.pose = PoseToMsg( registration.filter->PoseFilter().EstimateMean() );
-		SerializeSymmetricMatrix( registration.filter->PoseFilter().EstimateCovariance(),
+		odom.pose.pose = PoseToMsg( registration.filter.Pose() );
+		SerializeSymmetricMatrix( registration.filter.PoseCov(),
 		                          odom.pose.covariance );
-		odom.twist.twist = TangentToMsg( registration.filter->VelocityFilter().EstimateMean() );
-		SerializeSymmetricMatrix( registration.filter->VelocityFilter().EstimateCovariance(),
+		odom.twist.twist = TangentToMsg( registration.filter.Derivs().head<6>() );
+		SerializeSymmetricMatrix( registration.filter.DerivsCov().topLeftCorner<6,6>(),
 		                          odom.twist.covariance );
 		
 		msg->odometry.push_back( odom );
@@ -119,13 +123,23 @@ void BodyFrameTracker::TargetPoseCallback( const RelativePoseWithCovariance::Con
 	
 	if( registration.poseInitialized )
 	{
-		registration.filter->PoseUpdate( pose, poseCov, msg->header.stamp );
+		if( msg->header.stamp > registration.filterTime )
+		{
+			double dt = (msg->header.stamp - registration.filterTime).toSec();
+			registration.filter.Predict( registration.Qrate * dt, dt );
+			registration.filterTime = msg->header.stamp;
+		}
+		registration.filter.UpdatePose( pose, poseCov );
 	}
 	else
 	{
-		registration.filter->PoseFilter().EstimateMean() = pose;
-		registration.filter->PoseFilter().EstimateCovariance() = poseCov;
+		registration.filter.Pose() = pose;
+		registration.filter.Derivs() = CVF3::DerivsType::Zero();
+		registration.filter.FullCov() = 10 * CVF3::FullCovType::Identity();
+		registration.filter.FullCov().topLeftCorner<CVF3::TangentDim,CVF3::TangentDim>()
+			= poseCov;
 		registration.poseInitialized = true;
+		registration.filterTime = msg->header.stamp;
 	}
 }
 
@@ -136,10 +150,12 @@ void BodyFrameTracker::RegisterTarget( const std::string& name )
 	ROS_INFO_STREAM( "Registering target " << name );
 
 	// TODO Look up target information to set motion model
-	TargetRegistration registration;
-	registration.filter = std::make_shared<ConstantVelocityFilter>();
-	registration.poseInitialized = false;
-	targetRegistry[ name ] = registration;
+	targetRegistry[ name ];
 }
-	
+
+BodyFrameTracker::TargetRegistration::TargetRegistration()
+: poseInitialized( false ), filterTime( ros::Time::now() ),
+filter( PoseSE3(), CVF3::DerivsType::Zero(), 10*CVF3::FullCovType::Identity() ),
+Qrate( CVF3::FullCovType::Identity() ) {}
+
 }

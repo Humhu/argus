@@ -1,6 +1,6 @@
 #include "fieldtrack/ConstantVelocityFilter.h"
 
-using namespace argus_utils;
+using namespace argus;
 
 namespace fieldtrack
 {
@@ -9,7 +9,7 @@ ConstantVelocityFilter::ConstantVelocityFilter()
 {
 	// Initialize velocity filter
 	velocityFilter.TransMatrix() = VelocityFilterType::StateTransition::Identity();
-	velocityFilter.ObsMatrix() = VelocityFilterType::ObservationMatrix::Identity();
+	velocityFilter.ObsMatrix() = VelocityFilterType::ObservationMatrix::Identity(6,6);
 	velocityFilter.EstimateMean() = VelocityFilterType::StateVector::Zero();
 	velocityFilter.EstimateCovariance() = VelocityFilterType::StateCovariance::Identity();
 	
@@ -60,6 +60,8 @@ void ConstantVelocityFilter::Predict( const ros::Time& until )
 	poseFilter.PredictBody( displacement, covRate * dt, BodyFrame );
 	filterTimestamp = until;
 
+	// Need to move velocities from left to right, use inverse adjoint
+	velocityFilter.TransMatrix() = PoseSE3::Adjoint( displacement.Inverse() );
 	velocityFilter.Predict( velocityCovarianceRate * dt );
 }
 

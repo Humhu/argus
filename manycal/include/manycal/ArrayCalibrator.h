@@ -19,13 +19,13 @@
 
 #include "lookup/LookupInterface.h"
 #include "argus_msgs/ImageFiducialDetections.h"
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "fiducials/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
 #include <unordered_map>
 
-namespace manycal 
+namespace argus 
 {
 
 /*! \brief Calibrates arrays of cameras and fiducials. */
@@ -40,7 +40,8 @@ public:
 
 	ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	
-	bool WriteResults( WriteCalibration::Request& req, WriteCalibration::Response& res );
+	bool WriteResults( manycal::WriteCalibration::Request& req, 
+	                   manycal::WriteCalibration::Response& res );
 	
 private:
 	
@@ -48,10 +49,10 @@ private:
 	ros::NodeHandle privHandle;
 	ros::ServiceServer writeServer;
 
-	lookup::LookupInterface lookup;
-	fiducials::FiducialInfoManager fiducialManager;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
-	fieldtrack::TargetInfoManager targetManager;
+	LookupInterface lookup;
+	FiducialInfoManager fiducialManager;
+	ExtrinsicsInfoManager extrinsicsManager;
+	TargetInfoManager targetManager;
 
 	/*! \brief Stores subscriptions to odometry and detection inputs. */
 	struct TargetRegistration

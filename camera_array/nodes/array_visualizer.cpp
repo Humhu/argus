@@ -5,12 +5,11 @@
 #include "lookup/LookupInterface.h"
 #include "camera_array/CameraArrayStatus.h"
 #include "camera_array/CameraStatus.h"
-#include "argus_utils/GeometryUtils.h"
-#include "argus_utils/ParamUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
 #include <boost/foreach.hpp>
 
-using namespace camera_array;
-using namespace argus_utils;
+using namespace argus;
 
 class Visualizer
 {
@@ -33,9 +32,9 @@ xSize( 0.04 ), ySize( 0.04 ), zSize( 0.04 )
 	                                  this );
 }
 
-void StatusCallback( const CameraArrayStatus::ConstPtr& smsg )
+void StatusCallback( const camera_array::CameraArrayStatus::ConstPtr& smsg )
 {
-	BOOST_FOREACH( const CameraStatus& status, smsg->status )
+	BOOST_FOREACH( const camera_array::CameraStatus& status, smsg->status )
 	{
 		if( !extrinsicsManager.CheckMemberInfo( status.name ) )
 		{
@@ -43,7 +42,7 @@ void StatusCallback( const CameraArrayStatus::ConstPtr& smsg )
 			continue;
 		}
 		
-		const extrinsics_array::ExtrinsicsInfo& info = extrinsicsManager.GetInfo( status.name );
+		const ExtrinsicsInfo& info = extrinsicsManager.GetInfo( status.name );
 		
 		visualization_msgs::Marker msg;
 		msg.header.stamp = smsg->header.stamp;
@@ -101,8 +100,8 @@ private:
 	ros::Subscriber statusSub;
 	ros::Publisher visPub;
 	
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
-	lookup::LookupInterface lookupInterface;
+	ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
 	
 	double xSize;
 	double ySize;

@@ -1,6 +1,6 @@
 #include "camera_array/SystemStates.h"
 
-namespace camera_array
+namespace argus
 {
 
 bool CameraArrayState::IsActive( const std::string& name ) const
@@ -32,7 +32,7 @@ bool CameraArrayState::Activate( const std::string& name )
 }
 
 AccelerationAction::AccelerationAction()
-: acceleration( fieldtrack::TargetState::VelocityType::Zero() )
+: acceleration( TargetState::VelocityType::Zero() )
 {}
 
 std::ostream& operator<<( std::ostream& os, const CameraArrayAction& action )

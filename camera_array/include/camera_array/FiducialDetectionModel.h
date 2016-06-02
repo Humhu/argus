@@ -8,7 +8,7 @@
 #include "fiducials/FiducialCommon.h"
 #include "fieldtrack/TargetInfoManager.h"
 
-namespace camera_array
+namespace argus
 {
 	
 // TODO Add min point distance filter
@@ -20,20 +20,20 @@ public:
 	typedef std::shared_ptr<FiducialDetectionModel> Ptr;
 	typedef std::vector<argus_msgs::FiducialDetection> Detections;
 	
-	FiducialDetectionModel( lookup::LookupInterface& interface );
+	FiducialDetectionModel( LookupInterface& interface );
 	
 	/*! \brief Generates fiducial detections for a camera, target, and the pose 
 	 * of the target in the camera reference frame (usually the robot). All
 	 * parameters must be lookup-retrievable. */
 	Detections GenerateDetections( const std::string& cameraName,
 	                               const std::string& targetName,
-	                               const argus_utils::PoseSE3& targetToCameraRef );
+	                               const PoseSE3& targetToCameraRef );
 	
 private:
 	
-	mutable extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
-	mutable fiducials::FiducialInfoManager fiducialManager;
-	mutable fieldtrack::TargetInfoManager targetManager;
+	mutable ExtrinsicsInfoManager extrinsicsManager;
+	mutable FiducialInfoManager fiducialManager;
+	mutable TargetInfoManager targetManager;
 
 	double minPointSeparation;
 	

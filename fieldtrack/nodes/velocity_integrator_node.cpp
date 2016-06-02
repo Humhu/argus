@@ -7,7 +7,7 @@ int main( int argc, char** argv )
 	
 	ros::NodeHandle nh, ph( "~" );
 	
-	fieldtrack::VelocityIntegrator tracker( nh, ph );
+	argus::VelocityIntegrator tracker( nh, ph );
 	
 	ros::spin();
 	return 0;

@@ -13,7 +13,7 @@
 #include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
-namespace manycal
+namespace argus
 {
 
 /*! \brief Calibrates an array of synchronized cameras. Assumes fiducials can move
@@ -24,8 +24,8 @@ public:
 	
 	CameraArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	
-	bool WriteResults( WriteCalibration::Request& req, 
-	                   WriteCalibration::Response& res );
+	bool WriteResults( manycal::WriteCalibration::Request& req, 
+	                   manycal::WriteCalibration::Response& res );
 	
 private:
 	
@@ -34,9 +34,9 @@ private:
 	ros::Subscriber detSub;
 	ros::ServiceServer writeServer;
 
-	lookup::LookupInterface lookupInterface;
-	fiducials::FiducialInfoManager fiducialManager;
-	extrinsics_array::ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface lookupInterface;
+	FiducialInfoManager fiducialManager;
+	ExtrinsicsInfoManager extrinsicsManager;
 	std::string referenceFrame;
 	
 	struct CameraRegistration
@@ -67,7 +67,7 @@ private:
 	bool InitializeCamera( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	void ProcessCache();
 	
-	void RegisterCamera( const std::string& name, const argus_utils::PoseSE3& pose,
+	void RegisterCamera( const std::string& name, const argus::PoseSE3& pose,
 						 bool addPrior = false );
 	void RegisterFiducial( const std::string& name );
 	

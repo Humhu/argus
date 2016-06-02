@@ -4,9 +4,9 @@
 #include <boost/random/random_device.hpp>
 
 #include "camera_array/ModelInterfaces.h"
-#include "argus_utils/RandomUtils.hpp"
+#include "argus_utils/random/RandomUtils.hpp"
 
-namespace camera_array
+namespace argus
 {
 
 template <typename State, typename Action>
@@ -47,7 +47,7 @@ public:
 			std::cout << "Action: " << actions[i] << " weight: " << weights[i] << std::endl;
 		  }
 		std::vector<unsigned int> inds;
-		argus_utils::NaiveWeightedSample( weights, 1, inds, generator );
+		argus::NaiveWeightedSample( weights, 1, inds, generator );
 		
 		return actions[ inds[0] ];
 	}

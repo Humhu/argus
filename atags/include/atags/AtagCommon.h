@@ -3,11 +3,11 @@
 #include <image_geometry/pinhole_camera_model.h>
 
 #include "apriltags/TagDetection.h"
-#include "argus_utils/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
 #include "argus_msgs/FiducialDetection.h"
 
-namespace atags 
+namespace argus 
 {
 
 /*! \brief Convert to FiducialDetection type. */
@@ -16,7 +16,7 @@ argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
 
 /*! \brief Returns transform from tag to camera assuming x-forward for both frames. */
 // TODO Clean up this interface to use the msg.normalized member somehow
-argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
+argus::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
                                      double fx, double fy, double px, double py );
 
 /*! \brief Calculates the covariance of the corners to estimate skew. */

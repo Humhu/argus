@@ -4,10 +4,9 @@
 #include <boost/foreach.hpp>
 
 using namespace argus_msgs;
-using namespace argus_utils;
 using namespace fiducials;
 
-namespace manycal
+namespace argus
 {
 
 CameraArrayCalibrator::CameraArrayCalibrator( const ros::NodeHandle& nh,
@@ -34,8 +33,8 @@ extrinsicsManager( lookupInterface )
 	detSub = nodeHandle.subscribe( "detections", 10, &CameraArrayCalibrator::DetectionCallback, this );
 }
 	
-bool CameraArrayCalibrator::WriteResults( WriteCalibration::Request& req,
-                                          WriteCalibration::Response& res )
+bool CameraArrayCalibrator::WriteResults( manycal::WriteCalibration::Request& req,
+                                          manycal::WriteCalibration::Response& res )
 {
 	YAML::Node yaml;
 

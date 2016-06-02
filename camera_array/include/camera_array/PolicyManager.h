@@ -11,7 +11,7 @@
 #include "nav_msgs/Odometry.h"
 #include "argus_msgs/CompactOdometryArray.h"
 
-namespace camera_array
+namespace argus
 {
 
 /*! \brief Takes care of updating state and parsing the policy outputs. */
@@ -37,7 +37,7 @@ protected:
 	nav_msgs::Odometry::ConstPtr lastOdometry;
 	argus_msgs::CompactOdometryArray::ConstPtr lastTargets;
 	
-	lookup::LookupInterface lookupInterface;
+	LookupInterface lookupInterface;
 	FiducialDetectionModel::Ptr fiducialModel;
 	
 	ArrayTransitionFunction::Ptr arrayTransitionFunction;

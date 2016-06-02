@@ -1,10 +1,8 @@
 #include "fiducials/FiducialArray.h"
 #include "fiducials/FiducialCommon.h"
-#include "argus_utils/GeometryUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
 
-using namespace argus_utils;
-
-namespace fiducials
+namespace argus
 {
 	
 FiducialArray::FiducialArray( const std::string& refName ) 

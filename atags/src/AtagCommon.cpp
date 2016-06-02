@@ -1,10 +1,8 @@
 #include "atags/AtagCommon.h"
-#include "argus_utils/GeometryUtils.h"
+#include "argus_utils/geometry/GeometryUtils.h"
 #include <boost/foreach.hpp>
 
-using namespace argus_utils;
-
-namespace atags 
+namespace argus 
 {
 
 argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
@@ -25,20 +23,20 @@ argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
 	return det;
 }
 
-argus_utils::PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
+PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
                                    double fx, double fy, double px, double py )
 {
 	PoseSE3 pose;
-	Eigen::Vector3d translation;
-	Eigen::Matrix3d rotation;
+	FixedVectorType<3> translation;
+	FixedMatrixType<3,3> rotation;
 	
 	det.getRelativeTranslationRotation( tagSize, fx, fy, px, py,
-                                              translation, rotation );
-	static PoseSE3 postrotation( PoseSE3::Translation( 0, 0, 0 ), 
-                                 EulerToQuaternion( EulerAngles( -M_PI/2, -M_PI/2, 0 ) ) );
+	                                          translation, rotation );
+	static PoseSE3 postrotation( Translation3Type( 0, 0, 0 ), 
+	                             EulerToQuaternion( EulerAngles( -M_PI/2, -M_PI/2, 0 ) ) );
 	
-	PoseSE3::Translation t( translation );
-	PoseSE3::Quaternion q( rotation );
+	Translation3Type t( translation );
+	QuaternionType q( rotation );
 	PoseSE3 H_tag_cam( t, q );
 	return H_tag_cam * postrotation;
 }
