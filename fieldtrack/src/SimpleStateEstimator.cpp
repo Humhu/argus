@@ -11,12 +11,10 @@ using namespace nav_msgs;
 namespace argus
 {
 
-typedef ConstantVelocityFilterSE3 CVF3;
-
 SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh, 
                                             const ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), 
-filter( PoseSE3(), CVF3::DerivsType::Zero(), CVF3::FullCovType::Zero() )
+filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero() )
 {
 	if( !privHandle.getParam( "reference_frame", referenceFrame ) )
 	{
@@ -29,25 +27,27 @@ filter( PoseSE3(), CVF3::DerivsType::Zero(), CVF3::FullCovType::Zero() )
 		exit( -1 );
 	}
 	
-	Qrate = CVF3::FullCovType::Zero();
-	CVF3::DerivsCovType Qvel;
+	Qrate = FilterType::FullCovType::Zero();
+	FixedMatrixType<6,6> Qvel;
 	if( !GetMatrixParam<double>( privHandle, "velocity_covariance_rate", Qvel ) )
 	{
 		ROS_WARN_STREAM( "No velocity covariance rate given. Using identity." );
-		Qvel = CVF3::DerivsCovType::Identity();
+		Qvel = FixedMatrixType<6,6>::Identity();
 	}
-	Qrate.bottomRightCorner<CVF3::DerivsDim,CVF3::DerivsDim>() = Qvel;
+	Qrate.block<6,6>(6,6) = Qvel;
+	Qrate.block<6,6>(12,12) = Qvel;
 
-	CVF3::DerivsCovType Qpos;
+	FilterType::PoseCovType Qpos;
 	if( !GetMatrixParam<double>( privHandle, "pose_covariance_rate", Qpos ) )
 	{
 		ROS_WARN_STREAM( "No pose covariance rate given. Using identity." );
-		Qpos = CVF3::PoseCovType::Identity();
+		Qpos = FilterType::PoseCovType::Identity();
 	}
-	Qrate.topLeftCorner<CVF3::TangentDim,CVF3::TangentDim>() = Qpos;
+	Qrate.topLeftCorner<FilterType::TangentDim,FilterType::TangentDim>() = Qpos;
 
 	filter.Pose() = PoseSE3();
-	filter.Derivs() = CVF3::DerivsType::Zero();
+	filter.Derivs() = FilterType::DerivsType::Zero();
+	filter.FullCov() = 10 * FilterType::FullCovType::Identity();
 	filterTime = ros::Time::now();
 
 	privHandle.param<bool>( "two_dimensional", twoDimensional, false );
@@ -79,14 +79,16 @@ void SimpleStateEstimator::VelocityCallback( const TwistWithCovarianceStamped::C
 	ParseMatrix( msg->twist.covariance, R );
 	
 	ros::Time now = msg->header.stamp;
-	if( now < filterTime )
+	if( now > filterTime )
 	{
 		double dt = (now - filterTime).toSec();
 		filter.Predict( Qrate*dt, dt );
 		filterTime = now;
 	}
 
-	filter.UpdateDerivs( velocity, CVF3::DerivObsMatrix::Identity(6,6), R );
+	FilterType::DerivObsMatrix C = FilterType::DerivObsMatrix::Zero( 6, FilterType::DerivsDim );
+	C.leftCols<6>() = FixedMatrixType<6,6>::Identity(6,6);
+	filter.UpdateDerivs( velocity, C, R );
 }
 
 // TODO Check last pose update time
@@ -112,7 +114,7 @@ void SimpleStateEstimator::PoseCallback( const RelativePoseWithCovariance::Const
 	}
 	
 	ros::Time now = msg->header.stamp;
-	if( now < filterTime )
+	if( now > filterTime )
 	{
 		double dt = (now - filterTime).toSec();
 		filter.Predict( Qrate*dt, dt );
@@ -127,14 +129,14 @@ void SimpleStateEstimator::PoseCallback( const RelativePoseWithCovariance::Const
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
-	if( now < filterTime )
+	if( now > filterTime )
 	{
 		double dt = (now - filterTime).toSec();
 		filter.Predict( Qrate*dt, dt );
 		filterTime = now;
 	}
 	if( twoDimensional ) { EnforceTwoDimensionality(); }
-	
+
 	Odometry msg;
 	msg.header.frame_id = referenceFrame;
 	msg.header.stamp = event.current_real;
@@ -143,8 +145,8 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	msg.pose.pose = PoseToMsg( filter.Pose() );
 	SerializeMatrix( filter.PoseCov(), msg.pose.covariance );
 	
-	msg.twist.twist = TangentToMsg( filter.Derivs() );
-	SerializeMatrix( filter.DerivsCov(), msg.twist.covariance );
+	msg.twist.twist = TangentToMsg( filter.Derivs().head<6>() );
+	SerializeMatrix( filter.DerivsCov().topLeftCorner<6,6>(), msg.twist.covariance );
 	
 	odomPub.publish( msg );
 }

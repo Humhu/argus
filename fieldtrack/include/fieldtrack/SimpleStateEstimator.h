@@ -26,8 +26,9 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	
-	ConstantVelocityFilterSE3 filter;
-	ConstantVelocityFilterSE3::FullCovType Qrate;
+	typedef ConstantAccelFilterSE3 FilterType;
+	FilterType filter;
+	FilterType::FullCovType Qrate;
 	ros::Time filterTime;
 
 	bool twoDimensional;
