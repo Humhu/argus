@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>graphopt</name>
-  <version>0.0.1</version>
-  <description>A package that wraps the ISAM graph optimization library.</description>
+  <version>0.1.0</version>
+  <description>Wrapper around a fork of Michael Kaess's ISAM graph optimization library.</description>
 
   <maintainer email="humhu@cmu.edu">Humphrey Hu</maintainer>
 

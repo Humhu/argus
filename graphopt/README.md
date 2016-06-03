@@ -1,2 +1,2 @@
-# v4l2_cam
-A ROS camera driver that allows fine-grained device control using libv4l2.
+# graphopt
+Wrapper around a fork of Michael Kaess's ISAM graph optimization library.

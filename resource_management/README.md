@@ -1,2 +1,2 @@
-# v4l2_cam
-A ROS camera driver that allows fine-grained device control using libv4l2.
+# resource_management
+Package for enabling global resource constraining with checking in/out.

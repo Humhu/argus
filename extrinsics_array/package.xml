@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>extrinsics_array</name>
-  <version>0.0.1</version>
-  <description>Software to manage arrays of fiducials.</description>
+  <version>0.1.0</version>
+  <description>Package to store and retrieve extrinsics info.</description>
   
   <maintainer email="humhu@cmu.edu">Humphrey Hu</maintainer>
   
@@ -10,7 +10,7 @@
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
+  <license>AFLv3</license>
   
   <buildtool_depend>catkin</buildtool_depend>
   

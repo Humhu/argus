@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>argus</name>
-  <version>0.0.1</version>
-  <description>Packages for multi-camera perception on mobile robots.</description>
+  <version>0.1.0</version>
+  <description>Packages for state estimation on mobile robots.</description>
 
   <author>Humphrey Hu</author>
   <maintainer email="humhu@cmu.edu">Humphrey Hu</maintainer>
@@ -10,13 +10,19 @@
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
+  <license>AFLv3</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
   <run_depend>argus_msgs</run_depend>
   <run_depend>atags</run_depend>
   <run_depend>camera_array</run_depend>
+  <run_depend>covreg</run_depend>
+  <run_depend>extrinsics_array</run_depend>
+  <run_depend>fiducials</run_depend>
+  <run_depend>fieldtrack</run_depend>
+  <run_depend>graphopt</run_depend>
+  <run_depend>lookup</run_depend>
   <run_depend>manycal</run_depend>
   <run_depend>odoflow</run_depend>
   <run_depend>resource_management</run_depend>

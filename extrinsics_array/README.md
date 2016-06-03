@@ -1,2 +1,2 @@
 # extrinsics_array
-Software to manage arrays of objects
+Package to store and retrieve extrinsics info

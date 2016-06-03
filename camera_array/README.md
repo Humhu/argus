@@ -1,2 +1,2 @@
 # camera_array
-Nodes to launch and manage arrays of camplex camera drivers.
+Package for scheduling and managing arrays of switchable cameras.

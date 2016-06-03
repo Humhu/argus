@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>manycal</name>
-  <version>0.0.1</version>
-  <description>A camera network calibration package.</description>
+  <version>0.1.0</version>
+  <description>Package for extrinsics/intrinsics calibration of sensor arrays.</description>
 
   <maintainer email="humhu@cmu.edu">Humphrey Hu</maintainer>
 

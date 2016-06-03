@@ -1,2 +1,2 @@
-# camera_array
-Nodes to perform filtering and tracking using arrays of cameras.
+# fieldtrack
+Package to perform state estimation for single or multiple targets.
