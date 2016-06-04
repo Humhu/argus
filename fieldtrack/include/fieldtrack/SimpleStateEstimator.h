@@ -2,8 +2,9 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
-#include "argus_msgs/RelativePoseWithCovariance.h"
 #include <nav_msgs/Odometry.h>
+#include "argus_msgs/RelativePoseWithCovariance.h"
+#include "argus_msgs/FilterStepInfo.h"
 
 #include "argus_utils/filters/FilterTypes.h"
 #include "argus_utils/geometry/PoseSE3.h"
@@ -40,6 +41,7 @@ private:
 	ros::Subscriber velSub; // Subscribes to geometry_msgs::TwistWithCovarianceStamped
 	ros::Subscriber poseSub; // Subscribes to argus_msgs::RelativePose
 	ros::Publisher odomPub; // Publishes nav_msgs::Odometry
+	ros::Publisher stepPub; // Publishes argus_msgs::FilterStepInfo
 	
 	void VelocityCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg );
 	void PoseCallback( const argus_msgs::RelativePoseWithCovariance::ConstPtr& msg );

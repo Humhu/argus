@@ -15,9 +15,11 @@ add_message_files(
 				CompactPoseWithCovariance.msg
 				CompactTwistWithCovariance.msg
 				FiducialDetection.msg
+				FilterStepInfo.msg
 				ImageFiducialDetections.msg
 				MatrixFloat64.msg
 				Point2D.msg
+				PredictionFeatures.msg
 				RelativePose.msg
 				RelativePoseWithCovariance.msg
 				SymmetricFloat64.msg

@@ -2,6 +2,7 @@
 #include "argus_utils/geometry/GeometryUtils.h"
 #include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
+#include "argus_utils/filters/FilterUtils.h"
 
 using namespace argus_msgs;
 using namespace geometry_msgs;
@@ -61,6 +62,7 @@ filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero
 	                                &SimpleStateEstimator::PoseCallback,
 	                                this );
 	odomPub = nodeHandle.advertise<Odometry>( "odometry", 10 );
+	stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 10 );
 	
 	double timerRate;
 	privHandle.param<double>( "timer_rate", timerRate, 10.0 );
@@ -82,13 +84,19 @@ void SimpleStateEstimator::VelocityCallback( const TwistWithCovarianceStamped::C
 	if( now > filterTime )
 	{
 		double dt = (now - filterTime).toSec();
-		filter.Predict( Qrate*dt, dt );
+		PredictInfo info = filter.Predict( Qrate*dt, dt );
+		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
+		pmsg.header.stamp = msg->header.stamp;
+		stepPub.publish( pmsg );
 		filterTime = now;
 	}
 
 	FilterType::DerivObsMatrix C = FilterType::DerivObsMatrix::Zero( 6, FilterType::DerivsDim );
 	C.leftCols<6>() = FixedMatrixType<6,6>::Identity(6,6);
-	filter.UpdateDerivs( velocity, C, R );
+	UpdateInfo info = filter.UpdateDerivs( velocity, C, R );
+	argus_msgs::FilterStepInfo umsg = UpdateToMsg( info );
+	umsg.header.stamp = msg->header.stamp;
+	stepPub.publish( umsg );
 }
 
 // TODO Check last pose update time
@@ -117,13 +125,18 @@ void SimpleStateEstimator::PoseCallback( const RelativePoseWithCovariance::Const
 	if( now > filterTime )
 	{
 		double dt = (now - filterTime).toSec();
-		filter.Predict( Qrate*dt, dt );
+		PredictInfo info = filter.Predict( Qrate*dt, dt );
+		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
+		pmsg.header.stamp = msg->header.stamp;
+		stepPub.publish( pmsg );
 		filterTime = now;
 	}
 
 	PoseSE3::CovarianceMatrix cov;
 	ParseSymmetricMatrix( msg->covariance, cov );
-	filter.UpdatePose( pose, cov );
+	UpdateInfo info = filter.UpdatePose( pose, cov );
+	argus_msgs::FilterStepInfo umsg = UpdateToMsg( info );
+	stepPub.publish( umsg );
 }
 
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
@@ -132,7 +145,10 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	if( now > filterTime )
 	{
 		double dt = (now - filterTime).toSec();
-		filter.Predict( Qrate*dt, dt );
+		PredictInfo info = filter.Predict( Qrate*dt, dt );
+		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
+		pmsg.header.stamp = event.current_real;
+		stepPub.publish( pmsg );
 		filterTime = now;
 	}
 	if( twoDimensional ) { EnforceTwoDimensionality(); }
