@@ -74,8 +74,15 @@ target_link_libraries( test_prediction
                        ${covreg_LIBRARIES}
                        covreg )
 
+add_executable( optimizer_node nodes/covariance_optimizer.cpp )
+add_dependencies( optimizer_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( optimizer_node
+                       ${catkin_LIBRARIES}
+                       ${covreg_LIBRARIES}
+                       covreg )
+
 ## Mark executables and/or libraries for installation
-install(TARGETS test_prediction
+install(TARGETS test_prediction optimizer_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

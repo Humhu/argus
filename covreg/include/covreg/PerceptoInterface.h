@@ -48,6 +48,9 @@ public:
 	void SetParameters( const VectorType& params );
 	VectorType GetParameters() const;
 
+	void RandomizeVarianceParams();
+	void ZeroCorrelationParams();
+
 	MatrixType Evaluate( const VectorType& input );
 
 	PDRegressor& Regressor() { return _pdReg; }
@@ -93,6 +96,10 @@ public:
 	void AddUpdate( const UpdateInfo& info, const VectorType& input,
 	                const std::string& name );
 
+	size_t NumClips() const;
+
+	void Optimize( const percepto::SimpleConvergenceCriteria& criteria );
+
 private:
 
 	// A regressor evaluated at some input
@@ -122,6 +129,8 @@ private:
 	// Stochastic population cost of innovation log likelihoods
 	typedef percepto::StochasticPopulationCost<InnoLL, std::deque> 
 	        StochasticInnoLL;
+	typedef percepto::MeanPopulationCost<InnoLL, std::deque> 
+	        MeanInnoLL;
 
 	// Above cost penalized with L2 on parameters
 	typedef percepto::ParameterL2Cost<StochasticInnoLL> PenalizedSILL;
@@ -158,10 +167,8 @@ private:
 	// Optimization
 	std::deque<InnoLL> _innoLLs;
 	StochasticInnoLL _sill;
+	MeanInnoLL _mill;
 	PenalizedSILL _psill;
-	percepto::AdamStepper _stepper;
-	percepto::SimpleConvergence _convergence;
-	percepto::AdamOptimizer _optimizer;
 
 };
 

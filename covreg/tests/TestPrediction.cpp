@@ -1,5 +1,4 @@
 #include "covreg/PerceptoInterface.h"
-
 #include "percepto/utils/Randomization.hpp"
 
 using namespace argus;
@@ -12,11 +11,12 @@ int main( int argc, char** argv )
 	unsigned int layerWidth = 20;
 
 	MatrixRegressor matReg( inputDim, outputDim, numHiddenLayers, layerWidth );
+	VectorType params;
+	
 
 	VectorType input( inputDim );
 	percepto::randomize_vector( input );
 	MatrixType output = matReg.Evaluate( input );
-
 
 	MatrixRegressor transReg( matReg );
 	MatrixRegressor gyroReg( matReg );

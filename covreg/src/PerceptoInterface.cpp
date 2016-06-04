@@ -1,4 +1,6 @@
 #include "covreg/PerceptoInterface.h"
+#include "percepto/utils/Randomization.hpp"
+#include <iostream>
 
 namespace argus
 {
@@ -12,6 +14,20 @@ _vReg( _vBaseReg ),
 _cReg( matDim*(matDim-1)/2, 1 ),
 _psdReg( _cReg, _vReg ),
 _pdReg( _psdReg, 1E-9 * MatrixType::Identity( matDim, matDim ) ) {}
+
+void MatrixRegressor::RandomizeVarianceParams()
+{
+	VectorType varParams = _vBaseReg.GetParamsVec();
+	percepto::randomize_vector( varParams );
+	_vBaseReg.SetParamsVec( varParams );
+}
+
+void MatrixRegressor::ZeroCorrelationParams()
+{
+	VectorType corrParams = _cReg.GetParamsVec();
+	corrParams.setZero();
+	_cReg.SetParamsVec( corrParams );
+}
 
 void MatrixRegressor::SetParameters( const VectorType& params )
 {
@@ -33,8 +49,8 @@ MatrixType MatrixRegressor::Evaluate( const VectorType& input )
 InnovationClipOptimizer::InnovationClipOptimizer( MatrixRegressor& qReg,
                                                   const InnovationClipParameters& params )
 : _transReg( qReg.Regressor() ), _sill( _innoLLs, params.batchSize ), 
-_psill( _sill, params.l2Weight ), _convergence( params.optimizerCriteria ), 
-_optimizer( _stepper, _convergence ), _maxClipLength( params.maxClipLength ),
+_mill( _innoLLs ),
+_psill( _sill, params.l2Weight ), _maxClipLength( params.maxClipLength ),
 _maxNumClips( params.numClipsToKeep ) {}
 
 void InnovationClipOptimizer::AddObservationReg( MatrixRegressor& reg,
@@ -61,6 +77,18 @@ void InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	                     input, _predictBuffer );
 	_predictBuffer.clear();
 	_innoLLs.emplace_back( *_clips.back().estV, info.innovation );
+}
+
+size_t InnovationClipOptimizer::NumClips() const { return _clips.size(); }
+
+void InnovationClipOptimizer::Optimize( const percepto::SimpleConvergenceCriteria& criteria )
+{
+	percepto::AdamStepper stepper;
+	percepto::SimpleConvergence convergence( criteria );
+	percepto::AdamOptimizer optimizer( stepper, convergence );
+	std::cout << "Initial cost: " << _mill.Evaluate() << std::endl;
+	optimizer.Optimize( _psill );
+	std::cout << "Final cost: " << _mill.Evaluate() << std::endl; 
 }
 
 InnovationClipOptimizer::ClipData::ClipData( RegressorType& qReg,
