@@ -3,6 +3,7 @@
 #include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/filters/FilterUtils.h"
+#include "argus_utils/utils/YamlUtils.h"
 
 using namespace argus_msgs;
 using namespace geometry_msgs;
@@ -17,127 +18,171 @@ SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh,
 : nodeHandle( nh ), privHandle( ph ), 
 filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero() )
 {
-	if( !privHandle.getParam( "reference_frame", referenceFrame ) )
-	{
-		ROS_ERROR_STREAM( "Must specify state reference frame." );
-		exit( -1 );
-	}
-	if( !privHandle.getParam( "body_frame", bodyFrame ) )
-	{
-		ROS_ERROR_STREAM( "Must specify body reference frame." );
-		exit( -1 );
-	}
+	GetParam( privHandle, "reference_frame", referenceFrame );
+	GetParam( privHandle, "body_frame", bodyFrame );
 	
-	Qrate = FilterType::FullCovType::Zero();
-	FixedMatrixType<6,6> Qvel;
-	if( !GetMatrixParam<double>( privHandle, "velocity_covariance_rate", Qvel ) )
+	// Parse all update sources
+	XmlRpc::XmlRpcValue updateSources;
+	GetParam( privHandle, "update_sources", updateSources );
+	YAML::Node updatesYaml = XmlToYaml( updateSources );
+	YAML::Node::const_iterator iter;
+	for( iter = updatesYaml.begin(); iter != updatesYaml.end(); iter++ )
 	{
-		ROS_WARN_STREAM( "No velocity covariance rate given. Using identity." );
-		Qvel = FixedMatrixType<6,6>::Identity();
+		const std::string& sourceName = iter->first.as<std::string>();
+		const std::string& topic = iter->second.as<std::string>();
+		ROS_INFO_STREAM( "Subscribing to updates from " << sourceName
+		                 << " at " << topic );
+		updateSubs[sourceName] = nodeHandle.subscribe( topic, 10, &SimpleStateEstimator::UpdateCallback, 
+		                                         this );
 	}
-	Qrate.block<6,6>(6,6) = Qvel;
-	Qrate.block<6,6>(12,12) = Qvel;
 
-	FilterType::PoseCovType Qpos;
-	if( !GetMatrixParam<double>( privHandle, "pose_covariance_rate", Qpos ) )
+	// Parse cov rate
+	if( !GetMatrixParam<double>( privHandle, "covariance_rate", Qrate ) )
 	{
-		ROS_WARN_STREAM( "No pose covariance rate given. Using identity." );
-		Qpos = FilterType::PoseCovType::Identity();
+		if( !GetDiagonalParam<double>( privHandle, "covariance_rate", Qrate ) )
+		{
+			ROS_WARN_STREAM( "No velocity covariance rate given. Using identity." );
+			Qrate = FilterType::FullCovType::Identity();
+		}
 	}
-	Qrate.topLeftCorner<FilterType::TangentDim,FilterType::TangentDim>() = Qpos;
 
+	// Initialize
+	FilterType::FullCovType initCov;
+	if( !GetMatrixParam<double>( privHandle, "initial_covariance", initCov ) )
+	{
+		if( !GetDiagonalParam<double>( privHandle, "initial_covariance", initCov ) )
+		{
+			ROS_WARN_STREAM( "No initial covariance rate given. Using 10*identity." );
+			initCov = FilterType::FullCovType::Identity();
+		}
+	}
+
+	// TODO Initial state?
 	filter.Pose() = PoseSE3();
 	filter.Derivs() = FilterType::DerivsType::Zero();
-	filter.FullCov() = 10 * FilterType::FullCovType::Identity();
+	filter.FullCov() = initCov;
 	filterTime = ros::Time::now();
 
 	privHandle.param<bool>( "two_dimensional", twoDimensional, false );
-	
-	velSub = nodeHandle.subscribe( "velocity", 
-	                               10, 
-	                               &SimpleStateEstimator::VelocityCallback,
-	                               this );
-	poseSub = nodeHandle.subscribe( "relative_pose", 
-	                                10, 
-	                                &SimpleStateEstimator::PoseCallback,
-	                                this );
+	ROS_INFO_STREAM( "Two dimensional mode: " << twoDimensional );
+
 	odomPub = nodeHandle.advertise<Odometry>( "odometry", 10 );
 	stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 10 );
 	
 	double timerRate;
 	privHandle.param<double>( "timer_rate", timerRate, 10.0 );
+	ROS_INFO_STREAM( "Publishing at " << timerRate << " Hz" );
 	updateTimer = std::make_shared<ros::Timer>(
-		nodeHandle.createTimer( ros::Duration( 1.0 / timerRate ),
-		                        &SimpleStateEstimator::TimerCallback,
-		                        this ) );
+	    nodeHandle.createTimer( ros::Duration( 1.0 / timerRate ),
+	                            &SimpleStateEstimator::TimerCallback,
+	                            this ) );
 }
-	
-void SimpleStateEstimator::VelocityCallback( const TwistWithCovarianceStamped::ConstPtr& msg )
+
+void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 {
-	if( msg->header.frame_id != bodyFrame ) { return; }
-	
-	PoseSE3::TangentVector velocity = MsgToTangent( msg->twist.twist );
-	PoseSE3::CovarianceMatrix R;
-	ParseMatrix( msg->twist.covariance, R );
-	
-	ros::Time now = msg->header.stamp;
-	if( now > filterTime )
+	VectorType z;
+	ParseMatrix( msg->observation, z );
+	MatrixType C = MsgToMatrix( msg->observation_matrix );
+	MatrixType R = MsgToMatrix( msg->observation_cov );
+
+	if( C.cols() != FilterType::CovarianceDim )
 	{
-		double dt = (now - filterTime).toSec();
+		ROS_WARN_STREAM( "Update C has wrong dimension." );
+	}
+
+	// TODO Case where there are no derivs in the filter?
+	bool hasPosition = !( C.block( 0, 0, C.rows(), 3 ).array() == 0 ).all();
+	bool hasOrientation = !( C.block( 0, 3, C.rows(), 3 ).array() == 0 ).all();
+	bool hasDerivs = !( C.rightCols( C.rows() - 6 ).array() == 0 ).all();
+
+	// First predict up to the update time
+	ros::Time updateTime = msg->header.stamp;
+	if( updateTime > filterTime )
+	{
+		double dt = (updateTime - filterTime).toSec();
 		PredictInfo info = filter.Predict( Qrate*dt, dt );
 		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
 		pmsg.header.stamp = msg->header.stamp;
 		stepPub.publish( pmsg );
-		filterTime = now;
+		filterTime = updateTime;
+	}
+	else if( updateTime < filterTime )
+	{
+		// TODO Implement filter reversing
+		ROS_WARN_STREAM( "Update received from before filter time." );
 	}
 
-	FilterType::DerivObsMatrix C = FilterType::DerivObsMatrix::Zero( 6, FilterType::DerivsDim );
-	C.leftCols<6>() = FixedMatrixType<6,6>::Identity(6,6);
-	UpdateInfo info = filter.UpdateDerivs( velocity, C, R );
-	argus_msgs::FilterStepInfo umsg = UpdateToMsg( info );
-	umsg.header.stamp = msg->header.stamp;
-	stepPub.publish( umsg );
-}
-
-// TODO Check last pose update time
-void SimpleStateEstimator::PoseCallback( const RelativePoseWithCovariance::ConstPtr& msg )
-{
-	PoseSE3 pose;
-	if( msg->relative_pose.observer_name == referenceFrame && 
-	    msg->relative_pose.target_name == bodyFrame )
+	FilterStepInfo info;
+	if( hasPosition && !hasOrientation && !hasDerivs )
 	{
-		pose = MsgToPose( msg->relative_pose.relative_pose );
+		ROS_WARN_STREAM( "Position only updates are not supported yet." );
+		return;
 	}
-	else if( msg->relative_pose.observer_name == bodyFrame && 
-	         msg->relative_pose.target_name == referenceFrame )
+	else if( !hasPosition && hasOrientation && !hasDerivs )
 	{
-		pose = MsgToPose( msg->relative_pose.relative_pose ).Inverse();
+		ROS_WARN_STREAM( "Orientation only updates are not supported yet." );
+		return;
 	}
-	else { 
-		ROS_WARN_STREAM( "Observer " << msg->relative_pose.observer_name 
-		    << " and target " << msg->relative_pose.target_name 
-		    << " do not match reference " << referenceFrame 
-		    << " and body " << bodyFrame );
-		return; 
+	else if( hasPosition && hasOrientation && !hasDerivs )
+	{
+		info = PoseUpdate( PoseSE3( z ), R );
+	}
+	else if( !hasPosition && !hasOrientation && hasDerivs )
+	{
+		info = DerivsUpdate( z, C, R );
+	}
+	else if( hasPosition && hasOrientation && hasDerivs )
+	{
+		// PoseSE3 pose;
+		// pose.FromVector( z.head(7) );
+		// VectorType derivs = z.tail( z.size() - 7 );
+		// info = JointUpdate( pose, derivs, C, R );
+		ROS_WARN_STREAM( "Joint update not supported yet." );
+		return;
+	}
+	else
+	{
+		ROS_WARN_STREAM( "Unsupported update combination." );
+		return;
 	}
 	
-	ros::Time now = msg->header.stamp;
-	if( now > filterTime )
-	{
-		double dt = (now - filterTime).toSec();
-		PredictInfo info = filter.Predict( Qrate*dt, dt );
-		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
-		pmsg.header.stamp = msg->header.stamp;
-		stepPub.publish( pmsg );
-		filterTime = now;
-	}
+	info.header = msg->header;
+	stepPub.publish( info );
 
-	PoseSE3::CovarianceMatrix cov;
-	ParseSymmetricMatrix( msg->covariance, cov );
-	UpdateInfo info = filter.UpdatePose( pose, cov );
-	argus_msgs::FilterStepInfo umsg = UpdateToMsg( info );
-	stepPub.publish( umsg );
 }
+
+argus_msgs::FilterStepInfo
+SimpleStateEstimator::PoseUpdate( const PoseSE3& pose, 
+                                  const MatrixType& R )
+{
+	UpdateInfo info = filter.UpdatePose( pose, R );
+	return UpdateToMsg( info );
+	
+}
+
+argus_msgs::FilterStepInfo 
+SimpleStateEstimator::DerivsUpdate( const VectorType& derivs, 
+                                    const MatrixType& C,
+                                    const MatrixType& R )
+{
+	FilterType::DerivObsMatrix Cderivs = C.rightCols( C.cols() - 6 );
+	UpdateInfo info = filter.UpdateDerivs( derivs, Cderivs, R );
+	return UpdateToMsg( info );
+}
+
+// argus_msgs::FilterStepInfo PositionUpdate( const Translation3Type& pos, 
+//                                            const MatrixType& R )
+// {}
+
+// argus_msgs::FilterStepInfo OrientationUpdate( const QuaternionType& ori, 
+//                                               const MatrixType& R )
+// {}
+
+// void SimpleStateEstimator::JointUpdate( const PoseSE3& pose,
+//                                         const VectorType& derivs, 
+//                                         const MatrixType& C,
+//                                         const MatrixType& R )
+// {}
 
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {

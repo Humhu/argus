@@ -16,6 +16,7 @@ add_message_files(
 				CompactTwistWithCovariance.msg
 				FiducialDetection.msg
 				FilterStepInfo.msg
+				FilterUpdate.msg
 				ImageFiducialDetections.msg
 				MatrixFloat64.msg
 				Point2D.msg

@@ -3,11 +3,13 @@
 #include <ros/ros.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
-#include "argus_msgs/RelativePoseWithCovariance.h"
+#include "argus_msgs/FilterUpdate.h"
 #include "argus_msgs/FilterStepInfo.h"
 
 #include "argus_utils/filters/FilterTypes.h"
 #include "argus_utils/geometry/PoseSE3.h"
+
+#include <unordered_map>
 
 namespace argus
 {
@@ -37,16 +39,30 @@ private:
 	std::string referenceFrame;
 	std::string bodyFrame;
 	std::shared_ptr<ros::Timer> updateTimer;
-	
-	ros::Subscriber velSub; // Subscribes to geometry_msgs::TwistWithCovarianceStamped
-	ros::Subscriber poseSub; // Subscribes to argus_msgs::RelativePose
+
+	// Subscribers to argus_msgs::FilterUpdate
+	std::unordered_map<std::string, ros::Subscriber> updateSubs;
+
 	ros::Publisher odomPub; // Publishes nav_msgs::Odometry
 	ros::Publisher stepPub; // Publishes argus_msgs::FilterStepInfo
 	
-	void VelocityCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg );
-	void PoseCallback( const argus_msgs::RelativePoseWithCovariance::ConstPtr& msg );
+	void UpdateCallback( const argus_msgs::FilterUpdate::ConstPtr& msg );
+	argus_msgs::FilterStepInfo PoseUpdate( const PoseSE3& pose, 
+	                                       const MatrixType& R );
+	argus_msgs::FilterStepInfo DerivsUpdate( const VectorType& derivs, 
+	                                         const MatrixType& C, 
+	                                         const MatrixType& R );
+	// TODO
+	// argus_msgs::FilterStepInfo PositionUpdate( const Translation3Type& pos, 
+	//                                            const MatrixType& R );
+	// argus_msgs::FilterStepInfo OrientationUpdate( const QuaternionType& ori, 
+	//                                               const MatrixType& R );
+	// argus_msgs::FilterStepInfo JointUpdate( const PoseSE3& pose, 
+	//                                         const VectorType& derivs, 
+	//                                         const MatrixType& C, 
+	//                                         const MatrixType& R );
 	void TimerCallback( const ros::TimerEvent& event );
 	void EnforceTwoDimensionality();
 };
-	
+
 }
