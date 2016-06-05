@@ -18,8 +18,8 @@ SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh,
 : nodeHandle( nh ), privHandle( ph ), 
 filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero() )
 {
-	GetParam( privHandle, "reference_frame", referenceFrame );
-	GetParam( privHandle, "body_frame", bodyFrame );
+	GetParamRequired( privHandle, "reference_frame", referenceFrame );
+	GetParamRequired( privHandle, "body_frame", bodyFrame );
 	
 	// Parse all update sources
 	XmlRpc::XmlRpcValue updateSources;
