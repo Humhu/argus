@@ -45,6 +45,7 @@ filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero
 			Qrate = FilterType::FullCovType::Identity();
 		}
 	}
+	ROS_INFO_STREAM( "Using covariance rate: " << std::endl << Qrate );
 
 	// Initialize
 	FilterType::FullCovType initCov;
@@ -56,6 +57,7 @@ filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero
 			initCov = FilterType::FullCovType::Identity();
 		}
 	}
+	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << initCov );
 
 	// TODO Initial state?
 	filter.Pose() = PoseSE3();
@@ -80,7 +82,7 @@ filter( PoseSE3(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero
 
 void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 {
-	VectorType z;
+  VectorType z( msg->observation.size() );
 	ParseMatrix( msg->observation, z );
 	MatrixType C = MsgToMatrix( msg->observation_matrix );
 	MatrixType R = MsgToMatrix( msg->observation_cov );
@@ -93,7 +95,7 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 	// TODO Case where there are no derivs in the filter?
 	bool hasPosition = !( C.block( 0, 0, C.rows(), 3 ).array() == 0 ).all();
 	bool hasOrientation = !( C.block( 0, 3, C.rows(), 3 ).array() == 0 ).all();
-	bool hasDerivs = !( C.rightCols( C.rows() - 6 ).array() == 0 ).all();
+	bool hasDerivs = !( C.rightCols( C.cols() - 6 ).array() == 0 ).all();
 
 	// First predict up to the update time
 	ros::Time updateTime = msg->header.stamp;
