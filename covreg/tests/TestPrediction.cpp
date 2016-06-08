@@ -1,4 +1,5 @@
-#include "covreg/PerceptoInterface.h"
+#include "covreg/ClipOptimizer.h"
+#include "covreg/CovarianceEstimator.h"
 #include "percepto/utils/Randomization.hpp"
 
 using namespace argus;
@@ -12,7 +13,6 @@ int main( int argc, char** argv )
 
 	MatrixRegressor matReg( inputDim, outputDim, numHiddenLayers, layerWidth );
 	VectorType params;
-	
 
 	VectorType input( inputDim );
 	percepto::randomize_vector( input );

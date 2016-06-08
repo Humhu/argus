@@ -59,7 +59,8 @@ catkin_package(
 include_directories( include )
 
 add_library( covreg
-	src/PerceptoInterface.cpp
+	src/ClipOptimizer.cpp
+	src/CovarianceEstimator.cpp
 )
 #add_dependencies( covreg ${covreg_EXPORTED_TARGETS} )
 target_link_libraries( covreg

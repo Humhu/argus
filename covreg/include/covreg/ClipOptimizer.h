@@ -1,17 +1,8 @@
 #pragma once
 
-#include <percepto/PerceptoTypes.h>
-
-#include <percepto/compo/ConstantRegressor.hpp>
-#include <percepto/compo/ExponentialWrapper.hpp>
-#include <percepto/compo/OffsetWrapper.hpp>
-#include <percepto/compo/ModifiedCholeskyWrapper.hpp>
-
 #include <percepto/compo/AdditiveWrapper.hpp>
 #include <percepto/compo/TransformWrapper.hpp>
 #include <percepto/compo/InputWrapper.hpp>
-
-#include <percepto/neural/NetworkTypes.h>
 
 #include <percepto/optim/ParameterL2Cost.hpp>
 #include <percepto/optim/GaussianLogLikelihoodCost.hpp>
@@ -25,45 +16,10 @@
 #include <memory>
 #include <unordered_map>
 
+#include "covreg/CovarianceEstimator.h"
+
 namespace argus
 {
-
-/*! \brief ReLU-based matrix regressor. */
-class MatrixRegressor
-{
-public:
-
-	typedef percepto::ReLUNet VarianceBaseRegressor;
-	typedef percepto::ConstantRegressor CorrelationRegressor;
-	typedef percepto::ExponentialWrapper<VarianceBaseRegressor> 
-	        VarianceRegressor;
-	typedef percepto::ModifiedCholeskyWrapper<CorrelationRegressor,
-	                                          VarianceRegressor>
-	        PSDRegressor;
-	typedef percepto::RegressorOffsetWrapper<PSDRegressor> PDRegressor;
-
-	MatrixRegressor( unsigned int matDim, unsigned int featDim,
-	                 unsigned int numHiddenLayers, unsigned int layerWidth );
-
-	void SetParameters( const VectorType& params );
-	VectorType GetParameters() const;
-
-	void RandomizeVarianceParams();
-	void ZeroCorrelationParams();
-
-	MatrixType Evaluate( const VectorType& input );
-
-	PDRegressor& Regressor() { return _pdReg; }
-
-private:
-
-	VarianceBaseRegressor _vBaseReg;
-	VarianceRegressor _vReg;
-	CorrelationRegressor _cReg;
-	PSDRegressor _psdReg;
-	PDRegressor _pdReg;
-
-};
 
 struct InnovationClipParameters
 {
@@ -93,22 +49,27 @@ public:
 
 	void AddPredict( const PredictInfo& info, const VectorType& input );
 
-	void AddUpdate( const UpdateInfo& info, const VectorType& input,
+	bool AddUpdate( const UpdateInfo& info, const VectorType& input,
 	                const std::string& name );
 
 	size_t NumClips() const;
 
-	void Optimize( const percepto::SimpleConvergenceCriteria& criteria );
+	void InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria );
+	bool StepOnce();
+	void Optimize();
+	double GetCost() const;
+	void Print( unsigned int num ) const;
 
 private:
 
 	// A regressor evaluated at some input
 	// Used for clip Qs and R
-	typedef percepto::InputWrapper<RegressorType> EstimateType;
+	typedef percepto::InputWrapper<RegressorType> EstimateR;
+	typedef percepto::InputWrapper<RegressorType> EstimateQ;
 	
 	// A regressor estimate linearly transformed
 	// Used for clip Qs
-	typedef percepto::TransformWrapper<EstimateType> TransformedEstimate;
+	typedef percepto::TransformWrapper<EstimateQ> TransformedEstimate;
 
 	// Sum of all transformed clip Qs
 	// H_t * Q_t * H_t^T + H_t * F_t * Q_t-1 * F_t^T * H_t^T + ...
@@ -116,15 +77,15 @@ private:
 	
 	// Sum of R with all transformed clip Qs
 	// R_t + ...
-	typedef percepto::AdditiveWrapper<SumTransQ,EstimateType> SumTransQR;
+	typedef percepto::AdditiveWrapper<SumTransQ,EstimateR> SumTransQR;
 
 	// Innovation covariance, equal to transformed previous estimate
 	// covariance plus R plus all transformed clip Qs
 	// Sum of H_t * F_t * ... * S_t-N-1^+ * ... F_t^T * H_t^T plus term from before
-	typedef percepto::OffsetWrapper<SumTransQR> InnovationCov;
+	typedef percepto::OffsetWrapper<SumTransQR> AugmentedInnoCov;
 
 	// The log-likelihood of an innovation sample
-	typedef percepto::GaussianLogLikelihoodCost<InnovationCov> InnoLL;
+	typedef percepto::GaussianLogLikelihoodCost<AugmentedInnoCov> InnoLL;
 
 	// Stochastic population cost of innovation log likelihoods
 	typedef percepto::StochasticPopulationCost<InnoLL, std::deque> 
@@ -133,7 +94,8 @@ private:
 	        MeanInnoLL;
 
 	// Above cost penalized with L2 on parameters
-	typedef percepto::ParameterL2Cost<StochasticInnoLL> PenalizedSILL;
+	typedef percepto::AdditiveWrapper <StochasticInnoLL, 
+	                                   percepto::ParameterL2Cost> PenalizedSILL;
 
 	RegressorType& _transReg;
 	std::unordered_map <std::string, RegressorType&> _obsRegs;
@@ -148,27 +110,40 @@ private:
 	{
 		typedef std::shared_ptr<ClipData> Ptr;
 
-		EstimateType estR;
-		std::vector<EstimateType> estQs;
+		EstimateR estR;
+
+		std::vector<EstimateQ> estQs;
 		std::vector<TransformedEstimate> transQs;
 		SumTransQ sumTransQs;
 		SumTransQR sumTransQsR;
-		std::shared_ptr<InnovationCov> estV;
+
+		std::shared_ptr<AugmentedInnoCov> estV;
+		std::string sourceName;
+		VectorType innovation;
 
 		ClipData( RegressorType& qReg, RegressorType& rReg, 
 		          const UpdateInfo& info,
 		          const VectorType& in, std::deque<PredictData>& buff );
+
+		void Print() const;
 	};
 
-	// Clip memories
-	unsigned int _maxNumClips;
-	std::deque<ClipData> _clips;
 
 	// Optimization
 	std::deque<InnoLL> _innoLLs;
 	StochasticInnoLL _sill;
 	MeanInnoLL _mill;
+	percepto::ParametricWrapper _paramWrapper;
+	percepto::ParameterL2Cost _l2Cost;
 	PenalizedSILL _psill;
+
+	// Clip memories
+	unsigned int _maxNumClips;
+	std::deque<ClipData> _clips;
+
+	std::shared_ptr<percepto::AdamStepper> _stepper;
+	std::shared_ptr<percepto::SimpleConvergence> _convergence;
+	std::shared_ptr<percepto::AdamOptimizer> _optimizer;
 
 };
 
