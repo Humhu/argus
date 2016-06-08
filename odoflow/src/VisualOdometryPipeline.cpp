@@ -29,8 +29,8 @@ extrinsicsManager( lookupInterface )
 	privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
-	GetParamDefault<unsigned int>( ph, "redetection_threshold", redetectionThreshold, 10 );
-	GetParamDefault<unsigned int>( ph, "min_num_inliers", minNumInliers, 10 );
+	GetParam<unsigned int>( ph, "redetection_threshold", redetectionThreshold, 10 );
+	GetParam<unsigned int>( ph, "min_num_inliers", minNumInliers, 10 );
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )

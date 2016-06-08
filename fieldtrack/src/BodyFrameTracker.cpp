@@ -88,7 +88,8 @@ void BodyFrameTracker::TimerCallback( const ros::TimerEvent& event )
 		odom.pose.pose = PoseToMsg( registration.filter.Pose() );
 		SerializeSymmetricMatrix( registration.filter.PoseCov(),
 		                          odom.pose.covariance );
-		odom.twist.twist = TangentToMsg( registration.filter.Derivs().head<6>() );
+		PoseSE3::TangentVector tangents = registration.filter.Derivs().head<6>();
+		odom.twist.twist = TangentToMsg( tangents );
 		SerializeSymmetricMatrix( registration.filter.DerivsCov().topLeftCorner<6,6>(),
 		                          odom.twist.covariance );
 		

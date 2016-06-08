@@ -14,7 +14,7 @@ PolicyManager::PolicyManager( const ros::NodeHandle& nh, const ros::NodeHandle& 
 {
 	// TODO Temporarily hard-coded types here
 	unsigned int maxCams;
-	GetParamDefault<unsigned int>( privHandle, "max_active_cameras", maxCams, 1 );
+	GetParam<unsigned int>( privHandle, "max_active_cameras", maxCams, 1 );
 	arrayTransitionFunction = std::make_shared<InstantCameraTransitionFunction>( maxCams );
 	
 	double lookaheadDt;
@@ -34,7 +34,7 @@ PolicyManager::PolicyManager( const ros::NodeHandle& nh, const ros::NodeHandle& 
 	rewardFunction = std::make_shared<FiducialRewardFunction>( fiducialModel, systemTransitionFunction );
 	
 	unsigned int numSamples;
-	GetParamDefault<unsigned int>( privHandle, "num_samples", numSamples, 10 );
+	GetParam<unsigned int>( privHandle, "num_samples", numSamples, 10 );
 	
 	policy = std::make_shared<ExpectationPolicy>( rewardFunction, numSamples );
 	

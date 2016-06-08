@@ -24,7 +24,7 @@ xSize( 0.04 ), ySize( 0.04 ), zSize( 0.04 )
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
 	unsigned int bufferSize;
-	GetParamDefault<unsigned int>( privHandle, "buffer_size", bufferSize, 50 );
+	GetParam<unsigned int>( privHandle, "buffer_size", bufferSize, 50 );
 	visPub = nodeHandle.advertise<visualization_msgs::Marker>( "status_markers", bufferSize );
 	statusSub = nodeHandle.subscribe( "array_status", 
 	                                  1,

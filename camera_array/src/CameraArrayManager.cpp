@@ -27,7 +27,7 @@ CameraArrayManager::CameraArrayManager( const ros::NodeHandle& nh,
 		exit( -1 );
 	}
 	
-	GetParamDefault<unsigned int>( privHandle, "max_active_cameras", maxNumActive, 1 );
+	GetParam<unsigned int>( privHandle, "max_active_cameras", maxNumActive, 1 );
 	cameraWorkers.SetNumWorkers( maxNumActive );
 	cameraWorkers.StartWorkers();
 	
