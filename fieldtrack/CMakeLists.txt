@@ -114,7 +114,7 @@ target_link_libraries( state_estimator_node
 	${catkin_LIBRARIES} )
 
 add_executable( odometry_converter_node
-	nodes/absolute_to_relative.cpp )
+	nodes/odometry_converter_node.cpp )
 add_dependencies( odometry_converter_node ${ROJECT_NAME}_gencfg )
 target_link_libraries( odometry_converter_node
 	fieldtrack
