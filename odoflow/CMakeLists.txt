@@ -72,7 +72,6 @@ add_library( odoflow
 	src/RigidEstimator.cpp
 	src/VisualOdometryPipeline.cpp
 )
-#add_dependencies( odoflow ${${PROJECT_NAME}_EXPORTED_TARGETS})
 target_link_libraries( odoflow
 	${OpenCV_LIBS}
 	${catkin_LIBRARIES}

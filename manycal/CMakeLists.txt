@@ -81,7 +81,7 @@ add_library( manycal
 	src/sclam_fiducial.cpp
 	src/slamse3.cpp
 )
-add_dependencies( manycal ${manycal_EXPORTED_TARGETS} )
+add_dependencies( manycal ${manycal_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 target_link_libraries( manycal
 	${Boost_LIBRARIES}
 	${OpenCV_LIBS}

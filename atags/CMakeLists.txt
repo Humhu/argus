@@ -78,7 +78,7 @@ target_link_libraries( atags
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
-add_dependencies( atags apriltags_external )
+add_dependencies( atags apriltags_external ${catkin_EXPORTED_TARGETS} )
 
 # add_library( detector_nodelet nodes/atag_detector_nodelet.cpp )
 # add_dependencies( detector_nodelet tags_gencfg 

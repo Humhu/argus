@@ -14,6 +14,8 @@
 #include "argus_utils/synchronization/SynchronizationTypes.h"
 #include "argus_utils/synchronization/ThreadsafeQueue.hpp"
 
+#include "broadcast/BroadcastReceiver.h"
+
 #include <boost/bind.hpp>
 #include <boost/thread/thread.hpp>
 
@@ -41,9 +43,10 @@ public:
 	Optimizer( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ),
 	_dataBuffer( 100 ),
-	_qReg( qOutputDim, qInputDim, qHiddenLayers, qLayerWidth ),
-	_gyroReg( gOutputDim, gInputDim, gHiddenLayers, gLayerWidth ),
-	_voReg( voOutputDim, voInputDim, voHiddenLayers, voLayerWidth )
+	_testRx( "odom_features", 100 ),
+	_qReg( "transition", qOutputDim, qInputDim, qHiddenLayers, qLayerWidth ),
+	_gyroReg( "gyro", gOutputDim, gInputDim, gHiddenLayers, gLayerWidth ),
+	_voReg( "vo", voOutputDim, voInputDim, voHiddenLayers, voLayerWidth )
 	{
 		_qReg.RandomizeVarianceParams();
 		_qReg.ZeroCorrelationParams();
@@ -75,7 +78,6 @@ public:
 
 		_optimizerThread = boost::thread( boost::bind( &Optimizer::OptimizerCallback, this ) );
 
-		_featSub = nodeHandle.subscribe( "features", 10, &Optimizer::FeatureCallback, this );
 		_infoSub = nodeHandle.subscribe( "filter_info", 10, &Optimizer::FilterCallback, this );
 	}
 
@@ -90,25 +92,14 @@ public:
 		_clipOptimizer->Print(50);
 	}
 
-	void FeatureCallback( const argus_msgs::PredictionFeatures::ConstPtr& msg )
-	{
-		// TODO Sort features by source
-		WriteLock lock( _featureMutex );
-		_latestFeatures = VectorType( msg->features.size() );
-		ParseMatrix( msg->features, _latestFeatures );
-	}
-
 	void FilterCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg )
 	{
-		ReadLock flock( _featureMutex );
-		if( _latestFeatures.size() == 0 )
+		if( !_testRx.HasReceived() )
 		{
 			ROS_WARN_STREAM( "Skipping filter info until features received." );
 			return;
 		}
-		VectorType feats = _latestFeatures;
-		flock.unlock();
-
+		VectorType feats = _testRx.GetClosestReceived( msg->header.stamp );
 		_dataBuffer.EmplaceBack( feats, *msg );
 	}
 
@@ -117,19 +108,16 @@ private:
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 
-	MatrixRegressor _qReg, _gyroReg, _voReg;
+	BroadcastReceiver _testRx;
+	CovarianceEstimator _qReg, _gyroReg, _voReg;
 	std::shared_ptr<InnovationClipOptimizer> _clipOptimizer;
 
 	typedef std::pair<VectorType,argus_msgs::FilterStepInfo> InfoData;
 	ThreadsafeQueue<InfoData> _dataBuffer;
 
-	Mutex _featureMutex;
-	VectorType _latestFeatures;
-
 	ros::Subscriber _featSub;
 	ros::Subscriber _infoSub;
 
-	//std::shared_ptr<ros::Timer> _printTimer;
 	ros::Time _lastPrintTime;
 	ros::Duration _printPeriod;
 

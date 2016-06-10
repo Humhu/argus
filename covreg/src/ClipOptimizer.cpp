@@ -1,5 +1,4 @@
 #include "covreg/ClipOptimizer.h"
-#include "percepto/utils/Randomization.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -7,21 +6,24 @@
 namespace argus
 {
 
-InnovationClipOptimizer::InnovationClipOptimizer( MatrixRegressor& qReg,
+InnovationClipOptimizer::InnovationClipOptimizer( CovarianceEstimator& qReg,
                                                   const InnovationClipParameters& params )
 : _transReg( qReg._pdReg ), _sill( _innoLLs, params.batchSize ), 
 _mill( _innoLLs ),
 _l2Cost( _paramWrapper, params.l2Weight ),
 _psill( _sill, _l2Cost ), 
 _maxClipLength( params.maxClipLength ),
-_maxNumClips( params.numClipsToKeep ) 
+_maxNumClips( params.numClipsToKeep ),
+_predictBuffer()
 {
 	_paramWrapper.AddParametric( &qReg._paramWrapper );
 }
 
-void InnovationClipOptimizer::AddObservationReg( MatrixRegressor& reg,
+void InnovationClipOptimizer::AddObservationReg( CovarianceEstimator& reg,
                                                  const std::string& name )
 {
+	WriteLock lock( _mutex );
+
 	_obsRegs.emplace( name, reg._pdReg );
 	_paramWrapper.AddParametric( &reg._paramWrapper );
 }
@@ -29,6 +31,8 @@ void InnovationClipOptimizer::AddObservationReg( MatrixRegressor& reg,
 void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
                                           const VectorType& input )
 {
+	WriteLock lock( _mutex );
+
 	_predictBuffer.emplace_front( info, input );
 	if( _predictBuffer.size() > _maxClipLength )
 	{
@@ -40,6 +44,8 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
                                          const VectorType& input,
                                          const std::string& name )
 {
+	WriteLock lock( _mutex );
+
 	if( _obsRegs.count( name ) == 0 || _predictBuffer.empty() )
 	{
 		return false;
@@ -61,10 +67,15 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	return true;
 }
 
-size_t InnovationClipOptimizer::NumClips() const { return _clips.size(); }
+size_t InnovationClipOptimizer::NumClips() const 
+{ 
+	WriteLock lock( _mutex );
+	return _clips.size(); 
+}
 
 void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria )
 {
+	WriteLock lock( _mutex );
 	percepto::AdamParameters aparams;
 	// aparams.beta1 = 1.0 - 1E-6;
 	// aparams.beta2 = 1.0 - 1E-4;
@@ -77,6 +88,7 @@ void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConv
 
 bool InnovationClipOptimizer::StepOnce()
 {
+	WriteLock lock( _mutex );
 	std::cout << "Initial mean cost: " << _mill.Evaluate() << std::endl;
 	bool ret = _optimizer->StepOnce( _psill );
 	std::cout << "Post mean cost: " << _mill.Evaluate() << std::endl;
@@ -84,18 +96,21 @@ bool InnovationClipOptimizer::StepOnce()
 }
 
 void InnovationClipOptimizer::Optimize()
-{
+{	
+	WriteLock lock( _mutex );
 	_convergence->Reset();
 	_optimizer->Optimize( _psill );
 }
 
 double InnovationClipOptimizer::GetCost() const
 {
+	WriteLock lock( _mutex );
 	return _mill.Evaluate();
 }
 
 void InnovationClipOptimizer::Print( unsigned int num ) const
 {
+	WriteLock lock( _mutex );
 	if( num > _clips.size() ) { num = _clips.size(); }
 	for( unsigned int i = 0; i < num; i++ )
 	{

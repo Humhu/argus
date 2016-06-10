@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "covreg/CovarianceEstimator.h"
+#include "argus_utils/synchronization/SynchronizationTypes.h"
 
 namespace argus
 {
@@ -39,13 +40,13 @@ class InnovationClipOptimizer
 {
 public:
 
-	typedef MatrixRegressor::PDRegressor RegressorType;
+	typedef CovarianceEstimator::PDRegressor RegressorType;
 
-	InnovationClipOptimizer( MatrixRegressor& qReg,
+	InnovationClipOptimizer( CovarianceEstimator& qReg,
 	                         const InnovationClipParameters& params =
 	                         InnovationClipParameters() );
 
-	void AddObservationReg( MatrixRegressor& reg, const std::string& name );
+	void AddObservationReg( CovarianceEstimator& reg, const std::string& name );
 
 	void AddPredict( const PredictInfo& info, const VectorType& input );
 
@@ -61,6 +62,8 @@ public:
 	void Print( unsigned int num ) const;
 
 private:
+
+	mutable Mutex _mutex;
 
 	// A regressor evaluated at some input
 	// Used for clip Qs and R

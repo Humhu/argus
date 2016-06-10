@@ -82,11 +82,11 @@ public:
 		slam->remove_node( datum.node.get() );
 
 		typename TimeSeries::iterator prevIter;
-		bool hasLower = argus::get_closest_lower( timeSeries, ind, prevIter );
+		bool hasLower = argus::get_closest_lesser( timeSeries, ind, prevIter );
 		Datum& prev = prevIter->second;
 
 		typename TimeSeries::iterator nextIter;
-		bool hasUpper = argus::get_closest_upper( timeSeries, ind, nextIter );
+		bool hasUpper = argus::get_closest_greater( timeSeries, ind, nextIter );
 		Datum& next = nextIter->second;
 
 		// Fill in hole in graph by joining odometry
@@ -175,7 +175,7 @@ public:
 			if( data.toPrev ) { localFactors.insert( data.toPrev.get() ); }
 
 			typename TimeSeries::iterator nextIter;
-			if( argus::get_closest_upper( timeSeries, ind, nextIter ) )
+			if( argus::get_closest_greater( timeSeries, ind, nextIter ) )
 			{
 				localFactors.insert( nextIter->toPrev.get() );
 			}
@@ -208,8 +208,8 @@ private:
 	{
 		typename TimeSeries::iterator prevIter, nextIter;
 		// Make sure index has previous and following items
-		if( !argus::get_closest_lower( timeSeries, ind, prevIter ) || 
-		    !argus::get_closest_upper( timeSeries, ind, nextIter ) )
+		if( !argus::get_closest_lesser( timeSeries, ind, prevIter ) || 
+		    !argus::get_closest_greater( timeSeries, ind, nextIter ) )
 		{
 			return nullptr;
 		}

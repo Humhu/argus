@@ -10,6 +10,10 @@ bool isPredict
 # Estimate covariance before step
 MatrixFloat64 Spre
 
+# Q matrix for predict steps
+# R matrix for update steps
+MatrixFloat64 noiseCov
+
 # Predict step fields
 # Transition matrix that evolves covariance
 MatrixFloat64 F

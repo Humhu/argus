@@ -12,36 +12,39 @@ find_package(catkin REQUIRED
 					sensor_msgs
 					argus_utils
 					argus_msgs
+					lookup
+					broadcast
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
 include_directories( ${Boost_INCLUDE_DIRS} )
-list( APPEND covreg_LIBRARIES ${Boost_LIBRARIES} )
+list( APPEND covreg_LIBS ${Boost_LIBRARIES} )
 
 
 find_package(percepto REQUIRED)
 message( STATUS "percepto found at: " ${percepto_INCLUDE_DIRS} )
 include_directories( ${percepto_INCLUDE_DIRS} )
-list( APPEND covreg_LIBRARIES ${percepto_LIBS} )
+list( APPEND covreg_LIBS ${percepto_LIBS} )
 
 find_package(Eigen3 REQUIRED)
 include_directories( ${EIGEN3_INCLUDE_DIR} )
 
-# add_service_files(
-# 	FILES           CaptureArray.srv
-# 	                WriteCalibration.srv
-# )
+add_message_files( FILES
+	CovarianceEstimatorInfo.msg
+	NeuralNetworkInfo.msg
+)
 
-# generate_messages(
-# 	DEPENDENCIES	std_msgs
-# )
+generate_messages(
+	DEPENDENCIES	std_msgs
+	            	argus_msgs
+)
 
 catkin_package(
-	INCLUDE_DIRS 	include
+	INCLUDE_DIRS	include
 	
-	LIBRARIES 		covreg
+	LIBRARIES		covreg
 					
 	CATKIN_DEPENDS 	message_runtime 
 					roscpp 
@@ -49,6 +52,8 @@ catkin_package(
 					sensor_msgs
 					argus_utils
 					argus_msgs
+					lookup
+					broadcast
 					
 	DEPENDS 		Boost 
 					percepto
@@ -61,37 +66,32 @@ include_directories( include )
 add_library( covreg
 	src/ClipOptimizer.cpp
 	src/CovarianceEstimator.cpp
+	src/EstimatorInfoParsers.cpp
 )
-#add_dependencies( covreg ${covreg_EXPORTED_TARGETS} )
+add_dependencies( covreg ${covreg_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_dependencies( covreg covreg_gencfg )
 target_link_libraries( covreg
 	${catkin_LIBRARIES}
-	${covreg_LIBRARIES}
+	${covreg_LIBS}
 )
 
-add_executable( test_prediction tests/TestPrediction.cpp )
-add_dependencies( test_prediction ${PROJECT_NAME}_gencfg )
-target_link_libraries( test_prediction
-                       ${catkin_LIBRARIES}
-                       ${covreg_LIBRARIES}
-                       covreg )
-
 add_executable( optimizer_node nodes/covariance_optimizer.cpp )
-add_dependencies( optimizer_node ${PROJECT_NAME}_gencfg )
+add_dependencies( optimizer_node covreg_gencfg )
 target_link_libraries( optimizer_node
                        ${catkin_LIBRARIES}
-                       ${covreg_LIBRARIES}
+                       ${covreg_LIBS}
                        covreg )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS test_prediction optimizer_node
+install(TARGETS covreg optimizer_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 file(GLOB covreg_HEADERS
-	"include/${PROJECT_NAME}/*.h"
-	"include/${PROJECT_NAME}/*.hpp"
+	"include/covreg/*.h"
+	"include/covreg/*.hpp"
 )
 install(FILES ${covreg_HEADERS}
 	DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}

@@ -8,13 +8,14 @@
 
 #include <argus_utils/utils/LinalgTypes.h>
 
+#include "covreg/CovarianceEstimatorInfo.h"
+
 namespace argus
 {
 
 class InnovationClipOptimizer;
 
-/*! \brief ReLU-based matrix regressor. */
-class MatrixRegressor
+class CovarianceEstimator
 {
 public:
 
@@ -27,8 +28,17 @@ public:
 	typedef percepto::OffsetWrapper<PSDModule> PDModule;
 	typedef percepto::InputChainWrapper<VarBaseModule, PDModule> PDRegressor;
 
-	MatrixRegressor( unsigned int matDim, unsigned int featDim,
-	                 unsigned int numHiddenLayers, unsigned int layerWidth );
+	const std::string sourceName;
+
+	/*! \brief Construct an estimator from the given parameter message. */
+	CovarianceEstimator( const covreg::CovarianceEstimatorInfo& info );
+
+	/*! \brief Construct an estimator with the specified parameters. */
+	CovarianceEstimator( const std::string& source,
+	                     unsigned int matDim, 
+	                     unsigned int featDim,
+	                     unsigned int numHiddenLayers, 
+	                     unsigned int layerWidth );
 
 	void SetParameters( const VectorType& params );
 	VectorType GetParameters() const;
@@ -37,6 +47,9 @@ public:
 	void ZeroCorrelationParams();
 
 	MatrixType Evaluate( const VectorType& input );
+
+	/*! \brief Outputs a parameter message. */
+	covreg::CovarianceEstimatorInfo GetInfoMessage() const;
 
 private:
 
@@ -50,6 +63,8 @@ private:
 	PDModule _pdMod;
 	PDRegressor _pdReg;
 	percepto::ParametricWrapper _paramWrapper;
+
+	
 
 };
 
