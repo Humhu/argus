@@ -11,7 +11,10 @@ class LookupInterface
 {
 public:
 
+	// TODO Deprecate
 	LookupInterface();
+
+	LookupInterface( const ros::NodeHandle& nh );
 	
 	/*! \brief Sets the lookup namespace. */
 	void SetLookupNamespace( const std::string& ns );

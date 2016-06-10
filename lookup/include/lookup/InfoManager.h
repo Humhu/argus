@@ -29,16 +29,16 @@ public:
 	/*! \brief Attempt to read information for the specified member name. Fast-returns
 	 * if previous lookup failures exist and the forceLookup flag is not set. 
 	 * Returns success. */
-	virtual bool ReadMemberInfo( const std::string& memberName,
-	                             bool forceLookup = false,
-	                             const ros::Duration& timeout = ros::Duration( 0 ) ) = 0;
+	bool ReadMemberInfo( const std::string& memberName,
+	                     bool forceLookup = false,
+	                     const ros::Duration& timeout = ros::Duration( 0 ) );
 	
 	/*! \brief Attempt to write cached information for the specified member name. 
 	 * Fast-returns if previous lookup failures exist and the forceLookup flag 
 	 * is not set. Returns success. */
-	virtual bool WriteMemberInfo( const std::string& memberName,
-	                              bool forceLookup = false,
-	                              const ros::Duration& timeout = ros::Duration( 0 ) ) = 0;
+	bool WriteMemberInfo( const std::string& memberName,
+	                      bool forceLookup = false,
+	                      const ros::Duration& timeout = ros::Duration( 0 ) );
 	
 	/*! \brief Returns whether the member information is cached. */
 	bool HasMember( const std::string& memberName ) const;
@@ -46,12 +46,23 @@ public:
 	/*! \brief Retrieve the member information registration. */
 	InfoStruct& GetInfo( const std::string& memberName );
 	const InfoStruct& GetInfo( const std::string& memberName ) const;
-	
+	const std::string& GetNamespace( const std::string& memberName ) const;
+
 protected:
 	
 	/*! \brief Returns the prefix namespace for the specified member. */
 	bool GetNamespace( const std::string& memberName, std::string& ns, 
 	                   bool forceLookup, const ros::Duration& timeout );
+
+	/*! \brief Reads fields from memberNamespace into the info struct.
+	 * memberNamespace always ends in a trailing backslash (/) */
+	virtual bool ParseMemberInfo( const std::string& memberNamespace,
+	                              InfoStruct& info ) = 0;
+
+	/*! \brief Writes fields from the info struct to the member namespace. 
+	 * memberNamespace always ends in a trailing backslash (/) */
+	virtual void PopulateMemberInfo( const InfoStruct& info,
+	                                 const std::string& memberNamespace ) = 0;
 	
 	/*! \brief Record a failed lookup for the specified member. */
 	void RecordFailure( const std::string& memberName );
@@ -62,19 +73,19 @@ protected:
 	/*! \brief Returns whether the specified member has failed lookups on record. */
 	bool HasFailures( const std::string& memberName ) const;
 	
-	/*! \brief Assigns the info to the specified member name. Overwrites
-	 * old info if it exists. */
-	void RegisterMember( const std::string& memberName, const InfoStruct& info );
-	
-	
 private:
 	
 	LookupInterface& lookupInterface;
 	
+	struct MemberRegistration
+	{
+		std::string nameSpace;
+		InfoStruct info;
+	};
+
 	/*! \brief Records array queries that have failed before. */
 	std::unordered_set <std::string> failedQueries;
-	
-	std::unordered_map <std::string, InfoStruct> registry;
+	std::unordered_map <std::string, MemberRegistration> registry;
 };
 	
 }

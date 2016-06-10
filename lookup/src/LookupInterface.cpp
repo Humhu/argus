@@ -6,6 +6,9 @@ namespace argus
 LookupInterface::LookupInterface()
 : nodeHandle(), lookupNamespace( "/lookup/" ) {}
 
+LookupInterface::LookupInterface( const ros::NodeHandle& nh )
+: nodeHandle( nh ), lookupNamespace( "/lookup/" ) {}
+
 void LookupInterface::SetLookupNamespace( const std::string& ns )
 {
 	lookupNamespace = ns;
@@ -52,7 +55,7 @@ std::string LookupInterface::CleanPath( const std::string& path )
 std::string LookupInterface::FormLookupPath( const std::string& key ) const
 {
 	std::string lookupPath = CleanPath( lookupNamespace + key );
-	lookupPath += "namespace";
+	//lookupPath += "namespace";
 	return lookupPath;
 }
 	

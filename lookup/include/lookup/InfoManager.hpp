@@ -17,9 +17,8 @@ bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName,
                                                bool forceLookup,
                                                const ros::Duration& timeout )
 {
-	if( HasMember( memberName ) ) 
+	if( !forceLookup && HasMember( memberName ) ) 
 	{ 
-		ClearFailures( memberName );
 		return true; 
 	}
 	
@@ -39,9 +38,51 @@ bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName,
 			return true; 
 		}
 		ROS_INFO_STREAM( "Lookup failed. Retrying..." );
-		ros::Duration( 0.5 ).sleep();
+		ros::Duration( 0.5 ).sleep(); // TODO Make a parameter
 		if( ros::Time::now() > start + timeout ) { return false; }
 	}
+}
+
+template <typename InfoStruct>
+bool InfoManager<InfoStruct>::ReadMemberInfo( const std::string& memberName,
+                                              bool forceLookup,
+                                              const ros::Duration& timeout )
+{
+	MemberRegistration reg;
+	// Get namespace records failures, so we don't have to here
+	if( !GetNamespace( memberName, reg.nameSpace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
+
+	InfoStruct info;
+	if( !ParseMemberInfo( reg.nameSpace, reg.info ) ) 
+	{ 
+		RecordFailure( memberName );
+		return false; 
+	}
+
+	registry[memberName] = reg;
+	return true;
+}
+
+template <typename InfoStruct>
+bool InfoManager<InfoStruct>::WriteMemberInfo( const std::string& memberName,
+                                               bool forceLookup,
+                                               const ros::Duration& timeout )
+{
+	// Can't write info if we don't have it cached!
+	if( !HasMember( memberName ) ) { return false; }
+	
+	std::string memberNamespace;
+	// Get namespace records failures, so we don't have to here
+	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
+
+	PopulateMemberInfo( GetInfo( memberName ), memberNamespace );
+	return true;
 }
 
 template <typename InfoStruct>
@@ -51,15 +92,24 @@ bool InfoManager<InfoStruct>::HasMember( const std::string& memberName ) const
 }
 
 template <typename InfoStruct>
-InfoStruct& InfoManager<InfoStruct>::GetInfo( const std::string& memberName )
+InfoStruct& 
+InfoManager<InfoStruct>::GetInfo( const std::string& memberName )
 {
-	return registry.at( memberName );
+	return registry.at( memberName ).info;
 }
 
 template <typename InfoStruct>
-const InfoStruct& InfoManager<InfoStruct>::GetInfo( const std::string& memberName ) const
+const InfoStruct& 
+InfoManager<InfoStruct>::GetInfo( const std::string& memberName ) const
 {
-	return registry.at( memberName );
+	return registry.at( memberName ).info;
+}
+
+template <typename InfoStruct>
+const std::string& 
+InfoManager<InfoStruct>::GetNamespace( const std::string& memberName ) const
+{
+	return registry.at( memberName ).nameSpace;
 }
 
 template <typename InfoStruct>
@@ -76,6 +126,12 @@ bool InfoManager<InfoStruct>::GetNamespace( const std::string& memberName,
 		return false; 
 	}
 	
+	if( registry.count( memberName ) > 0 )
+	{
+		ns = registry[ memberName ].nameSpace;
+		return true;
+	}
+
 	if( !lookupInterface.ReadNamespace( memberName, ns, timeout ) )
 	{
 		ROS_WARN_STREAM( "Could not find namespace for: " << memberName );
@@ -105,11 +161,4 @@ bool InfoManager<InfoStruct>::HasFailures( const std::string& memberName ) const
 	return failedQueries.count( memberName ) > 0;
 }
 
-template <typename InfoStruct>
-void InfoManager<InfoStruct>::RegisterMember( const std::string& memberName,
-                                              const InfoStruct& info )
-{
-	registry[ memberName ] = info;
-}
-	
 }

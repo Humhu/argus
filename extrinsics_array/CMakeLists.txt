@@ -25,7 +25,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
 	INCLUDE_DIRS 	include
 	
-	LIBRARIES 		lib_extrinsics_array
+	LIBRARIES 		extrinsics_array
 					
 	CATKIN_DEPENDS 	roscpp 
 					argus_utils
@@ -42,17 +42,17 @@ include_directories( include
 					 ${catkin_INCLUDE_DIRS}
 )
 
-add_library( lib_extrinsics_array
+add_library( extrinsics_array
 	src/ExtrinsicsCalibrationParsers.cpp
 	src/ExtrinsicsInfoManager.cpp
 )
-target_link_libraries( lib_extrinsics_array
+target_link_libraries( extrinsics_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS lib_extrinsics_array
+install(TARGETS extrinsics_array
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -12,68 +12,40 @@ ExtrinsicsInfoManager::ExtrinsicsInfoManager( LookupInterface& interface )
 : InfoManager( interface )
 {}
 
-bool ExtrinsicsInfoManager::ReadMemberInfo( const std::string& memberName,
-                                            bool forceLookup,
-	                                        const ros::Duration& timeout )
+bool ExtrinsicsInfoManager::ParseMemberInfo( const std::string& memberNamespace,
+                                             ExtrinsicsInfo& info )
 {
-	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
-	{ 
-		return false; 
-	}
-
-	ExtrinsicsInfo registration;
-	
 	// Read extrinsics first
 	YAML::Node extrinsics;
 	std::string extrinsicsKey = GenerateExtrinsicsKey( memberNamespace );
-	if( !GetYamlParam( nodeHandle, extrinsicsKey, extrinsics ) )
+	if( !GetYamlParam( _nodeHandle, extrinsicsKey, extrinsics ) )
 	{
-		ROS_WARN_STREAM( "Could not find extrinsics information for: " << memberName 
-		    << " at path " << extrinsicsKey );
-		RecordFailure( memberName );
+		ROS_WARN_STREAM( "Could not find extrinsics information at path " << extrinsicsKey );
 		return false;
 	}
-	if( !GetPoseYaml( extrinsics, registration.extrinsics ) )
+	if( !GetPoseYaml( extrinsics, info.extrinsics ) )
 	{
-		ROS_WARN_STREAM( "Could not parse extrinsics information for: " << memberName
-		    << " at key: " << extrinsicsKey );
-		RecordFailure( memberName );
+		ROS_WARN_STREAM( "Could not parse extrinsics information at key: " << extrinsicsKey );
 		return false;
 	}
 	
 	// Then read reference frame ID
 	std::string referenceKey = GenerateRefFrameKey( memberNamespace );
-	if( !nodeHandle.getParam( referenceKey, registration.referenceFrame ) )
+	if( !_nodeHandle.getParam( referenceKey, info.referenceFrame ) )
 	{
-		ROS_WARN_STREAM( "Could not find reference frame information for: " << memberName
-		    << " at path " << referenceKey );
-		RecordFailure( memberName );
+		ROS_WARN_STREAM( "Could not find reference frame information at path " << referenceKey );
 		return false;
 	}
 	
-	RegisterMember( memberName, registration );
 	return true;
 }
 
-bool ExtrinsicsInfoManager::WriteMemberInfo( const std::string& memberName,
-                                             bool forceLookup,
-	                                         const ros::Duration& timeout )
+void ExtrinsicsInfoManager::PopulateMemberInfo( const ExtrinsicsInfo& info,
+                                                const std::string& memberNamespace )
 {
-	// Can't write info if we don't have it cached!
-	if( !HasMember( memberName ) ) { return false; }
-	
-	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
-	{ 
-		return false; 
-	}
-	
-	ExtrinsicsInfo& registration = GetInfo( memberName );
-	YAML::Node extrinsics = SetPoseYaml( registration.extrinsics );
-	SetYamlParam( nodeHandle, GenerateExtrinsicsKey( memberNamespace ), extrinsics );
-	nodeHandle.setParam( GenerateRefFrameKey( memberNamespace ), registration.referenceFrame );
-	return true;
+	YAML::Node extrinsics = SetPoseYaml( info.extrinsics );
+	SetYamlParam( _nodeHandle, GenerateExtrinsicsKey( memberNamespace ), extrinsics );
+	_nodeHandle.setParam( GenerateRefFrameKey( memberNamespace ), info.referenceFrame );
 }
 
 std::string ExtrinsicsInfoManager::GenerateExtrinsicsKey( const std::string& ns )

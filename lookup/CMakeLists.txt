@@ -31,6 +31,8 @@ catkin_package(
 					system_lib
 )
 
+catkin_python_setup()
+
 include_directories( include
 ${EIGEN3_INCLUDE_DIR}
 					 ${Boost_INCLUDE_DIRS}

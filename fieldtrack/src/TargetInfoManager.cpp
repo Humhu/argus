@@ -16,121 +16,94 @@ TargetInfoManager::TargetInfoManager( LookupInterface& interface )
 : InfoManager( interface )
 {}
 
-bool TargetInfoManager::ReadMemberInfo( const std::string& memberName,
-                                        bool forceLookup,
-                                        const ros::Duration& timeout )
+bool TargetInfoManager::ParseMemberInfo( const std::string& memberNamespace,
+                                         TargetInfo& info )
 {
-	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
-	{ 
-		return false; 
-	}
-	
-	TargetInfo registration;
-	
 	// Parse motion mode
 	std::string motionString;
 	std::string motionKey = memberNamespace + MOTION_KEY;
-	if( !nodeHandle.getParam( motionKey, motionString ) )
+	if( !_nodeHandle.getParam( motionKey, motionString ) )
 	{
-		ROS_WARN_STREAM( "Could not find motion mode information for: " << memberName
-			<< " at path " << motionKey );
-		RecordFailure( memberName );
+		ROS_WARN_STREAM( "Could not find motion mode information at path " << motionKey );
 		return false;
 	}
-	registration.motionMode = StringToMotion( motionString );
-	if( registration.motionMode == MOTION_INVALID )
+	info.motionMode = StringToMotion( motionString );
+	if( info.motionMode == MOTION_INVALID )
 	{
 		ROS_WARN_STREAM( "Read invalid motion mode string of: " << motionString
-			<< " for: " << memberName << " at path " << motionKey );
+			<< " at path " << motionKey );
 		return false;
 	}
 	
 	// Parse odometry topic
 	std::string odomTopic;
-	if( nodeHandle.getParam( memberNamespace + ODOMETRY_KEY, odomTopic ) )
+	if( _nodeHandle.getParam( memberNamespace + ODOMETRY_KEY, odomTopic ) )
 	{
-		if( odomTopic.front() == '/' ) { registration.odometryTopic = odomTopic; }
-		else { registration.odometryTopic = memberNamespace + odomTopic; }
+		if( odomTopic.front() == '/' ) { info.odometryTopic = odomTopic; }
+		else { info.odometryTopic = memberNamespace + odomTopic; }
 	}
 
 	// Parse odometry topic
 	std::string detTopic;
-	if( nodeHandle.getParam( memberNamespace + DETECTION_KEY, detTopic ) )
+	if( _nodeHandle.getParam( memberNamespace + DETECTION_KEY, detTopic ) )
 	{
-		if( detTopic.front() == '/' ) { registration.detectionTopic = detTopic; }
-		else { registration.detectionTopic = memberNamespace + detTopic; }
+		if( detTopic.front() == '/' ) { info.detectionTopic = detTopic; }
+		else { info.detectionTopic = memberNamespace + detTopic; }
 	}
 
 	// Parse camera groups
 	std::vector<std::string> cameraGroups;
-	if( nodeHandle.getParam( memberNamespace + CAMERAGROUP_KEY, cameraGroups ) )
+	if( _nodeHandle.getParam( memberNamespace + CAMERAGROUP_KEY, cameraGroups ) )
 	{
 		BOOST_FOREACH( const std::string& group, cameraGroups )
 		{
-			CameraGroupInfo info;
-			if( !ParseCameraGroup( memberNamespace + group + "/", info ) )
+			CameraGroupInfo cginfo;
+			if( !ParseCameraGroup( memberNamespace + group + "/", cginfo ) )
 			{
-				ROS_WARN_STREAM( "Could not parse camera group info for: " << memberName
-				                 << " group: " << group );
+				ROS_WARN_STREAM( "Could not parse camera group info for group: " << group );
 				return false;
 			}
-			registration.cameraGroups[ group ] = info;
+			info.cameraGroups[ group ] = cginfo;
 		}
 	}
 
 	// Parse fiducial groups
 	std::vector<std::string> fiducialGroups;
-	if( nodeHandle.getParam( memberNamespace + FIDUCIALGROUP_KEY, fiducialGroups ) )
+	if( _nodeHandle.getParam( memberNamespace + FIDUCIALGROUP_KEY, fiducialGroups ) )
 	{
 		BOOST_FOREACH( const std::string& group, fiducialGroups )
 		{
-			FiducialGroupInfo info;
-			if( !ParseFiducialGroup( memberNamespace + group + "/", info ) )
+			FiducialGroupInfo fginfo;
+			if( !ParseFiducialGroup( memberNamespace + group + "/", fginfo ) )
 			{
-				ROS_WARN_STREAM( "Could not parse fiducial group info for: " << memberName
-				                 << " group: " << group );
+				ROS_WARN_STREAM( "Could not parse fiducial group info for group: " << group );
 				return false;
 			}
-			registration.fiducialGroups[ group ] = info;
+			info.fiducialGroups[ group ] = fginfo;
 		}
 	}
-	
-	RegisterMember( memberName, registration );
 	return true;
 }
 
-bool TargetInfoManager::WriteMemberInfo( const std::string& memberName,
-                                         bool forceLookup,
-                                         const ros::Duration& timeout )
+void TargetInfoManager::PopulateMemberInfo( const TargetInfo& info,
+                                            const std::string& memberNamespace )
 {
-	if( !HasMember( memberName ) ) { return false; }
-	
-	std::string memberNamespace;
-	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
-	{ 
-		return false; 
-	}
-	
-	TargetInfo& registration = GetInfo( memberName );
-	nodeHandle.setParam( memberNamespace + MOTION_KEY,
-	                     MotionToString( registration.motionMode ) );
+	_nodeHandle.setParam( memberNamespace + MOTION_KEY,
+	                     MotionToString( info.motionMode ) );
 	
 	// TODO Write other parameters
-
-	return true;
 }
 
 bool TargetInfoManager::ParseCameraGroup( const std::string& ns, 
                                           CameraGroupInfo& info )
 {
-	return nodeHandle.getParam( ns + CAMERAS_KEY, info.cameras );
+	return _nodeHandle.getParam( ns + CAMERAS_KEY, info.cameras );
 }
 
 bool TargetInfoManager::ParseFiducialGroup( const std::string& ns, 
                                             FiducialGroupInfo& info )
 {
-	return nodeHandle.getParam( ns + FIDUCIALS_KEY, info.fiducials );
+	return _nodeHandle.getParam( ns + FIDUCIALS_KEY, info.fiducials );
 }
 
 std::string MotionToString( MotionMode mode )

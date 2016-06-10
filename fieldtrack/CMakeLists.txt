@@ -2,20 +2,19 @@ cmake_minimum_required(VERSION 2.8.3)
 project(fieldtrack)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
-
 set(CMAKE_BUILD_TYPE Release)
 
-find_package(catkin REQUIRED 
-	COMPONENTS		message_generation
-					roscpp
-					std_msgs
-					sensor_msgs
-					nav_msgs
-					argus_utils
-					extrinsics_array
-					fiducials
-					lookup
+find_package(catkin REQUIRED COMPONENTS
+	message_generation
+	roscpp
+	std_msgs
+	sensor_msgs
+	nav_msgs
+	argus_utils
+	extrinsics_array
+	fiducials
+	lookup
+	covreg
 )
 
 # Use Boost for most utilities, threading
@@ -25,11 +24,11 @@ find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 catkin_package(
-	INCLUDE_DIRS 	include
+	INCLUDE_DIRS	include
 	
-	LIBRARIES 		fieldtrack
+	LIBRARIES		fieldtrack
 					
-	CATKIN_DEPENDS 	message_runtime 
+	CATKIN_DEPENDS	message_runtime 
 					roscpp 
 					std_msgs
 					nav_msgs
@@ -37,6 +36,7 @@ catkin_package(
 					extrinsics_array
 					fiducials
 					lookup
+					covreg
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -58,11 +58,11 @@ add_library( fieldtrack
 	src/TargetInfoManager.cpp
 	src/VelocityIntegrator.cpp
 )
-# add_dependencies( fieldtrack ${fieldtrack_EXPORTED_TARGETS} )
 target_link_libraries( fieldtrack
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
+add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} )
  
 add_executable( array_pose_estimator
 	nodes/array_pose_estimator.cpp )

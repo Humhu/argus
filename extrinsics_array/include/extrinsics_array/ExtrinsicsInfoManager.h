@@ -24,20 +24,14 @@ public:
 	
 	ExtrinsicsInfoManager( LookupInterface& interface );
 
-	/*! \brief Load information for the array that contains the specified member using
-	 * the lookup table. Overwrites existing cached values. If memberName has been
-	 * queried before and failed, this method skips querying the parameter server unless
-	 * forceLookup is set. Returns success. */
-	virtual bool ReadMemberInfo( const std::string& memberName, 
-	                             bool forceLookup = false,
-	                             const ros::Duration& timeout = ros::Duration( 0 ) );
-	virtual bool WriteMemberInfo( const std::string& memberName, 
-	                             bool forceLookup = false,
-	                             const ros::Duration& timeout = ros::Duration( 0 ) );
-	
 protected:
 	
-	ros::NodeHandle nodeHandle;
+	ros::NodeHandle _nodeHandle;
+	
+	virtual bool ParseMemberInfo( const std::string& memberNamespace, 
+	                              ExtrinsicsInfo& info );
+	virtual void PopulateMemberInfo( const ExtrinsicsInfo& info,
+	                                 const std::string& memberNamespace );
 	
 	static std::string GenerateExtrinsicsKey( const std::string& ns );
 	static std::string GenerateRefFrameKey( const std::string& ns );

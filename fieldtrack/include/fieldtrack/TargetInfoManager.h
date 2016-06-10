@@ -48,17 +48,16 @@ public:
 
 	TargetInfoManager( LookupInterface& interface );
 	
-	virtual bool ReadMemberInfo( const std::string& memberName, 
-	                             bool forceLookup = false,
-	                             const ros::Duration& timeout = ros::Duration( 0 ) );
-	
-	virtual bool WriteMemberInfo( const std::string& memberName, 
-	                              bool forceLookup = false,
-	                              const ros::Duration& timeout = ros::Duration( 0 ) );
-	
+
 protected:
 	
-	ros::NodeHandle nodeHandle;
+	ros::NodeHandle _nodeHandle;
+
+	virtual bool ParseMemberInfo( const std::string& memberNamespace, 
+	                              TargetInfo& info );
+	
+	virtual void PopulateMemberInfo( const TargetInfo& info,
+	                                 const std::string& memberNamespace );
 	
 	bool ParseCameraGroup( const std::string& ns, CameraGroupInfo& info );
 	bool ParseFiducialGroup( const std::string& ns, FiducialGroupInfo& info );

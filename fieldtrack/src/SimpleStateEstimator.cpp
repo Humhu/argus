@@ -5,6 +5,8 @@
 #include "argus_utils/filters/FilterUtils.h"
 #include "argus_utils/utils/YamlUtils.h"
 
+#include "lookup/LookupUtils.hpp"
+
 using namespace argus_msgs;
 using namespace geometry_msgs;
 using namespace nav_msgs;

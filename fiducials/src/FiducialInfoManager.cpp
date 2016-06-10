@@ -12,53 +12,33 @@ namespace argus
 FiducialInfoManager::FiducialInfoManager( LookupInterface& interface )
 : InfoManager( interface ) {}
 
-bool FiducialInfoManager::ReadMemberInfo( const std::string& fidName,
-                                          bool forceLookup,
-                                          const ros::Duration& timeout )
+bool FiducialInfoManager::ParseMemberInfo( const std::string& memberNamespace,
+                                           Fiducial& fid )
 {
-	// Retrieve intrinsics YAML
 	YAML::Node intrinsics;
-	std::string fidNamespace;
-	if( !GetNamespace( fidName, fidNamespace, forceLookup, timeout ) ) 
-	{ 
-		return false; 
-	}
-	std::string intrinsicsKey = GenerateIntrinsicsKey( fidNamespace );
-	
-	if( !GetYamlParam( nodeHandle, intrinsicsKey, intrinsics ) )
+	std::string intrinsicsKey = GenerateIntrinsicsKey( memberNamespace );
+	if( !GetYamlParam( _nodeHandle, intrinsicsKey, intrinsics ) )
 	{
-		ROS_WARN_STREAM( "Could not find intrinsics information for: " << fidName
-		    << " at path: " << intrinsicsKey );
+		ROS_WARN_STREAM( "Could not find intrinsics information at path: " << intrinsicsKey );
 		return false;
 	}
 	fiducials::FiducialInfo info;
 	if( !ParseFiducialCalibration( intrinsics, info ) )
 	{
-		ROS_WARN_STREAM( "Could not parse intrinsics information for: " << fidName
-		    << " at path: " << intrinsicsKey );
+		ROS_WARN_STREAM( "Could not parse intrinsics information at path: " << intrinsicsKey );
 		return false;
 	}
-	RegisterMember( fidName, Fiducial( info ) );
+	fid = Fiducial( info );
 	return true;
 }
 
-bool FiducialInfoManager::WriteMemberInfo( const std::string& fidName,
-                                           bool forceLookup,
-                                           const ros::Duration& timeout )
+void FiducialInfoManager::PopulateMemberInfo( const Fiducial& fid,
+                                              const std::string& memberNamespace )
 {
-	// Can't write params if we don't have them cached!
-	if( !HasMember( fidName ) ) { return false; }
-	
 	YAML::Node yaml;
-	PopulateFiducialCalibration( GetInfo( fidName ).ToInfo(), yaml );
-	std::string fidNamespace;
-	if( !GetNamespace( fidName, fidNamespace, forceLookup, timeout ) ) 
-	{ 
-		return false; 
-	}
-	std::string intrinsicsKey = GenerateIntrinsicsKey( fidNamespace );
-	SetYamlParam( nodeHandle, intrinsicsKey, yaml );
-	return true;
+	PopulateFiducialCalibration( fid.ToInfo(), yaml );
+	std::string intrinsicsKey = GenerateIntrinsicsKey( memberNamespace );
+	SetYamlParam( _nodeHandle, intrinsicsKey, yaml );
 }
 
 std::string FiducialInfoManager::GenerateIntrinsicsKey( const std::string& ns )
