@@ -1,47 +1,32 @@
 #pragma once
 
-#include <percepto/compo/ConstantRegressor.hpp>
-#include <percepto/compo/ExponentialWrapper.hpp>
-#include <percepto/compo/OffsetWrapper.hpp>
-#include <percepto/compo/ModifiedCholeskyWrapper.hpp>
-#include <percepto/neural/NetworkTypes.h>
-
 #include <argus_utils/utils/LinalgTypes.h>
 
+#include "covreg/ModuleDefinitions.h"
 #include "covreg/CovarianceEstimatorInfo.h"
 
 namespace argus
 {
 
-class InnovationClipOptimizer;
-
 class CovarianceEstimator
 {
 public:
 
-	typedef percepto::ConstantRegressor CorrRegressor;
-	typedef percepto::ReLUNet VarBaseRegressor;
-	typedef percepto::InputWrapper<VarBaseRegressor> VarBaseModule;
-	typedef percepto::ExponentialWrapper<VarBaseModule> VarModule;
-	typedef percepto::ModifiedCholeskyWrapper<CorrRegressor,
-	                                          VarModule> PSDModule;
-	typedef percepto::OffsetWrapper<PSDModule> PDModule;
-	typedef percepto::InputChainWrapper<VarBaseModule, PDModule> PDRegressor;
-
 	const std::string sourceName;
 
 	/*! \brief Construct an estimator from the given parameter message. */
-	CovarianceEstimator( const covreg::CovarianceEstimatorInfo& info );
+	// CovarianceEstimator( const covreg::CovarianceEstimatorInfo& info );
 
-	/*! \brief Construct an estimator with the specified parameters. */
+	/*! \brief Construct an estimator and create new parameters. */
 	CovarianceEstimator( const std::string& source,
-	                     unsigned int matDim, 
 	                     unsigned int featDim,
+	                     unsigned int matDim, 
 	                     unsigned int numHiddenLayers, 
 	                     unsigned int layerWidth );
 
-	void SetParameters( const VectorType& params );
-	VectorType GetParameters() const;
+	/*! \brief Default implementation of copy constructor is fine. Note that
+	 * the copied estimator will share parameters. */
+	//CovarianceEstimator( const CovarianceEstimator& other );
 
 	void RandomizeVarianceParams();
 	void ZeroCorrelationParams();
@@ -49,22 +34,19 @@ public:
 	MatrixType Evaluate( const VectorType& input );
 
 	/*! \brief Outputs a parameter message. */
-	covreg::CovarianceEstimatorInfo GetInfoMessage() const;
+	// covreg::CovarianceEstimatorInfo GetInfoMessage() const;
+
+	/*! \brief Used to plug in to other optimization pipelines. */
+	const PositiveDefiniteModule& GetModule();
+	percepto::Parameters::Ptr GetParamSet();
 
 private:
 
-	friend class InnovationClipOptimizer;
+	PositiveDefiniteModule _psd;
 
-	CorrRegressor _cReg;
-	VarBaseRegressor _vBaseReg;
-	VarBaseModule _vBaseMod;
-	VarModule _vMod;
-	PSDModule _psdMod;
-	PDModule _pdMod;
-	PDRegressor _pdReg;
-	percepto::ParametricWrapper _paramWrapper;
-
-	
+	percepto::Parameters::Ptr _lParams;
+	std::vector<percepto::Parameters::Ptr> _dParams;
+	percepto::ParameterWrapper::Ptr _params;
 
 };
 

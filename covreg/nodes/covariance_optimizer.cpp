@@ -44,9 +44,9 @@ public:
 	: nodeHandle( nh ), privHandle( ph ),
 	_dataBuffer( 100 ),
 	_testRx( "odom_features", 100 ),
-	_qReg( "transition", qOutputDim, qInputDim, qHiddenLayers, qLayerWidth ),
-	_gyroReg( "gyro", gOutputDim, gInputDim, gHiddenLayers, gLayerWidth ),
-	_voReg( "vo", voOutputDim, voInputDim, voHiddenLayers, voLayerWidth )
+	_qReg( "transition", qInputDim, qOutputDim, qHiddenLayers, qLayerWidth ),
+	_gyroReg( "gyro", gInputDim, gOutputDim, gHiddenLayers, gLayerWidth ),
+	_voReg( "vo", voInputDim, voOutputDim, voHiddenLayers, voLayerWidth )
 	{
 		_qReg.RandomizeVarianceParams();
 		_qReg.ZeroCorrelationParams();
@@ -56,7 +56,8 @@ public:
 		_voReg.ZeroCorrelationParams();
 
 		InnovationClipParameters clipParams;
-		GetParam<unsigned int>( privHandle, "max_clips_to_keep", clipParams.numClipsToKeep, 200 );
+		GetParam<unsigned int>( privHandle, "max_eps_length", clipParams.maxEpisodeLength, 100 );
+		GetParam<unsigned int>( privHandle, "max_eps_to_keep", clipParams.numEpisodesToKeep, 50 );
 		GetParam<double>( privHandle, "l2_weight", clipParams.l2Weight, 1E-6 );
 		GetParam<unsigned int>( privHandle, "batch_size", clipParams.batchSize, 30 );
 		_clipOptimizer = std::make_shared<InnovationClipOptimizer>( _qReg, clipParams );
@@ -89,7 +90,7 @@ public:
 		_optimizerThread.interrupt();
 		_optimizerThread.join();
 		ROS_INFO_STREAM( "Optimizer done." );
-		_clipOptimizer->Print(50);
+		ROS_INFO_STREAM( _clipOptimizer );
 	}
 
 	void FilterCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg )
@@ -137,9 +138,12 @@ private:
 				boost::this_thread::interruption_point();
 
 				ProcessBuffer();
-				if( _clipOptimizer->NumClips() > _minOptimizeSize )
+				if( _clipOptimizer->NumEpisodes() > 1 ||
+				    _clipOptimizer->CurrentEpisodeLength() > _minOptimizeSize )
 				{
+					ROS_INFO_STREAM( "Beginning optimization..." );
 					_clipOptimizer->Optimize();
+					ROS_INFO_STREAM( "Finished optimization!" );
 				}
 				PrintStatus();
 			}
@@ -153,15 +157,15 @@ private:
 		if( now - _lastPrintTime < _printPeriod ) { return; }
 		_lastPrintTime = now;
 
-		if( _clipOptimizer->NumClips() == 0 ) { return; }
+		if( _clipOptimizer->NumEpisodes() == 0 ) { return; }
 
-		double cost = _clipOptimizer->GetCost();
+		double cost = _clipOptimizer->CalculateCost();
 		// ROS_INFO_STREAM( "Q Params: " << _qReg.GetParameters().transpose() );
 		// ROS_INFO_STREAM( "Gyro Params: " << _gyroReg.GetParameters().transpose() );
 		// ROS_INFO_STREAM( "VO Params: " << _voReg.GetParameters().transpose() );
-		ROS_INFO_STREAM( "Has " << _clipOptimizer->NumClips() << " clips." );
-		ROS_INFO_STREAM( "Total cost: " << cost << std::endl
-		                 << "Cost per clip: " << cost / _clipOptimizer->NumClips() );
+		ROS_INFO_STREAM( "Has " << _clipOptimizer->NumEpisodes() << " episodes." );
+		ROS_INFO_STREAM( "Current episode has " << _clipOptimizer->CurrentEpisodeLength() << " updates." );
+		ROS_INFO_STREAM( "Total cost: " << cost << std::endl );
 		ROS_INFO_STREAM( "Message buffer size: " << _dataBuffer.Size() );
 	}
 

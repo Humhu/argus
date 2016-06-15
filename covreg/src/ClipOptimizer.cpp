@@ -3,29 +3,27 @@
 #include <iostream>
 #include <sstream>
 
+using namespace percepto;
+
 namespace argus
 {
 
 InnovationClipOptimizer::InnovationClipOptimizer( CovarianceEstimator& qReg,
                                                   const InnovationClipParameters& params )
-: _transReg( qReg._pdReg ), _sill( _innoLLs, params.batchSize ), 
-_mill( _innoLLs ),
-_l2Cost( _paramWrapper, params.l2Weight ),
-_psill( _sill, _l2Cost ), 
-_maxClipLength( params.maxClipLength ),
-_maxNumClips( params.numClipsToKeep ),
-_predictBuffer()
+: _transReg( qReg ), 
+_problem( &_paramWrapper, params.l2Weight, params.batchSize ),
+_maxNumEpisodes( params.numEpisodesToKeep ),
+_maxEpisodeLength( params.maxEpisodeLength )
 {
-	_paramWrapper.AddParametric( &qReg._paramWrapper );
+	_paramWrapper.AddParameters( qReg.GetParamSet() );
 }
 
 void InnovationClipOptimizer::AddObservationReg( CovarianceEstimator& reg,
                                                  const std::string& name )
 {
 	WriteLock lock( _mutex );
-
-	_obsRegs.emplace( name, reg._pdReg );
-	_paramWrapper.AddParametric( &reg._paramWrapper );
+	_obsRegs.emplace( name, reg );
+	_paramWrapper.AddParameters( reg.GetParamSet() );
 }
 
 void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
@@ -33,11 +31,18 @@ void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
 {
 	WriteLock lock( _mutex );
 
-	_predictBuffer.emplace_front( info, input );
-	if( _predictBuffer.size() > _maxClipLength )
+	KalmanFilterEpisode* currentEpisode = _problem.GetCurrentEpisode();
+	if( currentEpisode == nullptr ||
+	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
 	{
-		_predictBuffer.pop_back();
+		_problem.EmplaceEpisode( info.Spre );
+		currentEpisode = _problem.GetCurrentEpisode();
 	}
+
+	currentEpisode->EmplacePredict( currentEpisode->GetTailSource(), 
+	                                _transReg.GetModule(),
+	                                input,
+	                                info.F );
 }
 
 bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
@@ -46,39 +51,45 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 {
 	WriteLock lock( _mutex );
 
-	if( _obsRegs.count( name ) == 0 || _predictBuffer.empty() )
+	if( _obsRegs.count( name ) == 0 ) 
 	{
-		return false;
+		throw std::runtime_error( "Received unregistered update." );
 	}
-	_clips.emplace_back( _transReg, _obsRegs.at( name ), info,
-	                     input, _predictBuffer );
-	_clips.back().sourceName = name;
-	_clips.back().innovation = info.innovation;
-
-	_predictBuffer.clear();
-	_innoLLs.emplace_back( *_clips.back().estV, info.innovation );
-
-	if( _clips.size() > _maxNumClips )
+	CovarianceEstimator& est = _obsRegs.at( name );
+	
+	KalmanFilterEpisode* currentEpisode = _problem.GetCurrentEpisode();
+	if( currentEpisode == nullptr ||
+	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
 	{
-		_clips.pop_front();
-		_innoLLs.pop_front();
+		_problem.EmplaceEpisode( info.Spre );
+		currentEpisode = _problem.GetCurrentEpisode();
 	}
+
+	currentEpisode->EmplaceUpdate( currentEpisode->GetTailSource(), 
+	                               est.GetModule(),
+	                               input,
+	                               info.H,
+	                               info.innovation );
 
 	return true;
 }
 
-size_t InnovationClipOptimizer::NumClips() const 
-{ 
-	WriteLock lock( _mutex );
-	return _clips.size(); 
+size_t InnovationClipOptimizer::NumEpisodes() const
+{
+	return _problem.NumEpisodes();
+}
+
+size_t InnovationClipOptimizer::CurrentEpisodeLength() const
+{
+	if( NumEpisodes() == 0 ) { return 0; }
+	return _problem.GetCurrentEpisode()->NumUpdates();
 }
 
 void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria )
 {
 	WriteLock lock( _mutex );
 	percepto::AdamParameters aparams;
-	// aparams.beta1 = 1.0 - 1E-6;
-	// aparams.beta2 = 1.0 - 1E-4;
+
 	_stepper = std::make_shared<percepto::AdamStepper>( aparams );
 	_convergence = std::make_shared<percepto::SimpleConvergence>( criteria );
 	_optimizer = std::make_shared<percepto::AdamOptimizer>( *_stepper, 
@@ -86,90 +97,31 @@ void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConv
 	                                                        _paramWrapper );
 }
 
-bool InnovationClipOptimizer::StepOnce()
-{
-	WriteLock lock( _mutex );
-	std::cout << "Initial mean cost: " << _mill.Evaluate() << std::endl;
-	bool ret = _optimizer->StepOnce( _psill );
-	std::cout << "Post mean cost: " << _mill.Evaluate() << std::endl;
-	return ret;
-}
-
 void InnovationClipOptimizer::Optimize()
 {	
 	WriteLock lock( _mutex );
 	_convergence->Reset();
-	_optimizer->Optimize( _psill );
+	_optimizer->Optimize( _problem );
 }
 
-double InnovationClipOptimizer::GetCost() const
+double InnovationClipOptimizer::CalculateCost()
 {
 	WriteLock lock( _mutex );
-	return _mill.Evaluate();
+	_problem.Invalidate();
+	_problem.Foreprop();
+	return _problem.GetOutput();
 }
 
-void InnovationClipOptimizer::Print( unsigned int num ) const
+void InnovationClipOptimizer::Print( std::ostream& os ) const
 {
 	WriteLock lock( _mutex );
-	if( num > _clips.size() ) { num = _clips.size(); }
-	for( unsigned int i = 0; i < num; i++ )
-	{
-		_clips[i].Print();
-	}
+	os << "Optimization problem: " << std::endl << _problem;
 }
 
-InnovationClipOptimizer::ClipData::ClipData( RegressorType& qReg,
-                                             RegressorType& rReg,
-                                             const UpdateInfo& info, 
-                                             const VectorType& in,
-                                             std::deque<PredictData>& buff )
-: estR( rReg, in ), 
-sumTransQs( transQs ), 
-sumTransQsR( sumTransQs, estR )
+std::ostream& operator<<( std::ostream& os, const InnovationClipOptimizer& opt )
 {
-	if( buff.empty() )
-	{
-		throw std::runtime_error( "Cannot build clip without predicts." );
-	}
-
-	estQs.reserve( buff.size() );
-	transQs.reserve( buff.size() );
-	MatrixType Facc = info.H;
-	for( unsigned int i = 0; i < buff.size(); i++ )
-	{
-		const PredictInfo& predInfo = buff[i].first;
-		const VectorType& qIn = buff[i].second;
-		estQs.emplace_back( qReg, qIn );
-		transQs.emplace_back( estQs[i], Facc );
-		Facc = Facc * predInfo.F;
-	}
-
-	MatrixType Sinit = buff.back().first.Spre;
-	estV = std::make_shared<AugmentedInnoCov>( sumTransQsR, 
-	                                           Facc * Sinit * Facc.transpose() );
-
-	// std::cout << "estR: " << std::endl << estR.Evaluate() << std::endl;
-	// std::cout << "estQs[0]: " << std::endl << estQs[0].Evaluate() << std::endl;
-	// std::cout << "transQ[0]: " << std::endl << transQs[0].Evaluate() << std::endl;
-	// std::cout << "sumTransQs: " << std::endl << sumTransQs.Evaluate() << std::endl;
-	// std::cout << "sumTransQsR: " << std::endl << sumTransQsR.Evaluate() << std::endl;
-	// std::cout << "estV: " << std::endl << estV->Evaluate() << std::endl;
-}
-
-void InnovationClipOptimizer::ClipData::Print() const
-{
-	std::stringstream ss;
-	ss << "Clip source: " << sourceName << std::endl
-	   << "\tinno: " << innovation.transpose() << std::endl
-	   << "\tR features: " << estR.GetInput().transpose() << std::endl
-	   << "\tR est: " << std::endl << estR.Evaluate() << std::endl
-	   << "\t" << std::endl;
-	for( unsigned int i = 0; i < estQs.size(); i++ )
-	{
-		ss << "\tQ features: " << estQs[i].GetInput().transpose() << std::endl
-		   << "\tQ est: " << std::endl << estQs[i].Evaluate() << std::endl;
-	}
-	std::cout << ss.str() << std::endl;
+	opt.Print( os );
+	return os;
 }
 
 }
