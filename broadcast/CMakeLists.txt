@@ -62,8 +62,12 @@ target_link_libraries( broadcast
                       )
 add_dependencies( broadcast ${broadcast_EXPORTED_TARGETS} )
 
+add_executable( broadcast_combiner nodes/broadcast_combiner.cpp )
+add_dependencies( broadcast_combiner covreg_gencfg ${broadcast_EXPORTED_TARGETS} )
+target_link_libraries( broadcast_combiner ${catkin_LIBRARIES} broadcast )
+
 ## Mark executables and/or libraries for installation
-install(TARGETS broadcast
+install(TARGETS broadcast broadcast_combiner
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

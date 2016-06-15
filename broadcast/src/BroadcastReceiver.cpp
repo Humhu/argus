@@ -11,7 +11,8 @@ BroadcastReceiver::BroadcastReceiver( const std::string& streamName,
                                       unsigned int cacheSize,
                                       unsigned int incomingQueueSize,
                                       const std::string& topic )
-: _nodeHandle(), _lookup(), _infoManager( _lookup ), _streamName( streamName )
+: _nodeHandle(), _lookup(), _infoManager( _lookup ), 
+_streamName( streamName ), _maxMapSize( cacheSize )
 {
 	if( !_infoManager.CheckMemberInfo( streamName, true, ros::Duration( 5.0 ) ) )
 	{
@@ -19,6 +20,7 @@ BroadcastReceiver::BroadcastReceiver( const std::string& streamName,
 	}
 	const std::string& memberNamespace = _infoManager.GetNamespace( streamName );
 	std::string streamTopic = memberNamespace + topic;
+	ROS_INFO_STREAM( "Listening to stream on topic: " << streamTopic );
 	_featSub = _nodeHandle.subscribe( streamTopic, 
 	                                  incomingQueueSize, 
 	                                  &BroadcastReceiver::FeatureCallback, 
@@ -51,7 +53,10 @@ void BroadcastReceiver::FeatureCallback( const StampedFeatures::ConstPtr& msg )
 {
 	WriteLock lock( _mutex );
 	
-	if( msg->header.frame_id != _streamName ) { return; }
+	if( msg->header.frame_id != _streamName ) 
+	{ 
+		return; 
+	}
 	VectorType features = GetVectorView( msg->features );
 	const BroadcastInfo& info = _infoManager.GetInfo( _streamName );
 	if( features.size() != info.featureSize )
