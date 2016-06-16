@@ -16,20 +16,23 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
 	_dParams = _psd.dReg.CreateParameters();
 	_params = std::make_shared<percepto::ParameterWrapper>();
 	_params->AddParameters( _lParams );
-	for( unsigned int i = 0; i < _dParams.size(); i++ )
-	{
-		_params->AddParameters( _dParams[i] );
-	}
+	_params->AddParameters( _dParams );
+	// for( unsigned int i = 0; i < _dParams.size(); i++ )
+	// {
+	// 	_params->AddParameters( _dParams[i] );
+	// }
 }
 
 void CovarianceEstimator::RandomizeVarianceParams()
 {
-	for( unsigned int i = 0; i < _dParams.size(); i++ )
-	{
-		VectorType varParams( _dParams[i]->ParamDim() );
-		percepto::randomize_vector( varParams );
-		_dParams[i]->SetParamsVec( varParams );
-	}
+	// for( unsigned int i = 0; i < _dParams.size(); i++ )
+	// {
+	// 	VectorType varParams( _dParams[i]->ParamDim() );
+	// 	percepto::randomize_vector( varParams );
+	// 	_dParams[i]->SetParamsVec( varParams );
+	// }
+	VectorType varParams = VectorType::Ones( _dParams->ParamDim() );
+	_dParams->SetParamsVec( varParams );
 }
 
 void CovarianceEstimator::ZeroCorrelationParams()

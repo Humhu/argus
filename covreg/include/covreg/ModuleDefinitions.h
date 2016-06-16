@@ -17,17 +17,18 @@
 #include <percepto/optim/MeanCost.hpp>
 #include <percepto/optim/StochasticMeanCost.hpp>
 
+#include "argus_utils/utils/LinalgTypes.h"
+
 namespace argus
 {
-
-#define POSDEF_OFFSET_SCALE (1E-9)
 
 // TODO Allow more dynamic construction
 struct PositiveDefiniteModule
 {
 	percepto::TerminalSource<VectorType> dInput;
 	percepto::ConstantVectorRegressor lReg;
-	percepto::ReLUNet dReg;
+	// percepto::ReLUNet dReg;
+	percepto::ConstantVectorRegressor dReg;
 	percepto::ExponentialWrapper<VectorType> expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
@@ -39,77 +40,27 @@ struct PositiveDefiniteModule
 	PositiveDefiniteModule( unsigned int inputDim, 
 	                        unsigned int matDim,
 	                        unsigned int numHiddenLayers,
-	                        unsigned int layerWidth )
-	: lReg( matDim*(matDim-1)/2 ),
-	  dReg( inputDim, matDim, numHiddenLayers, layerWidth,
-      percepto::HingeActivation( 1.0, 1E-3 ) )
-	{
-		dReg.SetSource( &dInput );
-		expModule.SetSource( &dReg.GetOutputSource() );
-		psdModule.SetLSource( &lReg );
-		psdModule.SetDSource( &expModule );
-		pdModule.SetSource( &psdModule );
-		pdModule.SetOffset( POSDEF_OFFSET_SCALE * 
-		                    MatrixType::Identity( matDim, matDim ) );
-	}
+	                        unsigned int layerWidth );
 
 	// Copy assignment rewires all connections and should result in
 	// shared parameters with the original
-	PositiveDefiniteModule( const PositiveDefiniteModule& other )
-	: lReg( other.lReg ), dReg( other.dReg ), pdModule( other.pdModule )
-	{
-		dReg.SetSource( &dInput );
-		expModule.SetSource( &dReg.GetOutputSource() );
-		psdModule.SetLSource( &lReg );
-		psdModule.SetDSource( &expModule );
-		pdModule.SetSource( &psdModule );
-	}
+	PositiveDefiniteModule( const PositiveDefiniteModule& other );
 
-	percepto::Source<MatrixType>* GetOutputSource()
-	{
-		return &pdModule;
-	}
+	percepto::Source<MatrixType>* GetOutputSource();
 
-	void Invalidate()
-	{
-		dInput.Invalidate();
-		lReg.Invalidate();
-	}
+	void Invalidate();
 
-	void Foreprop()
-	{
-		dInput.Foreprop();
-		lReg.Foreprop();
-	}
+	void Foreprop();
 
-	MatrixType GetOutput() const { return pdModule.GetOutput(); }
+	MatrixType GetOutput() const;
 
-	MatrixType Evaluate( const VectorType& in )
-	{
-		dInput.SetOutput( in );
-		Invalidate();
-		Foreprop();
-		return pdModule.GetOutput();
-	}
+	MatrixType Evaluate( const VectorType& in );
 
 private:
 
 	// Forbid assigning
 	PositiveDefiniteModule& operator=( const PositiveDefiniteModule& other );
 };
-
-#define POSDEF_RELU_NUM_LAYERS (2)
-#define POSDEF_RELU_WIDTH_SCALE (10) // Width = scale * max( input, output )
-
-inline PositiveDefiniteModule
-create_posdef_module( unsigned int inputDim, unsigned int matDim )
-{
-	return PositiveDefiniteModule( inputDim, 
-	                               matDim, 
-	                               POSDEF_RELU_NUM_LAYERS,
-	                               POSDEF_RELU_WIDTH_SCALE * 
-	                               std::max( inputDim, matDim ) );
-}
 
 // Represents the KF predict step for the estimate covariance
 struct KalmanFilterPredictModule
@@ -125,29 +76,15 @@ struct KalmanFilterPredictModule
 	KalmanFilterPredictModule( percepto::Source<MatrixType>* Sprev,
 	                           const PositiveDefiniteModule& q,
 	                           const VectorType& input,
-	                           const MatrixType& F )
-	: Q( q )
-	{
-		Q.dInput.SetOutput( input );
-		FSFT.SetSource( Sprev );
-		FSFT.SetTransform( F );
-		Sminus.SetSourceA( Q.GetOutputSource() );
-		Sminus.SetSourceB( &FSFT );
-	}
+	                           const MatrixType& F );
 
-	void SetRootSource( percepto::Source<MatrixType>* Sprev )
-	{
-		FSFT.SetSource( Sprev );
-	}
+	void SetRootSource( percepto::Source<MatrixType>* Sprev );
 
-	percepto::Source<MatrixType>* GetTailSource()
-	{
-		return &Sminus;
-	}
+	percepto::Source<MatrixType>* GetTailSource();
 
 	// NOTE We do not invalidate Sprev because we can't foreprop it
-	void Invalidate() { Q.Invalidate(); }
-	void Foreprop() { Q.Foreprop(); }
+	void Invalidate();
+	void Foreprop();
 
 private:
 	// Forbid copying
@@ -157,13 +94,8 @@ private:
 	KalmanFilterPredictModule& operator=( const KalmanFilterPredictModule& other );
 };
 
-inline
-std::ostream& operator<<( std::ostream& os, const KalmanFilterPredictModule& module )
-{
-	os << "Predict module: " << std::endl;
-	os << "Q: " << std::endl << module.Q.GetOutput();
-	return os;
-}
+std::ostream& operator<<( std::ostream& os, 
+                          const KalmanFilterPredictModule& module );
 
 // Represents the KF update step for the estiamte covariance
 struct KalmanFilterUpdateModule
@@ -198,48 +130,23 @@ struct KalmanFilterUpdateModule
 	// Log likelihood of innovation given V
 	percepto::GaussianLogLikelihoodCost innovationLL;
 
+	bool active;
+
+	percepto::Source<MatrixType>* Sprev;
+
 	// Need to set R properties
 	// Set source name, innovation
-	KalmanFilterUpdateModule( percepto::Source<MatrixType>* Sprev,
+	KalmanFilterUpdateModule( percepto::Source<MatrixType>* sPrev,
 	                          const PositiveDefiniteModule& r,
 	                          const VectorType& input,
 	                          const MatrixType& H,
-	                          const VectorType& innovation )
-	: R( r )
-	{
-		R.dInput.SetOutput( input );
-		HSHT.SetSource( Sprev );
-		HSHT.SetTransform( H );
-		V.SetSourceA( &HSHT );
-		V.SetSourceB( R.GetOutputSource() );
-		Vinv.SetSource( &V );
-		HTVinvH.SetSource( &Vinv );
-		HTVinvH.SetTransform( H.transpose() );
-		SHTVinvH.SetLeftSource( Sprev );
-		SHTVinvH.SetRightSource( &HTVinvH );
-		SHTVinvHS.SetLeftSource( &SHTVinvH );
-		SHTVinvHS.SetRightSource( Sprev );
-		Splus.SetPlusSource( Sprev );
-		Splus.SetMinusSource( &SHTVinvHS );
-		innovationLL.SetSource( &V );
-		innovationLL.SetSample( innovation );
-	}
+	                          const VectorType& innovation );
 
-	void SetRootSource( percepto::Source<MatrixType>* Sprev )
-	{
-		HSHT.SetSource( Sprev );
-		SHTVinvH.SetLeftSource( Sprev );
-		SHTVinvHS.SetRightSource( Sprev );
-		Splus.SetPlusSource( Sprev );
-	}
+	percepto::Source<MatrixType>* GetTailSource();
 
-	percepto::Source<MatrixType>* GetTailSource()
-	{
-		return &Splus;
-	}
+	void Invalidate();
 
-	void Invalidate() { R.Invalidate(); }
-	void Foreprop() { R.Foreprop(); }
+	void Foreprop();
 
 private:
 	// Forbid copying
@@ -249,16 +156,6 @@ private:
 	KalmanFilterUpdateModule& operator=( const KalmanFilterUpdateModule& other );
 };
 
-inline
-std::ostream& operator<<( std::ostream& os, const KalmanFilterUpdateModule& module )
-{
-	os << "Update module: " << std::endl;
-	os << "R: " << std::endl << module.R.GetOutput() << std::endl;
-	os << "V: " << std::endl << module.V.GetOutput() << std::endl;
-	os << "inno: " << module.innovationLL.GetSample().transpose() << std::endl;
-	os << "innoLL: " << module.innovationLL.GetOutput();
-	return os;
-}
-
+std::ostream& operator<<( std::ostream& os, const KalmanFilterUpdateModule& module );
 
 }

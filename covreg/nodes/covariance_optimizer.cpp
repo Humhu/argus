@@ -19,6 +19,8 @@
 #include <boost/bind.hpp>
 #include <boost/thread/thread.hpp>
 
+#include <fstream>
+
 using namespace argus;
 
 class Optimizer
@@ -82,15 +84,20 @@ public:
 		_infoSub = nodeHandle.subscribe( "filter_info", 10, &Optimizer::FilterCallback, this );
 	}
 
+	void Print( std::ostream& os )
+	{
+		os << *_clipOptimizer << std::endl;
+		os << "transition params: " << _qReg.GetParamSet()->GetParamsVec().transpose() << std::endl;
+		os << "gyro params: " << _gyroReg.GetParamSet()->GetParamsVec().transpose() << std::endl;
+		os << "vo params: " << _voReg.GetParamSet()->GetParamsVec().transpose() << std::endl;
+	}
+
 	// Destructor only gets called as the program is exiting, but it only exits
 	// once all threads have terminated, so we have to tell the thread to stop
 	void Terminate()
 	{	
-		ROS_INFO_STREAM( "Terminating optimizer..." );
 		_optimizerThread.interrupt();
 		_optimizerThread.join();
-		ROS_INFO_STREAM( "Optimizer done." );
-		ROS_INFO_STREAM( _clipOptimizer );
 	}
 
 	void FilterCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg )
@@ -141,9 +148,9 @@ private:
 				if( _clipOptimizer->NumEpisodes() > 1 ||
 				    _clipOptimizer->CurrentEpisodeLength() > _minOptimizeSize )
 				{
-					ROS_INFO_STREAM( "Beginning optimization..." );
+					// ROS_INFO_STREAM( "Beginning optimization..." );
 					_clipOptimizer->Optimize();
-					ROS_INFO_STREAM( "Finished optimization!" );
+					// ROS_INFO_STREAM( "Finished optimization!" );
 				}
 				PrintStatus();
 			}
@@ -164,7 +171,6 @@ private:
 		// ROS_INFO_STREAM( "Gyro Params: " << _gyroReg.GetParameters().transpose() );
 		// ROS_INFO_STREAM( "VO Params: " << _voReg.GetParameters().transpose() );
 		ROS_INFO_STREAM( "Has " << _clipOptimizer->NumEpisodes() << " episodes." );
-		ROS_INFO_STREAM( "Current episode has " << _clipOptimizer->CurrentEpisodeLength() << " updates." );
 		ROS_INFO_STREAM( "Total cost: " << cost << std::endl );
 		ROS_INFO_STREAM( "Message buffer size: " << _dataBuffer.Size() );
 	}
@@ -203,11 +209,23 @@ int main( int argc, char** argv )
 
 	Optimizer optimizer( nh, ph );
 	
-	// ros::AsyncSpinner spinner(1);
-	// spinner.start();
-	// ros::waitForShutdown();
+	std::string outputPath;
+	ph.param<std::string>( "output_path", outputPath, "results.txt" );
+
+	std::ofstream outputLog( outputPath );
+	if( !outputLog.is_open() )
+	{
+		ROS_WARN_STREAM( "Could not open log at: " << outputPath );
+	}
+
 	ros::spin();
+
 	optimizer.Terminate();
+	
+	if( outputLog.is_open() )
+	{
+		optimizer.Print( outputLog );
+	}
 
 	return 0;
 }

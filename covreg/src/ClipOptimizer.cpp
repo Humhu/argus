@@ -31,6 +31,11 @@ void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
 {
 	WriteLock lock( _mutex );
 
+	if( _problem.NumEpisodes() > _maxNumEpisodes )
+	{
+		_problem.RemoveOldestEpisode();
+	}
+
 	KalmanFilterEpisode* currentEpisode = _problem.GetCurrentEpisode();
 	if( currentEpisode == nullptr ||
 	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
@@ -57,6 +62,11 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	}
 	CovarianceEstimator& est = _obsRegs.at( name );
 	
+	if( _problem.NumEpisodes() > _maxNumEpisodes )
+	{
+		_problem.RemoveOldestEpisode();
+	}
+
 	KalmanFilterEpisode* currentEpisode = _problem.GetCurrentEpisode();
 	if( currentEpisode == nullptr ||
 	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
@@ -70,7 +80,6 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	                               input,
 	                               info.H,
 	                               info.innovation );
-
 	return true;
 }
 
@@ -108,17 +117,19 @@ double InnovationClipOptimizer::CalculateCost()
 {
 	WriteLock lock( _mutex );
 	_problem.Invalidate();
-	_problem.Foreprop();
-	return _problem.GetOutput();
+	_problem.ForepropAll();
+	return _problem.loss.ParentCost::GetOutput();
 }
 
-void InnovationClipOptimizer::Print( std::ostream& os ) const
+void InnovationClipOptimizer::Print( std::ostream& os )
 {
 	WriteLock lock( _mutex );
+	_problem.Invalidate();
+	_problem.ForepropAll();
 	os << "Optimization problem: " << std::endl << _problem;
 }
 
-std::ostream& operator<<( std::ostream& os, const InnovationClipOptimizer& opt )
+std::ostream& operator<<( std::ostream& os, InnovationClipOptimizer& opt )
 {
 	opt.Print( os );
 	return os;

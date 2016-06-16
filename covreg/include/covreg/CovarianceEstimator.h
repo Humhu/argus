@@ -45,7 +45,8 @@ private:
 	PositiveDefiniteModule _psd;
 
 	percepto::Parameters::Ptr _lParams;
-	std::vector<percepto::Parameters::Ptr> _dParams;
+	percepto::Parameters::Ptr _dParams;
+	// std::vector<percepto::Parameters::Ptr> _dParams;
 	percepto::ParameterWrapper::Ptr _params;
 
 };

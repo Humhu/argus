@@ -67,6 +67,10 @@ add_library( covreg
 	src/ClipOptimizer.cpp
 	src/CovarianceEstimator.cpp
 	src/EstimatorInfoParsers.cpp
+	src/InnovationLikelihoodProblem.cpp
+	src/KalmanFilterEpisode.cpp
+	src/KalmanFilterModules.cpp
+	src/PositiveDefiniteModule.cpp
 )
 add_dependencies( covreg ${covreg_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_dependencies( covreg covreg_gencfg )

@@ -54,7 +54,7 @@ public:
 	size_t CurrentEpisodeLength() const;
 
 	double CalculateCost();
-	void Print( std::ostream& os ) const;
+	void Print( std::ostream& os );
 
 private:
 
@@ -84,6 +84,6 @@ private:
 
 };
 
-std::ostream& operator<<( std::ostream& os, const InnovationClipOptimizer& opt );
+std::ostream& operator<<( std::ostream& os, InnovationClipOptimizer& opt );
 
 }
