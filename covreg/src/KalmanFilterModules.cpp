@@ -1,24 +1,20 @@
-#include "covreg/ModuleDefinitions.h"
+#include "covreg/KalmanFilterModules.h"
 
 namespace argus
 {
 
 KalmanFilterPredictModule::KalmanFilterPredictModule( percepto::Source<MatrixType>* Sprev,
-	                                                  const PositiveDefiniteModule& q,
+	                                                  const VarReLUPosDefModule& q,
 	                                                  const VectorType& input,
 	                                                  const MatrixType& F )
 : Q( q )
 {
-	Q.dInput.SetOutput( input );
+	qInput.SetOutput( input );
+	Q.SetSource( &qInput );
 	FSFT.SetSource( Sprev );
 	FSFT.SetTransform( F );
-	Sminus.SetSourceA( Q.GetOutputSource() );
+	Sminus.SetSourceA( &Q );
 	Sminus.SetSourceB( &FSFT );
-}
-
-void KalmanFilterPredictModule::SetRootSource( percepto::Source<MatrixType>* Sprev )
-{
-	FSFT.SetSource( Sprev );
 }
 
 percepto::Source<MatrixType>* 
@@ -30,14 +26,12 @@ KalmanFilterPredictModule::GetTailSource()
 // NOTE We do not invalidate Sprev because we can't foreprop it
 void KalmanFilterPredictModule::Invalidate() 
 { 
-	Q.Invalidate(); 
+	qInput.Invalidate(); 
 }
 
 void KalmanFilterPredictModule::Foreprop() 
 { 
-	Q.Foreprop();
-	// Q.GetOutput();
-	// Sminus.GetOutput();
+	qInput.Foreprop();
 }
 
 std::ostream& operator<<( std::ostream& os, const KalmanFilterPredictModule& module )
@@ -48,17 +42,18 @@ std::ostream& operator<<( std::ostream& os, const KalmanFilterPredictModule& mod
 }
 
 KalmanFilterUpdateModule::KalmanFilterUpdateModule( percepto::Source<MatrixType>* sPrev,
-	                                                const PositiveDefiniteModule& r,
+	                                                const VarReLUPosDefModule& r,
 	                                                const VectorType& input,
 	                                                const MatrixType& H,
 	                                                const VectorType& innovation )
 : R( r ), Sprev( sPrev )
 {
-	R.dInput.SetOutput( input );
+	rInput.SetOutput( input );
+	R.SetSource( &rInput );
 	HSHT.SetSource( Sprev );
 	HSHT.SetTransform( H );
 	V.SetSourceA( &HSHT );
-	V.SetSourceB( R.GetOutputSource() );
+	V.SetSourceB( &R );
 	//Vinv.SetSource( &V );
 	HTVinvH.SetSource( &Vinv );
 	HTVinvH.SetTransform( H.transpose() );
@@ -85,12 +80,12 @@ KalmanFilterUpdateModule::GetTailSource()
 
 void KalmanFilterUpdateModule::Invalidate() 
 { 
-	R.Invalidate(); 
+	rInput.Invalidate(); 
 }
 
 void KalmanFilterUpdateModule::Foreprop() 
 { 
-	R.Foreprop(); 
+	rInput.Foreprop(); 
 }
 
 std::ostream& operator<<( std::ostream& os, const KalmanFilterUpdateModule& module )

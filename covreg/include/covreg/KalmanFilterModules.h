@@ -1,84 +1,33 @@
 #pragma once
 
-#include <percepto/compo/ConstantRegressor.hpp>
-#include <percepto/compo/ExponentialWrapper.hpp>
-#include <percepto/compo/OffsetWrapper.hpp>
-#include <percepto/compo/ModifiedCholeskyWrapper.hpp>
-#include <percepto/neural/NetworkTypes.h>
-
 #include <percepto/compo/AdditiveWrapper.hpp>
 #include <percepto/compo/DifferenceWrapper.hpp>
 #include <percepto/compo/TransformWrapper.hpp>
 #include <percepto/compo/InverseWrapper.hpp>
 #include <percepto/compo/ProductWrapper.hpp>
 
-#include <percepto/optim/ParameterL2Cost.hpp>
 #include <percepto/optim/GaussianLogLikelihoodCost.hpp>
-#include <percepto/optim/MeanCost.hpp>
-#include <percepto/optim/StochasticMeanCost.hpp>
 
+#include "covreg/PositiveDefiniteModules.h"
 #include "argus_utils/utils/LinalgTypes.h"
 
 namespace argus
 {
 
-// TODO Allow more dynamic construction
-struct PositiveDefiniteModule
-{
-	percepto::TerminalSource<VectorType> dInput;
-	percepto::ConstantVectorRegressor lReg;
-	// percepto::ReLUNet dReg;
-	percepto::ConstantVectorRegressor dReg;
-	percepto::ExponentialWrapper<VectorType> expModule;
-	percepto::ModifiedCholeskyWrapper psdModule;
-	percepto::OffsetWrapper<MatrixType> pdModule;
-
-	// Need to:
-	// dInput.SetOutput
-	// lReg.SetParameters
-	// dReg.SetParameters
-	PositiveDefiniteModule( unsigned int inputDim, 
-	                        unsigned int matDim,
-	                        unsigned int numHiddenLayers,
-	                        unsigned int layerWidth );
-
-	// Copy assignment rewires all connections and should result in
-	// shared parameters with the original
-	PositiveDefiniteModule( const PositiveDefiniteModule& other );
-
-	percepto::Source<MatrixType>* GetOutputSource();
-
-	void Invalidate();
-
-	void Foreprop();
-
-	MatrixType GetOutput() const;
-
-	MatrixType Evaluate( const VectorType& in );
-
-private:
-
-	// Forbid assigning
-	PositiveDefiniteModule& operator=( const PositiveDefiniteModule& other );
-};
-
 // Represents the KF predict step for the estimate covariance
 struct KalmanFilterPredictModule
 {
-	PositiveDefiniteModule Q;
-
+	percepto::TerminalSource<VectorType> qInput;
+	VarReLUPosDefModule Q;
 	percepto::TransformWrapper FSFT;
-
 	percepto::AdditiveWrapper<MatrixType> Sminus;
 
 	// Here Sprev refers to the previous estimate covariance
 	// Need to set Q properties
 	KalmanFilterPredictModule( percepto::Source<MatrixType>* Sprev,
-	                           const PositiveDefiniteModule& q,
+	                           const VarReLUPosDefModule& q,
 	                           const VectorType& input,
 	                           const MatrixType& F );
-
-	void SetRootSource( percepto::Source<MatrixType>* Sprev );
 
 	percepto::Source<MatrixType>* GetTailSource();
 
@@ -106,8 +55,10 @@ struct KalmanFilterUpdateModule
 	// H * S- * H^T
 	percepto::TransformWrapper HSHT;
 
+	percepto::TerminalSource<VectorType> rInput;
+
 	// The estimated R matrix
-	PositiveDefiniteModule R;
+	VarReLUPosDefModule R;
 	
 	// The innovation covariance R + H * S- * H^T = V
 	percepto::AdditiveWrapper<MatrixType> V;
@@ -137,7 +88,7 @@ struct KalmanFilterUpdateModule
 	// Need to set R properties
 	// Set source name, innovation
 	KalmanFilterUpdateModule( percepto::Source<MatrixType>* sPrev,
-	                          const PositiveDefiniteModule& r,
+	                          const VarReLUPosDefModule& r,
 	                          const VectorType& input,
 	                          const MatrixType& H,
 	                          const VectorType& innovation );

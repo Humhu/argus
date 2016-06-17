@@ -3,9 +3,28 @@
 #include "argus_utils/utils/MatrixUtils.h"
 #include <fstream>
 
+using namespace covreg;
+
 namespace argus
 {
 
+template <>
+bool ParseInfo<CovarianceEstimatorInfo>( const YAML::Node& yaml,
+                                         CovarianceEstimatorInfo& info )
+{
+	bool ret = GetYamlField( yaml, "parameters", info.parameters )
+	        && GetYamlField( yaml, "source_name", info.source_name );
+	return ret;
+}
+
+template <>
+void PopulateInfo<CovarianceEstimatorInfo>( const CovarianceEstimatorInfo& info,
+                                            YAML::Node& yaml )
+{
+	yaml["source_name"] = info.source_name;
+	yaml["parameters"] = info.parameters;
+}
+/*
 bool ParseEstimatorInfo( const YAML::Node& yaml,
                          covreg::CovarianceEstimatorInfo& info )
 {
@@ -96,5 +115,5 @@ bool WriteNeuralNetInfo( const std::string& path,
 	output << yaml;
 	return true;
 }
-
+*/
 }

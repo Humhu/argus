@@ -46,7 +46,7 @@ catkin_package(
 	
 	LIBRARIES		covreg
 					
-	CATKIN_DEPENDS 	message_runtime 
+	CATKIN_DEPENDS  message_runtime 
 					roscpp 
 					std_msgs
 					sensor_msgs
@@ -66,11 +66,12 @@ include_directories( include )
 add_library( covreg
 	src/ClipOptimizer.cpp
 	src/CovarianceEstimator.cpp
+	src/CovarianceManager.cpp
 	src/EstimatorInfoParsers.cpp
 	src/InnovationLikelihoodProblem.cpp
 	src/KalmanFilterEpisode.cpp
 	src/KalmanFilterModules.cpp
-	src/PositiveDefiniteModule.cpp
+	src/PositiveDefiniteModules.cpp
 )
 add_dependencies( covreg ${covreg_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_dependencies( covreg covreg_gencfg )
@@ -82,6 +83,13 @@ target_link_libraries( covreg
 add_executable( optimizer_node nodes/covariance_optimizer.cpp )
 add_dependencies( optimizer_node covreg_gencfg )
 target_link_libraries( optimizer_node
+                       ${catkin_LIBRARIES}
+                       ${covreg_LIBS}
+                       covreg )
+
+add_executable( covariance_repeater nodes/covariance_repeater.cpp )
+add_dependencies( covariance_repeater covreg_gencfg )
+target_link_libraries( covariance_repeater
                        ${catkin_LIBRARIES}
                        ${covreg_LIBS}
                        covreg )
