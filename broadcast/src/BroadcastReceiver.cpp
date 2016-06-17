@@ -8,11 +8,11 @@ namespace argus
 {
 
 BroadcastReceiver::BroadcastReceiver( const std::string& streamName,
-                                      unsigned int cacheSize,
+                                      double cacheTime,
                                       unsigned int incomingQueueSize,
                                       const std::string& topic )
 : _nodeHandle(), _lookup(), _infoManager( _lookup ), 
-_streamName( streamName ), _maxMapSize( cacheSize )
+_streamName( streamName ), _maxTimespan( cacheTime )
 {
 	if( !_infoManager.CheckMemberInfo( streamName, true, ros::Duration( 5.0 ) ) )
 	{
@@ -25,6 +25,16 @@ _streamName( streamName ), _maxMapSize( cacheSize )
 	                                  incomingQueueSize, 
 	                                  &BroadcastReceiver::FeatureCallback, 
 	                                  this );
+}
+
+void BroadcastReceiver::SetCacheTime( double cacheTime )
+{
+	_maxTimespan = cacheTime;
+}
+
+const std::string& BroadcastReceiver::StreamName() const
+{
+	return _streamName;
 }
 
 bool BroadcastReceiver::HasReceived() const
@@ -49,6 +59,11 @@ VectorType BroadcastReceiver::GetClosestReceived( const ros::Time& time ) const
 	return closest->second;
 }
 
+unsigned int BroadcastReceiver::OutputDim() const
+{
+	return _infoManager.GetInfo( _streamName ).featureSize;
+}
+
 void BroadcastReceiver::FeatureCallback( const StampedFeatures::ConstPtr& msg )
 {
 	WriteLock lock( _mutex );
@@ -65,7 +80,19 @@ void BroadcastReceiver::FeatureCallback( const StampedFeatures::ConstPtr& msg )
 		                 << features.size() << " but expected: " << info.featureSize );
 	}
 	_featureMap[msg->header.stamp] = features;
-	if( _featureMap.size() > _maxMapSize ) { _featureMap.erase( _featureMap.begin() ); }
+}
+
+void BroadcastReceiver::CheckTimespan()
+{
+	
+	ros::Time latestTime = _featureMap.rbegin()->first;
+	while( true )
+	{
+		ros::Time earliestTime = _featureMap.begin()->first;
+		double span = (latestTime - earliestTime).toSec();
+		if( span < _maxTimespan ) { break; }
+		_featureMap.erase( _featureMap.begin() );
+	}
 }
 
 }

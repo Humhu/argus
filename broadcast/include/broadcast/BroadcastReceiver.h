@@ -18,10 +18,13 @@ public:
 
 
 	BroadcastReceiver( const std::string& streamName,
-	                   unsigned int cacheSize,
+	                   double cacheTime,
 	                   unsigned int incomingQueueSize = 10,
 	                   const std::string& topic = "features_raw" );
 
+	void SetCacheTime( double time );
+	unsigned int OutputDim() const;
+	const std::string& StreamName() const;
 	bool HasReceived() const;
 	VectorType GetClosestReceived( const ros::Time& time ) const;
 
@@ -31,6 +34,8 @@ private:
 
 	void FeatureCallback( const broadcast::StampedFeatures::ConstPtr& msg );
 	
+	void CheckTimespan();
+
 	mutable Mutex _mutex;
 
 	ros::NodeHandle _nodeHandle;
@@ -38,7 +43,7 @@ private:
 	BroadcastInfoManager _infoManager;
 	std::string _streamName;
 	MapType _featureMap;
-	unsigned int _maxMapSize;
+	double _maxTimespan;
 	ros::Subscriber _featSub;
 };
 
