@@ -3,6 +3,11 @@
 #include <ros/ros.h>
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
+
+#include "broadcast/BroadcastReceiver.h"
+
+#include "covreg/CovarianceManager.h"
+
 #include "argus_msgs/FilterUpdate.h"
 #include "argus_msgs/FilterStepInfo.h"
 
@@ -27,29 +32,29 @@ public:
 
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-	SimpleStateEstimator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
+	SimpleStateEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 private:
 	
-	ros::NodeHandle nodeHandle;
-	ros::NodeHandle privHandle;
-	
-	FilterType filter;
-	FilterType::FullCovType Qrate;
-	ros::Time filterTime;
+	FilterType _filter;
+	FilterType::FullCovType _Qrate;
+	CovarianceManager _Qestimator;
+	ros::Time _filterTime;
 
 	bool twoDimensional;
 	
-	std::string referenceFrame;
-	std::string bodyFrame;
-	std::shared_ptr<ros::Timer> updateTimer;
+	std::string _referenceFrame;
+	std::string _bodyFrame;
+	ros::Timer _updateTimer;
 
 	// Subscribers to argus_msgs::FilterUpdate
-	std::unordered_map<std::string, ros::Subscriber> updateSubs;
+	std::unordered_map<std::string, ros::Subscriber> _updateSubs;
 
-	ros::Publisher odomPub; // Publishes nav_msgs::Odometry
-	ros::Publisher stepPub; // Publishes argus_msgs::FilterStepInfo
+	ros::Publisher _odomPub; // Publishes nav_msgs::Odometry
+	ros::Publisher _stepPub; // Publishes argus_msgs::FilterStepInfo
 	
+	void PredictUntil( const ros::Time& time );
+
 	void UpdateCallback( const argus_msgs::FilterUpdate::ConstPtr& msg );
 	argus_msgs::FilterStepInfo PoseUpdate( const PoseType& pose, 
 	                                       const MatrixType& R );

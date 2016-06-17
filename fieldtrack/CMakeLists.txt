@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 	fiducials
 	lookup
 	covreg
+	broadcast
 )
 
 # Use Boost for most utilities, threading
@@ -37,6 +38,7 @@ catkin_package(
 					fiducials
 					lookup
 					covreg
+					broadcast
 					
 	DEPENDS 		Boost 
 					system_lib

@@ -16,13 +16,14 @@ using namespace nav_msgs;
 namespace argus
 {
 
-SimpleStateEstimator::SimpleStateEstimator( const ros::NodeHandle& nh, 
-                                            const ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), 
-filter( PoseType(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zero() )
+SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle, 
+                                            ros::NodeHandle& privHandle )
+: _filter( PoseType(), 
+           FilterType::DerivsType::Zero(), 
+           FilterType::FullCovType::Zero() )
 {
-	GetParamRequired( privHandle, "reference_frame", referenceFrame );
-	GetParamRequired( privHandle, "body_frame", bodyFrame );
+	GetParamRequired( privHandle, "reference_frame", _referenceFrame );
+	GetParamRequired( privHandle, "body_frame", _bodyFrame );
 	
 	// Parse all update sources
 	XmlRpc::XmlRpcValue updateSources;
@@ -35,20 +36,34 @@ filter( PoseType(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zer
 		const std::string& topic = iter->second.as<std::string>();
 		ROS_INFO_STREAM( "Subscribing to updates from " << sourceName
 		                 << " at " << topic );
-		updateSubs[sourceName] = nodeHandle.subscribe( topic, 10, &SimpleStateEstimator::UpdateCallback, 
-		                                         this );
+		_updateSubs[sourceName] = nodeHandle.subscribe( topic, 
+		                                                10, 
+		                                                &SimpleStateEstimator::UpdateCallback, 
+		                                                this );
 	}
 
-	// Parse cov rate
-	if( !GetMatrixParam<double>( privHandle, "covariance_rate", Qrate ) )
+	// Parse covariance rate estimator
+	if( privHandle.hasParam( "transition_cov_estimator" ) )
 	{
-		if( !GetDiagonalParam<double>( privHandle, "covariance_rate", Qrate ) )
-		{
-			ROS_WARN_STREAM( "No velocity covariance rate given. Using identity." );
-			Qrate = FilterType::FullCovType::Identity();
-		}
+		_Qestimator.Initialize( "transition", privHandle, 
+		                            "transition_cov_estimator" );
+		_Qestimator.SetUpdateTopic( "param_updates" );
 	}
-	ROS_INFO_STREAM( "Using covariance rate: " << std::endl << Qrate );
+	else
+	{
+		ROS_WARN_STREAM( "No transition covariance estimator specified. Using fixed rate." );
+	}
+
+	// Parse covariance rate to use as a fallback
+	if( !GetMatrixParam<double>( privHandle, "covariance_rate", _Qrate ) )
+	{
+		if( !GetDiagonalParam<double>( privHandle, "covariance_rate", _Qrate ) )
+		{
+			ROS_WARN_STREAM( "No covariance rate given. Using identity." );
+			_Qrate = FilterType::FullCovType::Identity();
+		}
+		ROS_INFO_STREAM( "Using covariance rate: " << std::endl << _Qrate );
+	}
 
 	// Initialize
 	FilterType::FullCovType initCov;
@@ -63,25 +78,52 @@ filter( PoseType(), FilterType::DerivsType::Zero(), FilterType::FullCovType::Zer
 	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << initCov );
 
 	// TODO Initial state?
-	filter.FullCov() = initCov;
+	_filter.FullCov() = initCov;
 
 	// NOTE This causes problems when using rosbag play because the sim time doesn't
 	// start playing early enough!
-	filterTime = ros::Time::now();
+	_filterTime = ros::Time::now();
 
 	privHandle.param<bool>( "two_dimensional", twoDimensional, false );
 	ROS_INFO_STREAM( "Two dimensional mode: " << twoDimensional );
 
-	odomPub = nodeHandle.advertise<Odometry>( "odometry", 10 );
-	stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 10 );
+	_odomPub = nodeHandle.advertise<Odometry>( "odometry", 10 );
+	_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 10 );
 	
 	double timerRate;
 	privHandle.param<double>( "timer_rate", timerRate, 10.0 );
 	ROS_INFO_STREAM( "Publishing at " << timerRate << " Hz" );
-	updateTimer = std::make_shared<ros::Timer>(
-	    nodeHandle.createTimer( ros::Duration( 1.0 / timerRate ),
-	                            &SimpleStateEstimator::TimerCallback,
-	                            this ) );
+	_updateTimer = nodeHandle.createTimer( ros::Duration( 1.0 / timerRate ),
+	                                      &SimpleStateEstimator::TimerCallback,
+	                                      this );
+}
+
+void SimpleStateEstimator::PredictUntil( const ros::Time& until )
+{
+	double dt = (until - _filterTime).toSec();
+	_filterTime = until;
+	if( dt > MAX_DT_THRESH )
+	{
+		ROS_WARN_STREAM( "dt of " << dt << " exceeds max prediction threshold." );
+		return;
+	}
+
+	MatrixType Qrate;
+	if( _Qestimator.IsReady() )
+	{
+		Qrate = _Qestimator.EstimateCovariance( until );
+	}
+	else
+	{
+		ROS_WARN_STREAM( "Transition covariance estimator not ready. Using fixed rate." );
+		Qrate = _Qrate;
+	}
+
+	PredictInfo info = _filter.Predict( Qrate*dt, dt );
+	argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
+	pmsg.header.frame_id = "transition";
+	pmsg.header.stamp = until;
+	_stepPub.publish( pmsg );
 }
 
 void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
@@ -96,7 +138,7 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 		ROS_WARN_STREAM( "Update C has wrong dimension." );
 	}
 
-	// TODO Case where there are no derivs in the filter?
+	// TODO Case where there are no derivs in the _filter?
 	//bool hasPosition = !( C.block( 0, 0, C.rows(), 3 ).array() == 0 ).all();
 	//bool hasOrientation = !( C.block( 0, 3, C.rows(), 3 ).array() == 0 ).all();
 	//bool hasDerivs = !( C.rightCols( C.cols() - FilterType::TangentDim ).array() == 0 ).all();
@@ -106,24 +148,14 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 
 	// First predict up to the update time
 	ros::Time updateTime = msg->header.stamp;
-	if( updateTime > filterTime )
+	if( updateTime > _filterTime )
 	{
-		double dt = (updateTime - filterTime).toSec();
-		filterTime = updateTime;
-		if( dt > MAX_DT_THRESH )
-		{
-			ROS_WARN_STREAM( "dt of " << dt << " exceeds max prediction threshold." );
-			return;
-		}
-		PredictInfo info = filter.Predict( Qrate*dt, dt );
-		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
-		pmsg.header.stamp = msg->header.stamp;
-		stepPub.publish( pmsg );
+		PredictUntil( updateTime );
 	}
-	else if( updateTime < filterTime )
+	else if( updateTime < _filterTime )
 	{
-		// TODO Implement filter reversing
-		ROS_WARN_STREAM( "Update received from before filter time." );
+		// TODO Implement _filter reversing
+		ROS_WARN_STREAM( "Update received from before _filter time." );
 	}
 
 	FilterStepInfo info;
@@ -161,7 +193,7 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 	}
 	
 	info.header = msg->header;
-	stepPub.publish( info );
+	_stepPub.publish( info );
 
 }
 
@@ -169,7 +201,7 @@ argus_msgs::FilterStepInfo
 SimpleStateEstimator::PoseUpdate( const PoseType& pose, 
                                   const MatrixType& R )
 {
-	UpdateInfo info = filter.UpdatePose( pose, R );
+	UpdateInfo info = _filter.UpdatePose( pose, R );
 	return UpdateToMsg( info );
 	
 }
@@ -180,7 +212,7 @@ SimpleStateEstimator::DerivsUpdate( const VectorType& derivs,
                                     const MatrixType& R )
 {
 	FilterType::DerivObsMatrix Cderivs = C.rightCols( C.cols() - FilterType::TangentDim );
-	UpdateInfo info = filter.UpdateDerivs( derivs, Cderivs, R );
+	UpdateInfo info = _filter.UpdateDerivs( derivs, Cderivs, R );
 	return UpdateToMsg( info );
 }
 
@@ -201,49 +233,38 @@ SimpleStateEstimator::DerivsUpdate( const VectorType& derivs,
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
-	if( now > filterTime )
+	if( now > _filterTime )
 	{
-		double dt = (now - filterTime).toSec();
-		filterTime = now;
-		if( dt > MAX_DT_THRESH )
-		{
-			ROS_WARN_STREAM( "dt of " << dt << " exceeds max prediction threshold." );
-			return;
-		}
-		PredictInfo info = filter.Predict( Qrate*dt, dt );
-		argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
-		pmsg.header.stamp = event.current_real;
-		stepPub.publish( pmsg );
+		PredictUntil( now );
 	}
-	// if( twoDimensional ) { EnforceTwoDimensionality(); }
 
 	Odometry msg;
-	msg.header.frame_id = referenceFrame;
+	msg.header.frame_id = _referenceFrame;
 	msg.header.stamp = event.current_real;
-	msg.child_frame_id = bodyFrame;
+	msg.child_frame_id = _bodyFrame;
 	
-	msg.pose.pose = PoseToMsg( filter.Pose() );
-	SerializeMatrix( filter.PoseCov(), msg.pose.covariance );
+	msg.pose.pose = PoseToMsg( _filter.Pose() );
+	SerializeMatrix( _filter.PoseCov(), msg.pose.covariance );
 	
-	PoseType::TangentVector tangents = filter.Derivs().head<FilterType::TangentDim>();
+	PoseType::TangentVector tangents = _filter.Derivs().head<FilterType::TangentDim>();
 	msg.twist.twist = TangentToMsg( tangents );
-	SerializeMatrix( filter.DerivsCov().topLeftCorner<FilterType::TangentDim,
+	SerializeMatrix( _filter.DerivsCov().topLeftCorner<FilterType::TangentDim,
 	                                                  FilterType::TangentDim>(), msg.twist.covariance );
 	
-	odomPub.publish( msg );
+	_odomPub.publish( msg );
 }
 
 void SimpleStateEstimator::EnforceTwoDimensionality()
 {
-	FixedVectorType<7> poseVector = filter.Pose().ToVector();
+	FixedVectorType<7> poseVector = _filter.Pose().ToVector();
 	PoseSE3 mean( poseVector(0), poseVector(1), 0, poseVector(3), 0, 0, poseVector(6) );
-	filter.Pose() = mean;
+	_filter.Pose() = mean;
 
-	PoseSE3::TangentVector velocity = filter.Derivs().head<6>();
+	PoseSE3::TangentVector velocity = _filter.Derivs().head<6>();
 	velocity(2) = 0;
 	velocity(3) = 0;
 	velocity(4) = 0;
-	filter.Derivs().head<6>() = velocity;
+	_filter.Derivs().head<6>() = velocity;
 }
 
 }
