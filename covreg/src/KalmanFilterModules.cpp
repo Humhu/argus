@@ -3,17 +3,20 @@
 namespace argus
 {
 
-KalmanFilterPredictModule::KalmanFilterPredictModule( percepto::Source<MatrixType>* Sprev,
-	                                                  const VarReLUPosDefModule& q,
+KalmanFilterPredictModule::KalmanFilterPredictModule( percepto::Source<MatrixType>* sprev,
+	                                                  const CovarianceEstimator::ModuleType& q,
+	                                                  double dt,
 	                                                  const VectorType& input,
 	                                                  const MatrixType& F )
-: Q( q )
+: Q( q ), Sprev( sprev )
 {
 	qInput.SetOutput( input );
 	Q.SetSource( &qInput );
+	Qdt.SetSource( &Q );
+	Qdt.SetScale( dt );
 	FSFT.SetSource( Sprev );
 	FSFT.SetTransform( F );
-	Sminus.SetSourceA( &Q );
+	Sminus.SetSourceA( &Qdt );
 	Sminus.SetSourceB( &FSFT );
 }
 
@@ -37,12 +40,14 @@ void KalmanFilterPredictModule::Foreprop()
 std::ostream& operator<<( std::ostream& os, const KalmanFilterPredictModule& module )
 {
 	os << "Predict module: " << std::endl;
-	os << "Q: " << std::endl << module.Q.GetOutput();
+	os << "Sprev: " << std::endl << module.Sprev->GetOutput() << std::endl;
+	os << "Q: " << std::endl << module.Q.GetOutput() << std::endl;
+	os << "Sminus: " << std::endl << module.Sminus.GetOutput() << std::endl;
 	return os;
 }
 
 KalmanFilterUpdateModule::KalmanFilterUpdateModule( percepto::Source<MatrixType>* sPrev,
-	                                                const VarReLUPosDefModule& r,
+	                                                const CovarianceEstimator::ModuleType& r,
 	                                                const VectorType& input,
 	                                                const MatrixType& H,
 	                                                const VectorType& innovation )
@@ -90,11 +95,14 @@ void KalmanFilterUpdateModule::Foreprop()
 
 std::ostream& operator<<( std::ostream& os, const KalmanFilterUpdateModule& module )
 {
-	os << "Update module: " << std::endl;
+	os << "Update module: " << module.sourceName << std::endl;
+	os << "Sprev: " << std::endl << module.Sprev->GetOutput() << std::endl;
+	os << "HSHT: " << std::endl << module.HSHT.GetOutput() << std::endl;
 	os << "R: " << std::endl << module.R.GetOutput() << std::endl;
 	os << "V: " << std::endl << module.V.GetOutput() << std::endl;
+	os << "Splus: " << std::endl << module.Splus.GetOutput() << std::endl;
 	os << "inno: " << module.innovationLL.GetSample().transpose() << std::endl;
-	os << "innoLL: " << module.innovationLL.GetOutput();
+	os << "innoLL: " << module.innovationLL.GetOutput() << std::endl;
 	return os;
 }
 

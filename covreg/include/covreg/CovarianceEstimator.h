@@ -19,6 +19,9 @@ public:
 	/*! \brief Construct an estimator from the given parameter message. */
 	// CovarianceEstimator( const covreg::CovarianceEstimatorInfo& info );
 
+	typedef VarReLUPosDefModule ModuleType;
+	// typedef ConstantPosDefModule ModuleType;
+
 	/*! \brief Construct an estimator and create new parameters. */
 	CovarianceEstimator( const std::string& source,
 	                     unsigned int inputDim,
@@ -39,7 +42,7 @@ public:
 	void RandomizeVarianceParams();
 	void ZeroCorrelationParams();
 
-	MatrixType Evaluate( const VectorType& input );
+	MatrixType Evaluate( const VectorType& input ); 
 
 	covreg::CovarianceEstimatorInfo GetParamsMsg() const;
 	void SetParamsMsg( const covreg::CovarianceEstimatorInfo& msg );
@@ -48,7 +51,7 @@ public:
 	// covreg::CovarianceEstimatorInfo GetInfoMessage() const;
 
 	/*! \brief Used to plug in to other optimization pipelines. */
-	const VarReLUPosDefModule& GetModule();
+	const ModuleType& GetModule();
 	percepto::Parameters::Ptr GetParamSet();
 
 private:
@@ -58,11 +61,10 @@ private:
 	unsigned int _outDim;
 
 	percepto::TerminalSource<VectorType> _psdPort;
-	VarReLUPosDefModule _psd;
+	ModuleType _psd;
 
 	percepto::Parameters::Ptr _lParams;
-	std::vector<percepto::Parameters::Ptr> _dParams;
-	// std::vector<percepto::Parameters::Ptr> _dParams;
+	percepto::Parameters::Ptr _dParams;
 	percepto::ParameterWrapper::Ptr _params;
 
 };

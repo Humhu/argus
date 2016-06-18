@@ -25,7 +25,6 @@ struct InnovationClipParameters
 	unsigned int maxEpisodeLength;
 	double l2Weight;
 	unsigned int batchSize;
-	percepto::SimpleConvergenceCriteria optimizerCriteria;
 
 	InnovationClipParameters()
 	: numEpisodesToKeep( 50 ), maxEpisodeLength( 10 ),
@@ -45,9 +44,13 @@ public:
 	void AddPredict( const PredictInfo& info, const VectorType& input );
 
 	bool AddUpdate( const UpdateInfo& info, const VectorType& input,
-	                const std::string& name );
+	                const std::string& name, unsigned int maxSamples );
 
-	void InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria );
+	// Terminates the current episode and starts a new one
+	void BreakCurrentEpisode();
+
+	void InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria,
+	                             const percepto::AdamParameters& params );
 	void Optimize();
 
 	size_t NumEpisodes() const;

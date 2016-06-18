@@ -12,6 +12,8 @@
 #include "argus_utils/filters/FilterUtils.h"
 
 #include <ros/ros.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/time_sequencer.h>
 #include <signal.h>
 
 #include "argus_utils/synchronization/SynchronizationTypes.h"
@@ -24,6 +26,7 @@
 
 #include <fstream>
 
+using namespace argus_msgs;
 using namespace argus;
 using namespace covreg;
 
@@ -48,7 +51,8 @@ public:
 
 	Optimizer( ros::NodeHandle& nodeHandle, ros::NodeHandle& ph )
 	: privHandle( ph ),
-	initialized( false )
+	initialized( false ),
+	lastSeq( 0 )
 	{
 		GetParam<double>( privHandle, "feature_cache_time", 
 		                  _featureCacheTime, 1.0 );
@@ -99,13 +103,16 @@ public:
 			_clipOptimizer->AddObservationReg( *item.second.estimator, item.first );
 		}
 
-		double minibatchTime;
-		GetParam<double>( privHandle, "minibatch_time", minibatchTime, 1E-2 );
 		GetParam<unsigned int>( privHandle, "min_clips_optimize", _minOptimizeSize );
 
 		percepto::SimpleConvergenceCriteria criteria;
-		criteria.maxRuntime = minibatchTime;
-		_clipOptimizer->InitializeOptimization( criteria );
+		GetParam<double>( privHandle, "convergence/batch_time", criteria.maxRuntime, 1E-2 );
+		percepto::AdamParameters optParams;
+		GetParam( privHandle, "optimizer/step_size", optParams.alpha, 1E-3 );
+		GetParam( privHandle, "optimizer/beta1", optParams.beta1, 0.9 );
+		GetParam( privHandle, "optimizer/beta2", optParams.beta2, 0.99 );
+		GetParam( privHandle, "optimizer/epsilon", optParams.epsilon, 1E-7 );
+		_clipOptimizer->InitializeOptimization( criteria, optParams );
 
 		double printRate;
 		GetParam<double>( privHandle, "print_rate", printRate, 1.0 );
@@ -119,12 +126,19 @@ public:
 
 		_optimizerThread = boost::thread( boost::bind( &Optimizer::OptimizerCallback, this ) );
 
-		_infoSub = nodeHandle.subscribe( "filter_info", 10, &Optimizer::FilterCallback, this );
+		// sub = std::make_shared<message_filters::Subscriber<FilterStepInfo>>( nodeHandle, "filter_info", infoBufferSize );
+		// seq = std::make_shared<message_filters::TimeSequencer<FilterStepInfo>>( *sub, ros::Duration(1.0), ros::Duration(0.1), infoBufferSize);
+		// seq->registerCallback( &Optimizer::FilterCallback, this );
+
+		_infoSub = nodeHandle.subscribe( "filter_info", infoBufferSize, &Optimizer::FilterCallback, this );
 
 		_waitTimer = nodeHandle.createTimer( ros::Duration( 1.0 ), 
 		                                     &Optimizer::ReceiveWaitTimerCallback, 
 		                                     this, true );
 	}
+
+	std::shared_ptr<message_filters::Subscriber<FilterStepInfo>> sub;
+	std::shared_ptr<message_filters::TimeSequencer<FilterStepInfo>> seq;
 
 	void RegisterModel( const std::string& name, const YAML::Node& info )
 	{
@@ -140,7 +154,12 @@ public:
 		reg.estimator = std::make_shared<CovarianceEstimator>( name, info );
 		reg.paramPublisher = privHandle.advertise<CovarianceEstimatorInfo>( paramTopic, 10 );
 		reg.features = info["features"].as<std::vector<std::string>>();
-		
+		if( name != "transition" )
+		{
+			//reg.ssRate = info["ss_rate"].as<double>();
+			reg.samplesPerEp = info["samples_per_episode"].as<unsigned int>();
+		}
+
 		// Register all features this model needs
 		unsigned int fDim = 0;
 		BOOST_FOREACH( const std::string& feature, reg.features )
@@ -281,6 +300,8 @@ private:
 		std::shared_ptr<CovarianceEstimator> estimator;
 		std::vector<std::string> features;
 		std::string outputPath;
+		double ssRate;
+		unsigned int samplesPerEp;
 	};
 	typedef std::unordered_map<std::string, EstimatorRegistration> EstimatorRegistry;
 	EstimatorRegistry _estRegistry;
@@ -314,6 +335,8 @@ private:
 	ros::Timer _waitTimer;
 	Mutex _initMutex;
 	bool initialized;
+
+	unsigned int lastSeq;
 	
 	void FilterCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg )
 	{
@@ -360,8 +383,16 @@ private:
 				}
 				PrintStatus();
 			}
+			SaveParameters();
+			SaveLog();
 		}
-		catch( boost::thread_interrupted e ) { return; }
+		catch( std::exception e ) 
+		{
+			ROS_INFO_STREAM( "Optimizer thread: " << e.what() );
+			SaveParameters();
+			SaveLog();
+			return; 
+		}
 	}
 
 	void PrintStatus()
@@ -384,10 +415,19 @@ private:
 		for( size_t i = 0; i < bsize; ++i )
 		{
 			InfoData data;
-			_dataBuffer.WaitPopBack( data );
+			_dataBuffer.WaitPopFront( data );
 			VectorType& features = data.first;
 			argus_msgs::FilterStepInfo& msg = data.second;
 
+			if( msg.header.seq != lastSeq + 1 )
+			{
+				ROS_WARN_STREAM( "Got sequence " << msg.header.seq <<
+				                 " but expected " << lastSeq + 1 );
+				lastSeq = msg.header.seq;
+				continue;
+			}
+
+			lastSeq = msg.header.seq;
 			if( msg.isPredict )
 			{
 				PredictInfo info = MsgToPredict( msg );
@@ -395,8 +435,12 @@ private:
 			}
 			else
 			{
+				const std::string& sourceName = msg.header.frame_id;
 				UpdateInfo info = MsgToUpdate( msg );
-				_clipOptimizer->AddUpdate( info, features, msg.header.frame_id );
+				_clipOptimizer->AddUpdate( info, 
+				                           features, 
+				                           sourceName, 
+				                           _estRegistry[sourceName].samplesPerEp );
 			}
 		}
 	}
@@ -425,11 +469,16 @@ int main( int argc, char** argv )
 
 	Optimizer optimizer( nh, ph );
 	
-	ros::spin();
+	try
+	{
+		ros::spin();
+	}
+	catch( std::runtime_error e ) 
+	{
+		ROS_ERROR_STREAM( "Error: " << e.what() );
+	}
 
 	optimizer.Terminate();
-	optimizer.SaveParameters();
-	optimizer.SaveLog();
 
 	return 0;
 }

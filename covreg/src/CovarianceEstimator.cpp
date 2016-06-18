@@ -20,17 +20,14 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
   _inDim( featDim ),
   _outDim( matDim ),
   _psd( featDim, matDim, numHiddenLayers, layerWidth )
+  // _psd( matDim )
 {
 	_psd.SetSource( &_psdPort );
 	_lParams = _psd.lReg.CreateParameters();
 	_dParams = _psd.dReg.CreateParameters();
 	_params = std::make_shared<percepto::ParameterWrapper>();
 	_params->AddParameters( _lParams );
-	// _params->AddParameters( _dParams );
-	for( unsigned int i = 0; i < _dParams.size(); i++ )
-	{
-		_params->AddParameters( _dParams[i] );
-	}
+	_params->AddParameters( _dParams );
 }
 
 CovarianceEstimator::CovarianceEstimator( const std::string& source, 
@@ -42,17 +39,14 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
         info["output_dim"].as<unsigned int>(),
         info["hidden_layers"].as<unsigned int>(),
         info["layer_width"].as<unsigned int>() )
+  // _psd( info["output_dim"].as<unsigned int>() )
 {
 	_psd.SetSource( &_psdPort );
 	_lParams = _psd.lReg.CreateParameters();
 	_dParams = _psd.dReg.CreateParameters();
 	_params = std::make_shared<percepto::ParameterWrapper>();
 	_params->AddParameters( _lParams );
-	// _params->AddParameters( _dParams );
-	for( unsigned int i = 0; i < _dParams.size(); i++ )
-	{
-		_params->AddParameters( _dParams[i] );
-	}
+	_params->AddParameters( _dParams );
 }
 
 unsigned int CovarianceEstimator::InputDim() const { return _inDim; }
@@ -61,15 +55,9 @@ unsigned int CovarianceEstimator::OutputDim() const { return _outDim; }
 
 void CovarianceEstimator::RandomizeVarianceParams()
 {
-	for( unsigned int i = 0; i < _dParams.size(); i++ )
-	{
-		VectorType varParams( _dParams[i]->ParamDim() );
-		percepto::randomize_vector( varParams, -VAR_RAND_RANGE, VAR_RAND_RANGE );
-		_dParams[i]->SetParamsVec( varParams );
-		// _dParams[i]->SetParamsVec( VectorType::Zero( _dParams[i]->ParamDim() ) );
-	}
-	// VectorType varParams = VectorType::Ones( _dParams->ParamDim() );
-	// _dParams->SetParamsVec( varParams );
+	VectorType varParams( _dParams->ParamDim() );
+	percepto::randomize_vector( varParams, -VAR_RAND_RANGE, VAR_RAND_RANGE );
+	_dParams->SetParamsVec( varParams );
 }
 
 void CovarianceEstimator::ZeroCorrelationParams()
@@ -109,8 +97,10 @@ void CovarianceEstimator::SetParamsMsg( const CovarianceEstimatorInfo& info )
 MatrixType CovarianceEstimator::Evaluate( const VectorType& input )
 {
 	_psdPort.SetOutput( input );
+	_psd.Invalidate();
 	_psdPort.Foreprop();
-	return _psd.GetOutput();
+	MatrixType out = _psd.GetOutput();
+	return out;
 }
 
 percepto::Parameters::Ptr
@@ -119,8 +109,7 @@ CovarianceEstimator::GetParamSet()
 	return std::dynamic_pointer_cast<percepto::Parameters>( _params );
 }
 
-const VarReLUPosDefModule&
-CovarianceEstimator::GetModule()
+const CovarianceEstimator::ModuleType& CovarianceEstimator::GetModule()
 {
 	return _psd;
 }

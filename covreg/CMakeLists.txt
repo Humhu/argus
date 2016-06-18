@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
 					argus_msgs
 					lookup
 					broadcast
+					message_filters
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -54,6 +55,7 @@ catkin_package(
 					argus_msgs
 					lookup
 					broadcast
+					message_filters
 					
 	DEPENDS 		Boost 
 					percepto

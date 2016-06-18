@@ -5,10 +5,12 @@
 #include <percepto/compo/TransformWrapper.hpp>
 #include <percepto/compo/InverseWrapper.hpp>
 #include <percepto/compo/ProductWrapper.hpp>
+#include <percepto/compo/ScaleWrapper.hpp>
 
 #include <percepto/optim/GaussianLogLikelihoodCost.hpp>
 
 #include "covreg/PositiveDefiniteModules.h"
+#include "covreg/CovarianceEstimator.h"
 #include "argus_utils/utils/LinalgTypes.h"
 
 namespace argus
@@ -18,14 +20,18 @@ namespace argus
 struct KalmanFilterPredictModule
 {
 	percepto::TerminalSource<VectorType> qInput;
-	VarReLUPosDefModule Q;
+	CovarianceEstimator::ModuleType Q;
+	percepto::ScaleWrapper<MatrixType> Qdt;
 	percepto::TransformWrapper FSFT;
 	percepto::AdditiveWrapper<MatrixType> Sminus;
 
+	percepto::Source<MatrixType>* Sprev;
+
 	// Here Sprev refers to the previous estimate covariance
 	// Need to set Q properties
-	KalmanFilterPredictModule( percepto::Source<MatrixType>* Sprev,
-	                           const VarReLUPosDefModule& q,
+	KalmanFilterPredictModule( percepto::Source<MatrixType>* sprev,
+	                           const CovarianceEstimator::ModuleType& q,
+	                           double dt,
 	                           const VectorType& input,
 	                           const MatrixType& F );
 
@@ -58,7 +64,7 @@ struct KalmanFilterUpdateModule
 	percepto::TerminalSource<VectorType> rInput;
 
 	// The estimated R matrix
-	VarReLUPosDefModule R;
+	CovarianceEstimator::ModuleType R;
 	
 	// The innovation covariance R + H * S- * H^T = V
 	percepto::AdditiveWrapper<MatrixType> V;
@@ -83,12 +89,14 @@ struct KalmanFilterUpdateModule
 
 	bool active;
 
+	std::string sourceName;
+
 	percepto::Source<MatrixType>* Sprev;
 
 	// Need to set R properties
 	// Set source name, innovation
 	KalmanFilterUpdateModule( percepto::Source<MatrixType>* sPrev,
-	                          const VarReLUPosDefModule& r,
+	                          const CovarianceEstimator::ModuleType& r,
 	                          const VectorType& input,
 	                          const MatrixType& H,
 	                          const VectorType& innovation );

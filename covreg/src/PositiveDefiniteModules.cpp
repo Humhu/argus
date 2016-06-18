@@ -1,6 +1,7 @@
 #include "covreg/PositiveDefiniteModules.h"
 
 #define POSDEF_OFFSET_SCALE (1E-9)
+#define RELU_LEAKY_SLOPE (1E-6)
 
 using namespace percepto;
 
@@ -28,12 +29,10 @@ void PosDefModule::Foreprop()
 
 void PosDefModule::BackpropImplementation( const MatrixType& nextDodx )
 {
-	std::cout << "PosDefModule: BackpropImplementation" << std::endl;
 	_outputPort.Backprop( nextDodx );
 }
 
-ConstantPosDefModule::ConstantPosDefModule( unsigned int inputDim, 
-	                                        unsigned int matDim )
+ConstantPosDefModule::ConstantPosDefModule( unsigned int matDim )
 : lReg( matDim*(matDim-1)/2 ),
   dReg( matDim ),
   _inputPort( this )
@@ -103,7 +102,7 @@ VarReLUPosDefModule::VarReLUPosDefModule( unsigned int inputDim,
 	                                      unsigned int layerWidth )
 : lReg( matDim*(matDim-1)/2 ),
   dReg( inputDim, matDim, numHiddenLayers, layerWidth,
-        percepto::HingeActivation( 1.0, 1E-3 ) ),
+        percepto::HingeActivation( 1.0, RELU_LEAKY_SLOPE ) ),
   _inputPort( this )
 {
 	expModule.SetSource( &dReg.GetOutputSource() );
@@ -142,14 +141,11 @@ void VarReLUPosDefModule::SetSource( InputSourceType* s )
 ParameterWrapper::Ptr VarReLUPosDefModule::CreateParameters()
 {
 	Parameters::Ptr lParams = lReg.CreateParameters();
-	std::vector<Parameters::Ptr> dParams = dReg.CreateParameters();
+	Parameters::Ptr dParams = dReg.CreateParameters();
 	
 	ParameterWrapper::Ptr params = std::make_shared<ParameterWrapper>();
 	params->AddParameters( lParams );
-	for( unsigned int i = 0; i < dParams.size(); i++ )
-	{
-		params->AddParameters( dParams[i] );
-	}
+	params->AddParameters( dParams );
 	return params;
 }
 
@@ -181,7 +177,7 @@ void VarReLUPosDefModule::BackpropImplementation( const MatrixType& nextDodx )
 {
 	// This first call will terminate at the input source b/c it is expecting
 	// two sources. We have to send a fake backprop signal
-	_outputPort.Backprop( nextDodx );
+	PosDefModule::BackpropImplementation( nextDodx );
 	_inputPort.Backprop( MatrixType::Zero( nextDodx.rows(), nextDodx.cols() ) );
 }
 

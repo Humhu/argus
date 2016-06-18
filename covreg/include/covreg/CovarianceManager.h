@@ -26,7 +26,7 @@ public:
 
 	void SetUpdateTopic( const std::string& topic );
 
-	bool IsReady();
+	bool IsReady() const;
 
 	unsigned int OutputDim() const;
 

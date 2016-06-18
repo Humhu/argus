@@ -61,8 +61,7 @@ public:
 	// dInput.SetOutput
 	// lReg.SetParameters
 	// dReg.SetParameters
-	ConstantPosDefModule( unsigned int inputDim, 
-	                      unsigned int matDim );
+	ConstantPosDefModule( unsigned int matDim );
 
 	// Copy assignment rewires all connections and should result in
 	// shared parameters with the original

@@ -46,13 +46,15 @@ void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
 
 	currentEpisode->EmplacePredict( currentEpisode->GetTailSource(), 
 	                                _transReg.GetModule(),
+	                                info.dt,
 	                                input,
 	                                info.F );
 }
 
 bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
                                          const VectorType& input,
-                                         const std::string& name )
+                                         const std::string& name,
+                                         unsigned int maxSamples )
 {
 	WriteLock lock( _mutex );
 
@@ -61,7 +63,7 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 		throw std::runtime_error( "Received unregistered update." );
 	}
 	CovarianceEstimator& est = _obsRegs.at( name );
-	
+
 	if( _problem.NumEpisodes() > _maxNumEpisodes )
 	{
 		_problem.RemoveOldestEpisode();
@@ -75,7 +77,9 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 		currentEpisode = _problem.GetCurrentEpisode();
 	}
 
-	currentEpisode->EmplaceUpdate( currentEpisode->GetTailSource(), 
+	currentEpisode->EmplaceUpdate( name,
+	                               maxSamples,
+	                               currentEpisode->GetTailSource(), 
 	                               est.GetModule(),
 	                               input,
 	                               info.H,
@@ -94,12 +98,11 @@ size_t InnovationClipOptimizer::CurrentEpisodeLength() const
 	return _problem.GetCurrentEpisode()->NumUpdates();
 }
 
-void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria )
+void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria,
+                                                      const percepto::AdamParameters& params )
 {
 	WriteLock lock( _mutex );
-	percepto::AdamParameters aparams;
-
-	_stepper = std::make_shared<percepto::AdamStepper>( aparams );
+	_stepper = std::make_shared<percepto::AdamStepper>( params );
 	_convergence = std::make_shared<percepto::SimpleConvergence>( criteria );
 	_optimizer = std::make_shared<percepto::AdamOptimizer>( *_stepper, 
 	                                                        *_convergence,

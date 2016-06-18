@@ -65,14 +65,14 @@ void InnovationLikelihoodProblem::ForepropAll()
 	regularizer.Foreprop();
 	BOOST_FOREACH( KalmanFilterEpisode& ep, episodes )
 	{
-		ep.Foreprop();
+		ep.ForepropAll();
 	}
 	loss.ParentCost::Foreprop();
 }
 
 void InnovationLikelihoodProblem::Backprop()
 {
-	objective.Backprop( MatrixType() );
+	objective.Backprop( MatrixType::Identity(1,1) );
 }
 
 double InnovationLikelihoodProblem::GetOutput() const

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <percepto/optim/MeanCost.hpp>
+#include <percepto/optim/StochasticSumCost.hpp>
+#include <percepto/optim/SumCost.hpp>
 
 #include "covreg/KalmanFilterModules.h"
 
@@ -22,11 +23,14 @@ public:
 	// The update steps in this episode
 	std::deque<KalmanFilterUpdateModule> updates;
 
-	// This forces the avgInnoLL to always be able to output, even with 0 updates
+	// This forces the sumInnoLL to always be able to output, even with 0 updates
 	percepto::TerminalSource<double> offsetInnoLL;
 
-	percepto::MeanCost<double> avgInnoLL;
+	// Constrained sums for each source
+	std::deque<percepto::StochasticSumCost<double>> sourceSums;
+	std::map<std::string, unsigned int> sourceInds;
 
+	percepto::SumCost<double> sumInnoLL;
 
 	enum ClipType
 	{
@@ -58,11 +62,26 @@ public:
 	}
 
 	template <class ...Args>
-	void EmplaceUpdate( Args&&... args )
+	void EmplaceUpdate( const std::string& name, 
+	                    unsigned int maxSamples,
+	                    Args&&... args )
 	{
 		updates.emplace_back( args... );
-		avgInnoLL.AddSource( &updates.back().innovationLL );
+		updates.back().sourceName = name;
+		updates.back().innovationLL.name = name;
+
+		if( sourceInds.count( name ) == 0 )
+		{
+			sourceInds[name] = sourceSums.size();
+			sourceSums.emplace_back();
+			//sourceSums.back().SetSubsample( ssRate );
+			sourceSums.back().SetBatchSize( maxSamples );
+			sumInnoLL.AddSource( &sourceSums.back() );
+		}
 		
+		sourceSums[sourceInds[name]].AddSource( &updates.back().innovationLL );
+		// sumInnoLL.AddSource( &updates.back().innovationLL );
+
 		tailType = CLIP_TYPE_UPDATE;
 		order.push_back( CLIP_TYPE_UPDATE );
 		std::string postfix = std::to_string( updates.size() - 1 );
@@ -80,6 +99,8 @@ public:
 	void Invalidate();
 
 	void Foreprop();
+
+	void ForepropAll();
 
 private:
 	// Forbid copying

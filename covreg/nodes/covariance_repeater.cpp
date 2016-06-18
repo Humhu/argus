@@ -52,7 +52,6 @@ public:
 		}
 
 		MatrixType Rest = _estimator.EstimateCovariance( msg->header.stamp );
-
 		repeat.observation_cov = MatrixToMsg( Rest );
 		_updatePublisher.publish( repeat );
 	}

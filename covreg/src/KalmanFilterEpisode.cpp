@@ -7,7 +7,7 @@ KalmanFilterEpisode::KalmanFilterEpisode( const MatrixType& Sinit )
 : tailType( CLIP_TYPE_NONE )
 {
 	initCov.SetOutput( Sinit );
-	avgInnoLL.AddSource( &offsetInnoLL );
+	sumInnoLL.AddSource( &offsetInnoLL );
 	offsetInnoLL.SetOutput( 0.0 );
 }
 
@@ -38,7 +38,7 @@ KalmanFilterEpisode::GetTailSource()
 
 percepto::Source<double>* KalmanFilterEpisode::GetLL()
 {
-	return &avgInnoLL;
+	return &sumInnoLL;
 }
 
 // NOTE: We do not invalidate Sprev because we can't foreprop it
@@ -69,6 +69,15 @@ void KalmanFilterEpisode::Foreprop()
 	BOOST_FOREACH( KalmanFilterUpdateModule& upd, updates )
 	{
 		upd.Foreprop();
+	}
+}
+
+void KalmanFilterEpisode::ForepropAll()
+{
+	Foreprop();
+	BOOST_FOREACH( percepto::StochasticSumCost<double>& sum, sourceSums )
+	{
+		sum.ParentCost::Foreprop();
 	}
 }
 

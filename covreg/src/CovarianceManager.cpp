@@ -58,6 +58,7 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 	}
 
 	// Load params if we have any to load
+	bool initialized = false;
 	if( info[ "params_load_path" ] )
 	{
 		std::string paramFilePath = info["params_load_path"].as<std::string>();
@@ -72,9 +73,10 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 			ROS_INFO_STREAM( "Loaded parameters for: " << _sourceName <<
 			                 " from " << paramFilePath );
 			_estimator->SetParamsMsg( info );
+			initialized = true;
 		}
 	}
-	else
+	if( !initialized )
 	{
 		ROS_WARN_STREAM( "No parameters specified for: " << _sourceName <<
 		                 ". Using defaults." );
@@ -91,10 +93,10 @@ void CovarianceManager::SetUpdateTopic( const std::string& topic )
 	                                  this );
 }
 
-bool CovarianceManager::IsReady()
+bool CovarianceManager::IsReady() const
 {
 	if( !_estimator ) { return false; }
-	BOOST_FOREACH( BroadcastReceiver& rx, _receivers )
+	BOOST_FOREACH( const BroadcastReceiver& rx, _receivers )
 	{
 		if( !rx.HasReceived() ) 
 		{
