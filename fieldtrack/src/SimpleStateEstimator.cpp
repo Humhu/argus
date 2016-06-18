@@ -20,11 +20,15 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
                                             ros::NodeHandle& privHandle )
 : _filter( PoseType(), 
            FilterType::DerivsType::Zero(), 
-           FilterType::FullCovType::Zero() )
+           FilterType::FullCovType::Zero() ),
+  _infoNumber( 0 )
 {
 	GetParamRequired( privHandle, "reference_frame", _referenceFrame );
 	GetParamRequired( privHandle, "body_frame", _bodyFrame );
-	
+	double upLag;
+	GetParamRequired( privHandle, "update_lag", upLag );
+	_updateLag = ros::Duration( upLag );
+
 	// Parse all update sources
 	XmlRpc::XmlRpcValue updateSources;
 	GetParam( privHandle, "update_sources", updateSources );
@@ -87,19 +91,61 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	privHandle.param<bool>( "two_dimensional", twoDimensional, false );
 	ROS_INFO_STREAM( "Two dimensional mode: " << twoDimensional );
 
+	privHandle.param<bool>( "velocity_only", velocityOnly, false );
+	ROS_INFO_STREAM( "Velocity only mode: " << velocityOnly );
+
 	_odomPub = nodeHandle.advertise<Odometry>( "odometry", 10 );
-	_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 10 );
+	_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 100 );
 	
 	double timerRate;
-	privHandle.param<double>( "timer_rate", timerRate, 10.0 );
+	privHandle.param<double>( "update_rate", timerRate, 10.0 );
 	ROS_INFO_STREAM( "Publishing at " << timerRate << " Hz" );
 	_updateTimer = nodeHandle.createTimer( ros::Duration( 1.0 / timerRate ),
 	                                      &SimpleStateEstimator::TimerCallback,
 	                                      this );
 }
 
+void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
+{
+	// ros::Time now = ros::Time::now();
+	// ros::Duration delay = now - msg->header.stamp;
+	// ROS_INFO_STREAM( "Received update from: " << msg->header.frame_id <<
+	//                  " with delay: " << delay );
+
+	WriteLock lock( _bufferMutex );
+	_updateBuffer[msg->header.stamp] = *msg;
+}
+
+void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
+{
+	WriteLock lock( _bufferMutex );
+	// ROS_INFO_STREAM( "Buffer size: " << _updateBuffer.size() );
+	while( !_updateBuffer.empty() )
+	{
+		UpdateBuffer::const_iterator firstItem = _updateBuffer.begin();
+		const ros::Time& earliestBufferTime = firstItem->first;
+		if( earliestBufferTime > until ) { break; }
+		ProcessUpdate( firstItem->second );
+		_updateBuffer.erase( firstItem );
+	}
+}
+
+MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
+{
+	if( _Qestimator.IsReady() )
+	{
+		return _Qestimator.EstimateCovariance( time );
+	}
+	else
+	{
+		ROS_WARN_STREAM( "Transition covariance estimator not ready. Using fixed rate." );
+		return _Qrate;
+	}
+}
+
 void SimpleStateEstimator::PredictUntil( const ros::Time& until )
 {
+	// ROS_INFO_STREAM( "Predicting until: " << until );
 	double dt = (until - _filterTime).toSec();
 	_filterTime = until;
 	if( dt > MAX_DT_THRESH )
@@ -108,30 +154,20 @@ void SimpleStateEstimator::PredictUntil( const ros::Time& until )
 		return;
 	}
 
-	MatrixType Qrate;
-	if( _Qestimator.IsReady() )
-	{
-		Qrate = _Qestimator.EstimateCovariance( until );
-	}
-	else
-	{
-		ROS_WARN_STREAM( "Transition covariance estimator not ready. Using fixed rate." );
-		Qrate = _Qrate;
-	}
-
-	PredictInfo info = _filter.Predict( Qrate*dt, dt );
+	PredictInfo info = _filter.Predict( GetCovarianceRate( _filterTime )*dt, dt );
 	argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
 	pmsg.header.frame_id = "transition";
 	pmsg.header.stamp = until;
+	pmsg.header.seq = _infoNumber++;
 	_stepPub.publish( pmsg );
 }
 
-void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
+void SimpleStateEstimator::ProcessUpdate( const FilterUpdate& msg )
 {
- 	VectorType z( msg->observation.size() );
-	ParseMatrix( msg->observation, z );
-	MatrixType C = MsgToMatrix( msg->observation_matrix );
-	MatrixType R = MsgToMatrix( msg->observation_cov );
+	VectorType z( msg.observation.size() );
+	ParseMatrix( msg.observation, z );
+	MatrixType C = MsgToMatrix( msg.observation_matrix );
+	MatrixType R = MsgToMatrix( msg.observation_cov );
 
 	if( C.cols() != FilterType::CovarianceDim )
 	{
@@ -147,15 +183,14 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 	bool hasDerivs = !( C.rightCols( C.cols() - FilterType::TangentDim ).array() == 0 ).all();
 
 	// First predict up to the update time
-	ros::Time updateTime = msg->header.stamp;
+	ros::Time updateTime = msg.header.stamp;
 	if( updateTime > _filterTime )
 	{
 		PredictUntil( updateTime );
 	}
 	else if( updateTime < _filterTime )
 	{
-		// TODO Implement _filter reversing
-		ROS_WARN_STREAM( "Update received from before _filter time." );
+		ROS_WARN_STREAM( "Update received from before filter time." );
 	}
 
 	FilterStepInfo info;
@@ -192,7 +227,8 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 		return;
 	}
 	
-	info.header = msg->header;
+	info.header = msg.header;
+	info.header.seq = _infoNumber++;
 	_stepPub.publish( info );
 
 }
@@ -213,6 +249,13 @@ SimpleStateEstimator::DerivsUpdate( const VectorType& derivs,
 {
 	FilterType::DerivObsMatrix Cderivs = C.rightCols( C.cols() - FilterType::TangentDim );
 	UpdateInfo info = _filter.UpdateDerivs( derivs, Cderivs, R );
+	VectorType diagonals = _filter.FullCov().diagonal();
+	if( ( diagonals.array() < 0 ).any() )
+	{
+		std::cout << "Full cov: " << std::endl << _filter.FullCov() << std::endl;
+		std::cout << "R: " << std::endl << R << std::endl;
+		throw std::runtime_error( "Negatives in covariance diagonal." );
+	}
 	return UpdateToMsg( info );
 }
 
@@ -233,23 +276,36 @@ SimpleStateEstimator::DerivsUpdate( const VectorType& derivs,
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
-	if( now > _filterTime )
+	if( now < _filterTime )
 	{
-		PredictUntil( now );
+		ROS_WARN_STREAM( "Filter time is ahead of timer callback." );
 	}
+	
+	if( velocityOnly ) { SquashPoseUncertainty(); }
+	if( twoDimensional ) { EnforceTwoDimensionality(); }
 
+	ros::Time laggedHead = now - _updateLag;
+	ProcessUpdateBuffer( laggedHead );
+
+	// Publish the forward-predicted state
 	Odometry msg;
 	msg.header.frame_id = _referenceFrame;
 	msg.header.stamp = event.current_real;
 	msg.child_frame_id = _bodyFrame;
 	
-	msg.pose.pose = PoseToMsg( _filter.Pose() );
-	SerializeMatrix( _filter.PoseCov(), msg.pose.covariance );
+	FilterType estFilter( _filter );
+	double dt = (now - _filterTime).toSec();
+	PredictInfo info = estFilter.Predict( GetCovarianceRate( _filterTime )*dt, dt );
+
+
+	msg.pose.pose = PoseToMsg( estFilter.Pose() );
+	SerializeMatrix( estFilter.PoseCov(), msg.pose.covariance );
 	
-	PoseType::TangentVector tangents = _filter.Derivs().head<FilterType::TangentDim>();
+	PoseType::TangentVector tangents = estFilter.Derivs().head<FilterType::TangentDim>();
 	msg.twist.twist = TangentToMsg( tangents );
-	SerializeMatrix( _filter.DerivsCov().topLeftCorner<FilterType::TangentDim,
-	                                                  FilterType::TangentDim>(), msg.twist.covariance );
+	SerializeMatrix( estFilter.DerivsCov().topLeftCorner<FilterType::TangentDim,
+	                                                     FilterType::TangentDim>(), 
+	                 msg.twist.covariance );
 	
 	_odomPub.publish( msg );
 }
@@ -260,11 +316,20 @@ void SimpleStateEstimator::EnforceTwoDimensionality()
 	PoseSE3 mean( poseVector(0), poseVector(1), 0, poseVector(3), 0, 0, poseVector(6) );
 	_filter.Pose() = mean;
 
-	PoseSE3::TangentVector velocity = _filter.Derivs().head<6>();
-	velocity(2) = 0;
-	velocity(3) = 0;
-	velocity(4) = 0;
-	_filter.Derivs().head<6>() = velocity;
+	FilterType::DerivsType derivs = _filter.Derivs();
+	for( unsigned int i = 0; i < FilterType::CovarianceDim/6; ++i )
+	{
+		_filter.FullCov().block( 6*i+2, 0, 3, FilterType::CovarianceDim ).setZero();
+		_filter.FullCov().block( 0, 6*i+2, FilterType::CovarianceDim, 3 ).setZero();
+		derivs.segment( 6*i+2, 3 ).setZero();
+	}
+	_filter.Derivs() = derivs;
+}
+
+void SimpleStateEstimator::SquashPoseUncertainty()
+{
+	_filter.FullCov().block(0,0,FilterType::TangentDim,FilterType::CovarianceDim).setZero();
+	_filter.FullCov().block(0,0,FilterType::CovarianceDim,FilterType::TangentDim).setZero();
 }
 
 }
