@@ -106,7 +106,10 @@ public:
 		GetParam<unsigned int>( privHandle, "min_clips_optimize", _minOptimizeSize );
 
 		percepto::SimpleConvergenceCriteria criteria;
-		GetParam<double>( privHandle, "convergence/batch_time", criteria.maxRuntime, 1E-2 );
+		GetParam<double>( privHandle, "convergence/max_time", criteria.maxRuntime, 1E-2 );
+		GetParam<unsigned int>( privHandle, "convergence/max_iters", criteria.maxIterations, 100 );
+		GetParam<double>( privHandle, "convergence/min_avg_delta", criteria.minAverageDelta, 1E-6 );
+		GetParam<double>( privHandle, "convergence/min_avg_grad", criteria.minAverageGradient, 1E-6 );
 		percepto::AdamParameters optParams;
 		GetParam( privHandle, "optimizer/step_size", optParams.alpha, 1E-3 );
 		GetParam( privHandle, "optimizer/beta1", optParams.beta1, 0.9 );
@@ -156,8 +159,7 @@ public:
 		reg.features = info["features"].as<std::vector<std::string>>();
 		if( name != "transition" )
 		{
-			//reg.ssRate = info["ss_rate"].as<double>();
-			reg.samplesPerEp = info["samples_per_episode"].as<unsigned int>();
+			reg.weight = info["weight"].as<double>();
 		}
 
 		// Register all features this model needs
@@ -282,6 +284,8 @@ public:
 			{
 				ROS_WARN_STREAM( "Stream: " << item.second.StreamName() <<
 				                 " has not received data yet." );
+				_waitTimer.stop();
+				_waitTimer.setPeriod( ros::Duration( 1.0 ) );
 				_waitTimer.start();
 				return;
 			}
@@ -300,8 +304,7 @@ private:
 		std::shared_ptr<CovarianceEstimator> estimator;
 		std::vector<std::string> features;
 		std::string outputPath;
-		double ssRate;
-		unsigned int samplesPerEp;
+		double weight;
 	};
 	typedef std::unordered_map<std::string, EstimatorRegistration> EstimatorRegistry;
 	EstimatorRegistry _estRegistry;
@@ -376,15 +379,21 @@ private:
 				if( _clipOptimizer->NumEpisodes() > 1 ||
 				    _clipOptimizer->CurrentEpisodeLength() > _minOptimizeSize )
 				{
-					ROS_INFO_STREAM( "Beginning optimization..." );
-					_clipOptimizer->Optimize();
-					ROS_INFO_STREAM( "Finished optimization!" );
+					// ROS_INFO_STREAM( "Beginning optimization..." );
+					bool converged = _clipOptimizer->Optimize();
+					// ROS_INFO_STREAM( "Finished optimization!" );
 					PublishParams();
+					if( converged )
+					{
+						ROS_INFO_STREAM( "Optimizer has converged. Exiting..." );
+						break;
+					}
 				}
 				PrintStatus();
 			}
 			SaveParameters();
 			SaveLog();
+			exit( 0 );
 		}
 		catch( std::exception e ) 
 		{
@@ -440,7 +449,7 @@ private:
 				_clipOptimizer->AddUpdate( info, 
 				                           features, 
 				                           sourceName, 
-				                           _estRegistry[sourceName].samplesPerEp );
+				                           _estRegistry[sourceName].weight );
 			}
 		}
 	}

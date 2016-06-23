@@ -54,7 +54,7 @@ void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
 bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
                                          const VectorType& input,
                                          const std::string& name,
-                                         unsigned int maxSamples )
+                                         double scale )
 {
 	WriteLock lock( _mutex );
 
@@ -78,7 +78,7 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	}
 
 	currentEpisode->EmplaceUpdate( name,
-	                               maxSamples,
+	                               scale,
 	                               currentEpisode->GetTailSource(), 
 	                               est.GetModule(),
 	                               input,
@@ -109,11 +109,12 @@ void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConv
 	                                                        _paramWrapper );
 }
 
-void InnovationClipOptimizer::Optimize()
+bool InnovationClipOptimizer::Optimize()
 {	
 	WriteLock lock( _mutex );
 	_convergence->Reset();
-	_optimizer->Optimize( _problem );
+	percepto::OptimizationResults results = _optimizer->Optimize( _problem );
+	return results.converged;
 }
 
 double InnovationClipOptimizer::CalculateCost()

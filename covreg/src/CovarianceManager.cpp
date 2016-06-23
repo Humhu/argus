@@ -121,6 +121,7 @@ MatrixType CovarianceManager::EstimateCovariance( const ros::Time& time )
 	BOOST_FOREACH( BroadcastReceiver& rx, _receivers )
 	{
 		feats.segment( fInd, rx.OutputDim() ) = rx.GetClosestReceived( time );
+		fInd += rx.OutputDim();
 	}
 	return _estimator->Evaluate( feats );
 }

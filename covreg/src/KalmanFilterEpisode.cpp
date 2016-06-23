@@ -75,10 +75,6 @@ void KalmanFilterEpisode::Foreprop()
 void KalmanFilterEpisode::ForepropAll()
 {
 	Foreprop();
-	BOOST_FOREACH( percepto::StochasticSumCost<double>& sum, sourceSums )
-	{
-		sum.ParentCost::Foreprop();
-	}
 }
 
 std::ostream& operator<<( std::ostream& os, const KalmanFilterEpisode& episode )

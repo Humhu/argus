@@ -44,14 +44,15 @@ public:
 	void AddPredict( const PredictInfo& info, const VectorType& input );
 
 	bool AddUpdate( const UpdateInfo& info, const VectorType& input,
-	                const std::string& name, unsigned int maxSamples );
+	                const std::string& name, double weight );
 
 	// Terminates the current episode and starts a new one
 	void BreakCurrentEpisode();
 
 	void InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria,
 	                             const percepto::AdamParameters& params );
-	void Optimize();
+	// Returns whether it converged or bailed early
+	bool Optimize();
 
 	size_t NumEpisodes() const;
 	size_t CurrentEpisodeLength() const;
