@@ -4,7 +4,6 @@
 #include "covreg/EstimatorInfoParsers.h"
 
 #include "argus_msgs/FilterStepInfo.h"
-#include "argus_msgs/PredictionFeatures.h"
 
 #include "argus_utils/utils/YamlUtils.h"
 #include "argus_utils/utils/MatrixUtils.h"
@@ -106,8 +105,8 @@ public:
 		GetParam<unsigned int>( privHandle, "min_clips_optimize", _minOptimizeSize );
 
 		percepto::SimpleConvergenceCriteria criteria;
-		GetParam<double>( privHandle, "convergence/max_time", criteria.maxRuntime, 1E-2 );
-		GetParam<unsigned int>( privHandle, "convergence/max_iters", criteria.maxIterations, 100 );
+		GetParam<double>( privHandle, "convergence/max_time", criteria.maxRuntime, std::numeric_limits<double>::infinity() );
+		GetParam<unsigned int>( privHandle, "convergence/max_iters", criteria.maxIterations, std::numeric_limits<unsigned int>::max() );
 		GetParam<double>( privHandle, "convergence/min_avg_delta", criteria.minAverageDelta, 1E-6 );
 		GetParam<double>( privHandle, "convergence/min_avg_grad", criteria.minAverageGradient, 1E-6 );
 		percepto::AdamParameters optParams;
@@ -129,11 +128,11 @@ public:
 
 		_optimizerThread = boost::thread( boost::bind( &Optimizer::OptimizerCallback, this ) );
 
-		// sub = std::make_shared<message_filters::Subscriber<FilterStepInfo>>( nodeHandle, "filter_info", infoBufferSize );
-		// seq = std::make_shared<message_filters::TimeSequencer<FilterStepInfo>>( *sub, ros::Duration(1.0), ros::Duration(0.1), infoBufferSize);
-		// seq->registerCallback( &Optimizer::FilterCallback, this );
+		sub = std::make_shared<message_filters::Subscriber<FilterStepInfo>>( nodeHandle, "filter_info", infoBufferSize );
+		seq = std::make_shared<message_filters::TimeSequencer<FilterStepInfo>>( *sub, ros::Duration(1.0), ros::Duration(0.1), infoBufferSize);
+		seq->registerCallback( &Optimizer::FilterCallback, this );
 
-		_infoSub = nodeHandle.subscribe( "filter_info", infoBufferSize, &Optimizer::FilterCallback, this );
+		// _infoSub = nodeHandle.subscribe( "filter_info", infoBufferSize, &Optimizer::FilterCallback, this );
 
 		_waitTimer = nodeHandle.createTimer( ros::Duration( 1.0 ), 
 		                                     &Optimizer::ReceiveWaitTimerCallback, 
@@ -237,6 +236,7 @@ public:
 	{
 		if( _logOutFile.is_open() )
 		{
+			// _clipOptimizer->CalculateCost();
 			_logOutFile << *_clipOptimizer << std::endl;
 			typedef EstimatorRegistry::value_type Item;
 			BOOST_FOREACH( Item& item, _estRegistry )
@@ -356,11 +356,19 @@ private:
 		const EstimatorRegistration& reg = _estRegistry.at( msg->header.frame_id );
 		VectorType feat( reg.estimator->InputDim() );
 		unsigned int featInd = 0;
-		BOOST_FOREACH( const std::string& featureName, reg.features )
-		{
-			BroadcastReceiver& rx = _receivers.at( featureName );
-			feat.segment( featInd, rx.OutputDim() ) = rx.GetClosestReceived( msg->header.stamp );
-			featInd += rx.OutputDim();
+
+		try{
+			BOOST_FOREACH( const std::string& featureName, reg.features )
+			{
+				BroadcastReceiver& rx = _receivers.at( featureName );
+				feat.segment( featInd, rx.OutputDim() ) = rx.GetClosestPrevious( msg->header.stamp );
+				featInd += rx.OutputDim();
+			}
+		}
+		catch( std::runtime_error e ) 
+		{ 
+			ROS_WARN_STREAM( "Could not get features for timestamp: " << msg->header.stamp );
+			return; 
 		}
 
 		_dataBuffer.EmplaceBack( feat, *msg );
@@ -385,7 +393,7 @@ private:
 					PublishParams();
 					if( converged )
 					{
-						ROS_INFO_STREAM( "Optimizer has converged. Exiting..." );
+						ROS_INFO_STREAM( "Optimizer has converged. Saving..." );
 						break;
 					}
 				}
