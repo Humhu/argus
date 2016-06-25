@@ -59,9 +59,9 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 
 	// Load params if we have any to load
 	bool initialized = false;
-	if( info[ "params_load_path" ] )
+	if( info[ "load_path" ] )
 	{
-		std::string paramFilePath = info["params_load_path"].as<std::string>();
+		std::string paramFilePath = info["load_path"].as<std::string>();
 		CovarianceEstimatorInfo info;
 		if( !ReadInfo<CovarianceEstimatorInfo>( paramFilePath,
 		                                        info ) )
@@ -98,7 +98,7 @@ bool CovarianceManager::IsReady() const
 	if( !_estimator ) { return false; }
 	BOOST_FOREACH( const BroadcastReceiver& rx, _receivers )
 	{
-		if( !rx.HasReceived() ) 
+		if( !rx.Ready() ) 
 		{
 			ROS_WARN_STREAM( "Stream: " << rx.StreamName() << 
 				             " has not received yet." );
@@ -120,7 +120,7 @@ MatrixType CovarianceManager::EstimateCovariance( const ros::Time& time )
 	unsigned int fInd = 0;
 	BOOST_FOREACH( BroadcastReceiver& rx, _receivers )
 	{
-		feats.segment( fInd, rx.OutputDim() ) = rx.GetClosestReceived( time );
+		feats.segment( fInd, rx.OutputDim() ) = rx.GetClosestPrevious( time );
 		fInd += rx.OutputDim();
 	}
 	return _estimator->Evaluate( feats );
