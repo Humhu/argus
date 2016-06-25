@@ -2,6 +2,8 @@
 #include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/MapUtils.hpp"
 
+#include <sstream>
+
 using namespace broadcast;
 
 namespace argus
@@ -43,7 +45,31 @@ bool BroadcastReceiver::HasReceived() const
 	return _featureMap.size() > 0;
 }
 
-VectorType BroadcastReceiver::GetClosestReceived( const ros::Time& time ) const
+bool BroadcastReceiver::Ready() const
+{
+	return GetTimespan() >= _maxTimespan;
+}
+
+VectorType BroadcastReceiver::GetClosestPrevious( const ros::Time& time ) const
+{
+	ReadLock lock( _mutex );
+
+	MapType::const_iterator closest;
+	if( !get_closest_lesser_eq( _featureMap, time, closest ) )
+	{
+		std::stringstream ss;
+		ss << "No messages prior to query: " << time 
+		   << ". Earliest time: " << get_lowest_key( _featureMap );
+		throw std::runtime_error( ss.str() );
+	}
+	if( closest == _featureMap.end() )
+	{
+		throw std::runtime_error( "Retrieval error." );
+	}
+	return closest->second;
+}
+
+VectorType BroadcastReceiver::GetClosest( const ros::Time& time ) const
 {
 	ReadLock lock( _mutex );
 
@@ -80,6 +106,14 @@ void BroadcastReceiver::FeatureCallback( const StampedFeatures::ConstPtr& msg )
 		                 << features.size() << " but expected: " << info.featureSize );
 	}
 	_featureMap[msg->header.stamp] = features;
+}
+
+double BroadcastReceiver::GetTimespan() const
+{
+	if( _featureMap.empty() ) { return 0; }
+	ros::Time latestTime = _featureMap.rbegin()->first;
+	ros::Time earliestTime = _featureMap.begin()->first;
+	return (latestTime - earliestTime).toSec();
 }
 
 void BroadcastReceiver::CheckTimespan()

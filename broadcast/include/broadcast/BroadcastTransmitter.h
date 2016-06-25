@@ -22,7 +22,7 @@ public:
 
 private:
 
-	ros::NodeHandle _nodeHandle;
+	ros::NodeHandle _nodeHandle, _streamHandle;
 	std::string _streamName;
 	unsigned int _streamSize;
 	ros::Publisher _streamPub;

@@ -15,16 +15,18 @@ BroadcastTransmitter::BroadcastTransmitter( const std::string& streamName,
                                             const std::string& streamNs,
                                             unsigned int outgoingQueueSize,
                                             const std::string& topic )
-: _nodeHandle( streamNs ), _streamName( streamName ), _streamSize( featureSize )
+: _streamHandle( streamNs ), _streamName( streamName ), _streamSize( featureSize )
 {
 	std::string lookupNamespace;
-	GetParam<std::string>( _nodeHandle, "lookup_namespace", 
+	GetParam<std::string>( _streamHandle, "lookup_namespace", 
 	                       lookupNamespace, "lookup" );
-	register_lookup_target( _nodeHandle, streamName, streamNs, lookupNamespace );
 
-	_nodeHandle.setParam( "feature_size", (int) _streamSize );
-	_nodeHandle.setParam( "feature_descriptions", featureDescriptions );
-	_streamPub = _nodeHandle.advertise<StampedFeatures>( topic, outgoingQueueSize );
+	std::string lookupTarget = _streamHandle.resolveName(""); 
+	register_lookup_target( _nodeHandle, streamName, lookupTarget, lookupNamespace );
+
+	_streamHandle.setParam( "feature_size", (int) _streamSize );
+	_streamHandle.setParam( "feature_descriptions", featureDescriptions );
+	_streamPub = _streamHandle.advertise<StampedFeatures>( topic, outgoingQueueSize );
 }
 
 void BroadcastTransmitter::Publish( const ros::Time& stamp, const VectorType& features )
@@ -38,7 +40,7 @@ void BroadcastTransmitter::Publish( const ros::Time& stamp, const VectorType& fe
 	StampedFeatures msg;
 	msg.header.stamp = stamp;
 	msg.header.frame_id = _streamName;
-	GetVectorView( msg.features ) = features;
+	SerializeMatrix( features, msg.features );
 	_streamPub.publish( msg );
 }
 

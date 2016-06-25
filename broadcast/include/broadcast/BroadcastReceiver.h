@@ -26,7 +26,10 @@ public:
 	unsigned int OutputDim() const;
 	const std::string& StreamName() const;
 	bool HasReceived() const;
-	VectorType GetClosestReceived( const ros::Time& time ) const;
+	bool Ready() const;
+
+	VectorType GetClosestPrevious( const ros::Time& time ) const;
+	VectorType GetClosest( const ros::Time& time ) const;
 
 private:
 
@@ -35,6 +38,7 @@ private:
 	void FeatureCallback( const broadcast::StampedFeatures::ConstPtr& msg );
 	
 	void CheckTimespan();
+	double GetTimespan() const;
 
 	mutable Mutex _mutex;
 

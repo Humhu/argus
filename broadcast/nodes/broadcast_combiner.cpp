@@ -62,7 +62,7 @@ private:
 		unsigned int ind = 0;
 		for( unsigned int i = 0; i < _receivers.size(); i++ )
 		{
-			VectorType rx = _receivers[i]->GetClosestReceived( event.current_real );
+			VectorType rx = _receivers[i]->GetClosestPrevious( event.current_real );
 			feats.segment( ind, ind + rx.size() ) = rx;
 			ind += rx.size();
 		}
