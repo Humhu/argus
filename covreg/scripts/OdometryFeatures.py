@@ -16,10 +16,10 @@ class OdometryFeaturePublisher:
         self.feature_name = rospy.get_param( '~feature_name' )
         self.odom_sub = rospy.Subscriber( 'odom', Odometry, self.OdomCallback )
 
-        descriptions = [ 'x', 'y', 'yaw',
+        descriptions = [ #'x', 'y', 'yaw',
                          'x_vel', 'y_vel', 'yaw_vel' ]
         self.feat_tx = Trx.Transmitter( broadcast_name=self.feature_name,
-                                        feature_size=6,
+                                        feature_size=3,
                                         feature_descriptions=descriptions )
 
     def OdomCallback( self, odom ):
@@ -30,10 +30,7 @@ class OdometryFeaturePublisher:
         # Assume 2D yaw only
         yaw = 2*math.acos( odom.pose.pose.orientation.w );
 
-        out.features = ( odom.pose.pose.position.x, 
-                         odom.pose.pose.position.y,
-                         yaw,
-                         odom.twist.twist.linear.x,
+        out.features = ( odom.twist.twist.linear.x,
                          odom.twist.twist.linear.y,
                          odom.twist.twist.angular.z )
         self.feat_tx.publish( out )
