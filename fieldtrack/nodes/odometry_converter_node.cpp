@@ -14,7 +14,7 @@ using namespace argus;
 class OdometryTranslator 
 {
 public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 	OdometryTranslator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 	: _nodeHandle( nh ), _privHandle( ph ), _lookupInterface(),

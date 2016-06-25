@@ -122,6 +122,13 @@ target_link_libraries( odometry_converter_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
+add_executable( odometry_differentiator_node
+	nodes/odometry_differentiator.cpp )
+add_dependencies( odometry_differentiator_node ${ROJECT_NAME}_gencfg )
+target_link_libraries( odometry_differentiator_node
+	fieldtrack
+	${catkin_LIBRARIES} )
+
 ## Mark executables and/or libraries for installation
 install(TARGETS 
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

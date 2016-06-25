@@ -5,6 +5,7 @@
 #include <nav_msgs/Odometry.h>
 
 #include "broadcast/BroadcastReceiver.h"
+#include "broadcast/BroadcastTransmitter.h"
 
 #include "covreg/CovarianceManager.h"
 
@@ -20,6 +21,41 @@
 
 namespace argus
 {
+
+class SimpleStateEstimator;
+
+struct StampedFilter
+{
+
+	typedef ConstantAccelFilterSE3 FilterType;
+	typedef FilterType::PoseType PoseType;
+
+	StampedFilter( SimpleStateEstimator& p );
+
+	// Predict the filter to the specified time
+	argus_msgs::FilterStepInfo PredictUntil( const ros::Time& time );
+
+	// Process a given message by predicting to that time and then updating
+	// Returns predict and update step info
+	std::pair<argus_msgs::FilterStepInfo,
+	          argus_msgs::FilterStepInfo>
+	 ProcessUpdate( const argus_msgs::FilterUpdate& msg );
+
+	argus_msgs::FilterStepInfo PoseUpdate( const PoseType& pose,
+	                                       const MatrixType& R );
+	argus_msgs::FilterStepInfo DerivsUpdate( const VectorType& derivs,
+	                                         const MatrixType& C,
+	                                         const MatrixType& R );
+
+	SimpleStateEstimator& parent;
+	FilterType filter;
+	ros::Time filterTime;
+	unsigned int infoNumber;
+
+	void SquashPoseUncertainty();
+	void EnforceTwoDimensionality();
+
+};
 
 // TODO How to serialize SE2 covariance into odom message?
 
@@ -40,10 +76,11 @@ public:
 
 private:
 	
-	FilterType _filter;
+	StampedFilter _filter;
+
 	FilterType::FullCovType _Qrate;
 	CovarianceManager _Qestimator;
-	ros::Time _filterTime;
+
 	ros::Duration _updateLag;
 
 	bool twoDimensional;
@@ -53,6 +90,8 @@ private:
 	std::string _bodyFrame;
 	ros::Timer _updateTimer;
 	unsigned int _infoNumber;
+
+	BroadcastTransmitter _xlTx;
 
 	// Subscribers to argus_msgs::FilterUpdate
 	std::unordered_map<std::string, ros::Subscriber> _updateSubs;
@@ -70,17 +109,6 @@ private:
 	// Process all messages until the specified time
 	void ProcessUpdateBuffer( const ros::Time& until );
 
-	// Predict the filter to the specified time
-	void PredictUntil( const ros::Time& time );
-
-	// Process a given message by predicting to that time and then updating
-	void ProcessUpdate( const argus_msgs::FilterUpdate& msg );
-
-	argus_msgs::FilterStepInfo PoseUpdate( const PoseType& pose, 
-	                                       const MatrixType& R );
-	argus_msgs::FilterStepInfo DerivsUpdate( const VectorType& derivs, 
-	                                         const MatrixType& C, 
-	                                         const MatrixType& R );
 	// TODO
 	// argus_msgs::FilterStepInfo PositionUpdate( const Translation3Type& pos, 
 	//                                            const MatrixType& R );
@@ -91,9 +119,6 @@ private:
 	//                                         const MatrixType& C, 
 	//                                         const MatrixType& R );
 	void TimerCallback( const ros::TimerEvent& event );
-
-	void SquashPoseUncertainty();
-	void EnforceTwoDimensionality();
 };
 
 }
