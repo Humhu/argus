@@ -51,9 +51,16 @@ public:
 			exit( -1 );
 		}
 
-		MatrixType Rest = _estimator.EstimateCovariance( msg->header.stamp );
-		repeat.observation_cov = MatrixToMsg( Rest );
-		_updatePublisher.publish( repeat );
+		try
+		{
+			MatrixType Rest = _estimator.EstimateCovariance( msg->header.stamp );
+			repeat.observation_cov = MatrixToMsg( Rest );
+			_updatePublisher.publish( repeat );
+		}
+		catch( std::runtime_error e )
+		{
+			return;
+		}
 	}
 
 private:
