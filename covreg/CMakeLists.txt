@@ -96,8 +96,15 @@ target_link_libraries( covariance_repeater
                        ${covreg_LIBS}
                        covreg )
 
+add_executable( performance_estimator nodes/performance_estimator.cpp )
+add_dependencies( performance_estimator covreg_gencfg )
+target_link_libraries( performance_estimator
+                       ${catkin_LIBRARIES}
+                       ${covreg_LIBS}
+                       covreg )
+
 ## Mark executables and/or libraries for installation
-install(TARGETS covreg optimizer_node
+install(TARGETS covreg optimizer_node covariance_repeater performance_estimator
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

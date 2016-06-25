@@ -14,11 +14,13 @@ add_message_files( FILES
                   CompactOdometryArray.msg
                   CompactPoseWithCovariance.msg
                   CompactTwistWithCovariance.msg
+                  EstimatePerformance.msg
                   FiducialDetection.msg
                   FilterStepInfo.msg
                   FilterUpdate.msg
                   ImageFiducialDetections.msg
                   MatrixFloat64.msg
+                  OdometryBounds.msg
                   Point2D.msg
                   RelativePose.msg
                   RelativePoseWithCovariance.msg
@@ -32,4 +34,5 @@ generate_messages( DEPENDENCIES
 
 catkin_package( CATKIN_DEPENDS message_runtime 
                                std_msgs 
+                               sensor_msgs
 )

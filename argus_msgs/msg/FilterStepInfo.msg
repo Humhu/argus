@@ -27,3 +27,6 @@ MatrixFloat64 H
 
 # The observation prediction error
 float64[] innovation
+
+float64[] xpre
+float64[] observation
