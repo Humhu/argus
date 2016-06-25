@@ -316,6 +316,8 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 
 	ros::Time laggedHead = now - _updateLag;
 	ProcessUpdateBuffer( laggedHead );
+	FilterStepInfo predInfo = _filter.PredictUntil( laggedHead );
+	_stepPub.publish( predInfo );
 
 	// Publish the forward-predicted state
 	Odometry msg;
