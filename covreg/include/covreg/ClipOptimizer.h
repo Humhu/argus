@@ -68,6 +68,8 @@ private:
 
 	mutable Mutex _mutex;
 	
+	std::vector< std::pair<PredictInfo,VectorType> > _predBuffer;
+
 	// The regressors optimized
 	CovarianceEstimator& _transReg;
 	std::unordered_map <std::string, CovarianceEstimator&> _obsRegs;

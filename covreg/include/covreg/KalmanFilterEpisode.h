@@ -14,6 +14,8 @@ public:
 	// We use deques here so that growing the container does not invalidate
 	// any self-pointers used the the predict/update modules
 	
+	percepto::TerminalSource<VectorType> initState;
+
 	// The estimate covariance at the beginning of the episode
 	percepto::TerminalSource<MatrixType> initCov;
 
@@ -43,7 +45,7 @@ public:
 
 	ClipType tailType;
 
-	KalmanFilterEpisode( const MatrixType& Sinit );
+	KalmanFilterEpisode( const VectorType& xinit, const MatrixType& Sinit );
 
 	size_t NumUpdates() const;
 
@@ -53,6 +55,9 @@ public:
 		predicts.emplace_back( args... );
 		tailType = CLIP_TYPE_PREDICT;
 		order.push_back( CLIP_TYPE_PREDICT );
+		predicts.back().Q.modName = "Q";
+		predicts.back().Qdt.modName = "Qdt";
+		predicts.back().Sminus.modName = "Sminus";
 	}
 
 	template <class ...Args>
@@ -62,7 +67,13 @@ public:
 	{
 		updates.emplace_back( args... );
 		updates.back().sourceName = name;
-		updates.back().innovationLL.name = name;
+		updates.back().Vinvv.modName = "Vinvv";
+		updates.back().innov.modName = "innov";
+		updates.back().xcorr.modName = "xcorr";
+		updates.back().V.modName = "V";
+		updates.back().xplus.modName = "xplus";
+		updates.back().Vinv.modName = "Vinv";
+		updates.back().R.modName = "R";
 
 		llScales.emplace_back();
 		llScales.back().SetScale( scale );
@@ -74,7 +85,8 @@ public:
 		order.push_back( CLIP_TYPE_UPDATE );
 	}
 
-	percepto::Source<MatrixType>* GetTailSource();
+	percepto::Source<VectorType>* GetTailState();
+	percepto::Source<MatrixType>* GetTailCov();
 
 	percepto::Source<double>* GetLL();
 

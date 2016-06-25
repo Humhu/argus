@@ -31,24 +31,7 @@ void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
 {
 	WriteLock lock( _mutex );
 
-	if( _problem.NumEpisodes() > _maxNumEpisodes )
-	{
-		_problem.RemoveOldestEpisode();
-	}
-
-	KalmanFilterEpisode* currentEpisode = _problem.GetCurrentEpisode();
-	if( currentEpisode == nullptr ||
-	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
-	{
-		_problem.EmplaceEpisode( info.Spre );
-		currentEpisode = _problem.GetCurrentEpisode();
-	}
-
-	currentEpisode->EmplacePredict( currentEpisode->GetTailSource(), 
-	                                _transReg.GetModule(),
-	                                info.dt,
-	                                input,
-	                                info.F );
+	_predBuffer.emplace_back( info, input );
 }
 
 bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
@@ -64,6 +47,12 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	}
 	CovarianceEstimator& est = _obsRegs.at( name );
 
+	if( _predBuffer.size() == 0 )
+	{
+		std::cout << "Received update with no predicts!" << std::endl;
+		return false;
+	}
+
 	if( _problem.NumEpisodes() > _maxNumEpisodes )
 	{
 		_problem.RemoveOldestEpisode();
@@ -73,17 +62,34 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	if( currentEpisode == nullptr ||
 	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
 	{
-		_problem.EmplaceEpisode( info.Spre );
+		std::pair<PredictInfo,VectorType>& item = _predBuffer.front();
+		PredictInfo& info = item.first;
+		_problem.EmplaceEpisode( info.xpre, info.Spre );
 		currentEpisode = _problem.GetCurrentEpisode();
 	}
 
+	for( unsigned int i = 0; i < _predBuffer.size(); i++ )
+	{
+		std::pair<PredictInfo,VectorType>& item = _predBuffer[i];
+		PredictInfo& info = item.first;
+		VectorType& input = item.second;
+		currentEpisode->EmplacePredict( currentEpisode->GetTailState(),
+		                                currentEpisode->GetTailCov(), 
+		                                _transReg.GetModule(),
+		                                info.dt,
+		                                input,
+		                                info.F );
+	}
+	_predBuffer.clear();
+
 	currentEpisode->EmplaceUpdate( name,
 	                               scale,
-	                               currentEpisode->GetTailSource(), 
+	                               currentEpisode->GetTailState(),
+	                               currentEpisode->GetTailCov(), 
 	                               est.GetModule(),
 	                               input,
-	                               info.H,
-	                               info.innovation );
+	                               info.observation,
+	                               info.H );
 	return true;
 }
 
@@ -112,9 +118,10 @@ void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConv
 bool InnovationClipOptimizer::Optimize()
 {	
 	WriteLock lock( _mutex );
-	_convergence->Reset();
-	percepto::OptimizationResults results = _optimizer->Optimize( _problem );
-	return results.converged;
+	// _convergence->Reset();
+	// percepto::OptimizationResults results = _optimizer->Optimize( _problem );
+	// return results.converged;
+	return _optimizer->StepOnce( _problem );
 }
 
 double InnovationClipOptimizer::CalculateCost()
@@ -130,6 +137,7 @@ void InnovationClipOptimizer::Print( std::ostream& os )
 	WriteLock lock( _mutex );
 	_problem.Invalidate();
 	_problem.ForepropAll();
+	_problem.Backprop();
 	os << "Optimization problem: " << std::endl << _problem;
 }
 

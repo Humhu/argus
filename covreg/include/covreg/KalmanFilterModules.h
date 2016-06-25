@@ -19,23 +19,30 @@ namespace argus
 // Represents the KF predict step for the estimate covariance
 struct KalmanFilterPredictModule
 {
+	// State
+	percepto::VectorTransformWrapper xminus;
+
+	// Covariances
 	percepto::TerminalSource<VectorType> qInput;
 	CovarianceEstimator::ModuleType Q;
 	percepto::ScaleWrapper<MatrixType> Qdt;
 	percepto::TransformWrapper FSFT;
 	percepto::AdditiveWrapper<MatrixType> Sminus;
 
+	percepto::Source<VectorType>* xprev;
 	percepto::Source<MatrixType>* Sprev;
 
 	// Here Sprev refers to the previous estimate covariance
 	// Need to set Q properties
-	KalmanFilterPredictModule( percepto::Source<MatrixType>* sprev,
+	KalmanFilterPredictModule( percepto::Source<VectorType>* xprev,
+		                       percepto::Source<MatrixType>* sprev,
 	                           const CovarianceEstimator::ModuleType& q,
 	                           double dt,
 	                           const VectorType& input,
 	                           const MatrixType& F );
 
-	percepto::Source<MatrixType>* GetTailSource();
+	percepto::Source<VectorType>* GetTailState();
+	percepto::Source<MatrixType>* GetTailCov();
 
 	// NOTE We do not invalidate Sprev because we can't foreprop it
 	void Invalidate();
@@ -55,6 +62,20 @@ std::ostream& operator<<( std::ostream& os,
 // Represents the KF update step for the estiamte covariance
 struct KalmanFilterUpdateModule
 {
+	// State
+	percepto::TerminalSource<VectorType> y;
+	percepto::VectorTransformWrapper ypred;
+	percepto::DifferenceWrapper<VectorType> innov;
+
+	// Vinv * v
+	percepto::VectorProductWrapper Vinvv;
+	// H^T * Vinv * v
+	percepto::VectorTransformWrapper HTVinvv;
+	// S- * H^T * Vinv * v = x correction
+	percepto::VectorProductWrapper xcorr;
+	// x- + K*v = x+
+	percepto::AdditiveWrapper<VectorType> xplus;
+
 	// Here S- denotes S_previous, the estimate covariance before the update
 	// Usually this is the covariance after a predict step, but sometimes
 	// it can be after a simultaneous update
@@ -85,23 +106,27 @@ struct KalmanFilterUpdateModule
 	percepto::DifferenceWrapper<MatrixType> Splus;
 
 	// Log likelihood of innovation given V
-	percepto::GaussianLogLikelihoodCost innovationLL;
+	percepto::DynamicGaussianLogLikelihoodCost innovationLL;
 
+	percepto::Source<VectorType>* xprev;
+	percepto::Source<MatrixType>* Sprev;
+	
 	bool active;
 
 	std::string sourceName;
 
-	percepto::Source<MatrixType>* Sprev;
-
 	// Need to set R properties
 	// Set source name, innovation
-	KalmanFilterUpdateModule( percepto::Source<MatrixType>* sPrev,
+	KalmanFilterUpdateModule( percepto::Source<VectorType>* xprev,
+	                          percepto::Source<MatrixType>* sPrev,
 	                          const CovarianceEstimator::ModuleType& r,
 	                          const VectorType& input,
-	                          const MatrixType& H,
-	                          const VectorType& innovation );
+	                          const VectorType& obs,
+	                          const MatrixType& H );
 
-	percepto::Source<MatrixType>* GetTailSource();
+	percepto::Source<VectorType>* GetTailState();
+	percepto::Source<MatrixType>* GetTailCov();
+	void Activate();
 
 	void Invalidate();
 
@@ -113,6 +138,7 @@ private:
 
 	// Forbid assigning
 	KalmanFilterUpdateModule& operator=( const KalmanFilterUpdateModule& other );
+
 };
 
 std::ostream& operator<<( std::ostream& os, const KalmanFilterUpdateModule& module );

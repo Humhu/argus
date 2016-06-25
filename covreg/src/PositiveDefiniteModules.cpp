@@ -1,6 +1,6 @@
 #include "covreg/PositiveDefiniteModules.h"
 
-#define POSDEF_OFFSET_SCALE (1E-9)
+#define POSDEF_OFFSET_SCALE (1E-12)
 #define RELU_LEAKY_SLOPE (1E-6)
 
 using namespace percepto;
@@ -178,7 +178,8 @@ void VarReLUPosDefModule::BackpropImplementation( const MatrixType& nextDodx )
 	// This first call will terminate at the input source b/c it is expecting
 	// two sources. We have to send a fake backprop signal
 	PosDefModule::BackpropImplementation( nextDodx );
-	_inputPort.Backprop( MatrixType::Zero( nextDodx.rows(), nextDodx.cols() ) );
+	VectorType input = _inputPort.GetInput();
+	_inputPort.Backprop( MatrixType::Zero( nextDodx.rows(), input.size() ) );
 }
 
 }
