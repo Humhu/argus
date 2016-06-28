@@ -15,6 +15,7 @@ find_package(catkin REQUIRED
 					lookup
 					broadcast
 					message_filters
+					visualization_msgs
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
 
@@ -35,6 +36,11 @@ include_directories( ${EIGEN3_INCLUDE_DIR} )
 add_message_files( FILES
 	CovarianceEstimatorInfo.msg
 	NeuralNetworkInfo.msg
+	OptimizerStatus.msg
+)
+
+add_service_files( FILES
+	QueryCovariance.srv 
 )
 
 generate_messages(
@@ -56,6 +62,7 @@ catkin_package(
 					lookup
 					broadcast
 					message_filters
+					visualization_msgs
 					
 	DEPENDS 		Boost 
 					percepto
@@ -66,6 +73,7 @@ catkin_package(
 include_directories( include )
 
 add_library( covreg
+	src/AdaptiveCovarianceEstimator.cpp
 	src/ClipOptimizer.cpp
 	src/CovarianceEstimator.cpp
 	src/CovarianceManager.cpp
@@ -103,8 +111,22 @@ target_link_libraries( performance_estimator
                        ${covreg_LIBS}
                        covreg )
 
+add_executable( adaptive_covariance_repeater nodes/adaptive_covariance_repeater.cpp )
+add_dependencies( adaptive_covariance_repeater covreg_gencfg )
+target_link_libraries( adaptive_covariance_repeater
+                       ${catkin_LIBRARIES}
+                       ${covreg_LIBS}
+                       covreg )
+
+add_executable( velocity_visualizer nodes/velocity_visualizer.cpp )
+add_dependencies( velocity_visualizer covreg_gencfg )
+target_link_libraries( velocity_visualizer
+                       ${catkin_LIBRARIES}
+                       ${covreg_LIBS}
+                       covreg )
+
 ## Mark executables and/or libraries for installation
-install(TARGETS covreg optimizer_node covariance_repeater performance_estimator
+install(TARGETS covreg optimizer_node covariance_repeater performance_estimator adaptive_covariance_repeater
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

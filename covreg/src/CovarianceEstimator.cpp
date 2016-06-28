@@ -19,14 +19,15 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
 : _sourceName( source ),
   _inDim( featDim ),
   _outDim( matDim ),
-  _psd( featDim, matDim, numHiddenLayers, layerWidth )
+  _psd( featDim, matDim, numHiddenLayers, layerWidth ),
+  _learnCorrelations( false )
   // _psd( matDim )
 {
 	_psd.SetSource( &_psdPort );
 	_lParams = _psd.lReg.CreateParameters();
 	_dParams = _psd.dReg.CreateParameters();
 	_params = std::make_shared<percepto::ParameterWrapper>();
-	_params->AddParameters( _lParams );
+	// _params->AddParameters( _lParams );
 	_params->AddParameters( _dParams );
 }
 
@@ -38,15 +39,28 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
   _psd( info["input_dim"].as<unsigned int>(),
         info["output_dim"].as<unsigned int>(),
         info["hidden_layers"].as<unsigned int>(),
-        info["layer_width"].as<unsigned int>() )
+        info["layer_width"].as<unsigned int>() ),
+  _learnCorrelations( info["learn_correlations"].as<bool>() )
   // _psd( info["output_dim"].as<unsigned int>() )
 {
 	_psd.SetSource( &_psdPort );
 	_lParams = _psd.lReg.CreateParameters();
 	_dParams = _psd.dReg.CreateParameters();
 	_params = std::make_shared<percepto::ParameterWrapper>();
-	_params->AddParameters( _lParams );
 	_params->AddParameters( _dParams );
+	if( _learnCorrelations )
+	{
+		_params->AddParameters( _lParams );
+	}
+}
+
+void CovarianceEstimator::EnableCorrelationLearning()
+{
+	if( !_learnCorrelations )
+	{
+		_learnCorrelations = true;
+		_params->AddParameters( _lParams );
+	}
 }
 
 unsigned int CovarianceEstimator::InputDim() const { return _inDim; }
@@ -73,7 +87,8 @@ CovarianceEstimatorInfo CovarianceEstimator::GetParamsMsg() const
 	info.source_name = _sourceName;
 	VectorType params = _params->GetParamsVec();
 	info.parameters.resize( params.size() );
-	GetVectorView( info.parameters ) = params;
+	// GetVectorView( info.parameters ) = params;
+	SerializeMatrix( params, info.parameters );
 	return info;
 }
 

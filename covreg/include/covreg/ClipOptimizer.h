@@ -68,6 +68,7 @@ private:
 
 	mutable Mutex _mutex;
 	
+	KalmanFilterEpisode* _currentEpisode;
 	std::vector< std::pair<PredictInfo,VectorType> > _predBuffer;
 
 	// The regressors optimized

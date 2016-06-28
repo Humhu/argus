@@ -17,6 +17,10 @@ public:
 	{
 		unsigned int buffLen;
 		GetParam<unsigned int>( ph, "buffer_length", buffLen, 10 );
+		double dt;
+		GetParam<double>( ph, "min_dt", dt, 0.1 );
+		_minDt = ros::Duration( dt );
+
 		_twistPub = nh.advertise<geometry_msgs::TwistStamped>( "velocity", 
 		                                                  buffLen );
 		_odomSub = nh.subscribe( "odom", 
@@ -32,6 +36,7 @@ private:
 	PoseSE3 _lastPose;
 	ros::Time _lastPoseTime;
 	bool initialized;
+	ros::Duration _minDt;
 
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
@@ -43,6 +48,7 @@ private:
 			initialized = true;
 			return;
 		}
+		if( msg->header.stamp - _lastPoseTime < _minDt ) { return; }
 
 		PoseSE3 delta = _lastPose.Inverse() * pose;
 		double dt = ( msg->header.stamp - _lastPoseTime ).toSec();

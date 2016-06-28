@@ -37,7 +37,7 @@ FilterStepInfo StampedFilter::PredictUntil( const ros::Time& until )
 	argus_msgs::FilterStepInfo pmsg = PredictToMsg( info );
 	pmsg.header.frame_id = "transition";
 	pmsg.header.stamp = until;
-	pmsg.header.seq = infoNumber++;
+	pmsg.step_num = infoNumber++;
 	return pmsg;
 }
 
@@ -63,6 +63,9 @@ StampedFilter::ProcessUpdate( const FilterUpdate& msg )
 	bool hasPosition = !( C.block( 0, 0, C.rows(), 2 ).array() == 0 ).all();
 	bool hasOrientation = !( C.col(2).array() == 0 ).all();
 	bool hasDerivs = !( C.rightCols( C.cols() - FilterType::TangentDim ).array() == 0 ).all();
+
+	MatrixType prevCov = filter.DerivsCov();
+	MatrixType Q = parent.GetCovarianceRate( filterTime );
 
 	// First predict up to the update time
 	ros::Time updateTime = msg.header.stamp;
@@ -106,7 +109,7 @@ StampedFilter::ProcessUpdate( const FilterUpdate& msg )
 	}
 	
 	retPair.second.header = msg.header;
-	retPair.second.header.seq = infoNumber++;
+	retPair.second.step_num = infoNumber++;
 	return retPair;
 }
 
@@ -156,12 +159,28 @@ void StampedFilter::SquashPoseUncertainty()
 	filter.FullCov().block(0,0,FilterType::CovarianceDim,FilterType::TangentDim).setZero();
 }
 
+Odometry StampedFilter::GetOdomMsg() const
+{
+	Odometry msg;
+	msg.header.stamp = filterTime;
+
+	msg.pose.pose = PoseToMsg( filter.Pose() );
+	SerializeMatrix( filter.PoseCov(), msg.pose.covariance );
+	
+	PoseType::TangentVector tangents = filter.Derivs().head<FilterType::TangentDim>();
+	msg.twist.twist = TangentToMsg( tangents );
+	SerializeMatrix( filter.DerivsCov().topLeftCorner<FilterType::TangentDim,
+	                                                  FilterType::TangentDim>(), 
+	                 msg.twist.covariance );
+	return msg;
+}
+
 SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle, 
                                             ros::NodeHandle& privHandle )
 : _filter( *this ),
-  _infoNumber( 0 ),
-  _xlTx( "xl_features", 6, {"xl_lin_x", "xl_lin_y", "xl_lin_z",
-                            "xl_ang_x", "xl_ang_y", "xl_ang_z" } )
+  _infoNumber( 0 )
+  // _xlTx( "xl_features", 6, {"xl_lin_x", "xl_lin_y", "xl_lin_z",
+  //                           "xl_ang_x", "xl_ang_y", "xl_ang_z" } )
 {
 	GetParamRequired( privHandle, "reference_frame", _referenceFrame );
 	GetParamRequired( privHandle, "body_frame", _bodyFrame );
@@ -181,7 +200,7 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 		ROS_INFO_STREAM( "Subscribing to updates from " << sourceName
 		                 << " at " << topic );
 		_updateSubs[sourceName] = nodeHandle.subscribe( topic, 
-		                                                10, 
+		                                                100, 
 		                                                &SimpleStateEstimator::UpdateCallback, 
 		                                                this );
 	}
@@ -192,6 +211,12 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 		_Qestimator.Initialize( "transition", privHandle, 
 		                        "transition_cov_estimator" );
 		_Qestimator.SetUpdateTopic( "param_updates" );
+		_usingAdaptive = false;
+	}
+	else if( privHandle.hasParam( "transition_cov_adapter" ) )
+	{
+		_Qadapter.Initialize( privHandle, "transition_cov_adapter" );
+		_usingAdaptive = true;
 	}
 	else
 	{
@@ -222,6 +247,7 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << initCov );
 
 	// TODO Initial state?
+	WriteLock lock( _filterMutex );
 	_filter.filter.FullCov() = initCov;
 
 	// NOTE This causes problems when using rosbag play because the sim time doesn't
@@ -234,8 +260,12 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	privHandle.param<bool>( "velocity_only", velocityOnly, false );
 	ROS_INFO_STREAM( "Velocity only mode: " << velocityOnly );
 
-	_odomPub = nodeHandle.advertise<Odometry>( "odometry", 10 );
-	_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", 100 );
+	_latestOdomPub = nodeHandle.advertise<Odometry>( "latest_odometry", 10 );
+	_laggedOdomPub = nodeHandle.advertise<Odometry>( "lagged_odometry", 10 );
+	
+	unsigned int outBufferSize;
+	GetParam<unsigned int>( privHandle, "info_pub_buffer_size", outBufferSize, (unsigned int) 100 );
+	_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", outBufferSize );
 	
 	double timerRate;
 	privHandle.param<double>( "update_rate", timerRate, 10.0 );
@@ -249,28 +279,46 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 {
 	// ros::Time now = ros::Time::now();
 	// ros::Duration delay = now - msg->header.stamp;
-	// ROS_INFO_STREAM( "Received update from: " << msg->header.frame_id <<
-	//                  " with delay: " << delay );
+	// ROS_INFO_STREAM( "Received update from: " << msg->header.frame_id );
 
 	WriteLock lock( _bufferMutex );
-	_updateBuffer[msg->header.stamp] = *msg;
+
+	FilterUpdate up = *msg;
+	while( _updateBuffer.count(up.header.stamp) > 0 )
+	{
+		// For some reason the resolution on the timestamp compare is limited
+		up.header.stamp.nsec += 2; 
+		// ROS_WARN_STREAM( "Measurements with duplicate timestamps!" );
+	}
+	_updateBuffer[up.header.stamp] = up;
 }
 
 void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 {
-	WriteLock lock( _bufferMutex );
 	// ROS_INFO_STREAM( "Buffer size: " << _updateBuffer.size() );
 	while( !_updateBuffer.empty() )
 	{
+		WriteLock block( _bufferMutex );
+		// TODO Have external locking semantics here to make this explicit
+		// Filter mutex is acquired by calling method
+		//WriteLock flock( _filterMutex );
 		UpdateBuffer::const_iterator firstItem = _updateBuffer.begin();
 		const ros::Time& earliestBufferTime = firstItem->first;
 		if( earliestBufferTime > until ) { break; }
 		
 		const FilterUpdate& msg = firstItem->second;
+		// ROS_INFO_STREAM( "Updating with: " << msg.header.frame_id );
 		std::pair<FilterStepInfo,FilterStepInfo> infoPair = _filter.ProcessUpdate( msg );
 		_stepPub.publish( infoPair.first );
 		_stepPub.publish( infoPair.second );
+		
 		_updateBuffer.erase( firstItem );
+
+		if( _usingAdaptive )
+		{
+			_Qadapter.ProcessInfo( infoPair.first );
+			_Qadapter.ProcessInfo( infoPair.second );
+		}
 
 		if( velocityOnly ) { _filter.SquashPoseUncertainty(); }
 		if( twoDimensional ) { _filter.EnforceTwoDimensionality(); }
@@ -279,9 +327,15 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 
 MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 {
-	if( _Qestimator.IsReady() )
+	if( !_usingAdaptive && _Qestimator.IsReady() )
 	{
 		MatrixType q = _Qestimator.EstimateCovariance( time );
+		// ROS_INFO_STREAM( "Got Q: " << std::endl << q );
+		return q;
+	}
+	else if( _usingAdaptive && _Qadapter.IsReady() )
+	{
+		MatrixType q = _Qadapter.GetQ();
 		// ROS_INFO_STREAM( "Got Q: " << std::endl << q );
 		return q;
 	}
@@ -309,23 +363,32 @@ MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
+	WriteLock lock( _filterMutex );
 	if( now < _filter.filterTime )
 	{
 		ROS_WARN_STREAM( "Filter time is ahead of timer callback." );
 	}
 
+	// Publish all observations to our lagged timepoint
 	ros::Time laggedHead = now - _updateLag;
 	ProcessUpdateBuffer( laggedHead );
 	FilterStepInfo predInfo = _filter.PredictUntil( laggedHead );
 	_stepPub.publish( predInfo );
+	if( _usingAdaptive )
+	{
+		_Qadapter.ProcessInfo( predInfo );
+	}
 
-	// Publish the forward-predicted state
-	Odometry msg;
+	// Publish a smoother, lagged odometry estimate
+	Odometry msg = _filter.GetOdomMsg();
 	msg.header.frame_id = _referenceFrame;
-	msg.header.stamp = event.current_real;
 	msg.child_frame_id = _bodyFrame;
+	_laggedOdomPub.publish( msg );
 	
+	// Roll forward another filter on all buffered observations
 	StampedFilter estFilter( _filter );
+	lock.unlock();
+
 	typedef UpdateBuffer::value_type Item;
 	BOOST_FOREACH( const Item& item, _updateBuffer )
 	{
@@ -333,23 +396,22 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 		if( velocityOnly ) { estFilter.SquashPoseUncertainty(); }
 		if( twoDimensional ) { estFilter.EnforceTwoDimensionality(); }
 	}
-	estFilter.PredictUntil( now );
+
+	if( now > estFilter.filterTime ) 
+	{
+		estFilter.PredictUntil( now );
+	}
 	if( velocityOnly ) { estFilter.SquashPoseUncertainty(); }
 	if( twoDimensional ) { estFilter.EnforceTwoDimensionality(); }
 
-	msg.pose.pose = PoseToMsg( estFilter.filter.Pose() );
-	SerializeMatrix( estFilter.filter.PoseCov(), msg.pose.covariance );
-	
-	PoseType::TangentVector tangents = estFilter.filter.Derivs().head<FilterType::TangentDim>();
-	msg.twist.twist = TangentToMsg( tangents );
-	SerializeMatrix( estFilter.filter.DerivsCov().topLeftCorner<FilterType::TangentDim,
-	                                                     FilterType::TangentDim>(), 
-	                 msg.twist.covariance );
-	
-	PoseType::TangentVector tanXls = estFilter.filter.Derivs().segment<FilterType::TangentDim>( FilterType::TangentDim );
-	_xlTx.Publish( event.current_real, tanXls );
+	// Publish the forward-predicted state
+	msg = estFilter.GetOdomMsg();
+	msg.header.frame_id = _referenceFrame;
+	msg.child_frame_id = _bodyFrame;
+	_latestOdomPub.publish( msg );
 
-	_odomPub.publish( msg );
+	// PoseType::TangentVector tanXls = estFilter.filter.Derivs().segment<FilterType::TangentDim>( FilterType::TangentDim );
+	// _xlTx.Publish( event.current_real, tanXls );
 }
 
 }

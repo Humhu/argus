@@ -13,7 +13,7 @@ public:
 
 	// TODO For now just x vel and yaw vel
 	PerformanceEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
-	: mvn( 2 )
+	: mvn( 3 )
 	{
 		GetParamRequired<unsigned int>( ph, "num_samples", numSamples );
 		odomSub = nh.subscribe( "odom", 10, &PerformanceEstimator::OdomCallback, this );
@@ -37,27 +37,28 @@ private:
 			ROS_ERROR_STREAM( "Error in parsing covariance." );
 			return;
 		}
-		MatrixType subCov(2,2);
-		std::array<unsigned int,2> inds = {0,5};
+		MatrixType subCov(3,3);
+		std::array<unsigned int,3> inds = {0,1,5};
 		GetSubmatrix( twistCov, subCov, inds, inds );
-		mvn.SetCovariance( subCov );
+		// mvn.SetCovariance( subCov );
 
-		double rmsLinAcc = 0;
-		double rmsAngAcc = 0;
-		for( unsigned int i = 0; i < numSamples; ++i )
-		{
-			VectorType vel = mvn.Sample();
-			rmsLinAcc += LinearRMS( vel );
-			rmsAngAcc += AngularRMS( vel );
-		}
+		// double rmsLinAcc = 0;
+		// double rmsAngAcc = 0;
+		// for( unsigned int i = 0; i < numSamples; ++i )
+		// {
+		// 	VectorType vel = mvn.Sample();
+		// 	rmsLinAcc += LinearRMS( vel );
+		// 	rmsAngAcc += AngularRMS( vel );
+		// }
 
 		// argus_msgs::EstimatePerformance perf;
 		// perf.rms_linear_vel = rmsLinAcc/numSamples;
 		// perf.rms_angular_vel = rmsAngAcc/numSamples;
 		// perfPub.publish( perf );
 
+		// RMS is approximately mean of the diagonals rooted
 		argus_msgs::EstimatePerformance perf;
-		perf.rms_linear_vel = std::sqrt( subCov(0,0) );
+		perf.rms_linear_vel = std::sqrt( (subCov(0,0) + subCov(1,1)) * 0.5 );
 		perf.rms_angular_vel = std::sqrt( subCov(2,2) );
 		perfPub.publish( perf );
 	}

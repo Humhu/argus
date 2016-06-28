@@ -10,7 +10,7 @@ namespace argus
 
 InnovationClipOptimizer::InnovationClipOptimizer( CovarianceEstimator& qReg,
                                                   const InnovationClipParameters& params )
-: _transReg( qReg ), 
+: _currentEpisode( nullptr ), _transReg( qReg ), 
 _problem( &_paramWrapper, params.l2Weight, params.batchSize ),
 _maxNumEpisodes( params.numEpisodesToKeep ),
 _maxEpisodeLength( params.maxEpisodeLength )
@@ -53,19 +53,18 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 		return false;
 	}
 
-	if( _problem.NumEpisodes() > _maxNumEpisodes )
-	{
-		_problem.RemoveOldestEpisode();
-	}
-
-	KalmanFilterEpisode* currentEpisode = _problem.GetCurrentEpisode();
-	if( currentEpisode == nullptr ||
-	    currentEpisode->NumUpdates() >= _maxEpisodeLength )
+	if( _currentEpisode == nullptr ||
+	    _currentEpisode->NumUpdates() >= _maxEpisodeLength )
 	{
 		std::pair<PredictInfo,VectorType>& item = _predBuffer.front();
 		PredictInfo& info = item.first;
 		_problem.EmplaceEpisode( info.xpre, info.Spre );
-		currentEpisode = _problem.GetCurrentEpisode();
+		_currentEpisode = _problem.GetCurrentEpisode();
+	}
+
+	if( _problem.NumEpisodes() > _maxNumEpisodes )
+	{
+		_problem.RemoveOldestEpisode();
 	}
 
 	for( unsigned int i = 0; i < _predBuffer.size(); i++ )
@@ -73,8 +72,8 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 		std::pair<PredictInfo,VectorType>& item = _predBuffer[i];
 		PredictInfo& info = item.first;
 		VectorType& input = item.second;
-		currentEpisode->EmplacePredict( currentEpisode->GetTailState(),
-		                                currentEpisode->GetTailCov(), 
+		_currentEpisode->EmplacePredict( _currentEpisode->GetTailState(),
+		                                _currentEpisode->GetTailCov(), 
 		                                _transReg.GetModule(),
 		                                info.dt,
 		                                input,
@@ -82,15 +81,21 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	}
 	_predBuffer.clear();
 
-	currentEpisode->EmplaceUpdate( name,
+	_currentEpisode->EmplaceUpdate( name,
 	                               scale,
-	                               currentEpisode->GetTailState(),
-	                               currentEpisode->GetTailCov(), 
+	                               _currentEpisode->GetTailState(),
+	                               _currentEpisode->GetTailCov(), 
 	                               est.GetModule(),
 	                               input,
 	                               info.observation,
 	                               info.H );
 	return true;
+}
+
+void InnovationClipOptimizer::BreakCurrentEpisode()
+{
+	WriteLock lock( _mutex );
+	_currentEpisode = nullptr;
 }
 
 size_t InnovationClipOptimizer::NumEpisodes() const
@@ -100,7 +105,7 @@ size_t InnovationClipOptimizer::NumEpisodes() const
 
 size_t InnovationClipOptimizer::CurrentEpisodeLength() const
 {
-	if( NumEpisodes() == 0 ) { return 0; }
+	if( NumEpisodes() == 0 || _currentEpisode == nullptr ) { return 0; }
 	return _problem.GetCurrentEpisode()->NumUpdates();
 }
 

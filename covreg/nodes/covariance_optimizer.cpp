@@ -2,6 +2,7 @@
 #include "covreg/CovarianceEstimator.h"
 #include "covreg/CovarianceEstimatorInfo.h"
 #include "covreg/EstimatorInfoParsers.h"
+#include "covreg/OptimizerStatus.h"
 
 #include "argus_msgs/FilterStepInfo.h"
 
@@ -102,19 +103,27 @@ public:
 			_clipOptimizer->AddObservationReg( *item.second.estimator, item.first );
 		}
 
+		GetParam<unsigned int>( privHandle, "num_optimizer_steps", _numOptimizerSteps, 1 );
 		GetParam<unsigned int>( privHandle, "min_clips_optimize", _minOptimizeSize );
 
 		percepto::SimpleConvergenceCriteria criteria;
 		GetParam<double>( privHandle, "convergence/max_time", criteria.maxRuntime, std::numeric_limits<double>::infinity() );
 		GetParam<unsigned int>( privHandle, "convergence/max_iters", criteria.maxIterations, std::numeric_limits<unsigned int>::max() );
-		GetParam<double>( privHandle, "convergence/min_avg_delta", criteria.minAverageDelta, 1E-6 );
-		GetParam<double>( privHandle, "convergence/min_avg_grad", criteria.minAverageGradient, 1E-6 );
+		GetParam<double>( privHandle, "convergence/min_avg_delta", criteria.minAverageDelta, -std::numeric_limits<double>::infinity() );
+		GetParam<double>( privHandle, "convergence/min_avg_grad", criteria.minAverageGradient, -std::numeric_limits<double>::infinity() );
 		percepto::AdamParameters optParams;
 		GetParam( privHandle, "optimizer/step_size", optParams.alpha, 1E-3 );
 		GetParam( privHandle, "optimizer/beta1", optParams.beta1, 0.9 );
 		GetParam( privHandle, "optimizer/beta2", optParams.beta2, 0.99 );
 		GetParam( privHandle, "optimizer/epsilon", optParams.epsilon, 1E-7 );
+		GetParam( privHandle, "optimizer/enable_decay", optParams.enableDecay, false );
 		_clipOptimizer->InitializeOptimization( criteria, optParams );
+
+		double statusPublishRate;
+		GetParam<double>( privHandle, "status_publish_rate", statusPublishRate, 1.0 );
+		_statusPeriod = ros::Duration( 1.0/statusPublishRate );
+		_statusPub = privHandle.advertise<OptimizerStatus>( "optimizer_status", 10 );
+		_startTime = ros::Time::now();
 
 		double printRate;
 		GetParam<double>( privHandle, "print_rate", printRate, 1.0 );
@@ -126,21 +135,22 @@ public:
 		_publishPeriod = ros::Duration( 1.0/paramPublishRate );
 		_lastPublishTime = ros::Time::now();
 
-		_optimizerThread = boost::thread( boost::bind( &Optimizer::OptimizerCallback, this ) );
 
-		sub = std::make_shared<message_filters::Subscriber<FilterStepInfo>>( nodeHandle, "filter_info", infoBufferSize );
+/*		sub = std::make_shared<message_filters::Subscriber<FilterStepInfo>>( nodeHandle, "filter_info", infoBufferSize );
 		seq = std::make_shared<message_filters::TimeSequencer<FilterStepInfo>>( *sub, ros::Duration(1.0), ros::Duration(0.1), infoBufferSize);
-		seq->registerCallback( &Optimizer::FilterCallback, this );
+		seq->registerCallback( &Optimizer::FilterCallback, this );*/
 
-		// _infoSub = nodeHandle.subscribe( "filter_info", infoBufferSize, &Optimizer::FilterCallback, this );
+		_infoSub = nodeHandle.subscribe( "filter_info", infoBufferSize, &Optimizer::FilterCallback, this );
 
 		_waitTimer = nodeHandle.createTimer( ros::Duration( 1.0 ), 
 		                                     &Optimizer::ReceiveWaitTimerCallback, 
 		                                     this, true );
+		
+		_optimizerThread = boost::thread( boost::bind( &Optimizer::OptimizerCallback, this ) );
 	}
 
-	std::shared_ptr<message_filters::Subscriber<FilterStepInfo>> sub;
-	std::shared_ptr<message_filters::TimeSequencer<FilterStepInfo>> seq;
+	// std::shared_ptr<message_filters::Subscriber<FilterStepInfo>> sub;
+	// std::shared_ptr<message_filters::TimeSequencer<FilterStepInfo>> seq;
 
 	void RegisterModel( const std::string& name, const YAML::Node& info )
 	{
@@ -155,10 +165,10 @@ public:
 		std::string paramTopic = name + "/param_updates";
 		reg.estimator = std::make_shared<CovarianceEstimator>( name, info );
 		reg.paramPublisher = privHandle.advertise<CovarianceEstimatorInfo>( paramTopic, 10 );
-		reg.features = info["features"].as<std::vector<std::string>>();
+		reg.features = TryYamlField<std::vector<std::string>>( info, "features" );
 		if( name != "transition" )
 		{
-			reg.weight = info["weight"].as<double>();
+			reg.weight = TryYamlField<double>( info, "weight" );
 		}
 
 		// Register all features this model needs
@@ -319,7 +329,14 @@ private:
 
 	double _featureCacheTime;
 
+	ros::Time _startTime;
+
+	unsigned int _numOptimizerSteps;
 	ros::Subscriber _infoSub;
+	
+	ros::Publisher _statusPub;
+	ros::Time _lastStatusTime;
+	ros::Duration _statusPeriod;
 
 	ros::Time _lastPrintTime;
 	ros::Duration _printPeriod;
@@ -343,7 +360,7 @@ private:
 	
 	void FilterCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg )
 	{
-		ReadLock lock( _initMutex );
+		WriteLock lock( _initMutex );
 		if( !initialized ) { return; }
 
 		const std::string& sourceName = msg->header.frame_id;
@@ -387,9 +404,11 @@ private:
 				if( _clipOptimizer->NumEpisodes() > 1 ||
 				    _clipOptimizer->CurrentEpisodeLength() > _minOptimizeSize )
 				{
-					// ROS_INFO_STREAM( "Beginning optimization..." );
-					bool converged = _clipOptimizer->Optimize();
-					// ROS_INFO_STREAM( "Finished optimization!" );
+					bool converged = false;
+					for( unsigned int i = 0; i < _numOptimizerSteps; i++ )
+					{
+						converged = _clipOptimizer->Optimize();
+					}
 					PublishParams();
 					if( converged )
 					{
@@ -398,6 +417,7 @@ private:
 					}
 				}
 				PrintStatus();
+				PublishStatus();
 			}
 			SaveParameters();
 			SaveLog();
@@ -410,6 +430,22 @@ private:
 			SaveLog();
 			return; 
 		}
+	}
+
+	void PublishStatus()
+	{
+		ros::Time now = ros::Time::now();
+		if( now - _lastStatusTime < _statusPeriod ) { return; }
+		_lastStatusTime = now;
+
+		if( _clipOptimizer->NumEpisodes() == 0 ) { return; }
+
+		OptimizerStatus msg;
+		msg.header.stamp = now;
+		msg.header.frame_id = "covariance_optimizer";
+		msg.current_objective = _clipOptimizer->CalculateCost();
+		msg.secs_since_start = ( now - _startTime ).toSec();
+		_statusPub.publish( msg );
 	}
 
 	void PrintStatus()
@@ -436,15 +472,14 @@ private:
 			VectorType& features = data.first;
 			argus_msgs::FilterStepInfo& msg = data.second;
 
-			if( msg.header.seq != lastSeq + 1 )
+			if( msg.step_num != lastSeq + 1 )
 			{
-				ROS_WARN_STREAM( "Got sequence " << msg.header.seq <<
+				ROS_WARN_STREAM( "Got sequence " << msg.step_num <<
 				                 " but expected " << lastSeq + 1 );
-				lastSeq = msg.header.seq;
-				continue;
+				_clipOptimizer->BreakCurrentEpisode();
 			}
 
-			lastSeq = msg.header.seq;
+			lastSeq = msg.step_num;
 			if( msg.isPredict )
 			{
 				PredictInfo info = MsgToPredict( msg );

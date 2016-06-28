@@ -41,6 +41,7 @@ public:
 
 	void RandomizeVarianceParams();
 	void ZeroCorrelationParams();
+	void EnableCorrelationLearning();
 
 	MatrixType Evaluate( const VectorType& input ); 
 
@@ -63,6 +64,7 @@ private:
 	percepto::TerminalSource<VectorType> _psdPort;
 	ModuleType _psd;
 
+	bool _learnCorrelations;
 	percepto::Parameters::Ptr _lParams;
 	percepto::Parameters::Ptr _dParams;
 	percepto::ParameterWrapper::Ptr _params;
