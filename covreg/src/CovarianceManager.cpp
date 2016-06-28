@@ -1,5 +1,7 @@
 #include "covreg/EstimatorInfoParsers.h"
 #include "covreg/CovarianceManager.h"
+
+#include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/YamlUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
 
@@ -28,6 +30,10 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 	double cacheTime;
 	GetParam( ph, subName + "/feature_cache_time", cacheTime, 1.0 );
 	Initialize( sourceName, yaml, cacheTime );
+
+	_queryServer = ph.advertiseService( "query_covariance", 
+	                                    &CovarianceManager::QueryCallback, 
+	                                    this );
 }
 
 // TODO Parse from info -> Msg instead so we can have nicer error messages
@@ -136,6 +142,22 @@ void CovarianceManager::ParamCallback( const CovarianceEstimatorInfo::ConstPtr& 
 	}
 	ROS_INFO_STREAM( "Updating parameters for: " << _sourceName );
 	_estimator->SetParamsMsg( *msg );
+}
+
+bool CovarianceManager::QueryCallback( QueryCovariance::Request& request,
+	                                   QueryCovariance::Response& response )
+{
+	WriteLock lock( _estimatorMutex );
+	VectorType feats = GetVectorView( request.features );
+	if( feats.size() != _estimator->InputDim() ) 
+	{ 
+		ROS_WARN_STREAM( "Covariance query has feature dim: " << + feats.size() <<
+		                 " but estimator input dim: " << _estimator->InputDim() );
+		return false;
+	}
+	MatrixType cov = _estimator->Evaluate( feats );
+	response.covariance = MatrixToMsg( cov );
+	return true;
 }
 
 }

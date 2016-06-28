@@ -62,7 +62,6 @@ public:
 	{
 		updates.emplace_back( args... );
 		updates.back().sourceName = name;
-		updates.back().innovationLL.name = name;
 
 		llScales.emplace_back();
 		llScales.back().SetScale( scale );

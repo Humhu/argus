@@ -1,0 +1,5 @@
+# Calls a covariance estimator
+
+float64[] features
+---
+argus_msgs/MatrixFloat64 covariance

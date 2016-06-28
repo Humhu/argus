@@ -18,6 +18,7 @@ add_message_files( FILES
                   FiducialDetection.msg
                   FilterStepInfo.msg
                   FilterUpdate.msg
+                  FilterUpdateBounds.msg
                   ImageFiducialDetections.msg
                   MatrixFloat64.msg
                   OdometryBounds.msg

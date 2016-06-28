@@ -31,14 +31,20 @@ public:
 
 		if( !GetMatrixParam<double>( _privHandle, "pose_covariance", _poseCov ) )
 		{
-		    ROS_ERROR_STREAM( "Could not parse pose covariance." );
-		    exit( -1 );
+			if( !GetDiagonalParam<double>( _privHandle, "pose_covariance", _poseCov ) )
+			{
+		 		ROS_WARN_STREAM( "Could not parse pose covariance. Using identity." );
+				_poseCov = PoseSE3::CovarianceMatrix::Identity();
+			}
 		}
 
 		if( !GetMatrixParam<double>( _privHandle, "twist_covariance", _twistCov ) )
 		{
-			ROS_ERROR_STREAM( "Could not parse twist covariance." );
-			exit( -1 );
+			if( !GetDiagonalParam<double>( _privHandle, "twist_covariance", _twistCov ) )
+			{
+				ROS_WARN_STREAM( "Could not parse twist covariance. Using identity." );
+				_twistCov = PoseSE3::CovarianceMatrix::Identity();
+			}
 		} 
 	}
 

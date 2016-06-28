@@ -2,6 +2,7 @@
 
 #include "broadcast/BroadcastReceiver.h"
 #include "covreg/CovarianceEstimator.h"
+#include "covreg/QueryCovariance.h"
 
 #include "argus_utils/synchronization/SynchronizationTypes.h"
 
@@ -36,6 +37,8 @@ private:
 
 	ros::NodeHandle _nodeHandle;
 
+	ros::ServiceServer _queryServer;
+
 	std::string _sourceName;
 	ros::Subscriber _paramSub;
 	std::shared_ptr<CovarianceEstimator> _estimator;
@@ -44,6 +47,9 @@ private:
 	Mutex _estimatorMutex;
 
 	void ParamCallback( const covreg::CovarianceEstimatorInfo::ConstPtr& msg );
+
+	bool QueryCallback( covreg::QueryCovariance::Request& request,
+	                    covreg::QueryCovariance::Response& response );
 
 };
 

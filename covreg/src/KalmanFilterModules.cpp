@@ -100,7 +100,10 @@ std::ostream& operator<<( std::ostream& os, const KalmanFilterUpdateModule& modu
 	os << "HSHT: " << std::endl << module.HSHT.GetOutput() << std::endl;
 	os << "R: " << std::endl << module.R.GetOutput() << std::endl;
 	os << "V: " << std::endl << module.V.GetOutput() << std::endl;
-	os << "Splus: " << std::endl << module.Splus.GetOutput() << std::endl;
+	if( module.active )
+	{
+		os << "Splus: " << std::endl << module.Splus.GetOutput() << std::endl;
+	}
 	os << "inno: " << module.innovationLL.GetSample().transpose() << std::endl;
 	os << "innoLL: " << module.innovationLL.GetOutput() << std::endl;
 	return os;

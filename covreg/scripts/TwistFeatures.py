@@ -18,8 +18,17 @@ class TwistFeaturePublisher:
 
         descriptions = [ 'x_vel', 'y_vel', 'z_vel',
                          'roll_vel', 'pitch_vel', 'yaw_vel' ]
+        
+        self.abs_val = rospy.get_param( '~absolute_value' )
+
+        self.two_dimensional = rospy.get_param( '~two_dimensional' )
+        if self.two_dimensional:
+            feature_dim = 3
+        else:
+            feature_dim = 6
+
         self.feat_tx = Trx.Transmitter( broadcast_name=self.feature_name,
-                                        feature_size=6,
+                                        feature_size=feature_dim,
                                         feature_descriptions=descriptions )
 
     def OdomCallback( self, tw ):
@@ -27,12 +36,20 @@ class TwistFeaturePublisher:
         out.header.stamp = rospy.Time.now()
         out.header.frame_id = self.feature_name
 
-        out.features = ( tw.linear.x,
-                         tw.linear.y,
-                         tw.linear.z,
-                         tw.angular.x,
-                         tw.angular.y,
-                         tw.angular.z )
+        if self.two_dimensional:
+            out.features = ( tw.linear.x,
+                             tw.linear.y,
+                             tw.angular.z )
+        else:
+            out.features = ( tw.linear.x,
+                             tw.linear.y,
+                             tw.linear.z,
+                             tw.angular.x,
+                             tw.angular.y,
+                             tw.angular.z )
+        if self.abs_val:
+            out.features = np.abs( np.array( out.features ) )
+
         self.feat_tx.publish( out )
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ from nav_msgs.msg import Odometry
 from argus_msgs.msg import OdometryBounds
 
 class OdometryBoundsPublisher:
-    '''Publishes features calculated from an odometry topic.'''
+    '''Publishes bounds on the odometry twist'''
 
     def __init__( self ):
         rospy.init_node( 'odometry_bounds_publisher' )

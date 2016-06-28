@@ -8,6 +8,7 @@
 #include "broadcast/BroadcastTransmitter.h"
 
 #include "covreg/CovarianceManager.h"
+#include "covreg/AdaptiveCovarianceEstimator.h"
 
 #include "argus_msgs/FilterUpdate.h"
 #include "argus_msgs/FilterStepInfo.h"
@@ -55,6 +56,8 @@ struct StampedFilter
 	void SquashPoseUncertainty();
 	void EnforceTwoDimensionality();
 
+	nav_msgs::Odometry GetOdomMsg() const;
+
 };
 
 // TODO How to serialize SE2 covariance into odom message?
@@ -79,7 +82,9 @@ private:
 	StampedFilter _filter;
 
 	FilterType::FullCovType _Qrate;
+	bool _usingAdaptive;
 	CovarianceManager _Qestimator;
+	AdaptiveCovarianceEstimator _Qadapter;
 
 	ros::Duration _updateLag;
 
@@ -91,7 +96,7 @@ private:
 	ros::Timer _updateTimer;
 	unsigned int _infoNumber;
 
-	BroadcastTransmitter _xlTx;
+	// BroadcastTransmitter _xlTx;
 
 	// Subscribers to argus_msgs::FilterUpdate
 	std::unordered_map<std::string, ros::Subscriber> _updateSubs;
@@ -100,9 +105,11 @@ private:
 	typedef std::map<ros::Time, argus_msgs::FilterUpdate> UpdateBuffer;
 	UpdateBuffer _updateBuffer;
 
-	ros::Publisher _odomPub; // Publishes nav_msgs::Odometry
+	ros::Publisher _latestOdomPub; // Publishes nav_msgs::Odometry
+	ros::Publisher _laggedOdomPub; // Publishes lagged odometry
 	ros::Publisher _stepPub; // Publishes argus_msgs::FilterStepInfo
 	
+	MatrixType lastCov;
 
 	void UpdateCallback( const argus_msgs::FilterUpdate::ConstPtr& msg );
 	

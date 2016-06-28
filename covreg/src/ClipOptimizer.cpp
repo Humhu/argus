@@ -112,9 +112,10 @@ void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConv
 bool InnovationClipOptimizer::Optimize()
 {	
 	WriteLock lock( _mutex );
-	_convergence->Reset();
-	percepto::OptimizationResults results = _optimizer->Optimize( _problem );
-	return results.converged;
+	// _convergence->Reset();
+	// percepto::OptimizationResults results = _optimizer->Optimize( _problem );
+	// return results.converged;
+	return _optimizer->StepOnce( _problem );
 }
 
 double InnovationClipOptimizer::CalculateCost()
