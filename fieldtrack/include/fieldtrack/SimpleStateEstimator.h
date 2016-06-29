@@ -10,8 +10,11 @@
 #include "covreg/CovarianceManager.h"
 #include "covreg/AdaptiveCovarianceEstimator.h"
 
+#include "fieldtrack/ResetFilter.h"
+
 #include "argus_msgs/FilterUpdate.h"
 #include "argus_msgs/FilterStepInfo.h"
+#include "argus_msgs/MatrixFloat64.h"
 
 #include "argus_utils/filters/FilterTypes.h"
 #include "argus_utils/geometry/PoseSE3.h"
@@ -77,10 +80,13 @@ public:
 	
 	MatrixType GetCovarianceRate( const ros::Time& time );
 
+	void Reset( double waitTime = 0.0 );
+
 private:
 	
 	StampedFilter _filter;
 
+	FilterType::FullCovType _initCov;
 	FilterType::FullCovType _Qrate;
 	bool _usingAdaptive;
 	CovarianceManager _Qestimator;
@@ -108,14 +114,19 @@ private:
 
 	ros::Publisher _latestOdomPub; // Publishes nav_msgs::Odometry
 	ros::Publisher _laggedOdomPub; // Publishes lagged odometry
+	ros::Publisher _transCovPub;
 	ros::Publisher _stepPub; // Publishes argus_msgs::FilterStepInfo
-	
+	ros::ServiceServer _resetHandler;
+
 	MatrixType lastCov;
 
 	void UpdateCallback( const argus_msgs::FilterUpdate::ConstPtr& msg );
 	
 	// Process all messages until the specified time
 	void ProcessUpdateBuffer( const ros::Time& until );
+
+	bool ResetFilterCallback( fieldtrack::ResetFilter::Request& req,
+	                          fieldtrack::ResetFilter::Response& res );
 
 	// TODO
 	// argus_msgs::FilterStepInfo PositionUpdate( const Translation3Type& pos, 

@@ -24,6 +24,12 @@ find_package(Boost REQUIRED)
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
 
+add_service_files( FILES
+	ResetFilter.srv
+)
+
+generate_messages()
+
 catkin_package(
 	INCLUDE_DIRS	include
 	

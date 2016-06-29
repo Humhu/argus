@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy, rosbag, roslib, time, random
+from fieldtrack.srv import ResetFilter
 
 class BagLooper:
     '''Loops a bag repeatedly, adjusting header timestamps to be continuous.'''
@@ -16,6 +17,11 @@ class BagLooper:
 
         self.start_times = {}
         self.publishers = {}
+
+        reset_srv = rospy.get_param( '~reset_service' )
+        rospy.wait_for_service( reset_srv )
+        self.reset_service = rospy.ServiceProxy( reset_srv, ResetFilter )
+        self.reset_time = rospy.get_param( '~reset_time', 0.0 )
 
         self.start_offset = rospy.Duration( rospy.get_param( '~start_offset', 0.0 ) )
         self.end_offset = rospy.Duration( rospy.get_param( '~end_offset', 0.0 ) )
@@ -42,6 +48,8 @@ class BagLooper:
         zero_dur = rospy.Duration( 0 )
 
         while not rospy.is_shutdown():
+
+            self.reset_service( self.reset_time )
 
         #for path in self.bag_paths:
             path = random.sample( self.bag_paths, 1 )[0]

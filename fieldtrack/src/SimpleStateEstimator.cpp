@@ -10,6 +10,7 @@
 using namespace argus_msgs;
 using namespace geometry_msgs;
 using namespace nav_msgs;
+using namespace fieldtrack;
 
 #define MAX_DT_THRESH (1E3) // The max prediction dt to allow in seconds
 
@@ -236,15 +237,15 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 
 	// Initialize
 	FilterType::FullCovType initCov;
-	if( !GetMatrixParam<double>( privHandle, "initial_covariance", initCov ) )
+	if( !GetMatrixParam<double>( privHandle, "initial_covariance", _initCov ) )
 	{
-		if( !GetDiagonalParam<double>( privHandle, "initial_covariance", initCov ) )
+		if( !GetDiagonalParam<double>( privHandle, "initial_covariance", _initCov ) )
 		{
 			ROS_WARN_STREAM( "No initial covariance rate given. Using 10*identity." );
-			initCov = 10 * FilterType::FullCovType::Identity();
+			_initCov = 10 * FilterType::FullCovType::Identity();
 		}
 	}
-	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << initCov );
+	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << _initCov );
 
 	// TODO Initial state?
 	WriteLock lock( _filterMutex );
@@ -260,8 +261,13 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	privHandle.param<bool>( "velocity_only", velocityOnly, false );
 	ROS_INFO_STREAM( "Velocity only mode: " << velocityOnly );
 
+	_resetHandler = privHandle.advertiseService( "reset", 
+		                                         &SimpleStateEstimator::ResetFilterCallback,
+		                                         this );
+
 	_latestOdomPub = nodeHandle.advertise<Odometry>( "latest_odometry", 10 );
 	_laggedOdomPub = nodeHandle.advertise<Odometry>( "lagged_odometry", 10 );
+	_transCovPub = nodeHandle.advertise<MatrixFloat64>( "trans_cov", 10 );
 	
 	unsigned int outBufferSize;
 	GetParam<unsigned int>( privHandle, "info_pub_buffer_size", outBufferSize, (unsigned int) 100 );
@@ -273,6 +279,28 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	_updateTimer = nodeHandle.createTimer( ros::Duration( 1.0 / timerRate ),
 	                                      &SimpleStateEstimator::TimerCallback,
 	                                      this );
+}
+
+void SimpleStateEstimator::Reset( double waitTime )
+{
+	ros::Duration( waitTime ).sleep();
+
+	WriteLock block( _bufferMutex );
+	WriteLock flock( _filterMutex );
+
+	_updateBuffer.clear();
+
+	_filter.filter.Pose() = FilterType::PoseType();
+	_filter.filter.Derivs() = FilterType::DerivsType::Zero();
+	_filter.filter.FullCov() = _initCov;
+	_filter.filterTime = ros::Time::now();
+}
+
+bool SimpleStateEstimator::ResetFilterCallback( ResetFilter::Request& req,
+                                                ResetFilter::Response& res )
+{
+	Reset( req.time_to_wait );
+	return true;
 }
 
 void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
@@ -310,6 +338,7 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 		// ROS_INFO_STREAM( "Updating with: " << msg.header.frame_id );
 		std::pair<FilterStepInfo,FilterStepInfo> infoPair = _filter.ProcessUpdate( msg );
 		_stepPub.publish( infoPair.first );
+		_transCovPub.publish( infoPair.first.noiseCov );
 		_stepPub.publish( infoPair.second );
 		
 		_updateBuffer.erase( firstItem );
@@ -372,11 +401,15 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	// Publish all observations to our lagged timepoint
 	ros::Time laggedHead = now - _updateLag;
 	ProcessUpdateBuffer( laggedHead );
-	FilterStepInfo predInfo = _filter.PredictUntil( laggedHead );
-	_stepPub.publish( predInfo );
-	if( _usingAdaptive )
+	if( laggedHead > _filter.filterTime )
 	{
-		_Qadapter.ProcessInfo( predInfo );
+		FilterStepInfo predInfo = _filter.PredictUntil( laggedHead );
+		_stepPub.publish( predInfo );
+		if( _usingAdaptive )
+		{
+			_Qadapter.ProcessInfo( predInfo );
+		}
+		_transCovPub.publish( predInfo.noiseCov );
 	}
 
 	// Publish a smoother, lagged odometry estimate
