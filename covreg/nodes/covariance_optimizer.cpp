@@ -211,7 +211,15 @@ public:
 			ROS_INFO_STREAM( "Initializing: " << name << " to default params." );
 			reg.estimator->RandomizeVarianceParams();
 			reg.estimator->ZeroCorrelationParams();
+			if( info["offsets"] )
+			{
+				ROS_INFO_STREAM( "Setting offsets." );
+				std::vector<double> off = info["offsets"].as<std::vector<double>>();
+				reg.estimator->SetVarianceOffsets( GetVectorView( off ) );
+			}
 		}
+
+
 
 		// Verify the output path is OK
 		if( info["save_path"] ) 

@@ -43,6 +43,9 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
   _learnCorrelations( info["learn_correlations"].as<bool>() )
   // _psd( info["output_dim"].as<unsigned int>() )
 {
+	std::cout << "source: " << source << std::endl;
+	std::cout << "outputDim: " << info["output_dim"].as<unsigned int>() << std::endl;
+
 	_psd.SetSource( &_psdPort );
 	_lParams = _psd.lReg.CreateParameters();
 	_dParams = _psd.dReg.CreateParameters();
@@ -72,6 +75,11 @@ void CovarianceEstimator::RandomizeVarianceParams()
 	VectorType varParams( _dParams->ParamDim() );
 	percepto::randomize_vector( varParams, -VAR_RAND_RANGE, VAR_RAND_RANGE );
 	_dParams->SetParamsVec( varParams );
+}
+
+void CovarianceEstimator::SetVarianceOffsets( const VectorType& offs )
+{
+	_psd.dReg.SetOutputOffsets( offs );
 }
 
 void CovarianceEstimator::ZeroCorrelationParams()

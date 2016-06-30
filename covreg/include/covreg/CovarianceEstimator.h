@@ -41,6 +41,7 @@ public:
 
 	void RandomizeVarianceParams();
 	void ZeroCorrelationParams();
+	void SetVarianceOffsets( const VectorType& v );
 	void EnableCorrelationLearning();
 
 	MatrixType Evaluate( const VectorType& input ); 
