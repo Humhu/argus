@@ -4,7 +4,7 @@
 
 #include "argus_utils/utils/MatrixUtils.h"
 
-#define VAR_RAND_RANGE (1E-3)
+#define VAR_RAND_RANGE (1E-1)
 
 using namespace covreg;
 

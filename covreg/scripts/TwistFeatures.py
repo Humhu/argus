@@ -21,6 +21,8 @@ class TwistFeaturePublisher:
         
         self.abs_val = rospy.get_param( '~absolute_value' )
 
+        self.offset = np.array( rospy.get_param( '~offset' ) )
+
         self.two_dimensional = rospy.get_param( '~two_dimensional' )
         if self.two_dimensional:
             feature_dim = 3
@@ -49,6 +51,8 @@ class TwistFeaturePublisher:
                              tw.angular.z )
         if self.abs_val:
             out.features = np.abs( np.array( out.features ) )
+
+        out.features = out.features + self.offset
 
         self.feat_tx.publish( out )
 

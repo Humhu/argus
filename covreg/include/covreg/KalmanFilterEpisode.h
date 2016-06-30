@@ -1,7 +1,7 @@
 #pragma once
 
 #include <percepto/optim/StochasticSumCost.hpp>
-#include <percepto/optim/SumCost.hpp>
+#include <percepto/optim/MeanCost.hpp>
 
 #include "covreg/KalmanFilterModules.h"
 
@@ -31,7 +31,7 @@ public:
 	// Constrained sums for each source
 	std::deque<percepto::ScaleWrapper<double>> llScales;
 
-	percepto::SumCost<double> sumInnoLL;
+	percepto::MeanCost<double> sumInnoLL;
 
 	enum ClipType
 	{

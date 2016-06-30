@@ -1,7 +1,7 @@
 #include "covreg/PositiveDefiniteModules.h"
 
 #define POSDEF_OFFSET_SCALE (1E-9)
-#define RELU_LEAKY_SLOPE (1E-3)
+#define RELU_LEAKY_SLOPE (0)
 
 using namespace percepto;
 
