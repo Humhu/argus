@@ -59,8 +59,13 @@ class BagLooper:
             bag_start = rospy.Time.from_sec( bag.get_start_time() )
             message_start = bag_start + self.start_offset
             bag_end = rospy.Time.from_sec( bag.get_end_time() )
-            message_end = bag_end - self.end_offset
             bag_duration = bag_end - bag_start
+
+            proportion = random.random()
+            print proportion
+            trunc_bag_end = rospy.Duration( proportion * bag_duration.to_sec() ) + bag_start
+
+            message_end = trunc_bag_end - self.end_offset
 
             round_start = rospy.Time.now()
             last_time = None
