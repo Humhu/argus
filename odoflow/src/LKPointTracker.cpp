@@ -12,6 +12,7 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	double minEps;
 	privHandle.param( "tracker/max_iters", maxIters, 20 );
 	privHandle.param<double>( "tracker/min_eps", minEps, 0.03 );
+	privHandle.param<int>( "tracker/pyramid_levels", pyramidLevels, 3 );
 	flowTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
 										 maxIters, minEps );
 	
@@ -62,7 +63,7 @@ void LKPointTracker::TrackInterestPoints( const cv::Mat& firstImage,
 	std::vector<uchar> status;
 	std::vector<float> errors;
 	cv::calcOpticalFlowPyrLK( firstImage, secondImage, firstConvertedPoints, secondConvertedPoints, 
-							  status, errors, flowWindowSize, 3, flowTermCriteria, 
+							  status, errors, flowWindowSize, pyramidLevels, flowTermCriteria, 
 							  cv::OPTFLOW_USE_INITIAL_FLOW, flowEigenThreshold ); 
 	
 	// 2. Grab good matches

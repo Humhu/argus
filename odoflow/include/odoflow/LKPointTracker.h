@@ -31,6 +31,7 @@ public:
 private:
 	
 	// Flow calculation parameters
+	int pyramidLevels;
 	cv::TermCriteria flowTermCriteria;
 	cv::Size flowWindowSize;
 	double flowEigenThreshold;

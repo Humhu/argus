@@ -120,7 +120,9 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		}
 	}
 	CameraRegistration& registration = cameraRegistry[ cameraName ];
-	cv::Mat currentFrame = cv_bridge::toCvShare( msg, "mono8" )->image;
+	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
+	cv::Mat currentFrame;
+	cv::cvtColor( msgFrame, currentFrame, CV_BGR2GRAY );
 	ros::Time now = msg->header.stamp;
 	
 	// Initialization catch
