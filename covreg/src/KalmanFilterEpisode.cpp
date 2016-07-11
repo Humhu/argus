@@ -4,8 +4,9 @@ namespace argus
 {
 
 KalmanFilterEpisode::KalmanFilterEpisode( const VectorType& xinit,
-                                          const MatrixType& Sinit )
-: tailType( CLIP_TYPE_NONE )
+                                          const MatrixType& Sinit,
+                                          const ros::Time& t )
+: tailType( CLIP_TYPE_NONE ), startTime( t )
 {
 	initState.SetOutput( xinit );
 	initCov.SetOutput( Sinit );

@@ -33,6 +33,7 @@ struct StampedFilter
 
 	typedef ConstantAccelFilterSE3 FilterType;
 	typedef FilterType::PoseType PoseType;
+	typedef std::pair<argus_msgs::FilterStepInfo,argus_msgs::FilterStepInfo> InfoPair;
 
 	StampedFilter( SimpleStateEstimator& p );
 
@@ -41,9 +42,8 @@ struct StampedFilter
 
 	// Process a given message by predicting to that time and then updating
 	// Returns predict and update step info
-	std::pair<argus_msgs::FilterStepInfo,
-	          argus_msgs::FilterStepInfo>
-	 ProcessUpdate( const argus_msgs::FilterUpdate& msg );
+	 bool ProcessUpdate( const argus_msgs::FilterUpdate& msg, 
+	                     InfoPair& info );
 
 	argus_msgs::FilterStepInfo PoseUpdate( const PoseType& pose,
 	                                       const MatrixType& R );
@@ -51,6 +51,10 @@ struct StampedFilter
 	                                         const MatrixType& C,
 	                                         const MatrixType& R );
 
+	bool CheckPoseUpdate( const PoseType& pose, const MatrixType& R );
+	bool CheckDerivsUpdate( const VectorType& derivs,
+	                        const MatrixType& C,
+	                        const MatrixType& R );
 	SimpleStateEstimator& parent;
 	FilterType filter;
 	ros::Time filterTime;
@@ -80,7 +84,10 @@ public:
 	
 	MatrixType GetCovarianceRate( const ros::Time& time );
 
-	void Reset( double waitTime = 0.0 );
+	void Reset( double waitTime, const ros::Time& time );
+
+	// TODO
+	double _likelihoodThreshold;
 
 private:
 	
@@ -96,7 +103,7 @@ private:
 
 	bool twoDimensional;
 	bool velocityOnly;
-	
+
 	std::string _referenceFrame;
 	std::string _bodyFrame;
 	ros::Timer _updateTimer;
@@ -107,8 +114,7 @@ private:
 	// Subscribers to argus_msgs::FilterUpdate
 	std::unordered_map<std::string, ros::Subscriber> _updateSubs;
 
-	Mutex _bufferMutex;
-	Mutex _filterMutex;
+	Mutex _mutex;
 	typedef std::map<ros::Time, argus_msgs::FilterUpdate> UpdateBuffer;
 	UpdateBuffer _updateBuffer;
 

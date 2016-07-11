@@ -4,6 +4,7 @@
 #include <percepto/optim/MeanCost.hpp>
 
 #include "covreg/KalmanFilterModules.h"
+#include <ros/ros.h>
 
 namespace argus
 {
@@ -28,10 +29,12 @@ public:
 	// This forces the sumInnoLL to always be able to output, even with 0 updates
 	percepto::TerminalSource<double> offsetInnoLL;
 
-	// Constrained sums for each source
+	// Scaled LLs for each source
 	std::deque<percepto::ScaleWrapper<double>> llScales;
 
 	percepto::MeanCost<double> sumInnoLL;
+
+	ros::Time startTime;
 
 	enum ClipType
 	{
@@ -45,7 +48,7 @@ public:
 
 	ClipType tailType;
 
-	KalmanFilterEpisode( const VectorType& xinit, const MatrixType& Sinit );
+	KalmanFilterEpisode( const VectorType& xinit, const MatrixType& Sinit, const ros::Time& t );
 
 	size_t NumUpdates() const;
 
@@ -55,9 +58,10 @@ public:
 		predicts.emplace_back( args... );
 		tailType = CLIP_TYPE_PREDICT;
 		order.push_back( CLIP_TYPE_PREDICT );
-		predicts.back().Q.modName = "Q";
-		predicts.back().Qdt.modName = "Qdt";
-		predicts.back().Sminus.modName = "Sminus";
+		// predicts.back().Q.modName = "Q";
+		// predicts.back().Qdt.modName = "Qdt";
+		// predicts.back().Sminus.modName = "Sminus";
+		// predicts.back().FSFT.modName = "FSFT";
 	}
 
 	template <class ...Args>
@@ -67,13 +71,15 @@ public:
 	{
 		updates.emplace_back( args... );
 		updates.back().sourceName = name;
-		updates.back().Vinvv.modName = "Vinvv";
-		updates.back().innov.modName = "innov";
-		updates.back().xcorr.modName = "xcorr";
-		updates.back().V.modName = "V";
-		updates.back().xplus.modName = "xplus";
-		updates.back().Vinv.modName = "Vinv";
-		updates.back().R.modName = "R";
+		// updates.back().Vinvv.modName = "Vinvv";
+		// updates.back().innov.modName = "innov";
+		// updates.back().xcorr.modName = "xcorr";
+		// updates.back().V.modName = "V";
+		// updates.back().xplus.modName = "xplus";
+		// updates.back().Vinv.modName = "Vinv";
+		// updates.back().R.modName = "R";
+		// updates.back().Splus.modName = "Splus";
+		// updates.back().HTVinvH.modName = "HTVinvH";
 
 		llScales.emplace_back();
 		llScales.back().SetScale( scale );

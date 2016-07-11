@@ -51,7 +51,8 @@ public:
 
 	Optimizer( ros::NodeHandle& nodeHandle, ros::NodeHandle& ph )
 	: privHandle( ph ),
-	initialized( false ),
+	rxInitialized( false ),
+	epsInitialized( false ),
 	lastSeq( 0 )
 	{
 		GetParam<double>( privHandle, "feature_cache_time", 
@@ -59,7 +60,7 @@ public:
 
 		// Number of info updates to store max
 		unsigned int infoBufferSize;
-		GetParam<unsigned int>( privHandle, "info_buffer_size", infoBufferSize, 500 );
+		GetParam<unsigned int>( privHandle, "info_buffer_size", infoBufferSize, 0 );
 		_dataBuffer.SetMaxSize( infoBufferSize );
 
 		std::string logPath;
@@ -89,7 +90,7 @@ public:
 
 		InnovationClipParameters clipParams;
 		GetParam<unsigned int>( privHandle, "max_eps_length", clipParams.maxEpisodeLength, 100 );
-		GetParam<unsigned int>( privHandle, "max_eps_to_keep", clipParams.numEpisodesToKeep, 50 );
+		// GetParam<unsigned int>( privHandle, "max_eps_to_keep", clipParams.numEpisodesToKeep, 50 );
 		GetParam<double>( privHandle, "l2_weight", clipParams.l2Weight, 1E-6 );
 		GetParam<unsigned int>( privHandle, "batch_size", clipParams.batchSize, 30 );
 
@@ -104,7 +105,10 @@ public:
 		}
 
 		GetParam<unsigned int>( privHandle, "num_optimizer_steps", _numOptimizerSteps, 1 );
-		GetParam<unsigned int>( privHandle, "min_clips_optimize", _minOptimizeSize );
+		// GetParam<unsigned int>( privHandle, "min_eps_to_optimize", _minOptimizeSize );
+		GetParamRequired<double>( privHandle, "min_span_to_optimize", _minOptimizeTime );
+		GetParamRequired<double>( privHandle, "max_span_to_keep", _maxEpisodeSpan );
+		GetParam<bool>( privHandle, "clear_after_optimize", _clearAfterOptimize, false );
 
 		percepto::SimpleConvergenceCriteria criteria;
 		GetParam<double>( privHandle, "convergence/max_time", criteria.maxRuntime, std::numeric_limits<double>::infinity() );
@@ -113,6 +117,7 @@ public:
 		GetParam<double>( privHandle, "convergence/min_avg_grad", criteria.minAverageGradient, -std::numeric_limits<double>::infinity() );
 		percepto::AdamParameters optParams;
 		GetParam( privHandle, "optimizer/step_size", optParams.alpha, 1E-3 );
+		GetParam( privHandle, "optimizer/max_step", optParams.maxStepElement, 1.0 );
 		GetParam( privHandle, "optimizer/beta1", optParams.beta1, 0.9 );
 		GetParam( privHandle, "optimizer/beta2", optParams.beta2, 0.99 );
 		GetParam( privHandle, "optimizer/epsilon", optParams.epsilon, 1E-7 );
@@ -211,6 +216,7 @@ public:
 			ROS_INFO_STREAM( "Initializing: " << name << " to default params." );
 			reg.estimator->RandomizeVarianceParams();
 			reg.estimator->ZeroCorrelationParams();
+			// reg.estimator->ZeroParams();
 			if( info["offsets"] )
 			{
 				ROS_INFO_STREAM( "Setting offsets." );
@@ -309,7 +315,7 @@ public:
 			}
 		}
 		ROS_INFO_STREAM( "All streams have received. Optimizer is ready." );
-		initialized = true;
+		rxInitialized = true;
 	}
 
 private:
@@ -353,7 +359,10 @@ private:
 	ros::Duration _publishPeriod;
 
 	unsigned _minOptimizeSize;
+	double _minOptimizeTime;
+	double _maxEpisodeSpan;
 	unsigned _ministeps;
+	bool _clearAfterOptimize;
 
 	Mutex _optimizerMutex;
 	boost::thread _optimizerThread;
@@ -362,14 +371,15 @@ private:
 
 	ros::Timer _waitTimer;
 	Mutex _initMutex;
-	bool initialized;
+	bool rxInitialized;
+	bool epsInitialized;
 
 	unsigned int lastSeq;
 	
 	void FilterCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg )
 	{
 		WriteLock lock( _initMutex );
-		if( !initialized ) { return; }
+		if( !rxInitialized ) { return; }
 
 		const std::string& sourceName = msg->header.frame_id;
 		if( _estRegistry.count( sourceName ) == 0 )
@@ -407,25 +417,68 @@ private:
 			while( !ros::isShuttingDown() )
 			{
 				boost::this_thread::interruption_point();
+				PublishParams();
 
 				ProcessBuffer();
-				if( _clipOptimizer->NumEpisodes() > 1 ||
-				    _clipOptimizer->CurrentEpisodeLength() > _minOptimizeSize )
+				ros::Time now = ros::Time::now();
+				ros::Time earliestTime = _clipOptimizer->GetEarliestTime();
+				double span = (now - earliestTime).toSec();
+
+				if( !epsInitialized )
 				{
-					bool converged = false;
-					for( unsigned int i = 0; i < _numOptimizerSteps; i++ )
+					if( span > _minOptimizeTime )
 					{
-						converged = _clipOptimizer->Optimize();
+						epsInitialized = true;
+						ROS_INFO_STREAM( "Episode buffer filled. Starting optimization." );
 					}
-					PublishParams();
-					if( converged )
+					else
 					{
-						ROS_INFO_STREAM( "Optimizer has converged. Saving..." );
-						break;
+						ROS_INFO_STREAM( "Span: " << span );
+						ros::Duration( 1.0 ).sleep();
+						continue;
 					}
+				}
+
+				while( _clipOptimizer->NumEpisodes() > 0 && span > _maxEpisodeSpan )
+				{
+					// ROS_INFO_STREAM( "Span: " << span << " greater than max. Trimming oldest episode." );
+					_clipOptimizer->RemoveEarliestEpisode();
+					earliestTime = _clipOptimizer->GetEarliestTime();
+					span = (now - earliestTime).toSec();
+				}
+
+				if( _clipOptimizer->NumEpisodes() == 0 )
+				{
+					ros::Duration( 1.0 ).sleep();
+					continue;
+				}
+
+				// if( _clipOptimizer->NumEpisodes() >= _minOptimizeSize )
+
+				bool converged = false;
+				for( unsigned int i = 0; i < _numOptimizerSteps; i++ )
+				{
+					converged = _clipOptimizer->Optimize();
+				}
+				if( converged )
+				{
+					ROS_INFO_STREAM( "Optimizer has converged. Saving..." );
+					break;
 				}
 				PrintStatus();
 				PublishStatus();
+				if( _clearAfterOptimize )
+				{
+					epsInitialized = false;
+					ROS_INFO_STREAM( "Clearing episodes..." );
+					while( _clipOptimizer->NumEpisodes() > 0 )
+					{
+						_clipOptimizer->RemoveEarliestEpisode();
+					}
+					_dataBuffer.Clear();
+				}
+
+
 			}
 			SaveParameters();
 			SaveLog();
@@ -468,6 +521,7 @@ private:
 		ROS_INFO_STREAM( "Has " << _clipOptimizer->NumEpisodes() << " episodes." );
 		ROS_INFO_STREAM( "Total cost: " << cost << std::endl );
 		ROS_INFO_STREAM( "Message buffer size: " << _dataBuffer.Size() );
+		ROS_INFO_STREAM( "VO: " << std::endl << _estRegistry["vo"].estimator->GetModule().dReg );
 	}
 
 	void ProcessBuffer()
@@ -500,7 +554,8 @@ private:
 				_clipOptimizer->AddUpdate( info, 
 				                           features, 
 				                           sourceName, 
-				                           _estRegistry[sourceName].weight );
+				                           _estRegistry[sourceName].weight,
+				                           msg.header.stamp );
 			}
 		}
 	}

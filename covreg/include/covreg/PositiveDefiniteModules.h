@@ -1,7 +1,8 @@
 #pragma once
 
+#include <percepto/compo/LinearRegressor.hpp>
 #include <percepto/compo/ConstantRegressor.hpp>
-#include <percepto/compo/ExponentialWrapper.hpp>
+#include <percepto/compo/HingeExponentialWrapper.hpp>
 #include <percepto/compo/OffsetWrapper.hpp>
 #include <percepto/compo/ModifiedCholeskyWrapper.hpp>
 #include <percepto/neural/NetworkTypes.h>
@@ -53,7 +54,7 @@ public:
 
 	percepto::ConstantVectorRegressor lReg;
 	percepto::ConstantVectorRegressor dReg;
-	percepto::ExponentialWrapper<VectorType> expModule;
+	percepto::HingeExponentialWrapper<VectorType> expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 
@@ -81,6 +82,47 @@ private:
 	percepto::Sink<VectorType> _inputPort;
 };
 
+class LinearPosDefModule
+: public PosDefModule
+{
+public:
+
+	typedef percepto::Source<VectorType> InputSourceType;
+	typedef percepto::Source<MatrixType> OutputSourceType;
+	typedef percepto::Sink<MatrixType> SinkType;
+
+	typedef std::shared_ptr<LinearPosDefModule> Ptr;
+
+	percepto::TerminalSource<VectorType> dInput;
+	percepto::ConstantVectorRegressor lReg;
+	percepto::LinearRegressor dReg;
+	percepto::HingeExponentialWrapper<VectorType> expModule;
+	percepto::ModifiedCholeskyWrapper psdModule;
+	percepto::OffsetWrapper<MatrixType> pdModule;
+
+	LinearPosDefModule( unsigned int inputDim, 
+	                     unsigned int matDim );
+
+	// Copy assignment rewires all connections and should result in
+	// shared parameters with the original
+	LinearPosDefModule( const LinearPosDefModule& other );
+
+	virtual percepto::ParameterWrapper::Ptr CreateParameters();
+
+	virtual void SetSource( InputSourceType* s );
+
+	virtual void Invalidate();
+
+	virtual void Foreprop();
+
+	virtual void BackpropImplementation( const MatrixType& nextDodx );
+
+private:
+
+	percepto::Sink<VectorType> _inputPort;
+
+};
+
 class VarReLUPosDefModule
 : public PosDefModule
 {
@@ -95,7 +137,8 @@ public:
 	percepto::TerminalSource<VectorType> dInput;
 	percepto::ConstantVectorRegressor lReg;
 	percepto::ReLUNet dReg;
-	percepto::ExponentialWrapper<VectorType> expModule;
+	// percepto::PerceptronNet dReg;
+	percepto::HingeExponentialWrapper<VectorType> expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 

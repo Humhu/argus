@@ -4,7 +4,7 @@
 
 #include "argus_utils/utils/MatrixUtils.h"
 
-#define VAR_RAND_RANGE (1E-1)
+#define VAR_RAND_RANGE (1E-3)
 
 using namespace covreg;
 
@@ -27,7 +27,7 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
 	_lParams = _psd.lReg.CreateParameters();
 	_dParams = _psd.dReg.CreateParameters();
 	_params = std::make_shared<percepto::ParameterWrapper>();
-	// _params->AddParameters( _lParams );
+	// _params->AddParameters( _lParams ); // TODO
 	_params->AddParameters( _dParams );
 }
 
@@ -70,6 +70,12 @@ unsigned int CovarianceEstimator::InputDim() const { return _inDim; }
 
 unsigned int CovarianceEstimator::OutputDim() const { return _outDim; }
 
+void CovarianceEstimator::ZeroParams()
+{
+	VectorType varParams = VectorType::Zero( _params->ParamDim() );
+	_params->SetParamsVec( varParams );
+}
+
 void CovarianceEstimator::RandomizeVarianceParams()
 {
 	VectorType varParams( _dParams->ParamDim() );
@@ -80,6 +86,7 @@ void CovarianceEstimator::RandomizeVarianceParams()
 void CovarianceEstimator::SetVarianceOffsets( const VectorType& offs )
 {
 	_psd.dReg.SetOutputOffsets( offs );
+	// _psd.dReg.SetOffsets( offs );
 }
 
 void CovarianceEstimator::ZeroCorrelationParams()

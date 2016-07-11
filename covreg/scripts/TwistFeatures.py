@@ -19,13 +19,9 @@ class TwistFeaturePublisher:
         descriptions = [ 'x_vel', 'y_vel', 'z_vel',
                          'roll_vel', 'pitch_vel', 'yaw_vel' ]
         
-        self.abs_val = rospy.get_param( '~absolute_value' )
-
-        self.offset = np.array( rospy.get_param( '~offset' ) )
-
         self.two_dimensional = rospy.get_param( '~two_dimensional' )
         if self.two_dimensional:
-            feature_dim = 3
+            feature_dim = 6
         else:
             feature_dim = 6
 
@@ -42,6 +38,9 @@ class TwistFeaturePublisher:
             out.features = ( tw.linear.x,
                              tw.linear.y,
                              tw.angular.z )
+            # vel = np.array( [tw.linear.x, tw.linear.y] )
+            # out.features = ( np.linalg.norm( vel ),
+            #                  tw.angular.z )
         else:
             out.features = ( tw.linear.x,
                              tw.linear.y,
@@ -49,10 +48,6 @@ class TwistFeaturePublisher:
                              tw.angular.x,
                              tw.angular.y,
                              tw.angular.z )
-        if self.abs_val:
-            out.features = np.abs( np.array( out.features ) )
-
-        out.features = out.features + self.offset
 
         self.feat_tx.publish( out )
 

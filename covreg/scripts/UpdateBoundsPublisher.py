@@ -19,7 +19,7 @@ class UpdateBoundsPublisher:
         obs = np.array( update.observation )
         R = MatrixUtils.MsgToMatrix( update.observation_cov )
         variances = np.diag ( R )
-        three_std_devs = 3*np.sqrt( variances )
+        three_std_devs = np.sqrt( variances )
         
         out = FilterUpdateBounds()
         out.header = update.header

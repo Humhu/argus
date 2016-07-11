@@ -1,3 +1,4 @@
 # Service to reset a filter
 float64 time_to_wait
+time filter_time
 ---

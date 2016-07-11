@@ -21,13 +21,12 @@ namespace argus
 // TODO Get rid of this? There aren't that many parameters
 struct InnovationClipParameters
 {
-	unsigned int numEpisodesToKeep;
 	unsigned int maxEpisodeLength;
 	double l2Weight;
 	unsigned int batchSize;
 
 	InnovationClipParameters()
-	: numEpisodesToKeep( 50 ), maxEpisodeLength( 10 ),
+	: maxEpisodeLength( 10 ),
 	l2Weight( 1E-9 ), batchSize( 30 ) {}
 };
 
@@ -44,10 +43,12 @@ public:
 	void AddPredict( const PredictInfo& info, const VectorType& input );
 
 	bool AddUpdate( const UpdateInfo& info, const VectorType& input,
-	                const std::string& name, double weight );
+	                const std::string& name, double weight, const ros::Time& stamp );
 
 	// Terminates the current episode and starts a new one
 	void BreakCurrentEpisode();
+	void RemoveEarliestEpisode();
+	ros::Time GetEarliestTime();
 
 	void InitializeOptimization( const percepto::SimpleConvergenceCriteria& criteria,
 	                             const percepto::AdamParameters& params );
@@ -78,7 +79,6 @@ private:
 	// The optimization problem
 	InnovationLikelihoodProblem _problem;
 	
-	unsigned int _maxNumEpisodes;
 	unsigned int _maxEpisodeLength;
 
 	// All parameters from optimized estimators

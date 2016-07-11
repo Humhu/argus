@@ -27,8 +27,8 @@ class OdometryBoundsPublisher:
                   odom.twist.twist.angular.y,
                   odom.twist.twist.angular.z ]
         std_devs = [ sqrt( odom.twist.covariance[i]) for i in self.inds ]
-        out.twist_upper = [ u + 3*s for (u,s) in zip(means, std_devs) ]
-        out.twist_lower = [ u - 3*s for (u,s) in zip(means, std_devs) ]
+        out.twist_upper = [ u + s for (u,s) in zip(means, std_devs) ]
+        out.twist_lower = [ u - s for (u,s) in zip(means, std_devs) ]
         self.bounds_pub.publish( out )
 
 if __name__ == '__main__':

@@ -12,7 +12,6 @@ InnovationClipOptimizer::InnovationClipOptimizer( CovarianceEstimator& qReg,
                                                   const InnovationClipParameters& params )
 : _currentEpisode( nullptr ), _transReg( qReg ), 
 _problem( &_paramWrapper, params.l2Weight, params.batchSize ),
-_maxNumEpisodes( params.numEpisodesToKeep ),
 _maxEpisodeLength( params.maxEpisodeLength )
 {
 	_paramWrapper.AddParameters( qReg.GetParamSet() );
@@ -34,10 +33,26 @@ void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
 	_predBuffer.emplace_back( info, input );
 }
 
+ros::Time InnovationClipOptimizer::GetEarliestTime()
+{
+	KalmanFilterEpisode* earliest = _problem.GetOldestEpisode();
+	if( !earliest )
+	{
+		return ros::Time::now();
+	}
+	return earliest->startTime;
+}
+
+void InnovationClipOptimizer::RemoveEarliestEpisode()
+{
+	_problem.RemoveOldestEpisode();
+}
+
 bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
                                          const VectorType& input,
                                          const std::string& name,
-                                         double scale )
+                                         double scale,
+                                         const ros::Time& stamp )
 {
 	WriteLock lock( _mutex );
 
@@ -53,18 +68,14 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 		return false;
 	}
 
+	_currentEpisode = _problem.GetCurrentEpisode();
 	if( _currentEpisode == nullptr ||
 	    _currentEpisode->NumUpdates() >= _maxEpisodeLength )
 	{
 		std::pair<PredictInfo,VectorType>& item = _predBuffer.front();
 		PredictInfo& info = item.first;
-		_problem.EmplaceEpisode( info.xpre, info.Spre );
+		_problem.EmplaceEpisode( info.xpre, info.Spre, stamp );
 		_currentEpisode = _problem.GetCurrentEpisode();
-	}
-
-	if( _problem.NumEpisodes() > _maxNumEpisodes )
-	{
-		_problem.RemoveOldestEpisode();
 	}
 
 	for( unsigned int i = 0; i < _predBuffer.size(); i++ )
@@ -88,7 +99,8 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 	                               est.GetModule(),
 	                               input,
 	                               info.observation,
-	                               info.H );
+	                               info.H ,
+	                               info.innovation );
 	return true;
 }
 
@@ -133,8 +145,8 @@ double InnovationClipOptimizer::CalculateCost()
 {
 	WriteLock lock( _mutex );
 	_problem.Invalidate();
-	_problem.ForepropAll();
-	return _problem.loss.ParentCost::GetOutput();
+	_problem.Foreprop();
+	return _problem.loss.GetOutput();
 }
 
 void InnovationClipOptimizer::Print( std::ostream& os )

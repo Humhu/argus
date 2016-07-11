@@ -63,9 +63,11 @@ std::ostream& operator<<( std::ostream& os,
 struct KalmanFilterUpdateModule
 {
 	// State
-	percepto::TerminalSource<VectorType> y;
-	percepto::VectorTransformWrapper ypred;
-	percepto::DifferenceWrapper<VectorType> innov;
+	// percepto::TerminalSource<VectorType> y;
+	// percepto::VectorTransformWrapper ypred;
+	// percepto::DifferenceWrapper<VectorType> innov;
+
+	percepto::TerminalSource<VectorType> finnov;
 
 	// Vinv * v
 	percepto::VectorProductWrapper Vinvv;
@@ -122,7 +124,8 @@ struct KalmanFilterUpdateModule
 	                          const CovarianceEstimator::ModuleType& r,
 	                          const VectorType& input,
 	                          const VectorType& obs,
-	                          const MatrixType& H );
+	                          const MatrixType& H,
+	                          const VectorType& inno );
 
 	percepto::Source<VectorType>* GetTailState();
 	percepto::Source<MatrixType>* GetTailCov();

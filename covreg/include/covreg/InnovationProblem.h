@@ -35,6 +35,8 @@ struct InnovationLikelihoodProblem
 
 	size_t NumEpisodes() const;
 
+	KalmanFilterEpisode* GetOldestEpisode();
+
 	KalmanFilterEpisode* GetCurrentEpisode();
 
 	const KalmanFilterEpisode* GetCurrentEpisode() const;

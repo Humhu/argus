@@ -19,6 +19,7 @@ public:
 	/*! \brief Construct an estimator from the given parameter message. */
 	// CovarianceEstimator( const covreg::CovarianceEstimatorInfo& info );
 
+	// typedef LinearPosDefModule ModuleType;
 	typedef VarReLUPosDefModule ModuleType;
 	// typedef ConstantPosDefModule ModuleType;
 
@@ -39,12 +40,13 @@ public:
 	unsigned int InputDim() const;
 	unsigned int OutputDim() const;
 
+	void ZeroParams();
 	void RandomizeVarianceParams();
 	void ZeroCorrelationParams();
 	void SetVarianceOffsets( const VectorType& v );
 	void EnableCorrelationLearning();
 
-	MatrixType Evaluate( const VectorType& input ); 
+	MatrixType Evaluate( const VectorType& input );
 
 	covreg::CovarianceEstimatorInfo GetParamsMsg() const;
 	void SetParamsMsg( const covreg::CovarianceEstimatorInfo& msg );

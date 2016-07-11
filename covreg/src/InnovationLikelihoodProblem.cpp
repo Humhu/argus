@@ -16,6 +16,7 @@ InnovationLikelihoodProblem::InnovationLikelihoodProblem( percepto::Parameters* 
 
 void InnovationLikelihoodProblem::RemoveOldestEpisode()
 {
+	if( episodes.empty() ) { return; }
 	loss.RemoveOldestSource();
 	episodes.pop_front();
 }
@@ -24,6 +25,14 @@ size_t InnovationLikelihoodProblem::NumEpisodes() const
 {
 	return episodes.size(); 
 }
+
+KalmanFilterEpisode* 
+InnovationLikelihoodProblem::GetOldestEpisode()
+{
+	if( episodes.empty() ) { return nullptr; }
+	return &episodes.front();
+}
+
 
 KalmanFilterEpisode* 
 InnovationLikelihoodProblem::GetCurrentEpisode()
@@ -50,6 +59,7 @@ void InnovationLikelihoodProblem::Invalidate()
 
 void InnovationLikelihoodProblem::Foreprop()
 {
+	// clock_t start = clock();
 	regularizer.Foreprop();
 
 	loss.Resample();
@@ -58,6 +68,8 @@ void InnovationLikelihoodProblem::Foreprop()
 	{
 		episodes[ind].Foreprop();
 	}
+	// clock_t finish = clock();
+	// std::cout << "Foreprop took: " << ((double) finish - start)/CLOCKS_PER_SEC << std::endl;
 }
 
 void InnovationLikelihoodProblem::ForepropAll()
@@ -72,7 +84,10 @@ void InnovationLikelihoodProblem::ForepropAll()
 
 void InnovationLikelihoodProblem::Backprop()
 {
+	// clock_t start = clock();
 	objective.Backprop( MatrixType::Identity(1,1) );
+	// clock_t finish = clock();
+	// std::cout << "Problem backprop took: " << ((double) finish - start)/CLOCKS_PER_SEC << std::endl;
 }
 
 double InnovationLikelihoodProblem::GetOutput() const

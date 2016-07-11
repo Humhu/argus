@@ -21,7 +21,10 @@ class BagLooper:
         reset_srv = rospy.get_param( '~reset_service' )
         rospy.wait_for_service( reset_srv )
         self.reset_service = rospy.ServiceProxy( reset_srv, ResetFilter )
-        self.reset_time = rospy.get_param( '~reset_time', 0.0 )
+        self.reset_lead = rospy.Duration( rospy.get_param( '~reset_lead', 0.0 ) )
+        self.sample_random = rospy.get_param( '~sample_random', False )
+        self.offset_random = rospy.get_param( '~offset_random', False )
+        self.playback_length = rospy.Duration( rospy.get_param( '~playback_length', 0.0 ) )
 
         self.start_offset = rospy.Duration( rospy.get_param( '~start_offset', 0.0 ) )
         self.end_offset = rospy.Duration( rospy.get_param( '~end_offset', 0.0 ) )
@@ -29,10 +32,18 @@ class BagLooper:
         # TODO Debug this!
         self.time_rate = 1.0 / rospy.get_param( '~playback_speed', 1.0 )
 
+        self.bags = {}
+        self.times = {}
+
         for path in self.bag_paths:
             bag = rosbag.Bag( path )
-            rospy.loginfo( 'Checking bag: ' + path )
-            
+
+            rospy.loginfo( 'Parsing bag: ' + path )
+            self.bags[path] = list( bag.read_messages() )
+            rospy.loginfo( 'Parsing complete.' )
+
+            self.times[path] = ( bag.get_start_time(), bag.get_end_time() )
+
             for (topic,topicInfo) in bag.get_type_and_topic_info().topics.iteritems():
                 msg_class = roslib.message.get_message_class( topicInfo.msg_type )
                 
@@ -47,55 +58,82 @@ class BagLooper:
 
         zero_dur = rospy.Duration( 0 )
 
+        ind = 0
         while not rospy.is_shutdown():
 
-            self.reset_service( self.reset_time )
-
-        #for path in self.bag_paths:
-            path = random.sample( self.bag_paths, 1 )[0]
-            rospy.loginfo( 'Playing bag: ' + path )
-            bag = rosbag.Bag( path )
-            
-            bag_start = rospy.Time.from_sec( bag.get_start_time() )
-            message_start = bag_start + self.start_offset
-            bag_end = rospy.Time.from_sec( bag.get_end_time() )
-            bag_duration = bag_end - bag_start
-
-            proportion = random.random()
-            print proportion
-            trunc_bag_end = rospy.Duration( proportion * bag_duration.to_sec() ) + bag_start
-
-            message_end = trunc_bag_end - self.end_offset
-
             round_start = rospy.Time.now()
+            rospy.loginfo( 'Round start: %f', round_start.to_sec() )
+
+            self.reset_service( 0.0, round_start - self.reset_lead )
+
+            if self.sample_random:
+                path = random.sample( self.bag_paths, 1 )[0]
+            else:
+                if ind >= len( self.bag_paths ):
+                    ind = 0
+                path = self.bag_paths[ind]
+                ind += 1
+
+            rospy.loginfo( 'Playing bag: ' + path )
+            #bag = rosbag.Bag( path )
+            bag = self.bags[path]
+
+            # bag_start = rospy.Time.from_sec( bag.get_start_time() )
+            # bag_end = rospy.Time.from_sec( bag.get_end_time() )
+            ( bag_start, bag_end ) = self.times[path]
+            bag_start = rospy.Time.from_sec( bag_start )
+            bag_end = rospy.Time.from_sec( bag_end )
+
+            message_start = bag_start + self.start_offset
+            message_end = bag_end - self.end_offset
+            message_duration = message_end - message_start
+
+            # self.truncate_ratio = 0.0 means we play the whole bag all the time
+            #trunc_duration = rospy.Duration( (1.0 - self.truncate_ratio ) * message_duration )
+            if self.playback_length < message_duration:
+                play_duration = self.playback_length
+            else:
+                play_duration = message_duration
+
+            nonplay_duration = message_duration - play_duration
+            if self.offset_random:
+                offset = rospy.Duration( nonplay_duration.to_sec() * random.random() )
+            else:
+                offset = rospy.Duration( 0 )
+            rospy.loginfo( 'Playing %f seconds offset %f', play_duration.to_sec(), offset.to_sec() )
+            trunc_bag_start = message_start + offset
+            trunc_bag_end = trunc_bag_start + play_duration
+
             last_time = None
-            for topic, msg, t in bag.read_messages():
+            #for (topic, msg, t) in bag.read_messages():
+
+            for (topic, msg, t) in bag:
                 
                 # Try and avoid getting stuck in the publish call and 
                 # timing out on shutdown
                 if rospy.is_shutdown():
                     return
 
-                if t < message_start:
+                if t < trunc_bag_start:
                     continue
-                if t > message_end:
+                if t > trunc_bag_end:
                     break
 
-                time_from_message_start = t - message_start
-
-
+                time_from_trunc_start = t - trunc_bag_start
+                if time_from_trunc_start.to_sec() < 0:
+                    raise RuntimeError('Time less than 0!')
                 try:
-                    msg.header.stamp = time_from_message_start + round_start
+                    msg.header.stamp = time_from_trunc_start + round_start
                 except AttributeError:
                     pass
 
                 curr_from_round_start = rospy.Time.now() - round_start
-                sleep_time = time_from_message_start - curr_from_round_start
+                sleep_time = time_from_trunc_start - curr_from_round_start
                 rospy.sleep( sleep_time )
 
                 self.publishers[ topic ].publish( msg )
 
-            bag.close()
+            # bag.close()
 
 if __name__ == '__main__':
     try:

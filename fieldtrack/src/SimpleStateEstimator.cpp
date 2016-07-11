@@ -42,11 +42,8 @@ FilterStepInfo StampedFilter::PredictUntil( const ros::Time& until )
 	return pmsg;
 }
 
-std::pair<FilterStepInfo,FilterStepInfo> 
-StampedFilter::ProcessUpdate( const FilterUpdate& msg )
+bool StampedFilter::ProcessUpdate( const FilterUpdate& msg, InfoPair& info )
 {
-	std::pair<FilterStepInfo,FilterStepInfo> retPair;
-
 	VectorType z( msg.observation.size() );
 	ParseMatrix( msg.observation, z );
 	MatrixType C = MsgToMatrix( msg.observation_matrix );
@@ -70,16 +67,12 @@ StampedFilter::ProcessUpdate( const FilterUpdate& msg )
 
 	// First predict up to the update time
 	ros::Time updateTime = msg.header.stamp;
-	if( updateTime > filterTime )
+	if( updateTime < filterTime )
 	{
-		retPair.first = PredictUntil( updateTime );
-	}
-	else if( updateTime < filterTime )
-	{
-		ROS_WARN_STREAM( "Update received from before filter time." );
+		ROS_WARN_STREAM( "Update received from before time " << updateTime << " before filter time " << filterTime );
+		return false;
 	}
 
-	FilterStepInfo info;
 	if( hasPosition && !hasOrientation && !hasDerivs )
 	{
 		throw std::runtime_error( "Position only updates are not supported yet." );
@@ -90,11 +83,16 @@ StampedFilter::ProcessUpdate( const FilterUpdate& msg )
 	}
 	else if( hasPosition && hasOrientation && !hasDerivs )
 	{
-		retPair.second = info = PoseUpdate( PoseType( z ), R );
+		PoseType pos( z );
+		if( !CheckPoseUpdate( pos, R ) ) { return false; }
+		info.first = PredictUntil( updateTime );
+		info.second  = PoseUpdate( pos, R );
 	}
 	else if( !hasPosition && !hasOrientation && hasDerivs )
 	{
-		retPair.second = info = DerivsUpdate( z, C, R );
+		if( !CheckDerivsUpdate( z, C, R ) ) { return false; }
+		info.first = PredictUntil( updateTime );
+		info.second = DerivsUpdate( z, C, R );
 	}
 	else if( hasPosition && hasOrientation && hasDerivs )
 	{
@@ -109,9 +107,9 @@ StampedFilter::ProcessUpdate( const FilterUpdate& msg )
 		throw std::runtime_error( "Unsupported update combination." );
 	}
 	
-	retPair.second.header = msg.header;
-	retPair.second.step_num = infoNumber++;
-	return retPair;
+	info.second.header = msg.header;
+	info.second.step_num = infoNumber++;
+	return true;
 }
 
 FilterStepInfo StampedFilter::PoseUpdate( const PoseType& pose, 
@@ -136,6 +134,25 @@ FilterStepInfo StampedFilter::DerivsUpdate( const VectorType& derivs,
 		throw std::runtime_error( "Negatives in covariance diagonal." );
 	}
 	return UpdateToMsg( info );
+}
+
+bool StampedFilter::CheckPoseUpdate( const PoseType& pose, const MatrixType& R )
+{
+	return true; // TODO
+}
+
+bool StampedFilter::CheckDerivsUpdate( const VectorType& derivs,
+                                       const MatrixType& C,
+                                       const MatrixType& R )
+{
+	FilterType::DerivObsMatrix Cderivs = C.rightCols( C.cols() - FilterType::TangentDim );
+	double prob = filter.DerivsLikelihood( derivs, Cderivs, R );
+	bool valid = prob > parent._likelihoodThreshold;
+	if( !valid )
+	{
+		ROS_WARN_STREAM( "Rejecting outlier with likelihood: " << prob );
+	}
+	return valid;
 }
 
 void StampedFilter::EnforceTwoDimensionality()
@@ -178,8 +195,7 @@ Odometry StampedFilter::GetOdomMsg() const
 
 SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle, 
                                             ros::NodeHandle& privHandle )
-: _filter( *this ),
-  _infoNumber( 0 )
+: _filter( *this )
   // _xlTx( "xl_features", 6, {"xl_lin_x", "xl_lin_y", "xl_lin_z",
   //                           "xl_ang_x", "xl_ang_y", "xl_ang_z" } )
 {
@@ -188,6 +204,8 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	double upLag;
 	GetParamRequired( privHandle, "update_lag", upLag );
 	_updateLag = ros::Duration( upLag );
+	GetParam( privHandle, "outlier_likelihood_threshold", _likelihoodThreshold, 
+	          -std::numeric_limits<double>::infinity() );
 
 	// Parse all update sources
 	XmlRpc::XmlRpcValue updateSources;
@@ -248,7 +266,7 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << _initCov );
 
 	// TODO Initial state?
-	WriteLock lock( _filterMutex );
+	WriteLock lock( _mutex );
 	_filter.filter.FullCov() = initCov;
 
 	// NOTE This causes problems when using rosbag play because the sim time doesn't
@@ -281,25 +299,25 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	                                      this );
 }
 
-void SimpleStateEstimator::Reset( double waitTime )
+void SimpleStateEstimator::Reset( double waitTime, const ros::Time& time )
 {
 	ros::Duration( waitTime ).sleep();
 
-	WriteLock block( _bufferMutex );
-	WriteLock flock( _filterMutex );
+	WriteLock lock( _mutex );
 
 	_updateBuffer.clear();
 
 	_filter.filter.Pose() = FilterType::PoseType();
 	_filter.filter.Derivs() = FilterType::DerivsType::Zero();
 	_filter.filter.FullCov() = _initCov;
-	_filter.filterTime = ros::Time::now();
+	_filter.filterTime = time;
+	_filter.infoNumber++;
 }
 
 bool SimpleStateEstimator::ResetFilterCallback( ResetFilter::Request& req,
                                                 ResetFilter::Response& res )
 {
-	Reset( req.time_to_wait );
+	Reset( req.time_to_wait, req.filter_time );
 	return true;
 }
 
@@ -309,7 +327,7 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 	// ros::Duration delay = now - msg->header.stamp;
 	// ROS_INFO_STREAM( "Received update from: " << msg->header.frame_id );
 
-	WriteLock lock( _bufferMutex );
+	WriteLock lock( _mutex );
 
 	FilterUpdate up = *msg;
 	while( _updateBuffer.count(up.header.stamp) > 0 )
@@ -318,6 +336,7 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 		up.header.stamp.nsec += 2; 
 		// ROS_WARN_STREAM( "Measurements with duplicate timestamps!" );
 	}
+	// ROS_INFO_STREAM( "Received stamp: " << up.header.stamp );
 	_updateBuffer[up.header.stamp] = up;
 }
 
@@ -326,28 +345,30 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 	// ROS_INFO_STREAM( "Buffer size: " << _updateBuffer.size() );
 	while( !_updateBuffer.empty() )
 	{
-		WriteLock block( _bufferMutex );
 		// TODO Have external locking semantics here to make this explicit
 		// Filter mutex is acquired by calling method
-		//WriteLock flock( _filterMutex );
+		//WriteLock flock( _mutex );
 		UpdateBuffer::const_iterator firstItem = _updateBuffer.begin();
 		const ros::Time& earliestBufferTime = firstItem->first;
 		if( earliestBufferTime > until ) { break; }
 		
 		const FilterUpdate& msg = firstItem->second;
 		// ROS_INFO_STREAM( "Updating with: " << msg.header.frame_id );
-		std::pair<FilterStepInfo,FilterStepInfo> infoPair = _filter.ProcessUpdate( msg );
-		_stepPub.publish( infoPair.first );
-		_transCovPub.publish( infoPair.first.noiseCov );
-		_stepPub.publish( infoPair.second );
-		
-		_updateBuffer.erase( firstItem );
-
-		if( _usingAdaptive )
+		std::pair<FilterStepInfo,FilterStepInfo> infoPair;
+		if( _filter.ProcessUpdate( msg, infoPair ) )
 		{
-			_Qadapter.ProcessInfo( infoPair.first );
-			_Qadapter.ProcessInfo( infoPair.second );
+			_stepPub.publish( infoPair.first );
+			_transCovPub.publish( infoPair.first.noiseCov );
+			_stepPub.publish( infoPair.second );
+			
+
+			if( _usingAdaptive )
+			{
+				_Qadapter.ProcessInfo( infoPair.first );
+				_Qadapter.ProcessInfo( infoPair.second );
+			}
 		}
+		_updateBuffer.erase( firstItem );
 
 		if( velocityOnly ) { _filter.SquashPoseUncertainty(); }
 		if( twoDimensional ) { _filter.EnforceTwoDimensionality(); }
@@ -392,7 +413,7 @@ MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
-	WriteLock lock( _filterMutex );
+	WriteLock lock( _mutex );
 	if( now < _filter.filterTime )
 	{
 		ROS_WARN_STREAM( "Filter time is ahead of timer callback." );
@@ -423,11 +444,23 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	lock.unlock();
 
 	typedef UpdateBuffer::value_type Item;
+	StampedFilter::InfoPair info;
+	std::vector<ros::Time> toDelete;
 	BOOST_FOREACH( const Item& item, _updateBuffer )
 	{
-		estFilter.ProcessUpdate( item.second );
+		if( item.second.header.stamp < _filter.filterTime )
+		{
+			toDelete.push_back( item.first );
+			continue;
+		}
+		estFilter.ProcessUpdate( item.second, info );
 		if( velocityOnly ) { estFilter.SquashPoseUncertainty(); }
 		if( twoDimensional ) { estFilter.EnforceTwoDimensionality(); }
+	}
+
+	BOOST_FOREACH( const ros::Time& t, toDelete )
+	{
+		_updateBuffer.erase( t );
 	}
 
 	if( now > estFilter.filterTime ) 
