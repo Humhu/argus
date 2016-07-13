@@ -254,7 +254,6 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	}
 
 	// Initialize
-	FilterType::FullCovType initCov;
 	if( !GetMatrixParam<double>( privHandle, "initial_covariance", _initCov ) )
 	{
 		if( !GetDiagonalParam<double>( privHandle, "initial_covariance", _initCov ) )
@@ -267,7 +266,7 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 
 	// TODO Initial state?
 	WriteLock lock( _mutex );
-	_filter.filter.FullCov() = initCov;
+	_filter.filter.FullCov() = _initCov;
 
 	// NOTE This causes problems when using rosbag play because the sim time doesn't
 	// start playing early enough!
