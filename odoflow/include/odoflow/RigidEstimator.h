@@ -18,12 +18,14 @@ public:
 	virtual bool EstimateMotion( const InterestPoints& srcPoints,
 	                             const InterestPoints& dstPoints,
 	                             std::vector<uchar>& inliers,
-	                             PoseSE3& transform );
+	                             PoseSE3& transform,
+	                             PoseSE2& frameTransform );
 	
 private:
 	
 	double scale;
 	double reprojThreshold;
+	int maxIters;
 	
 };
 

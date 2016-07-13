@@ -4,6 +4,7 @@
 
 #include "odoflow/InterestPointDetector.h"
 #include "argus_utils/geometry/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE2.h"
 
 namespace argus
 {
@@ -24,7 +25,8 @@ public:
 	virtual bool EstimateMotion( const InterestPoints& srcPoints,
 	                             const InterestPoints& dstPoints,
 	                             std::vector<uchar>& inliers,
-	                             argus::PoseSE3& transform ) = 0;
+	                             argus::PoseSE3& transform,
+	                             argus::PoseSE2& frameTransform ) = 0;
 
 	/*! \brief Rectifies points into normalized camera coordinates. */
 	// TODO Use undistortion parameters?

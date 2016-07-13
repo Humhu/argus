@@ -10,16 +10,19 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 {
 	ph.param<double>( "estimator/scale", scale, 1.0 );
 	ph.param<double>( "estimator/reprojection_threshold", reprojThreshold, 3.0 );
+	ph.param<int> ( "estimator/max_iters", maxIters, 2000 );
 }
 
 bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
                                      const InterestPoints& dstPoints,
                                      std::vector<uchar>& inliers,
-                                     PoseSE3& transform )
+                                     PoseSE3& transform,
+                                     PoseSE2& frameTransform )
 {
        
 
-	cv::Mat Hxest = cv::findHomography( srcPoints, dstPoints, inliers, cv::RANSAC, reprojThreshold );
+	cv::Mat Hxest = cv::findHomography( srcPoints, dstPoints, cv::RANSAC, 
+	                                    reprojThreshold, inliers, maxIters );
 
 	if( Hxest.empty() )
 	{
@@ -36,7 +39,7 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 	      }
 	  }
 
-        cv::Mat Hest = cv::estimateRigidTransform( srcInliers, dstInliers, false );
+	cv::Mat Hest = cv::estimateRigidTransform( srcInliers, dstInliers, false );
 	
 	Eigen::Matrix<double,2,3> Ab = MatToEigen<double,2,3>( Hest );
 	
@@ -45,14 +48,19 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 	Eigen::JacobiSVD<Eigen::Matrix2d> svd( A, Eigen::ComputeFullU | Eigen::ComputeFullV );
 	Eigen::Matrix2d R = svd.matrixU() * svd.matrixV().transpose();
 	
-	ROS_INFO_STREAM( "Ab: " << std::endl << Ab );
-	ROS_INFO_STREAM( "R: " << std::endl << R );
-	
+	// ROS_INFO_STREAM( "Ab: " << std::endl << Ab );
+	// ROS_INFO_STREAM( "R: " << std::endl << R );
+
+	MatrixType h = MatrixType::Identity(3,3);
+	h.block<2,2>(0,0) = R;
+	h(0,2) = Ab(0,2);
+	h(1,2) = Ab(1,2);
+	frameTransform = PoseSE2(h);
+
 	Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
 	H.block<2,2>(1,1) = R;
 	H(1,3) = -Ab(0,2) * scale; // Image x corresponds to camera -y
 	H(2,3) = -Ab(1,2) * scale; // Image y corresponds to camera -z
-	
 	transform = PoseSE3(H);
 	return true;
 	

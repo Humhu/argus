@@ -2,6 +2,7 @@
 
 #include <opencv2/core.hpp>
 #include <image_geometry/pinhole_camera_model.h>
+#include "argus_utils/geometry/PoseSE2.h"
 
 namespace argus
 {
@@ -14,5 +15,9 @@ bool UndistortPoints( const InterestPoints& points,
                       const image_geometry::PinholeCameraModel& model,
                       bool undistort, bool normalize,
                       InterestPoints& undistorted );
+
+void TransformPoints( const InterestPoints& points,
+                      const PoseSE2& trans,
+                      InterestPoints& transformed );
 
 }

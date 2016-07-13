@@ -27,5 +27,25 @@ bool UndistortPoints( const InterestPoints& points,
 	                     distortionCoeffs, cv::noArray(), outputCameraMatrix );
 	return true;
 }
+
+void TransformPoints( const InterestPoints& points,
+                      const PoseSE2& trans,
+                      InterestPoints& transformed )
+{
+	if( points.size() == 0 ) { return; }
+	Eigen::Matrix<double, 2, Eigen::Dynamic> pts( 2, points.size() );
+	for( unsigned int i = 0; i < points.size(); ++i )
+	{
+		pts(0,i) = points[i].x;
+		pts(1,i) = points[i].y;
+	}
+
+	pts = trans.ToTransform() * pts;
+	transformed.reserve( points.size() );
+	for( unsigned int i = 0; i < points.size(); ++i )
+	{
+		transformed.emplace_back( pts(0,i), pts(1,i) );
+	}
+}
 	
 }

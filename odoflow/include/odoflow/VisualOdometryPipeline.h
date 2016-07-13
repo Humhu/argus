@@ -10,6 +10,7 @@
 #include "odoflow/MotionEstimator.h"
 
 #include "argus_utils/geometry/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE2.h"
 
 #include "lookup/LookupInterface.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
@@ -75,7 +76,12 @@ private:
 		InterestPoints keyframePointsImage;
 		ros::Time lastPointsTimestamp;
 		InterestPoints lastPointsImage;
+		InterestPoints lastPointsPredicted;
 		argus::PoseSE3 lastPointsPose;
+		argus::PoseSE2 lastPixelsPose;
+		argus::PoseSE2::TangentVector lastVelocity;
+
+		CameraRegistration() : lastVelocity( argus::PoseSE2::TangentVector::Zero() ) {}
 	};
 	std::unordered_map<std::string, CameraRegistration> cameraRegistry;
 	

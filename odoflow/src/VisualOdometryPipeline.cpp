@@ -13,6 +13,8 @@
 #include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
 
+#include "camplex/CameraCalibration.h"
+
 #include <geometry_msgs/TwistWithCovarianceStamped.h>
 
 #include <opencv2/highgui/highgui.hpp>
@@ -110,7 +112,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		return;
 	}
 	
-	// Get the camera registration
+	// Get the camera reg
 	const std::string& cameraName = msg->header.frame_id;
 	if( cameraRegistry.count( cameraName ) == 0 ) { 
 		if( !RegisterCamera( cameraName ) )
@@ -119,26 +121,41 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 			return;
 		}
 	}
-	CameraRegistration& registration = cameraRegistry[ cameraName ];
+	CameraRegistration& reg = cameraRegistry[ cameraName ];
 	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
 	cv::Mat currentFrame;
 	cv::cvtColor( msgFrame, currentFrame, CV_BGR2GRAY );
 	ros::Time now = msg->header.stamp;
 	
 	// Initialization catch
-	if( registration.keyframe.empty() )
+	if( reg.keyframe.empty() )
 	{
 	  ROS_INFO_STREAM( "Initializing keyframe." );
-		SetKeyframe( registration, currentFrame, cameraModel, now );
+		SetKeyframe( reg, currentFrame, cameraModel, now );
 		return;
 	}
-	
+
+	// Predict point motion
+	// InterestPoints predictedPoints;
+	double dt = ( msg->header.stamp - reg.lastPointsTimestamp ).toSec();
+	// PoseSE2 disp = PoseSE2::Exp( -reg.lastVelocity*dt );
+	// std::cout << "vel: " << reg.lastVelocity.transpose() << std::endl;
+	// std::cout << "displacement: " << disp << std::endl;
+	// TransformPoints( reg.lastPointsImage, disp, predictedPoints );
+	// reg.lastPointsPredicted = predictedPoints;
+
+	// for( unsigned int i = 0; i < reg.lastPointsImage.size(); ++i )
+	// {
+	// 	std::cout << "prev: " << reg.lastPointsImage[i].x << ", " << reg.lastPointsImage[i].y << std::endl;
+	// 	std::cout << "est: " << predictedPoints[i].x << ", " << predictedPoints[i].y << std::endl;
+	// }
+
 	// Track interest points into current frame
 	InterestPoints keyframeInliersImage, currentInliersImage;
-	ROS_INFO_STREAM( "Keyframe points size: " << registration.keyframePointsImage.size() );
-	ROS_INFO_STREAM( "Last points size: " << registration.lastPointsImage.size() );
-	tracker->TrackInterestPoints( registration.keyframe, currentFrame, 
-	                              registration.keyframePointsImage, registration.lastPointsImage,
+	ROS_INFO_STREAM( "Keyframe points size: " << reg.keyframePointsImage.size() );
+	ROS_INFO_STREAM( "Last points size: " << reg.lastPointsImage.size() );
+	tracker->TrackInterestPoints( reg.keyframe, currentFrame, 
+	                              reg.keyframePointsImage, reg.lastPointsImage,
 	                              keyframeInliersImage, currentInliersImage );
 	
 	// Failure if not enough inliers in tracking
@@ -146,7 +163,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	if( numInliers < minNumInliers )
 	{
 		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers, less than min " << minNumInliers );
-		SetKeyframe( registration, currentFrame, cameraModel, now );
+		SetKeyframe( reg, currentFrame, cameraModel, now );
 		return;
 	}
 	ROS_INFO_STREAM( "Tracked " << numInliers << " inliers." );
@@ -166,12 +183,13 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 
 	// Estimate motion between frames
 	PoseSE3 currentPose;
+	PoseSE2 pixPose;
 	std::vector<uchar> motionInliers;
 	if( !estimator->EstimateMotion( currentPointsNormalized, keyframePointsNormalized, 
-	                                motionInliers, currentPose ) )
+	                                motionInliers, currentPose, pixPose ) )
 	{
 		ROS_WARN_STREAM( "Could not estimate motion between frames. Resetting keyframe." );
-		SetKeyframe( registration, currentFrame, cameraModel, now );
+		SetKeyframe( reg, currentFrame, cameraModel, now );
 		return;
 	}
 	
@@ -184,17 +202,32 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		keyframeMotionInliers.push_back( keyframeInliersImage[i] );
 		currentMotionInliers.push_back( currentInliersImage[i] );
 	}
-	registration.keyframePointsImage = keyframeMotionInliers;
+	reg.keyframePointsImage = keyframeMotionInliers;
+	ROS_INFO_STREAM( "Kept " << currentMotionInliers.size() << " inliers after motion estimation." );
 	
 	// Have to calculate dt before getting timestamp
-	double dt = ( now - registration.lastPointsTimestamp ).toSec();
-    PoseSE3 cameraDisplacement = registration.lastPointsPose.Inverse() * currentPose;
+    PoseSE3 cameraDisplacement = reg.lastPointsPose.Inverse() * currentPose;
 	const ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
-	ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
-	ROS_INFO_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
+	// ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
+	// ROS_INFO_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
 
+	// camplex::CameraCalibration cal( "", *info_msg );
+	// MatrixType intrinsics = MatrixType::Identity(3,3);
+	// intrinsics(0,0) = cal.GetFx();
+	// intrinsics(1,1) = cal.GetFy();
+	// intrinsics(0,2) = cal.GetCx();
+	// intrinsics(1,2) = cal.GetCy();
+	// std::cout << "normalized pixel pose: " << pixPose << std::endl;
+	// MatrixType p = pixPose.ToTransform().matrix() * intrinsics;
+	// PoseSE2 pp( p );
+	// std::cout << "raw pixel pose: " << pp << std::endl;
+	// std::cout << "last pixel pose: " << reg.lastPixelsPose << std::endl;
+	// PoseSE2 pixelDisplacement = reg.lastPixelsPose.Inverse() * pp;
+	// reg.lastVelocity = PoseSE2::Log( pixelDisplacement ) / dt;
+	// std::cout << "pixel vel: " << reg.lastVelocity.transpose() << std::endl;
+	// reg.lastPixelsPose = pp;
 
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = now;
@@ -203,22 +236,23 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	SerializeMatrix( obsCovariance, tmsg.twist.covariance );
 	dispPub.publish( tmsg );
 	
-	registration.lastPointsTimestamp = now;
-	registration.lastPointsImage = currentMotionInliers;
-	registration.lastPointsPose = currentPose;
+	// Update registration
+	reg.lastPointsTimestamp = now;
+	reg.lastPointsImage = currentMotionInliers;
+	reg.lastPointsPose = currentPose;
 
-	if( showOutput ) { VisualizeFrame( registration, currentFrame, now ); }
+	if( showOutput ) { VisualizeFrame( reg, currentFrame, now ); }
 	
 	// If we don't have enough inlier interest points, redetect on our keyframe
-	if( registration.keyframePointsImage.size() < redetectionThreshold )
+	if( reg.keyframePointsImage.size() < redetectionThreshold )
 	{
 		ROS_INFO_STREAM( "Not enough keyframe points. Resetting keyframe." );
-		SetKeyframe( registration, currentFrame, cameraModel, now );
+		SetKeyframe( reg, currentFrame, cameraModel, now );
 	}
        
 }
 	
-void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& registration, 
+void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg, 
                                              const cv::Mat& frame,
                                              const ros::Time& timestamp )
 {
@@ -227,21 +261,26 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& registrat
 	cv::Mat visImage( frame.rows, frame.cols*2, frame.type() );
 	cv::Mat visLeft( visImage, cv::Rect( 0, 0, frame.cols, frame.rows) );
 	cv::Mat visRight( visImage, cv::Rect( frame.cols, 0, frame.cols, frame.rows ) );
-	registration.keyframe.copyTo( visLeft );
+	reg.keyframe.copyTo( visLeft );
 	frame.copyTo( visRight );
 	
 	// Display interest points
 	cv::Point2d offset( frame.cols, 0 );
-	for( unsigned int i = 0; i < registration.keyframePointsImage.size(); i++ )
+	for( unsigned int i = 0; i < reg.keyframePointsImage.size(); i++ )
 	{
-		cv::circle( visLeft, registration.keyframePointsImage[i], 3, cv::Scalar(0), -1, 8 );
-		cv::circle( visLeft, registration.keyframePointsImage[i], 2, cv::Scalar(255), -1, 8 );
+		cv::circle( visLeft, reg.keyframePointsImage[i], 3, cv::Scalar(0), -1, 8 );
+		cv::circle( visLeft, reg.keyframePointsImage[i], 2, cv::Scalar(255), -1, 8 );
 	}
-	for( unsigned int i = 0; i < registration.lastPointsImage.size(); i++ )
+	for( unsigned int i = 0; i < reg.lastPointsImage.size(); i++ )
 	{
-		cv::circle( visRight, registration.lastPointsImage[i], 3, cv::Scalar(0), -1, 8 );
-		cv::circle( visRight, registration.lastPointsImage[i], 2, cv::Scalar(255), -1, 8 );
+		cv::circle( visRight, reg.lastPointsImage[i], 3, cv::Scalar(0), -1, 8 );
+		cv::circle( visRight, reg.lastPointsImage[i], 2, cv::Scalar(255), -1, 8 );
 	}
+	// for( unsigned int i = 0; i < reg.lastPointsPredicted.size(); i++ )
+	// {
+	// 	cv::circle( visRight, reg.lastPointsPredicted[i], 3, cv::Scalar(0), -1, 8 );
+	// 	cv::circle( visRight, reg.lastPointsPredicted[i], 2, cv::Scalar(128), -1, 8 );
+	// }
 	
 	// TODO?
 	// Display linear velocity vector
@@ -264,7 +303,7 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& registrat
 	
 	std_msgs::Header header;
 	header.stamp = timestamp;
-	header.frame_id = registration.name;
+	header.frame_id = reg.name;
 	cv_bridge::CvImage vimg( header, "mono8", visImage );
 	debugPub.publish( vimg.toImageMsg() );
 }
@@ -279,28 +318,29 @@ bool VisualOdometryPipeline::RegisterCamera( const std::string& name )
 		if( !extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
 	}
 	
-	CameraRegistration registration;
-	registration.name = name;
-	cameraRegistry[ name ] = registration;
+	CameraRegistration reg;
+	reg.name = name;
+	cameraRegistry[ name ] = reg;
 	return true;
 }
 
-void VisualOdometryPipeline::SetKeyframe( CameraRegistration& registration,
+void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
                                           const cv::Mat& frame,
                                           const image_geometry::PinholeCameraModel& model,
                                           const ros::Time& timestamp )
 {
 	ROS_INFO_STREAM( "Setting keyframe and detecting interest points" );
 	
-	registration.keyframe = frame;
-	registration.keyframeTimestamp = timestamp;
-	registration.lastPointsImage.clear();
-	registration.lastPointsTimestamp = timestamp;
-	registration.lastPointsPose = PoseSE3(); //extrinsicsManager.GetExtrinsics( registration.name ).Inverse(); //PoseSE3();
-	InterestPoints detected = detector->FindInterestPoints( registration.keyframe );
-	UndistortPoints( detected, model, true, false, registration.keyframePointsImage );
-	//registration.keyframePointsImage = detected;
-	ROS_INFO_STREAM( "Found " << registration.keyframePointsImage.size() << " points." );	
+	reg.keyframe = frame;
+	reg.keyframeTimestamp = timestamp;
+	reg.lastPointsImage.clear();
+	//reg.lastDelta = InterestPoint( 0, 0 );
+	reg.lastPointsTimestamp = timestamp;
+	reg.lastPointsPose = PoseSE3(); //extrinsicsManager.GetExtrinsics( reg.name ).Inverse(); //PoseSE3();
+	InterestPoints detected = detector->FindInterestPoints( reg.keyframe );
+	UndistortPoints( detected, model, true, false, reg.keyframePointsImage );
+	//reg.keyframePointsImage = detected;
+	ROS_INFO_STREAM( "Found " << reg.keyframePointsImage.size() << " points." );	
 }
 
 } // end namespace odoflow
