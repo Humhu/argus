@@ -89,10 +89,13 @@ image_transport::CameraSubscriber cameraSub;
 void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
                     const sensor_msgs::CameraInfo::ConstPtr& info )
 {
-	camplex::CameraCalibration cameraModel( "camear", *info );
+	camplex::CameraCalibration cameraModel( "camera", *info );
 	
 	// Detection occurs in grayscale
-	cv::Mat frame = cv_bridge::toCvShare( msg, "mono8" )->image;
+	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
+	cv::Mat frame;
+	cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
+
 	std::vector<AprilTags::TagDetection> tagDetections = detector->extractTags( frame );
 	
 	if( tagDetections.size() == 0 ) { return; }

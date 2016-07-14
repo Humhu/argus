@@ -40,6 +40,10 @@ public:
 	                      bool forceLookup = false,
 	                      const ros::Duration& timeout = ros::Duration( 0 ) );
 	
+	bool WriteMemberInfo( const std::string& memberName, const InfoStruct& info,
+	                      bool forceLookup = false,
+	                      const ros::Duration& timeout = ros::Duration ( 0 ) );
+
 	/*! \brief Returns whether the member information is cached. */
 	bool HasMember( const std::string& memberName ) const;
 	

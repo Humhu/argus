@@ -57,9 +57,11 @@ void FiducialArrayCalibrator::WriteResults()
 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
 		std::cout << "Fiducial " << name << " pose " << extrinsics << std::endl;
 		
-		extrinsicsManager.GetInfo( name ).extrinsics = extrinsics;
-		extrinsicsManager.GetInfo( name ).referenceFrame = referenceFrame;
-		extrinsicsManager.WriteMemberInfo( name );
+		ExtrinsicsInfo info;
+		info.referenceFrame = referenceFrame;
+		info.extrinsics = extrinsics;
+
+		extrinsicsManager.WriteMemberInfo( name, info );
 	}
 }
 
@@ -71,7 +73,11 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		return;
 	}
 	
-	if( msg->detections.size() < 2 ) { return; }
+	if( msg->detections.size() < 2 ) 
+	{
+		ROS_INFO_STREAM( "Not enough tags in image. Skipping..." );
+		return; 
+	}
 	
 	// Initialize the camera pose for this observation using an initialized fiducial
 	isam::PoseSE3_Node::Ptr cameraNode;

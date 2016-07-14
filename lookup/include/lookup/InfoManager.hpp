@@ -86,6 +86,23 @@ bool InfoManager<InfoStruct>::WriteMemberInfo( const std::string& memberName,
 }
 
 template <typename InfoStruct>
+bool InfoManager<InfoStruct>::WriteMemberInfo( const std::string& memberName, 
+                                               const InfoStruct& info,
+                                               bool forceLookup ,
+                                               const ros::Duration& timeout )
+{
+	std::string memberNamespace;
+	// Get namespace records failures, so we don't have to here
+	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	{ 
+		return false; 
+	}
+
+	PopulateMemberInfo( info, memberNamespace );
+	return true;
+}
+
+template <typename InfoStruct>
 bool InfoManager<InfoStruct>::HasMember( const std::string& memberName ) const
 {
 	return registry.count( memberName ) > 0;
