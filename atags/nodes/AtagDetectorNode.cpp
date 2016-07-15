@@ -94,7 +94,14 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	// Detection occurs in grayscale
 	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
 	cv::Mat frame;
-	cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
+	if( msgFrame.channels() > 1 )
+	{
+		cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
+	}
+	else
+	{
+		frame = msgFrame;
+	}
 
 	std::vector<AprilTags::TagDetection> tagDetections = detector->extractTags( frame );
 	
