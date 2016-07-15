@@ -46,7 +46,7 @@ extrinsicsManager( lookupInterface )
 	// NOTE Don't optimize this
 	
 	detSub = nodeHandle.subscribe( "detections", 
-	                               10, 
+	                               0, 
 	                               &FiducialArrayCalibrator::DetectionCallback,
 	                               this );
 }
@@ -67,7 +67,7 @@ void FiducialArrayCalibrator::WriteResults( const ros::TimerEvent& event )
 		info.referenceFrame = referenceFrame;
 		info.extrinsics = extrinsics;
 
-		extrinsicsManager.WriteMemberInfo( name, info );
+		extrinsicsManager.WriteMemberInfo( name, info, true );
 	}
 }
 
