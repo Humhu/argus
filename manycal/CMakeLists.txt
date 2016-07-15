@@ -28,6 +28,7 @@ include_directories( ${catkin_INCLUDE_DIRS} )
 find_package(Boost REQUIRED)
 include_directories( ${Boost_INCLUDE_DIRS} )
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 find_package(Eigen3 REQUIRED)
 
 # find_package(isam REQUIRED)
@@ -137,13 +138,13 @@ target_link_libraries( dummy_odometry
 	${isam_LIBRARIES}
 	${catkin_LIBRARIES}
 	manycal )
-	
-add_executable( extrinsics_visualizer nodes/extrinsics_visualizer.cpp )
-add_dependencies( extrinsics_visualizer ${PROJECT_NAME}_gencfg )
-target_link_libraries( extrinsics_visualizer 
-	${catkin_LIBRARIES}
-	manycal )
-	
+
+#add_executable( extrinsics_visualizer nodes/extrinsics_visualizer.cpp )
+#add_dependencies( extrinsics_visualizer ${PROJECT_NAME}_gencfg )
+#target_link_libraries( extrinsics_visualizer
+#	${catkin_LIBRARIES}
+#	manycal )
+
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

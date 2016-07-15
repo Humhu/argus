@@ -14,9 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
 	extrinsics_array
 	fiducials
 	lookup
-	covreg
-	broadcast
 )
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
@@ -43,10 +43,8 @@ catkin_package(
 					extrinsics_array
 					fiducials
 					lookup
-					covreg
-					broadcast
-					
-	DEPENDS 		Boost 
+
+	DEPENDS 		Boost
 					system_lib
 )
 
@@ -62,7 +60,6 @@ add_library( fieldtrack
 	src/FiducialPoseEstimator.cpp
 	src/FieldtrackCommon.cpp
 	src/FixedFrameTracker.cpp
-	src/SimpleStateEstimator.cpp
 	src/TargetInfoManager.cpp
 	src/VelocityIntegrator.cpp
 )
@@ -114,12 +111,12 @@ target_link_libraries( pose_reference_resolver
 	fieldtrack
 	${catkin_LIBRARIES} )
 
-add_executable( state_estimator_node
-	nodes/state_estimator_node.cpp )
-add_dependencies( state_estimator_node ${ROJECT_NAME}_gencfg )
-target_link_libraries( state_estimator_node
-	fieldtrack
-	${catkin_LIBRARIES} )
+#add_executable( state_estimator_node
+#	nodes/state_estimator_node.cpp )
+#add_dependencies( state_estimator_node ${ROJECT_NAME}_gencfg )
+#target_link_libraries( state_estimator_node
+#	fieldtrack
+#	${catkin_LIBRARIES} )
 
 add_executable( odometry_converter_node
 	nodes/odometry_converter_node.cpp )
