@@ -26,13 +26,14 @@ public:
 	FiducialArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
 	~FiducialArrayCalibrator();
 	
-	void WriteResults();
+	void WriteResults( const ros::TimerEvent& event );
 	
 private:
 	
 	ros::NodeHandle nodeHandle;
 	ros::NodeHandle privHandle;
 	ros::Subscriber detSub;
+	ros::Timer writeTimer;
 
 	LookupInterface lookupInterface;
 	FiducialInfoManager fiducialManager;

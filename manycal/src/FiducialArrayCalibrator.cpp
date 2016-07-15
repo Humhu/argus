@@ -26,6 +26,12 @@ extrinsicsManager( lookupInterface )
 		exit( -1 );
 	}
 	
+	double writeFrequency;
+	ph.param( "write_frequency", writeFrequency, 1.0 );
+	writeTimer = nodeHandle.createTimer( ros::Duration( 1.0 / writeFrequency ),
+	                                     &FiducialArrayCalibrator::WriteResults,
+	                                     this );
+
 	cameraIntrinsics = std::make_shared <isam::MonocularIntrinsics_Node>();
 	cameraIntrinsics->init( isam::MonocularIntrinsics( 1.0, 1.0, Eigen::Vector2d( 0, 0 ) ) );
 	
@@ -48,7 +54,7 @@ extrinsicsManager( lookupInterface )
 FiducialArrayCalibrator::~FiducialArrayCalibrator() 
 {}
 
-void FiducialArrayCalibrator::WriteResults() 
+void FiducialArrayCalibrator::WriteResults( const ros::TimerEvent& event ) 
 {
 	BOOST_FOREACH( const FiducialRegistry::value_type& item, fiducialRegistry )
 	{

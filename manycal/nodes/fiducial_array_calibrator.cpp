@@ -11,12 +11,7 @@ int main( int argc, char** argv )
 	
 	argus::FiducialArrayCalibrator calibrator( nh, ph );
 	
-	while( ros::ok() )
-	{
-		ros::spinOnce();
-	}
-	
-	calibrator.WriteResults();
+	ros::spin();
 	
 	return 0;
 }
