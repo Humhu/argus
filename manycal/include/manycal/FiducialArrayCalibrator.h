@@ -42,6 +42,9 @@ private:
 	std::string sourceCamera;
 	std::string referenceFrame;
 	isam::MonocularIntrinsics_Node::Ptr cameraIntrinsics;
+
+	unsigned int detCounter;
+	unsigned int batchPeriod;
 	
 	struct FiducialRegistration
 	{

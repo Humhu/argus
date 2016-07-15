@@ -1,5 +1,6 @@
 #include "manycal/FiducialArrayCalibrator.h"
 #include "fiducials/PoseEstimation.h"
+#include "argus_utils/utils/ParamUtils.h"
 
 #include <boost/foreach.hpp>
 
@@ -12,7 +13,7 @@ namespace argus
 FiducialArrayCalibrator::FiducialArrayCalibrator( const ros::NodeHandle& nh,
                                                   const ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), fiducialManager( lookupInterface ),
-extrinsicsManager( lookupInterface )
+extrinsicsManager( lookupInterface ), detCounter( 0 )
 {
 	if( !ph.getParam( "source_camera", sourceCamera ) )
 	{
@@ -26,6 +27,8 @@ extrinsicsManager( lookupInterface )
 		exit( -1 );
 	}
 	
+	GetParam<unsigned int>( privHandle, "batch_period", batchPeriod );
+
 	double writeFrequency;
 	ph.param( "write_frequency", writeFrequency, 1.0 );
 	writeTimer = nodeHandle.createTimer( ros::Duration( 1.0 / writeFrequency ),
@@ -84,7 +87,7 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		ROS_INFO_STREAM( "Not enough tags in image. Skipping..." );
 		return; 
 	}
-	
+
 	// Initialize the camera pose for this observation using an initialized fiducial
 	isam::PoseSE3_Node::Ptr cameraNode;
 	BOOST_FOREACH( const FiducialDetection& detection, msg->detections )
@@ -166,7 +169,16 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		observations.push_back( factor );
 	}
 	
-	slam->batch_optimization();
+
+	if( detCounter % batchPeriod == 0 )
+	{
+		slam->batch_optimization();
+	}
+	else
+	{
+		slam->update();
+	}
+	detCounter++;
 }
 
 // Check to see if there is a prior for the name
