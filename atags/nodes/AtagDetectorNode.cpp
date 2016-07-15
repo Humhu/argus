@@ -63,7 +63,14 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	
 	ph.param( "max_skewness_ratio", maxSkewnessRatio, 3.0 );
 	ph.param( "min_area_product", minAreaProduct, 4000.0 );
-	
+
+  ph.param( "fx", fx, 346.2293 );
+  ph.param( "fy", fy, 223.7621 );
+  ph.param( "cx", cx, 367.1517 );
+  ph.param( "cy", cy, 242.8826 );
+  ph.param( "width", width, 752 );
+  ph.param( "height", height, 480 );
+
 	int buffLen;
 	ph.param( "buffer_size", buffLen, 5 );
 	cameraSub = imagePort.subscribeCamera( "image", buffLen, &AtagNode::ImageCallback, this );
@@ -80,6 +87,13 @@ bool enableNormalization;
 double maxSkewnessRatio; // Used to filter out skew detections
 double minAreaProduct; // Used to filter out small detections
 
+double fx;
+double fy;
+double cx;
+double cy;
+int width;
+int height;
+
 ros::Publisher rawPublisher;
 ros::Publisher processedPublisher;
 
@@ -89,8 +103,9 @@ image_transport::CameraSubscriber cameraSub;
 void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
                     const sensor_msgs::CameraInfo::ConstPtr& info )
 {
-	camplex::CameraCalibration cameraModel( "camera", *info );
-	
+	//camplex::CameraCalibration cameraModel( "camera", *info );
+	camplex::CameraCalibration cameraModel( "camera", fx, fy, cx, cy, width, height );
+
 	// Detection occurs in grayscale
 	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
 	cv::Mat frame;
