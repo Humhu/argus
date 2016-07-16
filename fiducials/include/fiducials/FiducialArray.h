@@ -3,7 +3,7 @@
 #include "fiducials/Fiducial.h"
 #include "fiducials/FiducialInfo.h"
 
-#include <opencv2/core.hpp>
+#include <opencv2/core/core.hpp>
 
 #include <unordered_map>
 

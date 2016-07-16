@@ -23,9 +23,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 
 find_package(Boost REQUIRED)
 
-# Find OpenCV3 and set flags for other ROS packages
-find_package(OpenCV 3 REQUIRED)
-add_definitions( "-DOPENCV3=1" )
+find_package(OpenCV)
 
 find_package(Eigen3 REQUIRED)
 

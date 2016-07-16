@@ -20,9 +20,7 @@ find_package(catkin REQUIRED
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
 
-# Find OpenCV3 and set flags for other ROS packages
-find_package(OpenCV 3 REQUIRED)
-add_definitions( "-DOPENCV3=1" )
+find_package(OpenCV)
 
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
