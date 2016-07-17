@@ -33,7 +33,7 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	{
 		processedPublisher = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_processed", 20 );
 	}
-	
+
 	ph.param<std::string>( "tag_family", tagFamily, "36h11" );
 	if( tagFamily == "16h5" )
 	{
@@ -60,24 +60,24 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		ROS_ERROR( "Invalid tag family. Must be 16h5, 25h7, 25h9, 36h9, or 36h11" );
 		exit( -1 );
 	}
-	
+
 	ph.param( "max_skewness_ratio", maxSkewnessRatio, 3.0 );
 	ph.param( "min_area_product", minAreaProduct, 4000.0 );
 
-  ph.param( "fx", fx, 346.2293 );
-  ph.param( "fy", fy, 223.7621 );
-  ph.param( "cx", cx, 367.1517 );
-  ph.param( "cy", cy, 242.8826 );
-  ph.param( "width", width, 752 );
-  ph.param( "height", height, 480 );
+  if (!getParameter(ph, "fx", fx)) exit(-1);
+  if (!getParameter(ph, "fy", fy)) exit(-1);
+  if (!getParameter(ph, "cx", cx)) exit(-1);
+  if (!getParameter(ph, "cy", cy)) exit(-1);
+  if (!getParameter(ph, "width", width)) exit(-1);
+  if (!getParameter(ph, "height", height)) exit(-1);
 
-	int buffLen;
+  int buffLen;
 	ph.param( "buffer_size", buffLen, 5 );
 	cameraSub = imagePort.subscribeCamera( "image", buffLen, &AtagNode::ImageCallback, this );
 }
-	
+
 private:
-	
+
 std::string tagFamily;
 AprilTags::TagDetector::Ptr detector;
 
@@ -103,8 +103,9 @@ image_transport::CameraSubscriber cameraSub;
 void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
                     const sensor_msgs::CameraInfo::ConstPtr& info )
 {
-	//camplex::CameraCalibration cameraModel( "camera", *info );
 	camplex::CameraCalibration cameraModel( "camera", fx, fy, cx, cy, width, height );
+  printf("fx = %f \n", fx);
+
 
 	// Detection occurs in grayscale
 	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
@@ -119,9 +120,9 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 	}
 
 	std::vector<AprilTags::TagDetection> tagDetections = detector->extractTags( frame );
-	
+
 	if( tagDetections.size() == 0 ) { return; }
-	
+
 	// Publish raw
 	std::vector<argus_msgs::FiducialDetection> fidDetections;
 	fidDetections.reserve( tagDetections.size() );
@@ -137,22 +138,22 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		//ROS_INFO_STREAM( "ID: " << tagDetections[i].id << " ratio: " << eratio << " area: " << eprod );
 ;		if( eratio > maxSkewnessRatio ) { continue; }
 		if( eprod < minAreaProduct ) { continue; }
-		
+
 		fidDetections.push_back( TagToFiducial( tagDetections[i], tagFamily ) );
 	}
 	if( fidDetections.empty() ) { return; }
-	
+
 	argus_msgs::ImageFiducialDetections detMsg;
 	detMsg.detections = fidDetections;
 	detMsg.header.frame_id = msg->header.frame_id;
 	detMsg.header.stamp = msg->header.stamp;
-	
+
 	rawPublisher.publish( detMsg );
-	
+
 	// Publish processed
 	if( enableUndistortion || enableNormalization )
 	{
-		
+
 		if( !UndistortDetections( fidDetections, cameraModel,
 		                          enableUndistortion, enableNormalization,
 		                          detMsg.detections ) )
@@ -160,30 +161,50 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 			ROS_WARN_STREAM( "Could not undistort or normalize detections." );
 			return;
 		}
-		
+
 		processedPublisher.publish( detMsg );
 	}
 }
-	
+
+bool getParameter(ros::NodeHandle& n, const std::string& s, double& val)
+{
+  if (!n.getParam( s, val ))
+  {
+    ROS_ERROR("Failed to load parameter %s", s.c_str());
+    return false;
+  }
+  return true;
+}
+
+bool getParameter(ros::NodeHandle& n, const std::string& s, int& val)
+{
+  if (!n.getParam( s, val ))
+  {
+    ROS_ERROR("Failed to load parameter %s", s.c_str());
+    return false;
+  }
+  return true;
+}
+
 };
 
 int main( int argc, char** argv )
 {
-	
+
 	ros::init( argc, argv, "atag_detector" );
-	
+
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
-	
+
 	AtagNode node( nh, ph );
-	
+
 	int numSpinners;
 	ph.param( "num_threads", numSpinners, 1 );
-	
+
 	ros::AsyncSpinner spinner( numSpinners );
 	spinner.start();
 	ros::waitForShutdown();
-	
+
 	return 0;
-	
+
 }
