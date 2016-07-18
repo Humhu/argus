@@ -97,6 +97,11 @@ target_link_libraries( detector_node
 	${catkin_LIBRARIES}
 )
 
+add_executable( dummy_camera_info_node nodes/DummyCameraInfoNode.cpp )
+target_link_libraries( dummy_camera_info_node
+	${catkin_LIBRARIES}
+)
+
 ## Mark executables and/or libraries for installation
 install(TARGETS atags
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
