@@ -1,6 +1,6 @@
 
 % location of this package
-self_path          = [getenv('HOME') '/sandbox/aprilslam_evaluation/wet/src/argus/manycal/matlab/'];
+self_path          = [getenv('HOME') '/sandbox/wind_adaptation/wet/src/argus/manycal/matlab/'];
 
 % location where the matlab rosbag utility is installed
 matlabrosbag_path  = [getenv('HOME') '/software/matlab_rosbag-0.3-linux64/'];
@@ -18,7 +18,7 @@ bag_path           = [getenv('HOME') '/bagfiles/'];
 launchfile_path    = [self_path '../launch/'];
 
 % location to save tag map
-tagmap_path        = [self_path '../../../aprilslam/apriltag_ros/config/'];
+tagmap_path        = [self_path '../../../april_localizer/config/'];
 
 addpath(genpath(self_path));
 addpath(genpath(slamtestsuite_path));

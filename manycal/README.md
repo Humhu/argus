@@ -9,6 +9,7 @@ Package for extrinsics/intrinsics calibration of sensor arrays.
 ## Matlab Setup:
 1. Edit <code>matlab/setpaths.m</code> to point to the locations of dependencies on your system, as well as bag file storage and output locations.
 2. Edit <code>matlab/commondata.m</code> as necessary and run it to auto-generate the <code>launch/localizetags.launch</code> file.
+3. (Optional) Edit <code>matlab/generate_ground_truth.m</code> to generate a <code>.mat</code> file of ground truth locations of april tag corners from vicon marker locations.
 
 ## Get Positions of April Tag Corners from Bag File of Images:
 1. Collect a bag file with rectified image and camera info messages where the camera passes over all april tags in the environment. Ensure that there are at least 2 tags visible in each camera frame.

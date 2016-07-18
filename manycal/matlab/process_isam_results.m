@@ -5,7 +5,8 @@ clc;
 setpaths;
 commondata;
 
-use_ground_truth = false;
+write_file = true;
+use_ground_truth = true;
 
 data = ReadYaml([self_path '../launch/dump.yaml']);
 
@@ -134,14 +135,16 @@ view([-40 20]);
 
 %% Generate CSV File
 % 5 columns, tagID (0-based), corner number (0-based), x, y, z
-wfile = fopen([tagmap_path 'tagmap.txt'],'w');
+if write_file
+    wfile = fopen([tagmap_path 'tagmap.txt'],'w');
 
-for tt = validind
-    for ii = 1:4
-        fprintf(wfile, '%3.5f , %3.5f , %3.5f , %3.5f , %3.5f \n',...
-                tt-1, ii-1, vtagmap(1,ii,tt), vtagmap(2,ii,tt), vtagmap(3,ii,tt));
-        fprintf('%3.5f , %3.5f , %3.5f , %3.5f , %3.5f \n',...
-                tt-1, ii-1, vtagmap(1,ii,tt), vtagmap(2,ii,tt), vtagmap(3,ii,tt));
+    for tt = validind
+        for ii = 1:4
+            fprintf(wfile, '%3.5f , %3.5f , %3.5f , %3.5f , %3.5f \n',...
+                    tt-1, ii-1, vtagmap(1,ii,tt), vtagmap(2,ii,tt), vtagmap(3,ii,tt));
+            fprintf('%3.5f , %3.5f , %3.5f , %3.5f , %3.5f \n',...
+                    tt-1, ii-1, vtagmap(1,ii,tt), vtagmap(2,ii,tt), vtagmap(3,ii,tt));
+        end
     end
+    fclose(wfile);
 end
-fclose(wfile);
