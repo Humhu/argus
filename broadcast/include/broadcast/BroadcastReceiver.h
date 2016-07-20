@@ -19,7 +19,7 @@ public:
 
 	BroadcastReceiver( const std::string& streamName,
 	                   double cacheTime,
-	                   unsigned int incomingQueueSize = 10,
+	                   unsigned int incomingQueueSize = 0,
 	                   const std::string& topic = "features_raw" );
 
 	void SetCacheTime( double time );

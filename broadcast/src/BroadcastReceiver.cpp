@@ -16,7 +16,7 @@ BroadcastReceiver::BroadcastReceiver( const std::string& streamName,
 : _nodeHandle(), _lookup(), _infoManager( _lookup ), 
 _streamName( streamName ), _maxTimespan( cacheTime )
 {
-	if( !_infoManager.CheckMemberInfo( streamName, true, ros::Duration( 5.0 ) ) )
+	if( !_infoManager.CheckMemberInfo( streamName, true, ros::Duration( 10.0 ) ) )
 	{
 		throw std::runtime_error( "Could not find broadcast stream: " + streamName );
 	}
@@ -47,7 +47,8 @@ bool BroadcastReceiver::HasReceived() const
 
 bool BroadcastReceiver::Ready() const
 {
-	return GetTimespan() >= _maxTimespan;
+	// return GetTimespan() >= _maxTimespan;
+	return !_featureMap.empty();
 }
 
 VectorType BroadcastReceiver::GetClosestPrevious( const ros::Time& time ) const
@@ -60,7 +61,9 @@ VectorType BroadcastReceiver::GetClosestPrevious( const ros::Time& time ) const
 		std::stringstream ss;
 		ss << "No messages prior to query: " << time 
 		   << ". Earliest time: " << get_lowest_key( _featureMap );
-		throw std::runtime_error( ss.str() );
+		// throw std::runtime_error( ss.str() );
+		   ROS_WARN_STREAM( ss.str() );
+		   return GetClosest( time );
 	}
 	if( closest == _featureMap.end() )
 	{
@@ -96,6 +99,8 @@ void BroadcastReceiver::FeatureCallback( const StampedFeatures::ConstPtr& msg )
 	
 	if( msg->header.frame_id != _streamName ) 
 	{ 
+		ROS_WARN_STREAM( "Received features for " << msg->header.frame_id << " but expected "
+		                 << _streamName );
 		return; 
 	}
 	VectorType features = GetVectorView( msg->features );
@@ -106,6 +111,7 @@ void BroadcastReceiver::FeatureCallback( const StampedFeatures::ConstPtr& msg )
 		                 << features.size() << " but expected: " << info.featureSize );
 	}
 	_featureMap[msg->header.stamp] = features;
+	CheckTimespan();
 }
 
 double BroadcastReceiver::GetTimespan() const
