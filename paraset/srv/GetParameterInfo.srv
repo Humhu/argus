@@ -1,0 +1,9 @@
+# Service to get info about a runtime parameter
+
+---
+
+# The nubmer of settings this parameter can take on
+uint32 num_settings
+
+# Human-readable value descriptions
+string[] descriptions
