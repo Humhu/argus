@@ -8,11 +8,11 @@ namespace argus
 {
 
 // Based on Mohamed and Schwarz 1999
-class AdaptiveCovarianceEstimator
+class AdaptiveTransitionCovarianceEstimator
 {
 public:
 
-	AdaptiveCovarianceEstimator();
+	AdaptiveTransitionCovarianceEstimator();
 
 	void Initialize( ros::NodeHandle& ph, const std::string& field );
 
@@ -34,6 +34,29 @@ private:
 	double _lastDt;
 
 	void InfoCallback( const argus_msgs::FilterStepInfo::ConstPtr& msg );
+
+};
+
+class AdaptiveObservationCovarianceEstimator
+{
+public:
+
+	AdaptiveObservationCovarianceEstimator();
+
+	void Initialize( ros::NodeHandle& ph, const std::string& field );
+
+	MatrixType GetR() const;
+
+	bool IsReady() const;
+
+	void ProcessInfo( const argus_msgs::FilterStepInfo& msg );
+
+private:
+	std::string _sourceName;
+	unsigned int _windowLength;
+	std::deque<MatrixType> _innoOuterProds;
+	MatrixType _lastHPHT;
+	MatrixType _initCov;
 
 };
 

@@ -95,9 +95,11 @@ private:
 
 	FilterType::FullCovType _initCov;
 	FilterType::FullCovType _Qrate;
-	bool _usingAdaptive;
+	bool _usingAdaptiveTrans;
+	
+	// TODO For some reason an uninitialiezd estimtaor seems to cause a growing memory footprint over time...
 	CovarianceManager _Qestimator;
-	AdaptiveCovarianceEstimator _Qadapter;
+	AdaptiveTransitionCovarianceEstimator _Qadapter;
 
 	ros::Duration _updateLag;
 
@@ -112,7 +114,13 @@ private:
 	// BroadcastTransmitter _xlTx;
 
 	// Subscribers to argus_msgs::FilterUpdate
-	std::unordered_map<std::string, ros::Subscriber> _updateSubs;
+	struct UpdateRegistration
+	{
+		ros::Subscriber sub;
+		bool usingAdaptive;
+		AdaptiveObservationCovarianceEstimator Radapter;
+	};
+	std::unordered_map<std::string, UpdateRegistration> _updateSubs;
 
 	Mutex _mutex;
 	typedef std::map<ros::Time, argus_msgs::FilterUpdate> UpdateBuffer;

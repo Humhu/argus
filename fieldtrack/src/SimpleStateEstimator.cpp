@@ -199,6 +199,13 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
   // _xlTx( "xl_features", 6, {"xl_lin_x", "xl_lin_y", "xl_lin_z",
   //                           "xl_ang_x", "xl_ang_y", "xl_ang_z" } )
 {
+	if( privHandle.hasParam( "startup_delay" ) )
+	{
+		double delay;
+		GetParam( privHandle, "startup_delay", delay );
+		ros::Duration( delay ).sleep();
+	}
+
 	GetParamRequired( privHandle, "reference_frame", _referenceFrame );
 	GetParamRequired( privHandle, "body_frame", _bodyFrame );
 	double upLag;
@@ -215,13 +222,19 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	for( iter = updatesYaml.begin(); iter != updatesYaml.end(); iter++ )
 	{
 		const std::string& sourceName = iter->first.as<std::string>();
-		const std::string& topic = iter->second.as<std::string>();
+		const std::string& topic = iter->second["topic"].as<std::string>();
 		ROS_INFO_STREAM( "Subscribing to updates from " << sourceName
 		                 << " at " << topic );
-		_updateSubs[sourceName] = nodeHandle.subscribe( topic, 
-		                                                100, 
-		                                                &SimpleStateEstimator::UpdateCallback, 
-		                                                this );
+		_updateSubs[sourceName].sub = nodeHandle.subscribe( topic, 
+		                                                    100, 
+		                                                    &SimpleStateEstimator::UpdateCallback, 
+		                                                    this );
+
+		_updateSubs[sourceName].usingAdaptive = iter->second["adaptive"].as<bool>();
+		if( _updateSubs[sourceName].usingAdaptive )
+		{
+			_updateSubs[sourceName].Radapter.Initialize( privHandle, "update_sources/" + sourceName );
+		}
 	}
 
 	// Parse covariance rate estimator
@@ -230,12 +243,12 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 		_Qestimator.Initialize( "transition", privHandle, 
 		                        "transition_cov_estimator" );
 		_Qestimator.SetUpdateTopic( "param_updates" );
-		_usingAdaptive = false;
+		_usingAdaptiveTrans = false;
 	}
 	else if( privHandle.hasParam( "transition_cov_adapter" ) )
 	{
 		_Qadapter.Initialize( privHandle, "transition_cov_adapter" );
-		_usingAdaptive = true;
+		_usingAdaptiveTrans = true;
 	}
 	else
 	{
@@ -336,6 +349,7 @@ void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 		// ROS_WARN_STREAM( "Measurements with duplicate timestamps!" );
 	}
 	// ROS_INFO_STREAM( "Received stamp: " << up.header.stamp );
+
 	_updateBuffer[up.header.stamp] = up;
 }
 
@@ -351,7 +365,12 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 		const ros::Time& earliestBufferTime = firstItem->first;
 		if( earliestBufferTime > until ) { break; }
 		
-		const FilterUpdate& msg = firstItem->second;
+		FilterUpdate msg = firstItem->second;
+		if( _updateSubs[msg.header.frame_id].usingAdaptive )
+		{
+			msg.observation_cov = MatrixToMsg( _updateSubs[msg.header.frame_id].Radapter.GetR() );
+		}
+
 		// ROS_INFO_STREAM( "Updating with: " << msg.header.frame_id );
 		std::pair<FilterStepInfo,FilterStepInfo> infoPair;
 		if( _filter.ProcessUpdate( msg, infoPair ) )
@@ -361,10 +380,15 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 			_stepPub.publish( infoPair.second );
 			
 
-			if( _usingAdaptive )
+			if( _usingAdaptiveTrans )
 			{
 				_Qadapter.ProcessInfo( infoPair.first );
 				_Qadapter.ProcessInfo( infoPair.second );
+			}
+
+			if( _updateSubs[msg.header.frame_id].usingAdaptive )
+			{
+				_updateSubs[msg.header.frame_id].Radapter.ProcessInfo( infoPair.second );
 			}
 		}
 		_updateBuffer.erase( firstItem );
@@ -376,13 +400,13 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 
 MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 {
-	if( !_usingAdaptive && _Qestimator.IsReady() )
+	if( !_usingAdaptiveTrans && _Qestimator.IsReady() )
 	{
 		MatrixType q = _Qestimator.EstimateCovariance( time );
 		// ROS_INFO_STREAM( "Got Q: " << std::endl << q );
 		return q;
 	}
-	else if( _usingAdaptive && _Qadapter.IsReady() )
+	else if( _usingAdaptiveTrans && _Qadapter.IsReady() )
 	{
 		MatrixType q = _Qadapter.GetQ();
 		// ROS_INFO_STREAM( "Got Q: " << std::endl << q );
@@ -390,7 +414,7 @@ MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 	}
 	else
 	{
-		ROS_WARN_STREAM( "Transition covariance estimator not ready. Using fixed rate." );
+		// ROS_WARN_STREAM( "Transition covariance estimator not ready. Using fixed rate." );
 		return _Qrate;
 	}
 }
@@ -425,7 +449,7 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	{
 		FilterStepInfo predInfo = _filter.PredictUntil( laggedHead );
 		_stepPub.publish( predInfo );
-		if( _usingAdaptive )
+		if( _usingAdaptiveTrans )
 		{
 			_Qadapter.ProcessInfo( predInfo );
 		}
