@@ -4,32 +4,32 @@
 
 #include "argus_utils/utils/MatrixUtils.h"
 
-#define VAR_RAND_RANGE (1E-3)
+#define VAR_RAND_RANGE (1E-1)
 
 using namespace covreg;
 
 namespace argus
 {
 
-CovarianceEstimator::CovarianceEstimator( const std::string& source,
-                                          unsigned int featDim,
-                                          unsigned int matDim, 
-                                          unsigned int numHiddenLayers, 
-                                          unsigned int layerWidth )
-: _sourceName( source ),
-  _inDim( featDim ),
-  _outDim( matDim ),
-  _psd( featDim, matDim, numHiddenLayers, layerWidth ),
-  _learnCorrelations( false )
-  // _psd( matDim )
-{
-	_psd.SetSource( &_psdPort );
-	_lParams = _psd.lReg.CreateParameters();
-	_dParams = _psd.dReg.CreateParameters();
-	_params = std::make_shared<percepto::ParameterWrapper>();
-	// _params->AddParameters( _lParams ); // TODO
-	_params->AddParameters( _dParams );
-}
+// CovarianceEstimator::CovarianceEstimator( const std::string& source,
+//                                           unsigned int featDim,
+//                                           unsigned int matDim, 
+//                                           unsigned int numHiddenLayers, 
+//                                           unsigned int layerWidth )
+// : _sourceName( source ),
+//   _inDim( featDim ),
+//   _outDim( matDim ),
+//   _psd( featDim, matDim, numHiddenLayers, layerWidth ),
+//   _learnCorrelations( false )
+//   // _psd( matDim )
+// {
+// 	_psd.SetSource( &_psdPort );
+// 	_lParams = _psd.lReg.CreateParameters();
+// 	_dParams = _psd.dReg.CreateParameters();
+// 	_params = std::make_shared<percepto::ParameterWrapper>();
+// 	// _params->AddParameters( _lParams ); // TODO
+// 	_params->AddParameters( _dParams );
+// }
 
 CovarianceEstimator::CovarianceEstimator( const std::string& source, 
                                           const YAML::Node& info )
@@ -40,7 +40,8 @@ CovarianceEstimator::CovarianceEstimator( const std::string& source,
         info["output_dim"].as<unsigned int>(),
         info["hidden_layers"].as<unsigned int>(),
         info["layer_width"].as<unsigned int>() ),
-  _learnCorrelations( info["learn_correlations"].as<bool>() )
+  _learnCorrelations( info["learn_correlations"].as<bool>() ),
+  _covarianceOutput( info["covariance_mode"].as<bool>() )
   // _psd( info["output_dim"].as<unsigned int>() )
 {
 	std::cout << "source: " << source << std::endl;
@@ -130,6 +131,11 @@ MatrixType CovarianceEstimator::Evaluate( const VectorType& input )
 	_psd.Invalidate();
 	_psdPort.Foreprop();
 	MatrixType out = _psd.GetOutput();
+	if( !_covarianceOutput )
+	{
+		Eigen::LDLT<MatrixType> ldlt( out );
+		out = ldlt.solve( MatrixType::Identity( out.rows(), out.cols() ) );
+	}
 	return out;
 }
 

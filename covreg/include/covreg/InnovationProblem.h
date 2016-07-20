@@ -45,6 +45,8 @@ struct InnovationLikelihoodProblem
 
 	void Foreprop();
 
+	void ForepropSame();
+
 	void ForepropAll();
 
 	void Backprop();

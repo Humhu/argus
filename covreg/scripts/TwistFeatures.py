@@ -21,7 +21,7 @@ class TwistFeaturePublisher:
         
         self.two_dimensional = rospy.get_param( '~two_dimensional' )
         if self.two_dimensional:
-            feature_dim = 6
+            feature_dim = 3
         else:
             feature_dim = 6
 
@@ -38,9 +38,6 @@ class TwistFeaturePublisher:
             out.features = ( tw.linear.x,
                              tw.linear.y,
                              tw.angular.z )
-            # vel = np.array( [tw.linear.x, tw.linear.y] )
-            # out.features = ( np.linalg.norm( vel ),
-            #                  tw.angular.z )
         else:
             out.features = ( tw.linear.x,
                              tw.linear.y,

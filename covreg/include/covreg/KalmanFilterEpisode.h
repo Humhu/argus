@@ -77,7 +77,9 @@ public:
 		// updates.back().V.modName = "V";
 		// updates.back().xplus.modName = "xplus";
 		// updates.back().Vinv.modName = "Vinv";
+		// updates.back().rInput.modName = "Rinput";
 		// updates.back().R.modName = "R";
+		// updates.back().R.dReg.modName = "Rdreg";
 		// updates.back().Splus.modName = "Splus";
 		// updates.back().HTVinvH.modName = "HTVinvH";
 

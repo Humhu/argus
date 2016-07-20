@@ -13,7 +13,8 @@ using namespace covreg;
 namespace argus
 {
 
-CovarianceManager::CovarianceManager() {}
+CovarianceManager::CovarianceManager()
+: _estimator( nullptr ) {}
 
 void CovarianceManager::Initialize( const std::string& sourceName,
                                     ros::NodeHandle& ph, 

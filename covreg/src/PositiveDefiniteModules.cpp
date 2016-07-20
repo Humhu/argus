@@ -3,8 +3,9 @@
 #define POSDEF_OFFSET_SCALE (1E-9)
 #define RELU_LEAKY_SLOPE (1E-3)
 
-#define EXP_LOWER_THRESH (-8)
-#define EXP_UPPER_THRESH (2)
+#define EXP_LOWER_THRESH (-6)
+//#define EXP_UPPER_THRESH (13.815510558) // ln( 1e-6)
+#define EXP_UPPER_THRESH (20)
 
 using namespace percepto;
 
@@ -38,7 +39,7 @@ void PosDefModule::BackpropImplementation( const MatrixType& nextDodx )
 ConstantPosDefModule::ConstantPosDefModule( unsigned int matDim )
 : lReg( matDim*(matDim-1)/2 ),
   dReg( matDim ),
-  expModule( EXP_LOWER_THRESH, EXP_UPPER_THRESH ),
+  // expModule( EXP_LOWER_THRESH, EXP_UPPER_THRESH ),
   _inputPort( this )
 {
 	expModule.SetSource( &dReg );
@@ -105,7 +106,7 @@ LinearPosDefModule::LinearPosDefModule( unsigned int inputDim,
 	                                      unsigned int matDim )
 : lReg( matDim*(matDim-1)/2 ),
   dReg( inputDim, matDim ),
-  expModule( EXP_LOWER_THRESH, EXP_UPPER_THRESH ),
+  // expModule( EXP_LOWER_THRESH, EXP_UPPER_THRESH ),
   _inputPort( this )
 {
 	expModule.SetSource( &dReg );
@@ -194,7 +195,7 @@ VarReLUPosDefModule::VarReLUPosDefModule( unsigned int inputDim,
   dReg( inputDim, matDim, numHiddenLayers, layerWidth,
   percepto::HingeActivation( 1.0, RELU_LEAKY_SLOPE ) ),
   // percepto::SigmoidActivation() ),
-  expModule( EXP_LOWER_THRESH, EXP_UPPER_THRESH ),
+  // expModule( EXP_LOWER_THRESH, EXP_UPPER_THRESH ),
   _inputPort( this )
 {
 	expModule.SetSource( &dReg.GetOutputSource() );

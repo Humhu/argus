@@ -25,6 +25,7 @@ struct KalmanFilterPredictModule
 	// Covariances
 	percepto::TerminalSource<VectorType> qInput;
 	CovarianceEstimator::ModuleType Q;
+	// percepto::TerminalSource<MatrixType> Q;
 	percepto::ScaleWrapper<MatrixType> Qdt;
 	percepto::TransformWrapper FSFT;
 	percepto::AdditiveWrapper<MatrixType> Sminus;
@@ -37,6 +38,7 @@ struct KalmanFilterPredictModule
 	KalmanFilterPredictModule( percepto::Source<VectorType>* xprev,
 		                       percepto::Source<MatrixType>* sprev,
 	                           const CovarianceEstimator::ModuleType& q,
+	                           // const MatrixType& q,
 	                           double dt,
 	                           const VectorType& input,
 	                           const MatrixType& F );
@@ -63,11 +65,11 @@ std::ostream& operator<<( std::ostream& os,
 struct KalmanFilterUpdateModule
 {
 	// State
-	// percepto::TerminalSource<VectorType> y;
-	// percepto::VectorTransformWrapper ypred;
-	// percepto::DifferenceWrapper<VectorType> innov;
+	percepto::TerminalSource<VectorType> y;
+	percepto::VectorTransformWrapper ypred;
+	percepto::DifferenceWrapper<VectorType> innov;
 
-	percepto::TerminalSource<VectorType> finnov;
+	// percepto::TerminalSource<VectorType> finnov;
 
 	// Vinv * v
 	percepto::VectorProductWrapper Vinvv;
@@ -88,6 +90,7 @@ struct KalmanFilterUpdateModule
 
 	// The estimated R matrix
 	CovarianceEstimator::ModuleType R;
+	// percepto::InverseWrapper<percepto::EigLDL> R;
 	
 	// The innovation covariance R + H * S- * H^T = V
 	percepto::AdditiveWrapper<MatrixType> V;
@@ -121,7 +124,7 @@ struct KalmanFilterUpdateModule
 	// Set source name, innovation
 	KalmanFilterUpdateModule( percepto::Source<VectorType>* xprev,
 	                          percepto::Source<MatrixType>* sPrev,
-	                          const CovarianceEstimator::ModuleType& r,
+	                          const CovarianceEstimator::ModuleType& rinv,
 	                          const VectorType& input,
 	                          const VectorType& obs,
 	                          const MatrixType& H,

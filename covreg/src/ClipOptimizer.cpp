@@ -86,6 +86,7 @@ bool InnovationClipOptimizer::AddUpdate( const UpdateInfo& info,
 		_currentEpisode->EmplacePredict( _currentEpisode->GetTailState(),
 		                                _currentEpisode->GetTailCov(), 
 		                                _transReg.GetModule(),
+		                                // info.Q / info.dt,
 		                                info.dt,
 		                                input,
 		                                info.F );
@@ -145,7 +146,7 @@ double InnovationClipOptimizer::CalculateCost()
 {
 	WriteLock lock( _mutex );
 	_problem.Invalidate();
-	_problem.Foreprop();
+	_problem.ForepropAll();
 	return _problem.loss.GetOutput();
 }
 

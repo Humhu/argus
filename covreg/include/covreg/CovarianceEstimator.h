@@ -24,11 +24,11 @@ public:
 	// typedef ConstantPosDefModule ModuleType;
 
 	/*! \brief Construct an estimator and create new parameters. */
-	CovarianceEstimator( const std::string& source,
-	                     unsigned int inputDim,
-	                     unsigned int outputDim, 
-	                     unsigned int numHiddenLayers, 
-	                     unsigned int layerWidth );
+	// CovarianceEstimator( const std::string& source,
+	//                      unsigned int inputDim,
+	//                      unsigned int outputDim, 
+	//                      unsigned int numHiddenLayers, 
+	//                      unsigned int layerWidth );
 
 	// TODO Parse this from an info message of some sort
 	CovarianceEstimator( const std::string& source, const YAML::Node& info );
@@ -46,6 +46,8 @@ public:
 	void SetVarianceOffsets( const VectorType& v );
 	void EnableCorrelationLearning();
 
+	// Returns covariance
+	// TODO: Make this explicitly EvaluateCovariance
 	MatrixType Evaluate( const VectorType& input );
 
 	covreg::CovarianceEstimatorInfo GetParamsMsg() const;
@@ -67,6 +69,7 @@ private:
 	percepto::TerminalSource<VectorType> _psdPort;
 	ModuleType _psd;
 
+	bool _covarianceOutput;
 	bool _learnCorrelations;
 	percepto::Parameters::Ptr _lParams;
 	percepto::Parameters::Ptr _dParams;

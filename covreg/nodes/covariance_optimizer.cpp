@@ -96,6 +96,7 @@ public:
 
 		CovarianceEstimator& transReg = *(_estRegistry["transition"].estimator);
 		_clipOptimizer = std::make_shared<InnovationClipOptimizer>( transReg, clipParams );
+		// _clipOptimizer = std::make_shared<InnovationClipOptimizer>( clipParams );
 		
 		// TODO Iterate and add all non-transition regs to the optimizer
 		typedef EstimatorRegistry::value_type Item;
@@ -124,6 +125,10 @@ public:
 		GetParam( privHandle, "optimizer/enable_decay", optParams.enableDecay, false );
 		_clipOptimizer->InitializeOptimization( criteria, optParams );
 
+		double bufferProcessRate;
+		GetParam<double>( privHandle, "buffer_process_rate", bufferProcessRate, 10.0 );
+		_printPeriod = ros::Duration( bufferProcessRate );
+
 		double statusPublishRate;
 		GetParam<double>( privHandle, "status_publish_rate", statusPublishRate, 1.0 );
 		_statusPeriod = ros::Duration( 1.0/statusPublishRate );
@@ -140,11 +145,6 @@ public:
 		_publishPeriod = ros::Duration( 1.0/paramPublishRate );
 		_lastPublishTime = ros::Time::now();
 
-
-/*		sub = std::make_shared<message_filters::Subscriber<FilterStepInfo>>( nodeHandle, "filter_info", infoBufferSize );
-		seq = std::make_shared<message_filters::TimeSequencer<FilterStepInfo>>( *sub, ros::Duration(1.0), ros::Duration(0.1), infoBufferSize);
-		seq->registerCallback( &Optimizer::FilterCallback, this );*/
-
 		_infoSub = nodeHandle.subscribe( "filter_info", infoBufferSize, &Optimizer::FilterCallback, this );
 
 		_waitTimer = nodeHandle.createTimer( ros::Duration( 1.0 ), 
@@ -154,8 +154,6 @@ public:
 		_optimizerThread = boost::thread( boost::bind( &Optimizer::OptimizerCallback, this ) );
 	}
 
-	// std::shared_ptr<message_filters::Subscriber<FilterStepInfo>> sub;
-	// std::shared_ptr<message_filters::TimeSequencer<FilterStepInfo>> seq;
 
 	void RegisterModel( const std::string& name, const YAML::Node& info )
 	{
@@ -357,6 +355,7 @@ private:
 
 	ros::Time _lastPublishTime;
 	ros::Duration _publishPeriod;
+	ros::Duration _processPeriod;
 
 	unsigned _minOptimizeSize;
 	double _minOptimizeTime;
@@ -382,7 +381,7 @@ private:
 		if( !rxInitialized ) { return; }
 
 		const std::string& sourceName = msg->header.frame_id;
-		if( _estRegistry.count( sourceName ) == 0 )
+		if( sourceName != "transition" && _estRegistry.count( sourceName ) == 0 )
 		{
 			ROS_WARN_STREAM( "Received step info from unregistered model: " << sourceName );
 			return;
@@ -429,12 +428,12 @@ private:
 					if( span > _minOptimizeTime )
 					{
 						epsInitialized = true;
-						ROS_INFO_STREAM( "Episode buffer filled. Starting optimization." );
+						// ROS_INFO_STREAM( "Episode buffer filled. Starting optimization." );
 					}
 					else
 					{
-						ROS_INFO_STREAM( "Span: " << span );
-						ros::Duration( 1.0 ).sleep();
+						// ROS_INFO_STREAM( "Span: " << span );
+						_processPeriod.sleep();
 						continue;
 					}
 				}
@@ -521,7 +520,12 @@ private:
 		ROS_INFO_STREAM( "Has " << _clipOptimizer->NumEpisodes() << " episodes." );
 		ROS_INFO_STREAM( "Total cost: " << cost << std::endl );
 		ROS_INFO_STREAM( "Message buffer size: " << _dataBuffer.Size() );
-		ROS_INFO_STREAM( "VO: " << std::endl << _estRegistry["vo"].estimator->GetModule().dReg );
+		typedef EstimatorRegistry::value_type Item;
+		BOOST_FOREACH( const Item& item, _estRegistry )
+		{
+			ROS_INFO_STREAM( "Model: " << item.first << std::endl << item.second.estimator->GetModule().dReg );
+		}
+		// ROS_INFO_STREAM( "vo: " << std::endl << _estRegistry.at("vo").estimator->GetModule().dReg );
 	}
 
 	void ProcessBuffer()

@@ -2,6 +2,7 @@
 
 #include <percepto/compo/LinearRegressor.hpp>
 #include <percepto/compo/ConstantRegressor.hpp>
+#include <percepto/compo/ExponentialWrapper.hpp>
 #include <percepto/compo/HingeExponentialWrapper.hpp>
 #include <percepto/compo/OffsetWrapper.hpp>
 #include <percepto/compo/ModifiedCholeskyWrapper.hpp>
@@ -54,7 +55,8 @@ public:
 
 	percepto::ConstantVectorRegressor lReg;
 	percepto::ConstantVectorRegressor dReg;
-	percepto::HingeExponentialWrapper<VectorType> expModule;
+	// percepto::HingeExponentialWrapper<VectorType> expModule;
+	percepto::ExponentialWrapper<VectorType> expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 
@@ -96,7 +98,8 @@ public:
 	percepto::TerminalSource<VectorType> dInput;
 	percepto::ConstantVectorRegressor lReg;
 	percepto::LinearRegressor dReg;
-	percepto::HingeExponentialWrapper<VectorType> expModule;
+	// percepto::HingeExponentialWrapper<VectorType> expModule;
+	percepto::ExponentialWrapper<VectorType> expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 
@@ -138,11 +141,12 @@ public:
 	percepto::ConstantVectorRegressor lReg;
 	percepto::ReLUNet dReg;
 	// percepto::PerceptronNet dReg;
-	percepto::HingeExponentialWrapper<VectorType> expModule;
+	// percepto::HingeExponentialWrapper<VectorType> expModule;
+	percepto::ExponentialWrapper<VectorType> expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 
-	VarReLUPosDefModule( unsigned int inputDim, 
+	VarReLUPosDefModule( unsigned int inputDim,
 	                     unsigned int matDim,
 	                     unsigned int numHiddenLayers,
 	                     unsigned int layerWidth );

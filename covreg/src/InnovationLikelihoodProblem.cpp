@@ -72,6 +72,20 @@ void InnovationLikelihoodProblem::Foreprop()
 	// std::cout << "Foreprop took: " << ((double) finish - start)/CLOCKS_PER_SEC << std::endl;
 }
 
+void InnovationLikelihoodProblem::ForepropSame()
+{
+	// clock_t start = clock();
+	regularizer.Foreprop();
+
+	loss.UseSameSamples();
+	const std::vector<unsigned int>& activeEpsInds = loss.GetActiveInds();
+	BOOST_FOREACH( const unsigned int& ind, activeEpsInds )
+	{
+		episodes[ind].Foreprop();
+	}
+	// clock_t finish = clock();
+	// std::cout << "Foreprop took: " << ((double) finish - start)/CLOCKS_PER_SEC << std::endl;
+}
 void InnovationLikelihoodProblem::ForepropAll()
 {
 	regularizer.Foreprop();
