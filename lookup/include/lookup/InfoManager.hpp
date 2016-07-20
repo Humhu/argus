@@ -1,5 +1,7 @@
 #include "lookup/InfoManager.h"
 
+#define RETRY_WAIT_TIME (0.1)
+
 namespace argus
 {
 
@@ -22,7 +24,8 @@ bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName,
 		return true; 
 	}
 	
-	ros::Time start = ros::Time::now();
+	//ros::Time start = ros::Time::now();
+	int numRetries = std::ceil( timeout.toSec() / RETRY_WAIT_TIME );
 	if( ReadMemberInfo( memberName, forceLookup ) ) 
 	{ 
 		ClearFailures( memberName );
@@ -30,7 +33,7 @@ bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName,
 	}
 	else if( timeout.toSec() == 0.0 ) { return false; }
 
-	while( true )
+	while( numRetries > 0 )
 	{
 		if( ReadMemberInfo( memberName, forceLookup ) ) 
 		{ 
@@ -38,9 +41,11 @@ bool InfoManager<InfoStruct>::CheckMemberInfo( const std::string& memberName,
 			return true; 
 		}
 		ROS_INFO_STREAM( "Lookup failed. Retrying..." );
-		ros::Duration( 0.5 ).sleep(); // TODO Make a parameter
-		if( ros::Time::now() > start + timeout ) { return false; }
+		ros::Duration( RETRY_WAIT_TIME ).sleep(); // TODO Make a parameter
+		// if( ros::Time::now() > start + timeout ) { return false; }
+		numRetries--;
 	}
+	return false;
 }
 
 template <typename InfoStruct>
