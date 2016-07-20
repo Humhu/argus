@@ -12,11 +12,11 @@ FASTPointDetector::FASTPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 {
 	int intensityThreshold;
 	bool useNMS;
-	privHandle.param( "detector/intensity_threshold", intensityThreshold, 20 );
-	privHandle.param( "detector/enable_non_max_suppression", useNMS, true );
+	privHandle.param( "intensity_threshold", intensityThreshold, 20 );
+	privHandle.param( "enable_non_max_suppression", useNMS, true );
 	
 	std::string type;
-	privHandle.param<std::string>( "detector/detector_type", type, "FAST_9_16" );
+	privHandle.param<std::string>( "detector_type", type, "FAST_9_16" );
 	int t;
 	if( type == "FAST_5_8" )
 	{

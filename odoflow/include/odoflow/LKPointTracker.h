@@ -3,6 +3,8 @@
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include "paraset/ParameterManager.hpp"
+
 #include "odoflow/InterestPointTracker.h"
 
 namespace argus
@@ -31,10 +33,15 @@ public:
 private:
 	
 	// Flow calculation parameters
-	int pyramidLevels;
-	cv::TermCriteria flowTermCriteria;
-	cv::Size flowWindowSize;
-	double flowEigenThreshold;
+	// int pyramidLevels;
+	ParameterManager<unsigned int> _pyramidLevels;
+
+	cv::TermCriteria _flowTermCriteria;
+
+	// cv::Size _flowWindowSize;
+	ParameterManager<cv::Size> _flowWindowSize;
+
+	double _flowEigenThreshold;
 	
 };
 

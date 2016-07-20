@@ -15,6 +15,8 @@
 #include "lookup/LookupInterface.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
 
+#include "paraset/ParameterManager.hpp"
+
 namespace argus
 {
 
@@ -51,22 +53,22 @@ public:
 	
 private:
 	
-	ros::NodeHandle nodeHandle;
-	ros::NodeHandle privHandle;
+	ros::NodeHandle _nodeHandle;
+	ros::NodeHandle _privHandle;
 	
-	ros::Publisher dispPub;
-	image_transport::ImageTransport imagePort;
-	image_transport::CameraSubscriber imageSub;
-	image_transport::Publisher debugPub;
+	ros::Publisher _dispPub;
+	image_transport::ImageTransport _imagePort;
+	image_transport::CameraSubscriber _imageSub;
+	image_transport::Publisher _debugPub;
 	
-	LookupInterface lookupInterface;
-	ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface _lookupInterface;
+	ExtrinsicsInfoManager _extrinsicsManager;
 	
-	InterestPointDetector::Ptr detector;
-	InterestPointTracker::Ptr tracker;
-	MotionEstimator::Ptr estimator;
+	InterestPointDetector::Ptr _detector;
+	InterestPointTracker::Ptr _tracker;
+	MotionEstimator::Ptr _estimator;
 	
-	bool showOutput;
+	bool _showOutput;
 	
 	struct CameraRegistration
 	{
@@ -83,11 +85,14 @@ private:
 
 		CameraRegistration() : lastVelocity( argus::PoseSE2::TangentVector::Zero() ) {}
 	};
-	std::unordered_map<std::string, CameraRegistration> cameraRegistry;
+	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
 	
-	unsigned int redetectionThreshold;
-	unsigned int minNumInliers;
-	PoseSE3::CovarianceMatrix obsCovariance;
+	// unsigned int redetectionThreshold;
+	// unsigned int minNumInliers;
+	ParameterManager<unsigned int> _redetectionThreshold;
+	ParameterManager<unsigned int> _minNumInliers;
+
+	PoseSE3::CovarianceMatrix _obsCovariance;
 	
 	void VisualizeFrame( const CameraRegistration& registration,
 	                     const cv::Mat& frame,
@@ -99,7 +104,7 @@ private:
 	                  const ros::Time& timestamp );
 	
 	bool RegisterCamera( const std::string& name );
-	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,	
+	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
 						const sensor_msgs::CameraInfoConstPtr& info_msg );
 	
 };

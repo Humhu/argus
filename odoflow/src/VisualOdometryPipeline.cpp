@@ -21,23 +21,40 @@
 
 namespace argus
 {
-	
+
 VisualOdometryPipeline::VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), imagePort( nodeHandle ), 
-extrinsicsManager( lookupInterface )
+: _nodeHandle( nh ), 
+_privHandle( ph ), 
+_imagePort( _nodeHandle ), 
+_extrinsicsManager( _lookupInterface ),
+_redetectionThreshold( ph, "redetection_threshold" ),
+_minNumInliers( ph, "min_num_inliers" )
 {
 	
 	std::string lookupNamespace;
-	privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
-	lookupInterface.SetLookupNamespace( lookupNamespace );
+	_privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
+	_lookupInterface.SetLookupNamespace( lookupNamespace );
 	
-	GetParam<unsigned int>( ph, "redetection_threshold", redetectionThreshold, 10 );
-	GetParam<unsigned int>( ph, "min_num_inliers", minNumInliers, 10 );
+	std::vector<unsigned int> redectThreshes, minInlierNums;
+	GetParamRequired( ph, "redetection_thresholds", redectThreshes );
+	GetParamRequired( ph, "min_inlier_nums", minInlierNums );
+
+	for( unsigned int i = 0; i < redectThreshes.size(); i++ )
+	{
+		_redetectionThreshold.AddSetting( redectThreshes[i], std::to_string( redectThreshes[i] ) );
+	}
+	for( unsigned int i = 0; i < minInlierNums.size(); i++ )
+	{
+		_minNumInliers.AddSetting( minInlierNums[i], std::to_string( minInlierNums[i] ) );
+	}
+
+	// GetParam<unsigned int>( ph, "redetection_threshold", redetectionThreshold, 10 );
+	// GetParam<unsigned int>( ph, "min_num_inliers", minNumInliers, 10 );
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
 	{
-		if( !ParseMatrix( covarianceData, obsCovariance ) )
+		if( !ParseMatrix( covarianceData, _obsCovariance ) )
 		{
 			ROS_ERROR_STREAM( "Could not parse observation covariance matrix." );
 			exit( -1 );
@@ -45,56 +62,62 @@ extrinsicsManager( lookupInterface )
 	}
 	else
 	{
-		obsCovariance = PoseSE3::CovarianceMatrix::Identity();
+		_obsCovariance = PoseSE3::CovarianceMatrix::Identity();
 	}
 		
 	std::string detectorType, trackerType, estimatorType;
-	ph.param<std::string>( "detector/type", detectorType, "corner" );
-	ph.param<std::string>( "tracker/type", trackerType, "lucas_kanade" );
-	ph.param<std::string>( "estimator/type", estimatorType, "rigid" );
-	
+	GetParam<std::string>( ph, "detector/type", detectorType, "corner" );
+	GetParam<std::string>( ph, "tracker/type", trackerType, "lucas_kanade" );
+	GetParam<std::string>( ph, "estimator/type", estimatorType, "rigid" );
+
+	ros::NodeHandle detectorHandle( "~detector" );
 	if( detectorType == "corner" )
 	{
-		detector = std::make_shared<CornerPointDetector>( nodeHandle, privHandle );
+		_detector = std::make_shared<CornerPointDetector>( _nodeHandle, detectorHandle );
 	}
 	else if( detectorType == "fixed" )
 	{
-		detector = std::make_shared<FixedPointDetector>( nodeHandle, privHandle );
+		_detector = std::make_shared<FixedPointDetector>( _nodeHandle, detectorHandle );
 	}
 	else if( detectorType == "FAST" )
 	{
-		detector = std::make_shared<FASTPointDetector>( nodeHandle, privHandle );
+		_detector = std::make_shared<FASTPointDetector>( _nodeHandle, detectorHandle );
 	}
 	else
 	{
-		ROS_ERROR_STREAM( "Invalid point detector type." );
+		ROS_ERROR_STREAM( "Invalid point detector type: " + detectorType );
 	}
 	
+	ros::NodeHandle trackerHandle( "~tracker" );
 	if( trackerType == "lucas_kanade" )
 	{
-		tracker = std::make_shared<LKPointTracker>( nodeHandle, privHandle );
+		_tracker = std::make_shared<LKPointTracker>( _nodeHandle, trackerHandle );
 	}
 	else
 	{
 		ROS_ERROR_STREAM( "Invalid point tracker type." );
 	}
 	
+	ros::NodeHandle estimatorHandle( "~estimator" );
 	if( estimatorType == "rigid" )
 	{
-		estimator = std::make_shared<RigidEstimator>( nodeHandle, privHandle );
+		_estimator = std::make_shared<RigidEstimator>( _nodeHandle, estimatorHandle );
 	}
 	else
 	{
-		ROS_ERROR_STREAM( "Invalid motion estimator type." );
+		ROS_ERROR_STREAM( "Invalid motion estimator type: " + estimatorType );
 	}
 	
-	ph.param( "show_output", showOutput, false );
-	if( showOutput )
+	ph.param( "show_output", _showOutput, false );
+	if( _showOutput )
 	{
-		debugPub = imagePort.advertise( "image_debug", 1 );
+		_debugPub = _imagePort.advertise( "image_debug", 1 );
 	}
-	imageSub = imagePort.subscribeCamera( "image", 1, &VisualOdometryPipeline::ImageCallback, this );
-	dispPub = nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( "velocity", 10 );
+
+	unsigned int buffSize;
+	GetParam<unsigned int>( ph, "image_buffer_size", buffSize, 1 );
+	_imageSub = _imagePort.subscribeCamera( "image", buffSize, &VisualOdometryPipeline::ImageCallback, this );
+	_dispPub = _nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( "velocity", 10 );
 
 }
 
@@ -114,14 +137,14 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Get the camera reg
 	const std::string& cameraName = msg->header.frame_id;
-	if( cameraRegistry.count( cameraName ) == 0 ) { 
+	if( _cameraRegistry.count( cameraName ) == 0 ) { 
 		if( !RegisterCamera( cameraName ) )
 		{
 			ROS_WARN_STREAM( "Could not register source camera " << cameraName );
 			return;
 		}
 	}
-	CameraRegistration& reg = cameraRegistry[ cameraName ];
+	CameraRegistration& reg = _cameraRegistry[ cameraName ];
 	cv::Mat msgFrame = cv_bridge::toCvShare( msg )->image;
 	cv::Mat currentFrame;
 	cv::cvtColor( msgFrame, currentFrame, CV_BGR2GRAY );
@@ -154,15 +177,15 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	InterestPoints keyframeInliersImage, currentInliersImage;
 	ROS_INFO_STREAM( "Keyframe points size: " << reg.keyframePointsImage.size() );
 	ROS_INFO_STREAM( "Last points size: " << reg.lastPointsImage.size() );
-	tracker->TrackInterestPoints( reg.keyframe, currentFrame, 
+	_tracker->TrackInterestPoints( reg.keyframe, currentFrame, 
 	                              reg.keyframePointsImage, reg.lastPointsImage,
 	                              keyframeInliersImage, currentInliersImage );
 	
 	// Failure if not enough inliers in tracking
 	size_t numInliers = keyframeInliersImage.size();
-	if( numInliers < minNumInliers )
+	if( numInliers < _minNumInliers.GetValue() )
 	{
-		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers, less than min " << minNumInliers );
+		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers, less than min " << _minNumInliers.GetValue() );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
 		return;
 	}
@@ -185,7 +208,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	PoseSE3 currentPose;
 	PoseSE2 pixPose;
 	std::vector<uchar> motionInliers;
-	if( !estimator->EstimateMotion( currentPointsNormalized, keyframePointsNormalized, 
+	if( !_estimator->EstimateMotion( currentPointsNormalized, keyframePointsNormalized, 
 	                                motionInliers, currentPose, pixPose ) )
 	{
 		ROS_WARN_STREAM( "Could not estimate motion between frames. Resetting keyframe." );
@@ -207,7 +230,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Have to calculate dt before getting timestamp
     PoseSE3 cameraDisplacement = reg.lastPointsPose.Inverse() * currentPose;
-	const ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
+	const ExtrinsicsInfo& cameraInfo = _extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
 	// ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
@@ -233,18 +256,18 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	tmsg.header.stamp = now;
 	tmsg.header.frame_id = cameraInfo.referenceFrame;
 	tmsg.twist.twist= TangentToMsg( frameVelocity );
-	SerializeMatrix( obsCovariance, tmsg.twist.covariance );
-	dispPub.publish( tmsg );
+	SerializeMatrix( _obsCovariance, tmsg.twist.covariance );
+	_dispPub.publish( tmsg );
 	
 	// Update registration
 	reg.lastPointsTimestamp = now;
 	reg.lastPointsImage = currentMotionInliers;
 	reg.lastPointsPose = currentPose;
 
-	if( showOutput ) { VisualizeFrame( reg, currentFrame, now ); }
+	if( _showOutput ) { VisualizeFrame( reg, currentFrame, now ); }
 	
 	// If we don't have enough inlier interest points, redetect on our keyframe
-	if( reg.keyframePointsImage.size() < redetectionThreshold )
+	if( reg.keyframePointsImage.size() < _redetectionThreshold.GetValue() )
 	{
 		ROS_INFO_STREAM( "Not enough keyframe points. Resetting keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
@@ -256,7 +279,6 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg,
                                              const cv::Mat& frame,
                                              const ros::Time& timestamp )
 {
-	
 	// Create image side-by-side
 	cv::Mat visImage( frame.rows, frame.cols*2, frame.type() );
 	cv::Mat visLeft( visImage, cv::Rect( 0, 0, frame.cols, frame.rows) );
@@ -305,22 +327,22 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg,
 	header.stamp = timestamp;
 	header.frame_id = reg.name;
 	cv_bridge::CvImage vimg( header, "mono8", visImage );
-	debugPub.publish( vimg.toImageMsg() );
+	_debugPub.publish( vimg.toImageMsg() );
 }
 	
 
 bool VisualOdometryPipeline::RegisterCamera( const std::string& name )
 {
-	if( cameraRegistry.count( name ) > 0 ) { return true; }
+	if( _cameraRegistry.count( name ) > 0 ) { return true; }
 	
-	if( !extrinsicsManager.HasMember( name ) )
+	if( !_extrinsicsManager.HasMember( name ) )
 	{
-		if( !extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
+		if( !_extrinsicsManager.ReadMemberInfo( name, false ) ) { return false; }
 	}
 	
 	CameraRegistration reg;
 	reg.name = name;
-	cameraRegistry[ name ] = reg;
+	_cameraRegistry[ name ] = reg;
 	return true;
 }
 
@@ -336,8 +358,8 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
 	reg.lastPointsImage.clear();
 	//reg.lastDelta = InterestPoint( 0, 0 );
 	reg.lastPointsTimestamp = timestamp;
-	reg.lastPointsPose = PoseSE3(); //extrinsicsManager.GetExtrinsics( reg.name ).Inverse(); //PoseSE3();
-	InterestPoints detected = detector->FindInterestPoints( reg.keyframe );
+	reg.lastPointsPose = PoseSE3(); //__extrinsicsManager.GetExtrinsics( reg.name ).Inverse(); //PoseSE3();
+	InterestPoints detected = _detector->FindInterestPoints( reg.keyframe );
 	UndistortPoints( detected, model, true, false, reg.keyframePointsImage );
 	//reg.keyframePointsImage = detected;
 	ROS_INFO_STREAM( "Found " << reg.keyframePointsImage.size() << " points." );	

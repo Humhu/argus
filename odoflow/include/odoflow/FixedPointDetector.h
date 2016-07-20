@@ -1,17 +1,11 @@
 #pragma once
 
 #include "odoflow/InterestPointDetector.h"
+#include "paraset/ParameterManager.hpp"
 
 namespace argus
 {
 
-/*! \class FixedPointDetector FixedPointDetector.h
-	*	\brief Returns a constant set of points in an image for 
-	* optical flow tracking. Parameters in the private namespace are:
-	* detector:
-	*   grid_width: [int] {1-max} (3)
-	*   grid_height: [int] {1-max} (3)
-	*/
 class FixedPointDetector 
 : public InterestPointDetector
 {
@@ -32,7 +26,14 @@ public:
 	
 private:
 	
-	InterestPoints points;
+	typedef std::pair<unsigned int, unsigned int> GridSize;
+
+	GridSize _cachedGridSize;
+	InterestPoints _cachedGrid;
+
+	ParameterManager<std::pair<unsigned int, unsigned int>> _gridSize;
+
+	void UpdateInterestPoints();
 	
 };
 	

@@ -6,10 +6,10 @@ namespace argus
 EightPointEstimator::EightPointEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : MotionEstimator( nh, ph ), estimationMethod( EIGHT_POINT )
 {
-	ph.param( "motion_estimator/confidence", confidence, 0.99 );
-	ph.param( "motion_estimator/outlier_threshold", outlierThreshold, 1.0 );
+	ph.param( "confidence", confidence, 0.99 );
+	ph.param( "outlier_threshold", outlierThreshold, 1.0 );
 	std::string methodName;
-	ph.param( "motion_estimator/method_name", methodName, "8_point" );
+	ph.param( "method_name", methodName, "8_point" );
 	
 	// TODO
 	if( methodName == "7_point" )

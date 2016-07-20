@@ -1,5 +1,8 @@
 #include "odoflow/RigidEstimator.h"
 #include "odoflow/OpenCVMod.h"
+
+#include "argus_utils/utils/ParamUtils.h"
+
 #include <Eigen/SVD>
 
 namespace argus
@@ -8,9 +11,9 @@ namespace argus
 RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : MotionEstimator( nh, ph )
 {
-	ph.param<double>( "estimator/scale", scale, 1.0 );
-	ph.param<double>( "estimator/reprojection_threshold", reprojThreshold, 3.0 );
-	ph.param<int> ( "estimator/max_iters", maxIters, 2000 );
+	GetParam<double>( ph, "scale", scale, 1.0 );
+	GetParam<double>( ph, "reprojection_threshold", reprojThreshold, 3.0 );
+	GetParam<int>( ph, "max_iters", maxIters, 2000 );
 }
 
 bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,

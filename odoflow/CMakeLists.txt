@@ -16,6 +16,7 @@ find_package(catkin REQUIRED
 					camplex
 					lookup
 					extrinsics_array
+					paraset
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -45,6 +46,7 @@ catkin_package(
 					camplex
 					lookup
 					extrinsics_array
+					paraset
 					
 	DEPENDS 		Boost 
 					OpenCV 

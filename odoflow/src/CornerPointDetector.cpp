@@ -6,29 +6,29 @@ namespace argus
 CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : InterestPointDetector( nh, ph )
 {
-	privHandle.param( "detector/max_num_points", featureMaxPoints, 500 );
-	privHandle.param( "detector/min_quality", featureQuality, 0.01 );
-	privHandle.param( "detector/min_separation", featureSeparation, 10.0 );
-	privHandle.param( "detector/block_size", featureBlockSize, 3 );
+	privHandle.param( "max_num_points", featureMaxPoints, 500 );
+	privHandle.param( "min_quality", featureQuality, 0.01 );
+	privHandle.param( "min_separation", featureSeparation, 10.0 );
+	privHandle.param( "block_size", featureBlockSize, 3 );
 	
 	int refineWindowDim;
-	privHandle.param( "detector/window_size", refineWindowDim, 10 );
+	privHandle.param( "window_size", refineWindowDim, 10 );
 	refineWindowSize = cv::Size( refineWindowDim, refineWindowDim );
 	
-	privHandle.param( "detector/use_harris", featureUseHarris, false );
+	privHandle.param( "use_harris", featureUseHarris, false );
 	if( featureUseHarris )
 	{
-		privHandle.param( "detector/harris_k", featureHarrisK, 0.04 );
+		privHandle.param( "harris_k", featureHarrisK, 0.04 );
 	}
 	
-	privHandle.param( "detector/refine_enable", refineEnable, true );
+	privHandle.param( "refine_enable", refineEnable, true );
 	
 	if( refineEnable )
 	{
 		int refineMaxIters;
 		double refineMinEps;
-		privHandle.param( "detector/refine_max_iters", refineMaxIters, 20 );
-		privHandle.param( "detector/refine_min_eps", refineMinEps, 0.03 );
+		privHandle.param( "refine_max_iters", refineMaxIters, 20 );
+		privHandle.param( "refine_min_eps", refineMinEps, 0.03 );
 		refineTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
 											   refineMaxIters, refineMinEps );
 	}
