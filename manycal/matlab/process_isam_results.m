@@ -47,8 +47,11 @@ P = reshape(rtagmap(:,:,validind),[3, size(rtagmap,2)*numel(validind)]);
 
 if exist('tagcoords','var') && use_ground_truth % ground truth data exists
 
-    Q = cell2mat(tagcoords(validind));
-
+    populatedind = find(~cellfun(@isempty,tagcoords));
+    
+    P = reshape(rtagmap(:,:,populatedind),[3, size(rtagmap,2)*numel(populatedind)]);
+    Q = cell2mat(tagcoords(populatedind));
+    
     [Rvw,Tvw] = getTransformBetweenCorrespondingPoints(P,Q);
 
     % transform all coordinates to this new world frame
@@ -118,7 +121,7 @@ for tt = validind
     plot3(vtagmap(1,3:4,tt),vtagmap(2,3:4,tt),vtagmap(3,3:4,tt),'-r');
     plot3(vtagmap(1,[4 1:3],tt),vtagmap(2,[4 1:3],tt),vtagmap(3,[4 1:3],tt),'.-k');
     text(mean(vtagmap(1,:,tt)),mean(vtagmap(2,:,tt)),mean(vtagmap(3,:,tt)),num2str(tt-1));
-    if exist('tagcoords','var')
+    if exist('tagcoords','var') && ~isempty(tagcoords{tt})
         plot3(tagcoords{tt}(1,3:4),tagcoords{tt}(2,3:4),tagcoords{tt}(3,3:4),'-m');
         plot3(tagcoords{tt}(1,[4 1:3]),tagcoords{tt}(2,[4 1:3]),tagcoords{tt}(3,[4 1:3]),'.-g');
         text(mean(tagcoords{tt}(1,:)),mean(tagcoords{tt}(2,:)),mean(tagcoords{tt}(3,:)),num2str(tt-1));

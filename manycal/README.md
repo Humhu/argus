@@ -8,7 +8,7 @@ Package for extrinsics/intrinsics calibration of sensor arrays.
 
 ## Matlab Setup:
 1. Edit <code>matlab/setpaths.m</code> to point to the locations of dependencies on your system, as well as bag file storage and output locations.
-2. Edit <code>matlab/commondata.m</code> as necessary and run it to auto-generate the <code>launch/localizetags.launch</code> file.
+2. Edit <code>matlab/commondata.m</code> as necessary and run <code>write_launch_file.m</code> to auto-generate the <code>launch/localizetags.launch</code> file.
 3. (Optional) Edit <code>matlab/generate_ground_truth.m</code> to generate a <code>.mat</code> file of ground truth locations of april tag corners from vicon marker locations.
 
 ## Get Positions of April Tag Corners from Bag File of Images:
@@ -22,7 +22,7 @@ Package for extrinsics/intrinsics calibration of sensor arrays.
 5. Go back to the second terminal. When the optimization is finished, the printous of 'Iteration...' should cease. At this point, Ctrl+C.
 6. Dump the parameters to a yaml file
 
-        rosparam dump nameoffile.yaml
+        rosparam dump dump.yaml
 
 7. Run <code>matlab/process_isam_results.m</code> to obtain the world frame positions of april tag corners. If no ground truth is available, you must edit the matlab script to arbitrarily set the world frame.
 8. Ctrl+C roscore in the first terminal.

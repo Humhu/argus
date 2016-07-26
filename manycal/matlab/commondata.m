@@ -1,10 +1,10 @@
 tag_size = 0.17;
 tag_family = '36h11';
-num_tags = 3;
+num_tags = 28;
 batch_period = 10;
 cam_name = 'mono';
 
-data = ReadYaml([self_path '../../../april_localizer/config/danaus08_pinhole.yaml']);
+data = ReadYaml([self_path '../../../april_localizer/config/raw_pinhole.yaml']);
 
 K = [data.K11 0 data.K13;
      0 data.K22 data.K23;
@@ -18,8 +18,8 @@ width = 752;
 height = 480;
 
 % location of vicon ground truth (optional)
-groundtruthfile = [getenv('HOME') '/MEGA/ISER16/data/apriltagcoords.mat'];
+groundtruthfile = [self_path 'tagcoords.mat'];
 if exist(groundtruthfile,'file')
-   load(groundtruthfile);
-   num_tags = numel(tagcoords);
+    load(groundtruthfile);
+    num_tags = numel(tagcoords);
 end
