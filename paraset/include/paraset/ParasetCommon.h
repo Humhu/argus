@@ -7,7 +7,7 @@
 namespace argus
 {
 
-typedef boost::variant<long, double, std::string> RuntimeParam;
+typedef boost::variant<long, double, std::string, bool> RuntimeParam;
 
 RuntimeParam MsgToParamVariant( const paraset::RuntimeParameter& msg );
 paraset::RuntimeParameter ParamVariantToMsg( const RuntimeParam& var );
@@ -24,6 +24,7 @@ public:
 	MessageType operator()( long value ) const;
 	MessageType operator()( double value ) const;
 	MessageType operator()( const std::string& value ) const;
+	MessageType operator()( bool value ) const;
 };
 
 }

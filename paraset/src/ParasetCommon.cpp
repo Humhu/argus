@@ -23,6 +23,11 @@ RuntimeParam MsgToParamVariant( const paraset::RuntimeParameter& msg )
 		{
 			return RuntimeParam( msg.string_value );
 		}
+		case paraset::RuntimeParameter::PARAM_BOOL:
+		{
+			bool val = msg.bool_value;
+			return RuntimeParam( val );
+		}
 		default:
 		{
 			throw std::runtime_error( "MsgToParamVariant: Unknown parameter type." );
@@ -61,6 +66,15 @@ ParamToMsgVisitor::operator()( const std::string& value ) const
 	ParamToMsgVisitor::MessageType msg;
 	msg.type = ParamToMsgVisitor::MessageType::PARAM_STRING;
 	msg.string_value = value;
+	return msg;
+}
+
+ParamToMsgVisitor::MessageType
+ParamToMsgVisitor::operator()( bool value ) const
+{
+	ParamToMsgVisitor::MessageType msg;
+	msg.type = ParamToMsgVisitor::MessageType::PARAM_BOOL;
+	msg.bool_value = value;
 	return msg;
 }
 
