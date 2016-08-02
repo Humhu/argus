@@ -1,6 +1,7 @@
 #pragma once
 
 #include "odoflow/MotionEstimator.h"
+#include "paraset/ParameterManager.hpp"
 
 namespace argus
 {
@@ -23,9 +24,9 @@ public:
 	
 private:
 	
-	double scale;
-	double reprojThreshold;
-	int maxIters;
+	double _scale;
+	FloatParameter _reprojThreshold;
+	IntegerParameter _maxIters;
 	
 };
 
