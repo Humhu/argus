@@ -1,8 +1,7 @@
 #pragma once
 
 #include "odoflow/InterestPointDetector.h"
-
-#include <opencv2/features2d.hpp>
+#include "paraset/ParameterManager.hpp"
 
 namespace argus
 {
@@ -27,8 +26,13 @@ public:
 	
 private:
 	
-	cv::Ptr< cv::FastFeatureDetector > detector;
+	IntegerParameter _intensityThreshold;
+	BoolParameter _enableNMS;
+	IntegerParameter _maxNumPoints;
+	StringParameter _detectorType;
 	
+	static int StringToDetector( const std::string& str );
+
 };
 
 } // end namespace argus

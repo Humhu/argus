@@ -34,7 +34,6 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 
 	cv::Mat Hxest = cv::findHomography( srcPoints, dstPoints, cv::RANSAC, 
 	                                    _reprojThreshold, inliers, _maxIters );
-
 	if( Hxest.empty() )
 	{
 		return false;
