@@ -31,7 +31,7 @@ private:
 	GridSize _cachedGridSize;
 	InterestPoints _cachedGrid;
 
-	ParameterManager<std::pair<unsigned int, unsigned int>> _gridSize;
+	IntegerParameter _gridDim;
 
 	void UpdateInterestPoints();
 	

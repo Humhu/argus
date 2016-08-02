@@ -33,16 +33,16 @@ public:
 private:
 	
 	// Flow calculation parameters
-	// int pyramidLevels;
-	ParameterManager<unsigned int> _pyramidLevels;
+	IntegerParameter _pyramidLevel;
+	IntegerParameter _flowWindowDim;
+	FloatParameter _flowEigenThreshold;
+	IntegerParameter _solverMaxIters;
+	FloatParameter _solverMinEpsilon;
 
 	cv::TermCriteria _flowTermCriteria;
 
-	// cv::Size _flowWindowSize;
-	ParameterManager<cv::Size> _flowWindowSize;
+	cv::Size _flowWindowSize;
 
-	double _flowEigenThreshold;
-	
 };
 
 } // end namespace argus

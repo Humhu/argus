@@ -8,35 +8,37 @@ namespace argus
 {
 	
 LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: InterestPointTracker( nh, ph ),
-_pyramidLevels( ph, "pyramid_levels" ),
-_flowWindowSize( ph, "window_size" )
+: InterestPointTracker( nh, ph )
 {
-	int maxIters;
-	double minEps;
-	GetParamRequired( ph, "max_iters", maxIters );
-	GetParamRequired( ph, "min_eps", minEps );
-	_flowTermCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
-	                                     maxIters, minEps );
+	unsigned int initMaxIters;
+	GetParamRequired<unsigned int>( ph, "max_iters", initMaxIters );
+	_solverMaxIters.Initialize( ph, initMaxIters, "max_iters", 
+	                            "Lucas-Kanade solver max iterations." );
+	_solverMaxIters.AddCheck<GreaterThan>( 0 );
+
+	double initMinEps;
+	GetParamRequired( ph, "min_eps", initMinEps );
+	_solverMinEpsilon.Initialize( ph, initMinEps, "min_eps", 
+	                              "Lucas-Kande solver min epsilon." );
+	_solverMinEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
 	
-	std::vector<unsigned int> pyramidLevels;
-	GetParamRequired( ph, "pyramid_levels", pyramidLevels );
-	for( unsigned int i = 0; i < pyramidLevels.size(); i++ )
-	{
-		_pyramidLevels.AddSetting( pyramidLevels[i], std::to_string( pyramidLevels[i] ) );
-	}
-	
-	std::vector<unsigned int> windowSizes;
-	GetParamRequired( ph, "window_sizes", windowSizes );
-	for( unsigned int i = 0; i < windowSizes.size(); i++ )
-	{
-		std::stringstream ss;
-		ss << "[" << windowSizes[i] << ", " << windowSizes[i] << "]";
-		_flowWindowSize.AddSetting( cv::Size( windowSizes[i], windowSizes[i] ),
-		                            ss.str() );
-	}
-	
-	GetParamRequired( ph, "eigenvalue_threshold", _flowEigenThreshold );
+	unsigned int initPyramidLevel;
+	GetParamRequired( ph, "pyramid_level", initPyramidLevel );
+	_pyramidLevel.Initialize( ph, initPyramidLevel, "pyramid_levels", 
+	                          "Lucas-Kanade max pyramid level." );
+	_pyramidLevel.AddCheck<GreaterThan>( 0 );
+
+	unsigned int initWindowDim;
+	GetParamRequired( ph, "window_dim", initWindowDim );
+	_flowWindowDim.Initialize( ph, initWindowDim, "window_dim", 
+	                           "Lucas-Kanade search window dim." );
+	_flowWindowDim.AddCheck<GreaterThanOrEqual>( 0 );
+
+	double initFlowThreshold;
+	GetParamRequired( ph, "flow_eigenvalue_threshold", initFlowThreshold );
+	_flowEigenThreshold.Initialize( ph, initFlowThreshold, "flow_eigenvalue_threshold", 
+	                                "Lucas-Kanade spatial gradient eigenvalue threshold." );
+	_flowEigenThreshold.AddCheck<GreaterThanOrEqual>( 0 );
 }
 
 void LKPointTracker::TrackInterestPoints( const cv::Mat& firstImage,
@@ -75,17 +77,20 @@ void LKPointTracker::TrackInterestPoints( const cv::Mat& firstImage,
 		secondConvertedPoints = firstConvertedPoints;
 	}
 	
+	cv::TermCriteria termCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
+	                                                 _solverMaxIters, _solverMinEpsilon );
 	std::vector<uchar> status;
 	std::vector<float> errors;
+	cv::Size winSize( _flowWindowDim, _flowWindowDim );
 	cv::calcOpticalFlowPyrLK( firstImage, 
 	                          secondImage, 
 	                          firstConvertedPoints, 
 	                          secondConvertedPoints, 
 	                          status, 
 	                          errors, 
-	                          _flowWindowSize.GetValue(), 
-	                          _pyramidLevels.GetValue(), 
-	                          _flowTermCriteria, 
+	                          winSize,
+	                          _pyramidLevel,
+	                          termCriteria, 
 	                          cv::OPTFLOW_USE_INITIAL_FLOW, 
 	                          _flowEigenThreshold ); 
 	

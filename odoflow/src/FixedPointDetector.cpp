@@ -10,26 +10,14 @@ namespace argus
 
 FixedPointDetector::FixedPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : InterestPointDetector( nh, ph ), 
-_cachedGridSize( 0, 0 ),
-_gridSize( ph, "grid_size" )
+_cachedGridSize( 0, 0 )
 {
 
-	std::vector<unsigned int> heights, widths;
-	GetParamRequired<std::vector<unsigned int>>( privHandle, "grid_heights", heights );
-	GetParamRequired<std::vector<unsigned int>>( privHandle, "grid_widths", widths );
-	if( heights.size() != widths.size() )
-	{
-		throw std::runtime_error( "Grid heights and widths must be same length." );
-	}
+	unsigned int gridDim;
+	GetParamRequired<unsigned int>( privHandle, "grid_dim", gridDim );
+	_gridDim.Initialize( ph, gridDim, "grid_dim", "Interest point grid width and height." );
+	_gridDim.AddCheck<GreaterThan>( 0 );
 
-	for( unsigned int i = 0; i < heights.size(); i++ )
-	{
-		std::stringstream ss;
-		ss << "[" << widths[i] << ", " << heights[i] << "]";
-		GridSize gs( widths[i], heights[i] );
-		_gridSize.AddSetting( gs, ss.str() );
-	}
-	
 	UpdateInterestPoints();
 }
 
@@ -52,7 +40,8 @@ InterestPoints FixedPointDetector::FindInterestPoints( const cv::Mat& image )
 
 void FixedPointDetector::UpdateInterestPoints()
 {
-	std::pair<unsigned int, unsigned int> gridSize = _gridSize.GetValue();
+	GridSize gridSize( _gridDim, _gridDim );
+
 	if( gridSize == _cachedGridSize ) { return; }
 
 	_cachedGrid.clear();

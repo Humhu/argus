@@ -26,30 +26,25 @@ VisualOdometryPipeline::VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHa
 : _nodeHandle( nh ), 
 _privHandle( ph ), 
 _imagePort( _nodeHandle ), 
-_extrinsicsManager( _lookupInterface ),
-_redetectionThreshold( ph, "redetection_threshold" ),
-_minNumInliers( ph, "min_num_inliers" )
+_extrinsicsManager( _lookupInterface )
 {
 	
 	std::string lookupNamespace;
 	_privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 	_lookupInterface.SetLookupNamespace( lookupNamespace );
 	
-	std::vector<unsigned int> redectThreshes, minInlierNums;
-	GetParamRequired( ph, "redetection_thresholds", redectThreshes );
-	GetParamRequired( ph, "min_inlier_nums", minInlierNums );
+	unsigned int initRedectThresh;
+	GetParamRequired( ph, "redetection_threshold", initRedectThresh );
+	_redetectionThreshold.Initialize( ph, initRedectThresh, "redetection_threshold", 
+	                                  "Pipeline feature redetection min threshold" );
+	_redetectionThreshold.AddCheck<GreaterThan>( 0 );
 
-	for( unsigned int i = 0; i < redectThreshes.size(); i++ )
-	{
-		_redetectionThreshold.AddSetting( redectThreshes[i], std::to_string( redectThreshes[i] ) );
-	}
-	for( unsigned int i = 0; i < minInlierNums.size(); i++ )
-	{
-		_minNumInliers.AddSetting( minInlierNums[i], std::to_string( minInlierNums[i] ) );
-	}
-
-	// GetParam<unsigned int>( ph, "redetection_threshold", redetectionThreshold, 10 );
-	// GetParam<unsigned int>( ph, "min_num_inliers", minNumInliers, 10 );
+	unsigned int initMinInlierNum;
+	GetParamRequired( ph, "min_inlier_num", initMinInlierNum );
+	_minNumInliers.Initialize( ph, initMinInlierNum, "min_inlier_num",
+	                           "Pipeline min feature inlier threshold" );
+	_minNumInliers.AddCheck<GreaterThan>( 0 );
+	
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
@@ -153,7 +148,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// Initialization catch
 	if( reg.keyframe.empty() )
 	{
-	  ROS_INFO_STREAM( "Initializing keyframe." );
+	  ROS_DEBUG_STREAM( "Initializing keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
 		return;
 	}
@@ -175,21 +170,21 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 
 	// Track interest points into current frame
 	InterestPoints keyframeInliersImage, currentInliersImage;
-	ROS_INFO_STREAM( "Keyframe points size: " << reg.keyframePointsImage.size() );
-	ROS_INFO_STREAM( "Last points size: " << reg.lastPointsImage.size() );
+	ROS_DEBUG_STREAM( "Keyframe points size: " << reg.keyframePointsImage.size() );
+	ROS_DEBUG_STREAM( "Last points size: " << reg.lastPointsImage.size() );
 	_tracker->TrackInterestPoints( reg.keyframe, currentFrame, 
 	                              reg.keyframePointsImage, reg.lastPointsImage,
 	                              keyframeInliersImage, currentInliersImage );
 	
 	// Failure if not enough inliers in tracking
 	size_t numInliers = keyframeInliersImage.size();
-	if( numInliers < _minNumInliers.GetValue() )
+	if( numInliers < _minNumInliers )
 	{
-		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers, less than min " << _minNumInliers.GetValue() );
+		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers, less than min " << _minNumInliers );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
 		return;
 	}
-	ROS_INFO_STREAM( "Tracked " << numInliers << " inliers." );
+	ROS_DEBUG_STREAM( "Tracked " << numInliers << " inliers." );
 	
 	// Undistort and normalize tracked inliers
 	InterestPoints currentPointsImage, currentPointsNormalized;
@@ -226,15 +221,15 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		currentMotionInliers.push_back( currentInliersImage[i] );
 	}
 	reg.keyframePointsImage = keyframeMotionInliers;
-	ROS_INFO_STREAM( "Kept " << currentMotionInliers.size() << " inliers after motion estimation." );
+	ROS_DEBUG_STREAM( "Kept " << currentMotionInliers.size() << " inliers after motion estimation." );
 	
 	// Have to calculate dt before getting timestamp
     PoseSE3 cameraDisplacement = reg.lastPointsPose.Inverse() * currentPose;
 	const ExtrinsicsInfo& cameraInfo = _extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
-	// ROS_INFO_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
-	// ROS_INFO_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
+	// ROS_DEBUG_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
+	// ROS_DEBUG_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
 
 	// camplex::CameraCalibration cal( "", *info_msg );
 	// MatrixType intrinsics = MatrixType::Identity(3,3);
@@ -267,9 +262,9 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	if( _showOutput ) { VisualizeFrame( reg, currentFrame, now ); }
 	
 	// If we don't have enough inlier interest points, redetect on our keyframe
-	if( reg.keyframePointsImage.size() < _redetectionThreshold.GetValue() )
+	if( reg.keyframePointsImage.size() < _redetectionThreshold )
 	{
-		ROS_INFO_STREAM( "Not enough keyframe points. Resetting keyframe." );
+		ROS_DEBUG_STREAM( "Not enough keyframe points. Resetting keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
 	}
        
@@ -351,7 +346,7 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
                                           const image_geometry::PinholeCameraModel& model,
                                           const ros::Time& timestamp )
 {
-	ROS_INFO_STREAM( "Setting keyframe and detecting interest points" );
+	ROS_DEBUG_STREAM( "Setting keyframe and detecting interest points" );
 	
 	reg.keyframe = frame;
 	reg.keyframeTimestamp = timestamp;
@@ -362,7 +357,7 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
 	InterestPoints detected = _detector->FindInterestPoints( reg.keyframe );
 	UndistortPoints( detected, model, true, false, reg.keyframePointsImage );
 	//reg.keyframePointsImage = detected;
-	ROS_INFO_STREAM( "Found " << reg.keyframePointsImage.size() << " points." );	
+	ROS_DEBUG_STREAM( "Found " << reg.keyframePointsImage.size() << " points." );	
 }
 
 } // end namespace odoflow

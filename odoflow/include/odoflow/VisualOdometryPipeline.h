@@ -23,7 +23,7 @@ namespace argus
 // TODO Output displacement_raw directly from tracking estimates
 // TODO Abstract keyframe, redetection policies?
 // TODO Covariance estimator interface
-	
+
 /*! \brief A complete VO pipeline that consumes images and outputs velocity estimates.
  * Subscribes to "/image_raw" for the image source. Uses the lookup system to
  * get extrinsics for cameras.
@@ -87,10 +87,8 @@ private:
 	};
 	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
 	
-	// unsigned int redetectionThreshold;
-	// unsigned int minNumInliers;
-	ParameterManager<unsigned int> _redetectionThreshold;
-	ParameterManager<unsigned int> _minNumInliers;
+	IntegerParameter _redetectionThreshold;
+	IntegerParameter _minNumInliers;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
 	
