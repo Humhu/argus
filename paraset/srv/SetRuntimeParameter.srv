@@ -1,6 +1,5 @@
 # Service to set a runtime parameter
 
-# The setting index to set to
-uint32 setting_ind
-
+RuntimeParameter param
 ---
+RuntimeParameter actual

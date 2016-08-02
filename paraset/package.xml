@@ -20,6 +20,6 @@
   
   <run_depend>roscpp</run_depend>
   <run_depend>argus_utils</run_depend>
-  <run_depend>message_generation</run_depend>
+  <run_depend>message_runtime</run_depend>
   
 </package>

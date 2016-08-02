@@ -2,8 +2,7 @@
 
 ---
 
-# The nubmer of settings this parameter can take on
-uint32 num_settings
-
-# Human-readable value descriptions
-string[] descriptions
+# Human-readable description
+# Should describe the type (int, float, string) and all valid values
+# ie. the range of inputs or a list of string inputs and descriptions
+string description

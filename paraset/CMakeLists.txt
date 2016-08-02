@@ -19,6 +19,10 @@ find_package(Boost REQUIRED)
 # Use Eigen for matrices, linear algebra
 find_package(Eigen3 REQUIRED)
 
+add_message_files( FILES
+	RuntimeParameter.msg
+)
+
 # Services
 add_service_files( FILES
 	SetRuntimeParameter.srv
@@ -30,18 +34,33 @@ generate_messages()
 catkin_package(
 	INCLUDE_DIRS 	include
 						
+	LIBRARIES		paraset
+
 	CATKIN_DEPENDS 	roscpp 
 					argus_utils
-					message_generation
+					message_runtime
 					
 	DEPENDS 		Boost 
 					system_lib
 )
 
+add_library( paraset
+			 src/ParasetCommon.cpp
+			 src/ParamChecks.cpp )
+add_dependencies( paraset paraset_gencfg ${paraset_EXPORTED_TARGETS} )
+target_link_libraries( paraset
+                       ${catkin_LIBRARIES} )
+
 include_directories( include
 ${EIGEN3_INCLUDE_DIR}
 					 ${Boost_INCLUDE_DIRS}
 					 ${catkin_INCLUDE_DIRS}
+)
+
+install( TARGETS paraset 
+	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark executables and/or libraries for installation

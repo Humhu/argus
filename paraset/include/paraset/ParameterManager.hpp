@@ -5,88 +5,111 @@
 
 #include "argus_utils/synchronization/SynchronizationTypes.h"
 
+#include "paraset/ParasetCommon.h"
+#include "paraset/RuntimeParameter.h"
 #include "paraset/SetRuntimeParameter.h"
 #include "paraset/GetParameterInfo.h"
+#include "paraset/ParamChecks.hpp"
 
+#include <memory>
 #include <deque>
+#include <boost/foreach.hpp>
+#include <sstream>
 
 namespace argus
 {
 
-template <typename ParamType>
+template <typename T>
 class ParameterManager
 {
 public:
 
-	ParameterManager( ros::NodeHandle& nodeHandle, const std::string& paramName )
-	: _name( paramName ), _currentIndex( 0 )
+	ParameterManager() : _name("") {}
+
+	// TODO Have initialval set after checks are added?
+	void Initialize( ros::NodeHandle& nodeHandle,
+	                 const T& initialVal,
+	                 const std::string& name,
+	                 const std::string& description )
 	{
-		_setServer = nodeHandle.advertiseService( "set_" + paramName, 
-		                                          &ParameterManager<ParamType>::SetParameterCallback,
+		WriteLock lock( _mutex );
+		_name = name;
+		_description = description;
+		_currentValue = initialVal;
+		_setServer = nodeHandle.advertiseService( "set_" + name, 
+		                                          &ParameterManager<T>::SetParameterCallback,
 		                                          this );
-		_infoServer = nodeHandle.advertiseService( "get_" + paramName + "_info",
-		                                           &ParameterManager<ParamType>::GetInfoCallback,
+		_infoServer = nodeHandle.advertiseService( "get_" + name + "_info",
+		                                           &ParameterManager<T>::GetInfoCallback,
 		                                           this );
 	}
 
-	void AddSetting( const ParamType& param, const std::string& description )
-	{
-		_settings.emplace_back( param, description );
-	}
-
-	void SetIndex( unsigned int ind )
+	template <template<class> class Check, typename... Args >
+	void AddCheck( Args&&... args )
 	{
 		WriteLock lock( _mutex );
-		if( ind >= _settings.size() )
-		{
-			throw std::runtime_error( "Setting index " + std::to_string( ind ) +
-                          " for parameter " + _name + " exceeds number of settings " +
-                          std::to_string( _settings.size() ) );
-		}
-		_currentIndex = ind;
+		Validate();
+		CheckPtr c = std::make_shared<Check<T>>( std::forward<Args>( args )... );
+		_checks.push_back( c );
 	}
 
-	ParamType GetValue() const
+	T GetValue() const
 	{
 		ReadLock lock( _mutex );
-		if( _currentIndex >= _settings.size() )
-		{
-			throw std::runtime_error( "Current index " + std::to_string( _currentIndex ) +
-			                          " for parameter " + _name + " exceeds number of settings " +
-			                          std::to_string( _settings.size() ) );
-		}
-		return _settings[_currentIndex].value;
+		Validate();
+		return _currentValue;
 	}
+
+	operator T() const
+	{
+		return GetValue();
+	}
+
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
 private:
 
-	struct Setting
-	{
-		// Just in case parameters are fixed-size Eigen matrices
-		EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-		ParamType value;
-		std::string description;
-
-		Setting( const ParamType& p, const std::string& d )
-		: value( p ), description( d ) {}
-	};
-
-	mutable Mutex _mutex;
+	typedef typename ParameterCheck<T>::Ptr CheckPtr;
 
 	std::string _name;
-	unsigned int _currentIndex;
-	std::deque<Setting> _settings;
+	std::string _description;
 
 	ros::ServiceServer _setServer;
 	ros::ServiceServer _infoServer;
 
+	mutable Mutex _mutex;
+	T _currentValue;
+	std::deque<CheckPtr> _checks;
+
+	virtual bool ReadVariant( const RuntimeParam& var )
+	{
+		try
+		{
+			WriteLock lock( _mutex );
+			T val = boost::get<T>( var );
+			BOOST_FOREACH( const CheckPtr& check, _checks )
+			{
+				val = check->Project( val );
+			}
+			_currentValue = val;
+		}
+		catch( boost::bad_get& e )
+		{
+			// This means that the type conversion failed
+			ROS_WARN_STREAM( "Improper parameter type for " + _name );
+			return false;
+		}
+		return true;
+	}
+
+
 	bool SetParameterCallback( paraset::SetRuntimeParameter::Request& req,
 	                           paraset::SetRuntimeParameter::Response& res )
 	{
-		WriteLock lock( _mutex );
-		if( req.setting_ind >= _settings.size() ) { return false; }
-		_currentIndex = req.setting_ind;
+		RuntimeParam var = MsgToParamVariant( req.param );
+		if( !ReadVariant( var ) ) { return false; }
+		var = _currentValue;
+		res.actual = ParamVariantToMsg( var );
 		return true;
 	}
 
@@ -94,15 +117,28 @@ private:
 	                      paraset::GetParameterInfo::Response& res )
 	{
 		ReadLock lock( _mutex );
-		res.num_settings = _settings.size();
-		res.descriptions.reserve( _settings.size() );
-		for( unsigned int i = 0; i < _settings.size(); i++ )
+		std::stringstream ss;
+		ss << _description;
+		BOOST_FOREACH( const CheckPtr& check, _checks )
 		{
-			res.descriptions.emplace_back( _settings[i].description );
+			ss << std::endl << check->GetDescription();
 		}
+		res.description = ss.str();
 		return true;
 	}
 
+	void Validate() const
+	{
+		if( _name.empty() )
+		{
+			throw std::runtime_error( "Parameter manager is uninitialized." );
+		}
+	}
+
 };
+
+typedef ParameterManager<long> IntegerParameter;
+typedef ParameterManager<double> FloatParameter;
+typedef ParameterManager<std::string> StringParameter;
 
 }
