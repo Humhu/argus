@@ -94,7 +94,8 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR() const
 	{
 		acc += op;
 	}
-	return acc/_innoOuterProds.size() + _lastHPHT;
+	MatrixType sum = acc/_innoOuterProds.size() + _lastHPHT;
+	return Eigen::DiagonalMatrix<double,Eigen::Dynamic,Eigen::Dynamic>( sum.diagonal() );
 }
 
 void AdaptiveObservationCovarianceEstimator::ProcessInfo( const argus_msgs::FilterStepInfo& msg )
