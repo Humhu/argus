@@ -1,2 +1,0 @@
-string resourceName
-uint32 requestedQuantity

@@ -1,4 +1,0 @@
-resource_management/ResourceRequest[] requests
----
-uint32 grantID
-resource_management/ResourceGrant[] grants
