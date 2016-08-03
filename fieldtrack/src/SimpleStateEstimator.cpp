@@ -256,25 +256,10 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	}
 
 	// Parse covariance rate to use as a fallback
-	if( !GetMatrixParam<double>( privHandle, "covariance_rate", _Qrate ) )
-	{
-		if( !GetDiagonalParam<double>( privHandle, "covariance_rate", _Qrate ) )
-		{
-			ROS_WARN_STREAM( "No covariance rate given. Using identity." );
-			_Qrate = FilterType::FullCovType::Identity();
-		}
-		ROS_INFO_STREAM( "Using covariance rate: " << std::endl << _Qrate );
-	}
+	GetParam<double>( privHandle, "covariance_rate", _Qrate, FilterType::FullCovType::Identity() );
 
 	// Initialize
-	if( !GetMatrixParam<double>( privHandle, "initial_covariance", _initCov ) )
-	{
-		if( !GetDiagonalParam<double>( privHandle, "initial_covariance", _initCov ) )
-		{
-			ROS_WARN_STREAM( "No initial covariance rate given. Using 10*identity." );
-			_initCov = 10 * FilterType::FullCovType::Identity();
-		}
-	}
+	GetParam<double>( privHandle, "initial_covariance", _initCov, FilterType::FullCovType::Identity() );
 	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << _initCov );
 
 	// TODO Initial state?
