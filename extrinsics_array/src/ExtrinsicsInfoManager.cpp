@@ -18,7 +18,7 @@ bool ExtrinsicsInfoManager::ParseMemberInfo( const std::string& memberNamespace,
 	// Read extrinsics first
 	YAML::Node extrinsics;
 	std::string extrinsicsKey = GenerateExtrinsicsKey( memberNamespace );
-	if( !GetYamlParam( _nodeHandle, extrinsicsKey, extrinsics ) )
+	if( !GetParam( _nodeHandle, extrinsicsKey, extrinsics ) )
 	{
 		ROS_WARN_STREAM( "Could not find extrinsics information at path " << extrinsicsKey );
 		return false;

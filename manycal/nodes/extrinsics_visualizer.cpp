@@ -48,7 +48,7 @@ public:
 			exit( -1 );
 		}
 		YAML::Node dump;
-		if( !GetYamlParam( nodeHandle, targetNamespace, dump ) )
+		if( !GetParam( nodeHandle, targetNamespace, dump ) )
 		{
 			ROS_ERROR_STREAM( "Could not retrieve parameters from: " << targetNamespace );
 			exit( -1 );

@@ -17,7 +17,7 @@ bool FiducialInfoManager::ParseMemberInfo( const std::string& memberNamespace,
 {
 	YAML::Node intrinsics;
 	std::string intrinsicsKey = GenerateIntrinsicsKey( memberNamespace );
-	if( !GetYamlParam( _nodeHandle, intrinsicsKey, intrinsics ) )
+	if( !GetParam( _nodeHandle, intrinsicsKey, intrinsics ) )
 	{
 		ROS_WARN_STREAM( "Could not find intrinsics information at path: " << intrinsicsKey );
 		return false;

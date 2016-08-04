@@ -11,7 +11,7 @@ VelocityIntegrator::VelocityIntegrator( ros::NodeHandle& nh, ros::NodeHandle& ph
 : nodeHandle( nh ), privHandle( ph ), initialized( false ), twistInitialized( false )
 {
 	YAML::Node poseYaml;
-	if( GetYamlParam( privHandle, "transform", poseYaml ) )
+	if( GetParam( privHandle, "transform", poseYaml ) )
 	{
 		if( !GetPoseYaml( poseYaml, offset ) )
 		{
