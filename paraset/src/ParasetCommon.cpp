@@ -11,9 +11,9 @@ RuntimeParam MsgToParamVariant( const paraset::RuntimeParameter& msg )
 		{
 			throw std::runtime_error( "MsgToParamVariant: Cannot parse invalid param message." );
 		}
-		case paraset::RuntimeParameter::PARAM_INT:
+		case paraset::RuntimeParameter::PARAM_INTEGER:
 		{
-			return RuntimeParam( msg.int_value );
+			return RuntimeParam( msg.integer_value );
 		}
 		case paraset::RuntimeParameter::PARAM_FLOAT:
 		{
@@ -23,9 +23,9 @@ RuntimeParam MsgToParamVariant( const paraset::RuntimeParameter& msg )
 		{
 			return RuntimeParam( msg.string_value );
 		}
-		case paraset::RuntimeParameter::PARAM_BOOL:
+		case paraset::RuntimeParameter::PARAM_BOOLEAN:
 		{
-			bool val = msg.bool_value;
+			bool val = msg.boolean_value;
 			return RuntimeParam( val );
 		}
 		default:
@@ -33,6 +33,53 @@ RuntimeParam MsgToParamVariant( const paraset::RuntimeParameter& msg )
 			throw std::runtime_error( "MsgToParamVariant: Unknown parameter type." );
 		}
 	} // end switch
+}
+
+RuntimeParamType StringToParamType( const std::string& s )
+{
+	if( s == "invalid" )
+	{
+		return PARAM_INVALID;
+	}
+	else if( s == "integer" )
+	{
+		return PARAM_INTEGER;
+	}
+	else if( s == "float" )
+	{
+		return PARAM_FLOAT;
+	}
+	else if( s == "string" )
+	{
+		return PARAM_STRING;
+	}
+	else if( s == "boolean" )
+	{
+		return PARAM_BOOLEAN;
+	}
+	else
+	{
+		throw std::runtime_error( "StringToParamType: Unknown param type: " + s );
+	}
+}
+
+std::string ParamTypeToString( RuntimeParamType t )
+{
+	switch( t )
+	{
+		case PARAM_INVALID:
+			return "invalid";
+		case PARAM_INTEGER:
+			return "integer";
+		case PARAM_FLOAT:
+			return "float";
+		case PARAM_STRING:
+			return "string";
+		case PARAM_BOOLEAN:
+			return "boolean";
+		default:
+			throw std::runtime_error( "ParamTypeToString: Unknown param type received." );
+	}
 }
 
 paraset::RuntimeParameter ParamVariantToMsg( const RuntimeParam& var )
@@ -46,8 +93,8 @@ ParamToMsgVisitor::MessageType
 ParamToMsgVisitor::operator()( long value ) const
 {
 	ParamToMsgVisitor::MessageType msg;
-	msg.type = ParamToMsgVisitor::MessageType::PARAM_INT;
-	msg.int_value = value;
+	msg.type = ParamToMsgVisitor::MessageType::PARAM_INTEGER;
+	msg.integer_value = value;
 	return msg;
 }
 
@@ -73,9 +120,29 @@ ParamToMsgVisitor::MessageType
 ParamToMsgVisitor::operator()( bool value ) const
 {
 	ParamToMsgVisitor::MessageType msg;
-	msg.type = ParamToMsgVisitor::MessageType::PARAM_BOOL;
-	msg.bool_value = value;
+	msg.type = ParamToMsgVisitor::MessageType::PARAM_BOOLEAN;
+	msg.boolean_value = value;
 	return msg;
 }
+
+template <>
+const std::string RuntimeParamTraits<long>::name = "integer";
+template <>
+const RuntimeParamType RuntimeParamTraits<long>::type = PARAM_INTEGER;
+
+template <>
+const std::string RuntimeParamTraits<double>::name = "float";
+template <>
+const RuntimeParamType RuntimeParamTraits<double>::type = PARAM_FLOAT;
+
+template <>
+const std::string RuntimeParamTraits<std::string>::name = "string";
+template <>
+const RuntimeParamType RuntimeParamTraits<std::string>::type = PARAM_STRING;
+
+template <>
+const std::string RuntimeParamTraits<bool>::name = "boolean";
+template <>
+const RuntimeParamType RuntimeParamTraits<bool>::type = PARAM_BOOLEAN;
 
 }

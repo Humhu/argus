@@ -118,11 +118,14 @@ private:
 	{
 		ReadLock lock( _mutex );
 		std::stringstream ss;
-		ss << _description;
+		ss << "Description: " << _description << std::endl;
+		ss << "Type: " << RuntimeParamTraits<T>::name << std::endl;
+		ss << "Constraints:";
 		BOOST_FOREACH( const CheckPtr& check, _checks )
 		{
-			ss << std::endl << check->GetDescription();
+			ss << " " << check->GetDescription();
 		}
+
 		res.description = ss.str();
 		return true;
 	}
