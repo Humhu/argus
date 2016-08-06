@@ -56,7 +56,7 @@ public:
 	percepto::ConstantVectorRegressor lReg;
 	percepto::ConstantVectorRegressor dReg;
 	// percepto::HingeExponentialWrapper<VectorType> expModule;
-	percepto::ExponentialWrapper<VectorType> expModule;
+	percepto::ExponentialWrapper expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 
@@ -99,7 +99,7 @@ public:
 	percepto::ConstantVectorRegressor lReg;
 	percepto::LinearRegressor dReg;
 	// percepto::HingeExponentialWrapper<VectorType> expModule;
-	percepto::ExponentialWrapper<VectorType> expModule;
+	percepto::ExponentialWrapper expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 
@@ -142,7 +142,7 @@ public:
 	percepto::ReLUNet dReg;
 	// percepto::PerceptronNet dReg;
 	// percepto::HingeExponentialWrapper<VectorType> expModule;
-	percepto::ExponentialWrapper<VectorType> expModule;
+	percepto::ExponentialWrapper expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
 

@@ -14,7 +14,6 @@ find_package(catkin REQUIRED
 					argus_msgs
 					lookup
 					broadcast
-					message_filters
 					visualization_msgs
 )
 include_directories( ${catkin_INCLUDE_DIRS} )
@@ -61,7 +60,6 @@ catkin_package(
 					argus_msgs
 					lookup
 					broadcast
-					message_filters
 					visualization_msgs
 					
 	DEPENDS 		Boost 

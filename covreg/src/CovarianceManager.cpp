@@ -38,6 +38,7 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 }
 
 // TODO Parse from info -> Msg instead so we can have nicer error messages
+// TODO Parse the receiver modes
 void CovarianceManager::Initialize( const std::string& sourceName,
                                     const YAML::Node& info,
                                     double cacheTime )
@@ -51,8 +52,9 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 	unsigned int fDim = 0;
 	BOOST_FOREACH( const std::string& featureName, features )
 	{
-		_receivers.emplace_back( featureName, cacheTime );
-		fDim += _receivers.back().OutputDim();
+		_receivers.emplace_back();
+		_receivers.back().Initialize( featureName, CLOSEST_BEFORE, cacheTime );
+		fDim += _receivers.back().GetDim();
 	}
 
 	if( fDim != _estimator->InputDim() )
@@ -105,9 +107,9 @@ bool CovarianceManager::IsReady() const
 	if( !_estimator ) { return false; }
 	BOOST_FOREACH( const BroadcastReceiver& rx, _receivers )
 	{
-		if( !rx.Ready() ) 
+		if( !rx.IsReady() ) 
 		{
-			ROS_WARN_STREAM( "Stream: " << rx.StreamName() << 
+			ROS_WARN_STREAM( "Stream: " << rx.GetStreamName() << 
 				             " has not received yet." );
 			return false; 
 		}
@@ -127,8 +129,10 @@ MatrixType CovarianceManager::EstimateCovariance( const ros::Time& time )
 	unsigned int fInd = 0;
 	BOOST_FOREACH( BroadcastReceiver& rx, _receivers )
 	{
-		feats.segment( fInd, rx.OutputDim() ) = rx.GetClosestPrevious( time );
-		fInd += rx.OutputDim();
+		StampedFeatures f;
+		rx.ReadStream( time, f ); // TODO Handle failure
+		feats.segment( fInd, rx.GetDim() ) = f.features;
+		fInd += rx.GetDim();
 	}
 	return _estimator->Evaluate( feats );
 }

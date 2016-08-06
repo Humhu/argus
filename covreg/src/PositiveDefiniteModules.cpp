@@ -3,10 +3,6 @@
 #define POSDEF_OFFSET_SCALE (1E-9)
 #define RELU_LEAKY_SLOPE (1E-3)
 
-#define EXP_LOWER_THRESH (-6)
-//#define EXP_UPPER_THRESH (13.815510558) // ln( 1e-6)
-#define EXP_UPPER_THRESH (20)
-
 using namespace percepto;
 
 namespace argus

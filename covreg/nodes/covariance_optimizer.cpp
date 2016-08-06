@@ -179,7 +179,7 @@ public:
 		BOOST_FOREACH( const std::string& feature, reg.features )
 		{
 			RegisterReceiver( feature );
-			fDim += _receivers.at( feature ).OutputDim();
+			fDim += _receivers.at( feature ).GetDim();
 		}
 
 		if( fDim != reg.estimator->InputDim() )
@@ -242,9 +242,7 @@ public:
 	void RegisterReceiver( const std::string& streamName )
 	{
 		if( _receivers.count( streamName ) > 0 ) { return; }
-		_receivers.emplace( std::piecewise_construct,
-		                    std::forward_as_tuple( streamName ),
-		                    std::forward_as_tuple( streamName, _featureCacheTime ) );
+		_receivers[streamName].Initialize( streamName, CLOSEST_BEFORE, _featureCacheTime );
 		// NOTE Can't do this since we would block the main thread from getting 
 		// to the ros::spin() to pump the message queue!
 		// while( !_receivers[streamName].HasReceived() )
@@ -302,9 +300,9 @@ public:
 		typedef ReceiverRegistry::value_type Item;
 		BOOST_FOREACH( Item& item, _receivers )
 		{
-			if( !item.second.HasReceived() )
+			if( !item.second.IsReady() )
 			{
-				ROS_WARN_STREAM( "Stream: " << item.second.StreamName() <<
+				ROS_WARN_STREAM( "Stream: " << item.second.GetStreamName() <<
 				                 " has not received data yet." );
 				_waitTimer.stop();
 				_waitTimer.setPeriod( ros::Duration( 1.0 ) );
@@ -395,8 +393,10 @@ private:
 			BOOST_FOREACH( const std::string& featureName, reg.features )
 			{
 				BroadcastReceiver& rx = _receivers.at( featureName );
-				feat.segment( featInd, rx.OutputDim() ) = rx.GetClosestPrevious( msg->header.stamp );
-				featInd += rx.OutputDim();
+				StampedFeatures f;
+				rx.ReadStream( msg->header.stamp, f );
+				feat.segment( featInd, rx.GetDim() ) = f.features;
+				featInd += rx.GetDim();
 			}
 		}
 		catch( std::runtime_error e ) 
