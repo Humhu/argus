@@ -2,7 +2,7 @@
 
 import rospy
 
-def register_lookup_target( target_name, target_namespace, lookup_namespace ):
+def register_lookup_target( target_name, target_namespace, lookup_namespace='/lookup' ):
     if lookup_namespace[-1] != '/':
         lookup_namespace += '/'
     

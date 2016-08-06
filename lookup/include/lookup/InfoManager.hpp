@@ -96,14 +96,16 @@ bool InfoManager<InfoStruct>::WriteMemberInfo( const std::string& memberName,
                                                bool forceLookup ,
                                                const ros::Duration& timeout )
 {
-	std::string memberNamespace;
+	MemberRegistration reg;
+	reg.info = info;
 	// Get namespace records failures, so we don't have to here
-	if( !GetNamespace( memberName, memberNamespace, forceLookup, timeout ) ) 
+	if( !GetNamespace( memberName, reg.nameSpace, forceLookup, timeout ) ) 
 	{ 
 		return false; 
 	}
 
-	PopulateMemberInfo( info, memberNamespace );
+	PopulateMemberInfo( info, reg.nameSpace );
+	registry[memberName] = reg;
 	return true;
 }
 
