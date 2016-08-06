@@ -17,6 +17,7 @@
   <build_depend>message_generation</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>argus_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>argus_utils</build_depend>
   <build_depend>lookup</build_depend>
@@ -24,6 +25,7 @@
   <run_depend>message_runtime</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>argus_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>argus_utils</run_depend>
   <run_depend>lookup</run_depend>

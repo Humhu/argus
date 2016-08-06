@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
              message_generation
              std_msgs
              argus_msgs
+             nav_msgs
              roscpp
              argus_utils
              lookup
@@ -24,6 +25,9 @@ find_package(Eigen3 REQUIRED)
 add_message_files( FILES
                   StampedFeatures.msg )
 
+add_service_files( FILES
+                   QueryFeatures.srv )
+
 catkin_python_setup()
 
 generate_messages( DEPENDENCIES
@@ -37,6 +41,7 @@ catkin_package( INCLUDE_DIRS     include
                 CATKIN_DEPENDS   message_runtime
                                  std_msgs
                                  argus_msgs
+                                 nav_msgs
                                  roscpp 
                                  argus_utils
                                  lookup
@@ -52,6 +57,7 @@ include_directories( include
                     )
 
 add_library( broadcast
+            src/BroadcastCommon.cpp
             src/BroadcastInfoManager.cpp
             src/BroadcastTransmitter.cpp
             src/BroadcastReceiver.cpp
@@ -62,12 +68,12 @@ target_link_libraries( broadcast
                       )
 add_dependencies( broadcast ${broadcast_EXPORTED_TARGETS} )
 
-add_executable( broadcast_combiner nodes/broadcast_combiner.cpp )
-add_dependencies( broadcast_combiner covreg_gencfg ${broadcast_EXPORTED_TARGETS} )
-target_link_libraries( broadcast_combiner ${catkin_LIBRARIES} broadcast )
+add_executable( belief_state_broadcaster nodes/belief_state_broadcaster.cpp )
+add_dependencies( belief_state_broadcaster covreg_gencfg ${broadcast_EXPORTED_TARGETS} )
+target_link_libraries( belief_state_broadcaster ${catkin_LIBRARIES} broadcast )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS broadcast broadcast_combiner
+install(TARGETS broadcast belief_state_broadcaster
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

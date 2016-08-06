@@ -1,5 +1,6 @@
 #pragma once
 
+#include "broadcast/BroadcastCommon.h"
 #include "lookup/InfoManager.h"
 
 namespace argus
@@ -9,6 +10,8 @@ struct BroadcastInfo
 {
 	unsigned int featureSize;
 	std::vector<std::string> featureDescriptions;
+	std::string topic;
+	BroadcastMode mode;
 };
 
 class BroadcastInfoManager
