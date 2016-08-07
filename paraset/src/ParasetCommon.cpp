@@ -125,6 +125,51 @@ ParamToMsgVisitor::operator()( bool value ) const
 	return msg;
 }
 
+ParamPrintVisitor::ParamPrintVisitor() {}
+
+std::string ParamPrintVisitor::operator()( long value ) const
+{
+	return "integer: " + std::to_string( value );
+}
+
+std::string ParamPrintVisitor::operator()( double value ) const
+{
+	return "float: " + std::to_string( value );
+}
+
+std::string ParamPrintVisitor::operator()( const std::string& value ) const
+{
+	return "string: " + value;
+}
+
+std::string ParamPrintVisitor::operator()( bool value ) const
+{
+	return "boolean: " + std::to_string( value );
+}
+
+std::string ParamVariantToString( const RuntimeParam& var )
+{
+	return boost::apply_visitor( ParamPrintVisitor(), var );
+}
+
+// std::ostream& operator<<( std::ostream& os, const RuntimeParam& param )
+// {
+// 	os << boost::apply_visitor( ParamPrintVisitor(), param );
+// 	return os;
+// }
+
+ParamEqualityVisitor::ParamEqualityVisitor() {}
+
+bool operator==( const RuntimeParam& lhs, const RuntimeParam& rhs )
+{
+	return boost::apply_visitor( ParamEqualityVisitor(), lhs, rhs );
+}
+
+bool operator!=( const RuntimeParam& lhs, const RuntimeParam& rhs )
+{
+	return !boost::apply_visitor( ParamEqualityVisitor(), lhs, rhs );
+}
+
 template <>
 const std::string RuntimeParamTraits<long>::name = "integer";
 template <>

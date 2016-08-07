@@ -6,14 +6,20 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 
 set(CMAKE_BUILD_TYPE Release)
 
+find_package(percepto REQUIRED)
+message( STATUS "percepto found at: " ${percepto_INCLUDE_DIRS} )
+include_directories( ${percepto_INCLUDE_DIRS} )
+list( APPEND paraset_LIBS ${percepto_LIBS} )
+
 find_package(catkin REQUIRED 
 	COMPONENTS		message_generation
 					roscpp
 					argus_utils
+					broadcast
 )
 
 # Use Boost for most utilities, threading
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS random)
 
 # TODO Figure out how to make this included with argus_utils includes
 # Use Eigen for matrices, linear algebra
@@ -39,14 +45,18 @@ catkin_package(
 	CATKIN_DEPENDS 	roscpp 
 					argus_utils
 					message_runtime
+					broadcast
 					
 	DEPENDS 		Boost 
 					system_lib
 )
 
 add_library( paraset
+             src/DiscretePolicy.cpp
+             src/DiscretePolicyManager.cpp
 			 src/ParasetCommon.cpp
-			 src/ParamChecks.cpp )
+			 src/ParamChecks.cpp
+			 src/PolicyModules.cpp )
 add_dependencies( paraset paraset_gencfg ${paraset_EXPORTED_TARGETS} )
 target_link_libraries( paraset
                        ${catkin_LIBRARIES} )
@@ -56,6 +66,13 @@ ${EIGEN3_INCLUDE_DIR}
 					 ${Boost_INCLUDE_DIRS}
 					 ${catkin_INCLUDE_DIRS}
 )
+
+add_executable( discrete_policy_node nodes/discrete_policy_node.cpp )
+add_dependencies( discrete_policy_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( discrete_policy_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
 
 install( TARGETS paraset 
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

@@ -52,6 +52,46 @@ public:
 	MessageType operator()( bool value ) const;
 };
 
+class ParamPrintVisitor
+: public boost::static_visitor<std::string>
+{
+public:
+
+	typedef paraset::RuntimeParameter MessageType;
+
+	ParamPrintVisitor();
+
+	std::string operator()( long value ) const;
+	std::string operator()( double value ) const;
+	std::string operator()( const std::string& value ) const;
+	std::string operator()( bool value ) const;
+};
+// NOTE Causes issues with ambiguous print calls on ParameterManager...
+// std::ostream& operator<<( std::ostream& os, const RuntimeParam& param );
+std::string ParamVariantToString( const RuntimeParam& var );
+
+class ParamEqualityVisitor
+: public boost::static_visitor<bool>
+{
+public:
+
+	ParamEqualityVisitor();
+
+	template <typename T, typename U>
+	bool operator()( const T& lhs, const U& rhs ) const
+	{
+		return false;
+	}
+
+	template <typename T>
+	bool operator()( const T& lhs, const T& rhs ) const
+	{
+		return lhs == rhs;
+	}
+};
+bool operator==( const RuntimeParam& lhs, const RuntimeParam& rhs );
+bool operator !=( const RuntimeParam& lhs, const RuntimeParam& rhs );
+
 template <typename CType>
 struct RuntimeParamTraits
 {
