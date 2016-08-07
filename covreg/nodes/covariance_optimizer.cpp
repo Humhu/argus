@@ -168,18 +168,21 @@ public:
 		std::string paramTopic = name + "/param_updates";
 		reg.estimator = std::make_shared<CovarianceEstimator>( name, info );
 		reg.paramPublisher = privHandle.advertise<CovarianceEstimatorInfo>( paramTopic, 10 );
-		reg.features = TryYamlField<std::vector<std::string>>( info, "features" );
 		if( name != "transition" )
 		{
 			reg.weight = TryYamlField<double>( info, "weight" );
 		}
 
 		// Register all features this model needs
+		//reg.features = TryYamlField<std::vector<std::string>>( info, "features" );
 		unsigned int fDim = 0;
-		BOOST_FOREACH( const std::string& feature, reg.features )
+		YAML::Node inputStreams = info["features"];
+		YAML::const_iterator iter;
+		for( iter = inputStreams.begin(); iter != inputStreams.end(); ++iter )
 		{
-			RegisterReceiver( feature );
-			fDim += _receivers.at( feature ).GetDim();
+			const std::string& featureName = iter->first.as<std::string>();
+			RegisterReceiver( featureName, iter->second );
+			fDim += _receivers.at( featureName ).GetDim();
 		}
 
 		if( fDim != reg.estimator->InputDim() )
@@ -239,17 +242,10 @@ public:
 		}
 	}
 
-	void RegisterReceiver( const std::string& streamName )
+	void RegisterReceiver( const std::string& streamName, const YAML::Node& props )
 	{
 		if( _receivers.count( streamName ) > 0 ) { return; }
-		_receivers[streamName].Initialize( streamName, CLOSEST_BEFORE, _featureCacheTime );
-		// NOTE Can't do this since we would block the main thread from getting 
-		// to the ros::spin() to pump the message queue!
-		// while( !_receivers[streamName].HasReceived() )
-		// {
-		// 	ROS_WARN_STREAM( "Waiting for stream: " << streamName << "..." );
-		// 	ros::Duration( 1.0 ).sleep();
-		// }
+		_receivers[streamName].Initialize( streamName, props );
 	}
 
 	void SaveLog()

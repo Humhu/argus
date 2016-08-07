@@ -12,35 +12,16 @@ namespace argus
 {
 
 BroadcastReceiver::BroadcastReceiver() 
-: _nodeHandle(), _lookup(), _infoManager( _lookup )
+: _nodeHandle(), _lookup(), _infoManager( _lookup ), _initialized( false )
 {}
 
 void BroadcastReceiver::Initialize( const std::string& streamName,
-                                    ros::NodeHandle& ph )
+                                    const YAML::Node& props )
 {
-	std::string queryMode;
-	double cacheTime;
-	unsigned int queueSize;
-	GetParamRequired( ph, "query_mode", queryMode );
-	GetParam<double>( ph, "cache_time", cacheTime, 5.0 );
-	GetParam<unsigned int>( ph, "queue_size", queueSize, 0 );
-
-	Initialize( streamName, 
-	            StringToQueryMode( queryMode ),
-	            cacheTime,
-	            queueSize );
-}
-
-void BroadcastReceiver::Initialize( const std::string& streamName,
-                                    QueryMode mode,
-                                    double cacheTime,
-                                    unsigned int incomingQueueSize )
-{
-	WriteLock lock( _mutex );
-
-	_streamName = streamName;
-	_queryMode = mode;
-	_maxTimespan = cacheTime;
+	std::string queryStr;
+	std::cout << "props: " << props << std::endl;
+	GetParamRequired( props, "query_mode", queryStr );
+	QueryMode queryMode = StringToQueryMode( queryStr );
 
 	if( !_infoManager.CheckMemberInfo( streamName, true, ros::Duration( 10.0 ) ) )
 	{
@@ -51,20 +32,53 @@ void BroadcastReceiver::Initialize( const std::string& streamName,
 	switch( info.mode )
 	{
 		case PUSH_TOPIC:
-			ROS_INFO_STREAM( "Listening to push stream " << streamName << " on topic: " << info.topic );
-			_pushSub = _nodeHandle.subscribe( info.topic, 
-			                                  incomingQueueSize, 
-			                                  &BroadcastReceiver::FeatureCallback, 
-			                                  this );
+		{
+			double cacheTime;
+			unsigned int queueSize;
+			GetParam<double>( props, "cache_time", cacheTime, 5.0 );
+			GetParam<unsigned int>( props, "queue_size", queueSize, 0 );
+			InitializePushStream( streamName, info.topic, queryMode, cacheTime, queueSize );
 			break;
+		}
 		case PULL_TOPIC:
-			ROS_INFO_STREAM( "Set up to pull stream " << streamName << " on service: " << info.topic );
-			ros::service::waitForService( info.topic );
-			_pullClient = _nodeHandle.serviceClient<broadcast::QueryFeatures>( info.topic, true );
+		{
+			InitializePullStream( streamName, info.topic, queryMode );
 			break;
+		}
 		default:
+		{
 			throw std::runtime_error( "BroadcastReceiver: Unknown topic mode." );
+		}
 	}
+}
+
+void BroadcastReceiver::InitializePullStream( const std::string& streamName,
+                                              const std::string& topic,
+                                              QueryMode mode )
+{
+	_streamName = streamName;
+	_queryMode = mode;
+	ROS_INFO_STREAM( "Setting up to pull stream " << streamName << " on service: " << topic );
+	ros::service::waitForService( topic );
+	_initialized = true;
+	_pullClient = _nodeHandle.serviceClient<broadcast::QueryFeatures>( topic, true );
+}
+
+void BroadcastReceiver::InitializePushStream( const std::string& streamName,
+                                              const std::string& topic,
+                                              QueryMode mode,
+                                              double cacheTime,
+                                              unsigned int queueSize )
+{
+	_streamName = streamName;
+	_queryMode = mode;
+	_maxTimespan = cacheTime;
+		ROS_INFO_STREAM( "Listening to push stream " << streamName << " on topic: " << topic );
+	_initialized = true;
+	_pushSub = _nodeHandle.subscribe( topic, 
+	                                  queueSize, 
+	                                  &BroadcastReceiver::FeatureCallback, 
+	                                  this );
 }
 
 void BroadcastReceiver::SetCacheTime( double cacheTime )
@@ -92,7 +106,7 @@ bool BroadcastReceiver::IsReady() const
 		case PUSH_TOPIC:
 			return !_featureCache.empty();
 		case PULL_TOPIC:
-			return true;
+			return _initialized;
 		default:
 			throw std::runtime_error( "BroadcastReceiver: Unknown topic mode." );
 	}
@@ -105,9 +119,9 @@ bool BroadcastReceiver::ReadStream( const ros::Time& time, StampedFeatures& f )
 	switch( _infoManager.GetInfo( _streamName ).mode )
 	{
 		case PUSH_TOPIC:
-			return PullStream( time, f );
-		case PULL_TOPIC:
 			return ReadCached( time, f );
+		case PULL_TOPIC:
+			return PullStream( time, f );
 		default:
 			throw std::runtime_error( "BroadcastReceiver: Unknown topic mode." );
 	}

@@ -59,6 +59,7 @@ include_directories( include
 add_library( broadcast
             src/BroadcastCommon.cpp
             src/BroadcastInfoManager.cpp
+            src/BroadcastMultiReceiver.cpp
             src/BroadcastTransmitter.cpp
             src/BroadcastReceiver.cpp
             )
@@ -72,8 +73,13 @@ add_executable( belief_state_broadcaster nodes/belief_state_broadcaster.cpp )
 add_dependencies( belief_state_broadcaster covreg_gencfg ${broadcast_EXPORTED_TARGETS} )
 target_link_libraries( belief_state_broadcaster ${catkin_LIBRARIES} broadcast )
 
+add_executable( broadcast_listener nodes/broadcast_listener.cpp )
+add_dependencies( broadcast_listener covreg_gencfg ${broadcast_EXPORTED_TARGETS} )
+target_link_libraries( broadcast_listener ${catkin_LIBRARIES} broadcast )
+
+
 ## Mark executables and/or libraries for installation
-install(TARGETS broadcast belief_state_broadcaster
+install(TARGETS broadcast belief_state_broadcaster broadcast_listener
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

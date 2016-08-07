@@ -28,7 +28,7 @@ void BroadcastTransmitter::InitializePushStream( const std::string& streamName,
 	BroadcastInfo info;
 	info.featureSize = featureSize;
 	info.featureDescriptions = descriptions;
-	info.topic = topic;
+	info.topic = nh.resolveName( topic );
 	info.mode = PUSH_TOPIC;
 	_infoManager.WriteMemberInfo( streamName, info );
 
@@ -49,7 +49,7 @@ void BroadcastTransmitter::InitializePullStream( const std::string& streamName,
 	BroadcastInfo info;
 	info.featureSize = featureSize;
 	info.featureDescriptions = descriptions;
-	info.topic = topic;
+	info.topic = nh.resolveName( topic );
 	info.mode = PULL_TOPIC;
 	_infoManager.WriteMemberInfo( streamName, info );
 
@@ -102,15 +102,18 @@ bool BroadcastTransmitter::QueryCallback( QueryFeatures::Request& req,
 		case CLOSEST_BEFORE:
 		{
 			if( !get_closest_lesser_eq( _cache, req.query_time, iter ) ) { return false; }
+			break;
 		}
 		case CLOSEST_AFTER:
 		{
 			if( !get_closest_greater_eq( _cache, req.query_time, iter ) ) { return false; }
+			break;
 
 		}
 		case CLOSEST_EITHER:
 		{
 			if( !get_closest( _cache, req.query_time, iter ) ) { return false; }
+			break;
 		}
 		default:
 		{

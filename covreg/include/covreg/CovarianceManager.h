@@ -1,6 +1,6 @@
 #pragma once
 
-#include "broadcast/BroadcastReceiver.h"
+#include "broadcast/BroadcastMultiReceiver.h"
 #include "covreg/CovarianceEstimator.h"
 #include "covreg/QueryCovariance.h"
 
@@ -18,12 +18,7 @@ public:
 	CovarianceManager();
 
 	void Initialize( const std::string& sourceName,
-	                 ros::NodeHandle& ph,
-	                 const std::string& subName );
-
-	void Initialize( const std::string& sourceName,
-	                 const YAML::Node& info,
-	                 double cacheTime );
+	                 ros::NodeHandle& ph );
 
 	void SetUpdateTopic( const std::string& topic );
 
@@ -42,7 +37,7 @@ private:
 	std::string _sourceName;
 	ros::Subscriber _paramSub;
 	std::shared_ptr<CovarianceEstimator> _estimator;
-	std::deque<BroadcastReceiver> _receivers;
+	BroadcastMultiReceiver _receiver;
 
 	Mutex _estimatorMutex;
 

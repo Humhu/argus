@@ -7,6 +7,7 @@
 
 #include "broadcast/StampedFeatures.h"
 #include "broadcast/BroadcastInfoManager.h"
+#include "argus_utils/utils/ParamUtils.h"
 
 namespace argus
 {
@@ -19,12 +20,17 @@ public:
 	BroadcastReceiver();
 
 	void Initialize( const std::string& streamName,
-	            ros::NodeHandle& ph );
+	                 const YAML::Node& props );
 
-	void Initialize( const std::string& streamName,
-	                 QueryMode mode,
-	                 double cacheTime = 5.0,
-	                 unsigned int incomingQueueSize = 0 );
+	void InitializePullStream( const std::string& streamName,
+	                           const std::string& topic,
+	                           QueryMode mode );
+
+	void InitializePushStream( const std::string& streamName,
+	                           const std::string& topic,
+	                           QueryMode mode,
+	                           double cacheTime = 5.0,
+	                           unsigned int incomingQueueSize = 0 );
 
 	void SetCacheTime( double time );
 
@@ -43,6 +49,7 @@ private:
 	LookupInterface _lookup;
 	BroadcastInfoManager _infoManager;
 	
+	bool _initialized;
 	std::string _streamName;
 	QueryMode _queryMode;
 

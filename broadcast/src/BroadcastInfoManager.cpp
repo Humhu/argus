@@ -11,7 +11,7 @@ bool BroadcastInfoManager::ParseMemberInfo( const std::string& memberNamespace,
                                             BroadcastInfo& info )
 {
 	std::string sizeKey = memberNamespace + "feature_size";
-	std::string descKey = memberNamespace + "feature_descriptions";
+	std::string descKey = memberNamespace + "descriptions";
 	std::string topicKey = memberNamespace + "topic";
 	std::string modeKey = memberNamespace + "mode";
 
@@ -32,7 +32,7 @@ void BroadcastInfoManager::PopulateMemberInfo( const BroadcastInfo& info,
                                                const std::string& memberNamespace )
 {
 	std::string sizeKey = memberNamespace + "feature_size";
-	std::string descKey = memberNamespace + "feature_descriptions";
+	std::string descKey = memberNamespace + "descriptions";
 	std::string topicKey = memberNamespace + "topic";
 	std::string modeKey = memberNamespace + "mode";
 	_nodeHandle.setParam( sizeKey, (int)info.featureSize );

@@ -21,7 +21,8 @@ public:
 	{
 		GetParamRequired( ph, "source_name", _sourceName );
 
-		_estimator.Initialize( _sourceName, ph, "estimator" );
+		ros::NodeHandle subh( ph.resolveName( "estimator" ) );
+		_estimator.Initialize( _sourceName, subh );
 
 		_updatePublisher = nh.advertise<FilterUpdate>( "repeats",
 		                                               10 );

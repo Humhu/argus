@@ -240,8 +240,8 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	// Parse covariance rate estimator
 	if( privHandle.hasParam( "transition_cov_estimator" ) )
 	{
-		_Qestimator.Initialize( "transition", privHandle, 
-		                        "transition_cov_estimator" );
+		ros::NodeHandle subh( privHandle.resolveName( "transition_cov_estimator" ) );
+		_Qestimator.Initialize( "transition", subh );
 		_Qestimator.SetUpdateTopic( "param_updates" );
 		_usingAdaptiveTrans = false;
 	}

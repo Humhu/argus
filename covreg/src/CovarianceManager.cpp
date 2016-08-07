@@ -16,64 +16,37 @@ namespace argus
 CovarianceManager::CovarianceManager()
 : _estimator( nullptr ) {}
 
-void CovarianceManager::Initialize( const std::string& sourceName,
-                                    ros::NodeHandle& ph, 
-                                    const std::string& subName )
-{
-	XmlRpc::XmlRpcValue xml;
-	if( !ph.getParam( subName, xml ) )
-	{
-		std::stringstream ss;
-		ss << "Could not initialize from parameters at: ~/" << subName << std::endl;
-		throw std::runtime_error( ss.str() );
-	}
-	YAML::Node yaml = XmlToYaml( xml );
-	double cacheTime;
-	GetParam( ph, subName + "/feature_cache_time", cacheTime, 1.0 );
-	Initialize( sourceName, yaml, cacheTime );
-
-	_queryServer = ph.advertiseService( "query_covariance", 
-	                                    &CovarianceManager::QueryCallback, 
-	                                    this );
-}
-
 // TODO Parse from info -> Msg instead so we can have nicer error messages
-// TODO Parse the receiver modes
 void CovarianceManager::Initialize( const std::string& sourceName,
-                                    const YAML::Node& info,
-                                    double cacheTime )
+                                    ros::NodeHandle& ph )
 {
-	// Create the estimator
+	YAML::Node estimatorYaml;
+	GetParamRequired( ph, "estimator", estimatorYaml );
+
 	_sourceName = sourceName;
-	_estimator = std::make_shared<CovarianceEstimator>( _sourceName, info );
+	_estimator = std::make_shared<CovarianceEstimator>( _sourceName, estimatorYaml );
 
-	std::vector<std::string> features = info["features"].as<std::vector<std::string>>();
-	_receivers.clear();
-	unsigned int fDim = 0;
-	BOOST_FOREACH( const std::string& featureName, features )
-	{
-		_receivers.emplace_back();
-		_receivers.back().Initialize( featureName, CLOSEST_BEFORE, cacheTime );
-		fDim += _receivers.back().GetDim();
-	}
+	ros::NodeHandle subh( ph.resolveName( "input_streams" ) );
+	_receiver.Initialize( subh );
 
-	if( fDim != _estimator->InputDim() )
+	if( _receiver.GetDim() != _estimator->InputDim() )
 	{
 		std::stringstream ss;
 		ss << "Estimator: " << sourceName << " has input dim "
 		   << _estimator->InputDim() << " but features have total dim: "
-		   << fDim;
+		   << _receiver.GetDim();
 		throw std::runtime_error( ss.str() );
 	}
 
 	// Load params if we have any to load
 	bool initialized = false;
-	if( info[ "load_path" ] )
+	if( HasParam( estimatorYaml, "load_path" ) )
 	{
-		std::string paramFilePath = info["load_path"].as<std::string>();
-		CovarianceEstimatorInfo info;
+		std::string paramFilePath;
+		GetParam( estimatorYaml, "load_path", paramFilePath );
+		CovarianceEstimatorInfo estInfo;
 		if( !ReadInfo<CovarianceEstimatorInfo>( paramFilePath,
-		                                        info ) )
+		                                        estInfo ) )
 		{
 			ROS_WARN_STREAM( "Could not read params from: " << paramFilePath );
 		}
@@ -81,7 +54,7 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 		{
 			ROS_INFO_STREAM( "Loaded parameters for: " << _sourceName <<
 			                 " from " << paramFilePath );
-			_estimator->SetParamsMsg( info );
+			_estimator->SetParamsMsg( estInfo );
 			initialized = true;
 		}
 	}
@@ -92,6 +65,10 @@ void CovarianceManager::Initialize( const std::string& sourceName,
 		_estimator->RandomizeVarianceParams();
 		_estimator->ZeroCorrelationParams();
 	}
+
+	_queryServer = ph.advertiseService( "query_covariance", 
+                                    &CovarianceManager::QueryCallback, 
+                                    this );
 }
 
 void CovarianceManager::SetUpdateTopic( const std::string& topic )
@@ -105,16 +82,7 @@ void CovarianceManager::SetUpdateTopic( const std::string& topic )
 bool CovarianceManager::IsReady() const
 {
 	if( !_estimator ) { return false; }
-	BOOST_FOREACH( const BroadcastReceiver& rx, _receivers )
-	{
-		if( !rx.IsReady() ) 
-		{
-			ROS_WARN_STREAM( "Stream: " << rx.GetStreamName() << 
-				             " has not received yet." );
-			return false; 
-		}
-	}
-	return true;
+	return _receiver.IsReady();
 }
 
 unsigned int CovarianceManager::OutputDim() const
@@ -125,16 +93,12 @@ unsigned int CovarianceManager::OutputDim() const
 
 MatrixType CovarianceManager::EstimateCovariance( const ros::Time& time )
 {
-	VectorType feats( _estimator->InputDim() );
-	unsigned int fInd = 0;
-	BOOST_FOREACH( BroadcastReceiver& rx, _receivers )
+	StampedFeatures f;
+	if( !_receiver.ReadStream( time, f ) )
 	{
-		StampedFeatures f;
-		rx.ReadStream( time, f ); // TODO Handle failure
-		feats.segment( fInd, rx.GetDim() ) = f.features;
-		fInd += rx.GetDim();
+		throw std::runtime_error( "CovarianceManager: Could not read stream." );
 	}
-	return _estimator->Evaluate( feats );
+	return _estimator->Evaluate( f.features );
 }
 
 void CovarianceManager::ParamCallback( const CovarianceEstimatorInfo::ConstPtr& msg )
