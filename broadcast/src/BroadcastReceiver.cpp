@@ -19,7 +19,6 @@ void BroadcastReceiver::Initialize( const std::string& streamName,
                                     const YAML::Node& props )
 {
 	std::string queryStr;
-	std::cout << "props: " << props << std::endl;
 	GetParamRequired( props, "query_mode", queryStr );
 	QueryMode queryMode = StringToQueryMode( queryStr );
 

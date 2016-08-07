@@ -44,14 +44,19 @@ private:
 	void TimerCallback( const ros::TimerEvent& event )
 	{
 		StampedFeatures f;
+		ros::Time start = ros::Time::now();
 		if( (_multi && !_mrx.ReadStream( event.current_real, f )) ||
 		    (!_multi && !_rx.ReadStream( event.current_real, f )) )
 		{
 			ROS_WARN_STREAM( "Could not read stream at time: " << event.current_real );
 			return;
 		}
+		ros::Time finish = ros::Time::now();
+		ros::Duration latency = finish - start;
 		ROS_INFO_STREAM( "Query time: " << event.current_real << 
-		                 " Feature time: " << f.time << " features: " << f.features.transpose() << std::endl );
+		                 " Query latency: " << latency <<
+		                 " Feature time: " << f.time << 
+		                 " features: " << f.features.transpose() << std::endl );
 	}
 
 };
