@@ -1,9 +1,14 @@
 #include "paraset/DiscretePolicyManager.h"
+#include "paraset/DiscreteParamAction.h"
+
 #include "argus_utils/random/RandomUtils.hpp"
+#include "argus_utils/utils/MathUtils.h"
 
 #include "percepto/utils/Randomization.hpp"
 
 #include <boost/random/random_device.hpp>
+
+using namespace paraset;
 
 namespace argus
 {
@@ -13,6 +18,8 @@ DiscretePolicyManager::DiscretePolicyManager() {}
 void DiscretePolicyManager::Initialize( ros::NodeHandle& ph )
 {
 	_policyInterface.Initialize( ph );
+
+	_actionPub = ph.advertise<DiscreteParamAction>( "actions", 0 );
 
 	ros::NodeHandle subh( ph.resolveName("input_streams") );
 	_inputStreams.Initialize( subh );
@@ -60,16 +67,29 @@ void DiscretePolicyManager::UpdateCallback( const ros::TimerEvent& event )
 		return;
 	}
 
+	// Generate probability mass function values
 	_networkInput.SetOutput( inputs.features );
 	_networkInput.Invalidate();
 	_networkInput.Foreprop();
 	VectorType pmf = _network->GetOutput();
-	ROS_INFO_STREAM( "pmf: " << pmf.transpose() << std::endl );
 
+	// Sample from PMF
 	std::vector<double> weights( pmf.data(), pmf.data() + pmf.size() );
 	std::vector<unsigned int> draws;
 	NaiveWeightedSample( weights, 1, draws, _engine );
-	_policyInterface.SetOutput( draws[0] );
+	unsigned int actionIndex = draws[0];
+
+	// Convert single index into multiple indices
+	std::vector<unsigned int> indices;
+	indices = multibase_long_div( actionIndex, _policyInterface.GetNumSettings() );
+	_policyInterface.SetOutputIndices( indices );
+
+	// TODO name policy
+	DiscreteParamAction outMsg;
+	outMsg.header.stamp = event.current_real;
+	SerializeMatrix( inputs.features, outMsg.inputs );
+	outMsg.index = actionIndex;
+	_actionPub.publish( outMsg );
 }
 
 }

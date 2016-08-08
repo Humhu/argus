@@ -21,6 +21,7 @@ public:
 private:
 
 	ContinuousPolicy _policyInterface;
+	ros::Publisher _actionPub;
 
 	VarReLUGaussian::Ptr _network;
 	percepto::TerminalSource<VectorType> _networkInput;

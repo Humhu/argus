@@ -1,6 +1,9 @@
 #include "paraset/ContinuousPolicyManager.h"
+#include "paraset/ContinuousParamAction.h"
 
 #include "percepto/utils/Randomization.hpp"
+
+using namespace paraset;
 
 namespace argus
 {
@@ -10,6 +13,8 @@ ContinuousPolicyManager::ContinuousPolicyManager() {}
 void ContinuousPolicyManager::Initialize( ros::NodeHandle& ph )
 {
 	_policyInterface.Initialize( ph );
+
+	_actionPub = ph.advertise<ContinuousParamAction>( "actions", 0 );
 
 	ros::NodeHandle subh( ph.resolveName("input_streams") );
 	_inputStreams.Initialize( subh );
@@ -59,24 +64,31 @@ void ContinuousPolicyManager::UpdateCallback( const ros::TimerEvent& event )
 		return;
 	}
 
+	// Generate mean and covariance
 	_networkInput.SetOutput( inputs.features );
 	_networkInput.Invalidate();
 	_networkInput.Foreprop();
 
+	// Sample from mean and covariance
 	VectorType mean = _network->meanWrapper.GetOutput();
 	MatrixType cov = _network->pdModule.GetOutput();
-
-	ROS_INFO_STREAM( "mean: " << mean.transpose() << std::endl <<
-	                 "cov: " << std::endl << cov );
-
+	// ROS_INFO_STREAM( "mean: " << mean.transpose() << std::endl <<
+	//                  "cov: " << std::endl << cov );
 	_dist.SetMean( mean );
 	_dist.SetCovariance( cov );
 	VectorType output = _dist.Sample( _sampleDevs );
+	// ROS_INFO_STREAM( "sampled: " << output.transpose() );
 
-	ROS_INFO_STREAM( "sampled: " << output.transpose() );
-
+	// Set output
 	std::vector<double> outVec( output.data(), output.data() + output.size() );
 	_policyInterface.SetOutput( outVec );
+
+	// TODO Name policy
+	ContinuousParamAction outMsg;
+	outMsg.header.stamp = event.current_real;
+	SerializeMatrix( inputs.features, outMsg.inputs );
+	outMsg.outputs = outVec;
+	_actionPub.publish( outMsg );
 }
 
 }

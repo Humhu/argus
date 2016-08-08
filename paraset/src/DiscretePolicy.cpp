@@ -1,5 +1,7 @@
 #include "paraset/DiscretePolicy.h"
 #include "paraset/SetRuntimeParameter.h"
+#include "paraset/DiscreteParamAction.h"
+
 #include "argus_utils/utils/ParamUtils.h"
 
 #include <boost/foreach.hpp>
@@ -113,32 +115,6 @@ unsigned int DiscretePolicy::GetNumCombinations() const
 		prod *= p;
 	}
 	return prod;
-}
-
-// TODO Move this multi-base long division to a util function
-void DiscretePolicy::SetOutput( unsigned int ind )
-{
-	unsigned int power = 1;
-	for( unsigned int i = 1; i < _numSettings.size(); ++i )
-	{
-		power *= _numSettings[i];
-	}
-
-	std::cout << "ind: " << ind << std::endl;
-	std::cout << "power: " << power << std::endl;
-
-	std::vector<unsigned int> inds;
-	std::div_t result;
-	for( unsigned int i = 0; i < _numSettings.size()-1; ++i )
-	{
-		result = std::div( (int) ind, (int) power );
-		std::cout << "quot: " << result.quot << " rem: " << result.rem << std::endl;
-		inds.push_back( result.quot );
-		ind = result.rem;
-		power = power / _numSettings[i+1];
-	}
-	inds.push_back( ind );
-	SetOutputIndices( inds );
 }
 
 std::ostream& operator<<( std::ostream& os, const DiscretePolicy& policy )

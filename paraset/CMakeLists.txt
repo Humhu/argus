@@ -28,6 +28,8 @@ find_package(Boost REQUIRED COMPONENTS random)
 find_package(Eigen3 REQUIRED)
 
 add_message_files( FILES
+    ContinuousParamAction.msg
+    DiscreteParamAction.msg
     RewardStamped.msg
 	RuntimeParameter.msg
 )

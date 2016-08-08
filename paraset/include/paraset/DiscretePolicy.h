@@ -27,7 +27,6 @@ public:
 
 	// Set each output to the specified setting index
 	void SetOutputIndices( const std::vector<unsigned int>& inds );
-	void SetOutput( unsigned int ind );
 
 private:
 

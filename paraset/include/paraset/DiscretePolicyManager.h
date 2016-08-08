@@ -21,6 +21,7 @@ public:
 private:
 
 	DiscretePolicy _policyInterface;
+	ros::Publisher _actionPub;
 	
 	NormalizedPerceptron::Ptr _network;
 	percepto::TerminalSource<VectorType> _networkInput;
