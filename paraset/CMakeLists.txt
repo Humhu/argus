@@ -16,6 +16,8 @@ find_package(catkin REQUIRED
 					roscpp
 					argus_utils
 					broadcast
+					std_msgs
+					nav_msgs
 )
 
 # Use Boost for most utilities, threading
@@ -26,6 +28,7 @@ find_package(Boost REQUIRED COMPONENTS random)
 find_package(Eigen3 REQUIRED)
 
 add_message_files( FILES
+    RewardStamped.msg
 	RuntimeParameter.msg
 )
 
@@ -35,7 +38,8 @@ add_service_files( FILES
 	GetParameterInfo.srv
 )
 
-generate_messages()
+generate_messages( 
+	DEPENDENCIES 	std_msgs )
 
 catkin_package(
 	INCLUDE_DIRS 	include
@@ -46,6 +50,8 @@ catkin_package(
 					argus_utils
 					message_runtime
 					broadcast
+					std_msgs
+					nav_msgs
 					
 	DEPENDS 		Boost 
 					system_lib
