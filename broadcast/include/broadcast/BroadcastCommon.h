@@ -1,7 +1,7 @@
 #pragma once
 
-#include "broadcast/StampedFeatures.h"
-#include "broadcast/QueryFeature.h"
+#include "argus_msgs/FloatVectorStamped.h"
+#include "broadcast/QueryFeatures.h"
 #include "argus_utils/utils/LinalgTypes.h"
 #include <string>
 
@@ -19,9 +19,9 @@ BroadcastMode StringToBroadcastMode( const std::string& str );
 
 enum QueryMode
 {
-	CLOSEST_BEFORE = broadcast::QueryFeature::Request::CLOSEST_BEFORE,
-	CLOSEST_AFTER = broadcast::QueryFeature::Request::CLOSEST_AFTER,
-	CLOSEST_EITHER = broadcast::QueryFeature::Request::CLOSEST_EITHER
+	CLOSEST_BEFORE = broadcast::QueryFeatures::Request::CLOSEST_BEFORE,
+	CLOSEST_AFTER = broadcast::QueryFeatures::Request::CLOSEST_AFTER,
+	CLOSEST_EITHER = broadcast::QueryFeatures::Request::CLOSEST_EITHER
 };
 
 std::string QueryModeToString( QueryMode mode );
@@ -35,8 +35,8 @@ struct StampedFeatures
 
 	StampedFeatures();
 	StampedFeatures( const ros::Time& t, const std::string& n, const VectorType& v );
-	StampedFeatures( const broadcast::StampedFeatures& msg );
-	broadcast::StampedFeatures ToMsg() const;
+	StampedFeatures( const argus_msgs::FloatVectorStamped& msg );
+	argus_msgs::FloatVectorStamped ToMsg() const;
 };
 
 }

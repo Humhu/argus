@@ -19,6 +19,7 @@ add_message_files( FILES
                   FilterStepInfo.msg
                   FilterUpdate.msg
                   FilterUpdateBounds.msg
+                  FloatVectorStamped.msg
                   ImageFiducialDetections.msg
                   MatrixFloat64.msg
                   OdometryBounds.msg

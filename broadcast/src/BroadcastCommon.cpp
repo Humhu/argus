@@ -75,19 +75,19 @@ StampedFeatures::StampedFeatures( const ros::Time& t, const std::string& n,
 : time( t ), name( n ), features( v ) {}
 
 
-StampedFeatures::StampedFeatures( const broadcast::StampedFeatures& msg )
+StampedFeatures::StampedFeatures( const argus_msgs::FloatVectorStamped& msg )
 : time( msg.header.stamp ), 
   name( msg.header.frame_id ),
-  features( GetVectorView( msg.features ) ) {}
+  features( GetVectorView( msg.values ) ) {}
 
 
 
-broadcast::StampedFeatures StampedFeatures::ToMsg() const
+argus_msgs::FloatVectorStamped StampedFeatures::ToMsg() const
 {
-	broadcast::StampedFeatures msg;
+	argus_msgs::FloatVectorStamped msg;
 	msg.header.stamp = time;
 	msg.header.frame_id = name;
-	SerializeMatrix( features, msg.features );
+	SerializeMatrix( features, msg.values );
 	return msg;
 }
 

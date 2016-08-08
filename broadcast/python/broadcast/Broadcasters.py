@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from lookup import LookupInterface
-from broadcast.msg import StampedFeatures
+from argus_msgs.msg import FloatVectorStamped
 from broadcast.srv import QueryFeatures, QueryFeaturesRequest, QueryFeaturesResponse
 from broadcast.Utils import TimeSeries, ros_time_diff
 
@@ -72,17 +72,17 @@ class Transmitter:
         '''Publish a message to the broadcast topic.'''
 
         if self.mode == 'push':
-            msg = StampedFeatures()
+            msg = FloatVectorStamped()
             msg.header.stamp = time
             msg.header.frame_id = self.stream_name
-            msg.features = feats
+            msg.values = feats
             self.publisher.publish( msg )
 
         elif self.mode == 'pull':
-            item = StampedFeatures()
+            item = FloatVectorStamped()
             item.header.stamp = time
             item.header.frame_id = self.stream_name
-            item.features = feats
+            item.values = feats
             self.cache.insert( time, item )
 
     def query_callback( self, req ):

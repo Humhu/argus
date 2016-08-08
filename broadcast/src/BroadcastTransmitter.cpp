@@ -1,5 +1,5 @@
 #include "broadcast/BroadcastTransmitter.h"
-#include "broadcast/StampedFeatures.h"
+#include "argus_msgs/FloatVectorStamped.h"
 
 #include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
@@ -32,7 +32,7 @@ void BroadcastTransmitter::InitializePushStream( const std::string& streamName,
 	info.mode = PUSH_TOPIC;
 	_infoManager.WriteMemberInfo( streamName, info );
 
-	_streamPub = nh.advertise<broadcast::StampedFeatures>( topic, outgoingQueueSize );
+	_streamPub = nh.advertise<argus_msgs::FloatVectorStamped>( topic, outgoingQueueSize );
 }
 
 void BroadcastTransmitter::InitializePullStream( const std::string& streamName, 

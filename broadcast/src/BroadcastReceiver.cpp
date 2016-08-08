@@ -128,7 +128,7 @@ bool BroadcastReceiver::ReadStream( const ros::Time& time, StampedFeatures& f )
 
 bool BroadcastReceiver::PullStream( const ros::Time& time, StampedFeatures& f )
 {
-	broadcast::QueryFeature srv;
+	broadcast::QueryFeatures srv;
 	srv.request.time_mode = _queryMode;
 	srv.request.query_time = time;
 	if( !_pullClient.call( srv ) )
@@ -171,7 +171,7 @@ bool BroadcastReceiver::ReadCached( const ros::Time& time, StampedFeatures& f ) 
 	return true;
 }
 
-void BroadcastReceiver::FeatureCallback( const broadcast::StampedFeatures::ConstPtr& msg )
+void BroadcastReceiver::FeatureCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg )
 {
 	WriteLock lock( _mutex );
 	
