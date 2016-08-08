@@ -29,7 +29,8 @@ void DiscretePolicy::Initialize( ros::NodeHandle& ph )
 		
 		// Get service to set parameter
 		const YAML::Node& sub = iter->second;
-		std::string servicePath = TryYamlField<std::string>( sub, "set_service" );
+		std::string servicePath;
+		GetParamRequired( sub, "set_service", servicePath );
 		ros::service::waitForService( servicePath );
 		registration.setService = ph.serviceClient<SetRuntimeParameter>( servicePath );
 
@@ -39,13 +40,7 @@ void DiscretePolicy::Initialize( ros::NodeHandle& ph )
 		// Get values of parameter
 		switch( registration.type )
 		{
-			case PARAM_INTEGER:
-			{
-				std::vector<long> params = TryYamlField<std::vector<long>>( sub, "values" );
-				registration.values = ConvertToParamVariants( params );
-				break;
-			}
-			case PARAM_FLOAT:
+			case PARAM_NUMERIC:
 			{
 				std::vector<double> params = TryYamlField<std::vector<double>>( sub, "values" );
 				registration.values = ConvertToParamVariants( params );
@@ -65,7 +60,7 @@ void DiscretePolicy::Initialize( ros::NodeHandle& ph )
 			}
 			default:
 			{
-				throw std::runtime_error( "Invalid parameter type for: " + registration.name );
+				throw std::runtime_error( "DiscretePolicy: Invalid parameter type for: " + registration.name );
 			}
 		}
 
@@ -96,11 +91,11 @@ void DiscretePolicy::SetOutputIndices( const std::vector<unsigned int>& inds )
 
 		if( !_parameters[i].setService.call( req, res ) )
 		{
-			ROS_WARN_STREAM( "Could not set parameter: " << _parameters[i].name );
+			ROS_WARN_STREAM( "DiscretePolicy: Could not set parameter: " << _parameters[i].name );
 		}
 		if( MsgToParamVariant( res.actual ) != outputParam )
 		{
-			ROS_WARN_STREAM( "Actual differs from request." );
+			ROS_WARN_STREAM( "DiscretePolicy: Actual differs from request." );
 		}
 	}
 }

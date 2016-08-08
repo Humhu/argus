@@ -1,34 +1,35 @@
 #pragma once
 
-#include "paraset/DiscretePolicy.h"
+#include "paraset/ContinuousPolicy.h"
 #include "paraset/PolicyModules.h"
 #include "broadcast/BroadcastMultiReceiver.h"
 
-#include <boost/random/mersenne_twister.hpp>
+#include "argus_utils/random/MultivariateGaussian.hpp"
 
 namespace argus
 {
 
 // TODO Subscribe to parameter updates
-class DiscretePolicyManager
+class ContinuousPolicyManager
 {
 public:
 
-	DiscretePolicyManager();
-
+	ContinuousPolicyManager();
+	
 	void Initialize( ros::NodeHandle& ph );
 
 private:
 
-	DiscretePolicy _policyInterface;
-	
-	NormalizedPerceptron::Ptr _network;
+	ContinuousPolicy _policyInterface;
+
+	VarReLUGaussian::Ptr _network;
 	percepto::TerminalSource<VectorType> _networkInput;
 	percepto::Parameters::Ptr _networkParameters;
-	
+
 	BroadcastMultiReceiver _inputStreams;
-	
-	boost::mt19937 _engine;
+	double _sampleDevs;
+
+	MultivariateGaussian<> _dist;
 	ros::Timer _timer;
 
 	void UpdateCallback( const ros::TimerEvent& event );

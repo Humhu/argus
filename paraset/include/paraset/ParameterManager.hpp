@@ -19,6 +19,7 @@
 namespace argus
 {
 
+// TODO Introduce better support for booleans?
 template <typename T>
 class ParameterManager
 {

@@ -8,7 +8,9 @@
 namespace argus
 {
 
-DiscretePolicyManager::DiscretePolicyManager( ros::NodeHandle& ph )
+DiscretePolicyManager::DiscretePolicyManager() {}
+
+void DiscretePolicyManager::Initialize( ros::NodeHandle& ph )
 {
 	_policyInterface.Initialize( ph );
 

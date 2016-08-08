@@ -1,14 +1,14 @@
-#include "paraset/DiscretePolicyManager.h"
+#include "paraset/ContinuousPolicyManager.h"
 #include <ros/ros.h>
 
 using namespace argus;
 
 int main( int argc, char** argv )
 {
-	ros::init( argc, argv, "discrete_policy_node" );
+	ros::init( argc, argv, "continuous_policy_node" );
 
 	ros::NodeHandle ph( "~" );
-	DiscretePolicyManager policy;
+	ContinuousPolicyManager policy;
 	policy.Initialize( ph );
 	ros::spin();
 	return 0;

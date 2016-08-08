@@ -8,7 +8,9 @@
 namespace argus
 {
 
+// Interface that wraps process of interfacing with parameter set services
 // Selects from a set of discrete actions
+// TODO Implement thread to call services?
 class DiscretePolicy
 {
 public:
