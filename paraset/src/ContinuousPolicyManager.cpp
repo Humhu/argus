@@ -1,20 +1,28 @@
 #include "paraset/ContinuousPolicyManager.h"
 #include "paraset/ContinuousParamAction.h"
 
+#include "argus_utils/utils/MatrixUtils.h"
+
 #include "percepto/utils/Randomization.hpp"
 
 using namespace paraset;
+using namespace argus_msgs;
 
 namespace argus
 {
 
 ContinuousPolicyManager::ContinuousPolicyManager() {}
 
-void ContinuousPolicyManager::Initialize( ros::NodeHandle& ph )
+void ContinuousPolicyManager::Initialize( ros::NodeHandle& nh,
+                                          ros::NodeHandle& ph )
 {
 	_policyInterface.Initialize( ph );
 
 	_actionPub = ph.advertise<ContinuousParamAction>( "actions", 0 );
+	_paramSub = nh.subscribe( "param_updates", 
+	                          1, 
+	                          &ContinuousPolicyManager::ParamCallback, 
+	                          this );
 
 	ros::NodeHandle subh( ph.resolveName("input_streams") );
 	_inputStreams.Initialize( subh );
@@ -89,6 +97,11 @@ void ContinuousPolicyManager::UpdateCallback( const ros::TimerEvent& event )
 	SerializeMatrix( inputs.features, outMsg.inputs );
 	outMsg.outputs = outVec;
 	_actionPub.publish( outMsg );
+}
+
+void ContinuousPolicyManager::ParamCallback( const FloatVectorStamped::ConstPtr& msg )
+{
+	_networkParameters->SetParamsVec( GetVectorView( msg->values ) );
 }
 
 }

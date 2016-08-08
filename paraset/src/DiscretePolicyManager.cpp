@@ -2,6 +2,7 @@
 #include "paraset/DiscreteParamAction.h"
 
 #include "argus_utils/random/RandomUtils.hpp"
+#include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/MathUtils.h"
 
 #include "percepto/utils/Randomization.hpp"
@@ -9,17 +10,23 @@
 #include <boost/random/random_device.hpp>
 
 using namespace paraset;
+using namespace argus_msgs;
 
 namespace argus
 {
 
 DiscretePolicyManager::DiscretePolicyManager() {}
 
-void DiscretePolicyManager::Initialize( ros::NodeHandle& ph )
+void DiscretePolicyManager::Initialize( ros::NodeHandle& nh,
+                                        ros::NodeHandle& ph )
 {
 	_policyInterface.Initialize( ph );
 
 	_actionPub = ph.advertise<DiscreteParamAction>( "actions", 0 );
+	_paramSub = nh.subscribe( "param_updates", 
+	                          1,
+	                          &DiscretePolicyManager::ParamCallback, 
+	                          this );
 
 	ros::NodeHandle subh( ph.resolveName("input_streams") );
 	_inputStreams.Initialize( subh );
@@ -90,6 +97,11 @@ void DiscretePolicyManager::UpdateCallback( const ros::TimerEvent& event )
 	SerializeMatrix( inputs.features, outMsg.inputs );
 	outMsg.index = actionIndex;
 	_actionPub.publish( outMsg );
+}
+
+void DiscretePolicyManager::ParamCallback( const FloatVectorStamped::ConstPtr& msg )
+{
+	_networkParameters->SetParamsVec( GetVectorView( msg->values ) );
 }
 
 }

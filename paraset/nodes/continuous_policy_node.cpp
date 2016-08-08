@@ -7,9 +7,9 @@ int main( int argc, char** argv )
 {
 	ros::init( argc, argv, "continuous_policy_node" );
 
-	ros::NodeHandle ph( "~" );
+	ros::NodeHandle nh, ph( "~" );
 	ContinuousPolicyManager policy;
-	policy.Initialize( ph );
+	policy.Initialize( nh, ph );
 	ros::spin();
 	return 0;
 }
