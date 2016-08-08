@@ -16,6 +16,7 @@ FASTPointDetector::FASTPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_intensityThreshold.Initialize( ph, initIntensityThreshold, "intensity_threshold",
 	                                "Minimum central pixel intensity difference" );
 	_intensityThreshold.AddCheck<GreaterThan>( 0 );
+	_intensityThreshold.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	bool initUseNMS;
 	GetParamRequired<bool>( ph, "enable_nonmax_suppression", initUseNMS );
@@ -27,6 +28,7 @@ FASTPointDetector::FASTPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_maxNumPoints.Initialize( ph, initMaxNumPoints, "max_num_points",
 	                          "Maximum number of points to find" );
 	_maxNumPoints.AddCheck<GreaterThan>( 0 );
+	_maxNumPoints.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	std::string initType;
 	GetParamRequired<std::string>( ph, "detector_type", initType );

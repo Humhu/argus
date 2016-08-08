@@ -31,7 +31,7 @@ private:
 	GridSize _cachedGridSize;
 	InterestPoints _cachedGrid;
 
-	IntegerParameter _gridDim;
+	NumericParam _gridDim;
 
 	void UpdateInterestPoints();
 	

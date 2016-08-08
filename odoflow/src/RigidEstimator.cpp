@@ -17,11 +17,14 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	GetParam<double>( ph, "reprojection_threshold", initReprojThreshold);
 	_reprojThreshold.Initialize( ph, initReprojThreshold, "reprojection_threshold", 
 	                             "RANSAC reprojection inlier threshold" );
+	_reprojThreshold.AddCheck<GreaterThan>( 0 );
 
 	unsigned int initMaxIters;
 	GetParam<unsigned int>( ph, "max_iters", initMaxIters );
 	_maxIters.Initialize( ph, initMaxIters, "max_iters",
 	                      "RANSAC max iterations" );
+	_maxIters.AddCheck<GreaterThan>( 0 );
+	_maxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 }
 
 bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,

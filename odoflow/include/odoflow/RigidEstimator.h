@@ -25,8 +25,8 @@ public:
 private:
 	
 	double _scale;
-	FloatParameter _reprojThreshold;
-	IntegerParameter _maxIters;
+	NumericParam _reprojThreshold;
+	NumericParam _maxIters;
 	
 };
 

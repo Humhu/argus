@@ -33,11 +33,11 @@ public:
 private:
 	
 	// Flow calculation parameters
-	IntegerParameter _pyramidLevel;
-	IntegerParameter _flowWindowDim;
-	FloatParameter _flowEigenThreshold;
-	IntegerParameter _solverMaxIters;
-	FloatParameter _solverMinEpsilon;
+	NumericParam _pyramidLevel;
+	NumericParam _flowWindowDim;
+	NumericParam _flowEigenThreshold;
+	NumericParam _solverMaxIters;
+	NumericParam _solverMinEpsilon;
 
 	cv::TermCriteria _flowTermCriteria;
 

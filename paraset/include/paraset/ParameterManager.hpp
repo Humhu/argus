@@ -140,9 +140,8 @@ private:
 
 };
 
-typedef ParameterManager<long> IntegerParameter;
-typedef ParameterManager<double> FloatParameter;
-typedef ParameterManager<std::string> StringParameter;
-typedef ParameterManager<bool> BoolParameter;
+typedef ParameterManager<double> NumericParam;
+typedef ParameterManager<std::string> StringParam;
+typedef ParameterManager<bool> BooleanParam;
 
 }

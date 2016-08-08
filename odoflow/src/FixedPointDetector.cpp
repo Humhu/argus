@@ -17,6 +17,7 @@ _cachedGridSize( 0, 0 )
 	GetParamRequired<unsigned int>( privHandle, "grid_dim", gridDim );
 	_gridDim.Initialize( ph, gridDim, "grid_dim", "Interest point grid width and height." );
 	_gridDim.AddCheck<GreaterThan>( 0 );
+	_gridDim.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	UpdateInterestPoints();
 }

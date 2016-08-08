@@ -11,6 +11,7 @@ CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& 
 	GetParamRequired<unsigned int>( ph, "max_num_points", initMaxFeats );
 	_featureMaxPoints.Initialize( ph, initMaxFeats, "max_num_points", "Maximum number of points to find" );
 	_featureMaxPoints.AddCheck<GreaterThan>( 0 );
+	_featureMaxPoints.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	double initMinQuality;
 	GetParamRequired<double>( ph, "min_quality", initMinQuality );
@@ -26,6 +27,7 @@ CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& 
 	GetParamRequired<unsigned int>( ph, "block_dim", initBlockDim );
 	_featureBlockDim.Initialize( ph, initBlockDim, "block_dim", "Feature covariation computation window size (pix)" );
 	_featureBlockDim.AddCheck<GreaterThan>( 0 );
+	_featureBlockDim.AddCheck<IntegerValued>( ROUND_CEIL );
 	
 	bool initUseHarris;
 	GetParamRequired<bool>( ph, "use_harris", initUseHarris );
@@ -44,16 +46,19 @@ CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& 
 	GetParamRequired<unsigned int>( ph, "refine_window_dim", initRefineDim );
 	_refineWindowDim.Initialize( ph, initRefineDim, "refine_window_dim", "Refinement search window half-dim (pix)" );
 	_refineWindowDim.AddCheck<GreaterThan>( 0 );
+	_refineWindowDim.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	int initZeroDim;
 	GetParamRequired<int>( ph, "refine_zero_dim", initZeroDim );
 	_refineZeroDim.Initialize( ph, initZeroDim, "refine_zero_dim", "Refinement zero window half-dim (pix)" );
 	_refineWindowDim.AddCheck<GreaterThanOrEqual>( -1 );
+	_refineWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	unsigned int initRefineIters;
 	GetParamRequired<unsigned int>( ph, "refine_max_iters", initRefineIters );
 	_refineMaxIters.Initialize( ph, initRefineIters, "refine_max_iters", "Maximum number of refinement iterations" );
 	_refineMaxIters.AddCheck<GreaterThan>( 0 );
+	_refineMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	double initRefineEps;
 	GetParamRequired<double>( ph, "refine_min_eps", initRefineEps );

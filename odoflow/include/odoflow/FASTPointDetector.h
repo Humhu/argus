@@ -26,10 +26,10 @@ public:
 	
 private:
 	
-	IntegerParameter _intensityThreshold;
-	BoolParameter _enableNMS;
-	IntegerParameter _maxNumPoints;
-	StringParameter _detectorType;
+	NumericParam _intensityThreshold;
+	BooleanParam _enableNMS;
+	NumericParam _maxNumPoints;
+	StringParam _detectorType;
 	
 	static int StringToDetector( const std::string& str );
 

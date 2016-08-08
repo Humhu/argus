@@ -25,19 +25,19 @@ public:
 	
 private:
 	
-	IntegerParameter _featureMaxPoints;	
-	FloatParameter _featureMinQuality;
-	FloatParameter _featureMinSeparation;
-	IntegerParameter _featureBlockDim;
+	NumericParam _featureMaxPoints;	
+	NumericParam _featureMinQuality;
+	NumericParam _featureMinSeparation;
+	NumericParam _featureBlockDim;
 	
-	BoolParameter _useHarris;
-	FloatParameter _harrisK;
+	BooleanParam _useHarris;
+	NumericParam _harrisK;
 
-	BoolParameter _enableRefine;
-	IntegerParameter _refineWindowDim;
-	IntegerParameter _refineZeroDim;
-	IntegerParameter _refineMaxIters;
-	IntegerParameter _refineMinEps;
+	BooleanParam _enableRefine;
+	NumericParam _refineWindowDim;
+	NumericParam _refineZeroDim;
+	NumericParam _refineMaxIters;
+	NumericParam _refineMinEps;
 	
 };
 	

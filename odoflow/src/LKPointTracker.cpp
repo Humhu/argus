@@ -15,6 +15,7 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_solverMaxIters.Initialize( ph, initMaxIters, "max_iters", 
 	                            "Lucas-Kanade solver max iterations." );
 	_solverMaxIters.AddCheck<GreaterThan>( 0 );
+	_solverMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	double initMinEps;
 	GetParamRequired( ph, "min_eps", initMinEps );
@@ -27,12 +28,14 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_pyramidLevel.Initialize( ph, initPyramidLevel, "pyramid_levels", 
 	                          "Lucas-Kanade max pyramid level." );
 	_pyramidLevel.AddCheck<GreaterThan>( 0 );
+	_pyramidLevel.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	unsigned int initWindowDim;
 	GetParamRequired( ph, "window_dim", initWindowDim );
 	_flowWindowDim.Initialize( ph, initWindowDim, "window_dim", 
 	                           "Lucas-Kanade search window dim." );
 	_flowWindowDim.AddCheck<GreaterThanOrEqual>( 0 );
+	_flowWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	double initFlowThreshold;
 	GetParamRequired( ph, "flow_eigenvalue_threshold", initFlowThreshold );

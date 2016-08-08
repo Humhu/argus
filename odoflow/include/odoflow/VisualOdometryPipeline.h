@@ -87,8 +87,8 @@ private:
 	};
 	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
 	
-	IntegerParameter _redetectionThreshold;
-	IntegerParameter _minNumInliers;
+	NumericParam _redetectionThreshold;
+	NumericParam _minNumInliers;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
 	

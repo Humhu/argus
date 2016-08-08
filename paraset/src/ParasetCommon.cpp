@@ -11,13 +11,9 @@ RuntimeParam MsgToParamVariant( const paraset::RuntimeParameter& msg )
 		{
 			throw std::runtime_error( "MsgToParamVariant: Cannot parse invalid param message." );
 		}
-		case paraset::RuntimeParameter::PARAM_INTEGER:
+		case paraset::RuntimeParameter::PARAM_NUMERIC:
 		{
-			return RuntimeParam( msg.integer_value );
-		}
-		case paraset::RuntimeParameter::PARAM_FLOAT:
-		{
-			return RuntimeParam( msg.float_value );
+			return RuntimeParam( msg.numeric_value );
 		}
 		case paraset::RuntimeParameter::PARAM_STRING:
 		{
@@ -41,13 +37,9 @@ RuntimeParamType StringToParamType( const std::string& s )
 	{
 		return PARAM_INVALID;
 	}
-	else if( s == "integer" )
+	else if( s == "numeric" )
 	{
-		return PARAM_INTEGER;
-	}
-	else if( s == "float" )
-	{
-		return PARAM_FLOAT;
+		return PARAM_NUMERIC;
 	}
 	else if( s == "string" )
 	{
@@ -69,10 +61,8 @@ std::string ParamTypeToString( RuntimeParamType t )
 	{
 		case PARAM_INVALID:
 			return "invalid";
-		case PARAM_INTEGER:
-			return "integer";
-		case PARAM_FLOAT:
-			return "float";
+		case PARAM_NUMERIC:
+			return "numeric";
 		case PARAM_STRING:
 			return "string";
 		case PARAM_BOOLEAN:
@@ -90,20 +80,11 @@ paraset::RuntimeParameter ParamVariantToMsg( const RuntimeParam& var )
 ParamToMsgVisitor::ParamToMsgVisitor() {}
 
 ParamToMsgVisitor::MessageType
-ParamToMsgVisitor::operator()( long value ) const
-{
-	ParamToMsgVisitor::MessageType msg;
-	msg.type = ParamToMsgVisitor::MessageType::PARAM_INTEGER;
-	msg.integer_value = value;
-	return msg;
-}
-
-ParamToMsgVisitor::MessageType
 ParamToMsgVisitor::operator()( double value ) const
 {
 	ParamToMsgVisitor::MessageType msg;
-	msg.type = ParamToMsgVisitor::MessageType::PARAM_FLOAT;
-	msg.float_value = value;
+	msg.type = ParamToMsgVisitor::MessageType::PARAM_NUMERIC;
+	msg.numeric_value = value;
 	return msg;
 }
 
@@ -126,11 +107,6 @@ ParamToMsgVisitor::operator()( bool value ) const
 }
 
 ParamPrintVisitor::ParamPrintVisitor() {}
-
-std::string ParamPrintVisitor::operator()( long value ) const
-{
-	return "integer: " + std::to_string( value );
-}
 
 std::string ParamPrintVisitor::operator()( double value ) const
 {
@@ -171,14 +147,9 @@ bool operator!=( const RuntimeParam& lhs, const RuntimeParam& rhs )
 }
 
 template <>
-const std::string RuntimeParamTraits<long>::name = "integer";
+const std::string RuntimeParamTraits<double>::name = "numeric";
 template <>
-const RuntimeParamType RuntimeParamTraits<long>::type = PARAM_INTEGER;
-
-template <>
-const std::string RuntimeParamTraits<double>::name = "float";
-template <>
-const RuntimeParamType RuntimeParamTraits<double>::type = PARAM_FLOAT;
+const RuntimeParamType RuntimeParamTraits<double>::type = PARAM_NUMERIC;
 
 template <>
 const std::string RuntimeParamTraits<std::string>::name = "string";

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <cmath>
 
 namespace argus
 {
@@ -23,6 +24,58 @@ public:
 
 	virtual T Project( const T& val ) const = 0;
 	virtual std::string GetDescription() const = 0;
+
+};
+
+enum IntegerRoundMode
+{
+	ROUND_FLOOR,
+	ROUND_CEIL,
+	ROUND_CLOSEST
+};
+
+template <typename T>
+struct IntegerValued
+: public ParameterCheck<T>
+{
+public:
+
+	IntegerValued( IntegerRoundMode mode = ROUND_CLOSEST )
+	: _mode( mode ) {}
+
+	T Project( const T& val ) const
+	{
+		switch( _mode )
+		{
+			case ROUND_FLOOR:
+				return std::floor( val );
+			case ROUND_CEIL:
+				return std::ceil( val );
+			case ROUND_CLOSEST:
+				return std::round( val );
+			default:
+				throw std::runtime_error( "IntegerVauled: Unknown rounding mode." );
+		}
+	}
+
+	std::string GetDescription() const
+	{
+		switch( _mode )
+		{
+			case ROUND_FLOOR:
+				return "Round floor to integer";
+			case ROUND_CEIL:
+				return "Round ceil to integer";
+			case ROUND_CLOSEST:
+				return "Round to closest integer";
+			default:
+				throw std::runtime_error( "IntegerVauled: Unknown rounding mode." );
+		}
+	}
+
+private:
+
+	IntegerRoundMode _mode;
 
 };
 

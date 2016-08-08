@@ -38,13 +38,14 @@ _extrinsicsManager( _lookupInterface )
 	_redetectionThreshold.Initialize( ph, initRedectThresh, "redetection_threshold", 
 	                                  "Pipeline feature redetection min threshold" );
 	_redetectionThreshold.AddCheck<GreaterThan>( 0 );
+	_redetectionThreshold.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	unsigned int initMinInlierNum;
 	GetParamRequired( ph, "min_inlier_num", initMinInlierNum );
 	_minNumInliers.Initialize( ph, initMinInlierNum, "min_inlier_num",
 	                           "Pipeline min feature inlier threshold" );
 	_minNumInliers.AddCheck<GreaterThan>( 0 );
-	
+	_minNumInliers.AddCheck<IntegerValued>( ROUND_CEIL );
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
