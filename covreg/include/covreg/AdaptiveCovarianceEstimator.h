@@ -22,6 +22,8 @@ public:
 
 	bool IsReady() const;
 
+	void Reset();
+
 private:
 
 	unsigned int _windowLength;
@@ -50,6 +52,8 @@ public:
 	bool IsReady() const;
 
 	void ProcessInfo( const argus_msgs::FilterStepInfo& msg );
+
+	void Reset();
 
 private:
 	std::string _sourceName;

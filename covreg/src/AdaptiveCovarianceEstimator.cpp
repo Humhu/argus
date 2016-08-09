@@ -29,6 +29,7 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ() const
 
 void AdaptiveTransitionCovarianceEstimator::ProcessInfo( const FilterStepInfo& msg )
 {
+	// NOTE We should always have a predict first
 	if( msg.isPredict )
 	{
 		PredictInfo info = MsgToPredict( msg );
@@ -59,6 +60,11 @@ void AdaptiveTransitionCovarianceEstimator::ProcessInfo( const FilterStepInfo& m
 bool AdaptiveTransitionCovarianceEstimator::IsReady() const
 {
 	return _delXOuterProds.size() >= _windowLength;
+}
+
+void AdaptiveTransitionCovarianceEstimator::Reset()
+{
+	_delXOuterProds.clear();
 }
 
 
@@ -110,6 +116,11 @@ void AdaptiveObservationCovarianceEstimator::ProcessInfo( const argus_msgs::Filt
 	{
 		_innoOuterProds.pop_front();
 	}
+}
+
+void AdaptiveObservationCovarianceEstimator::Reset()
+{
+	_innoOuterProds.clear();
 }
 
 }

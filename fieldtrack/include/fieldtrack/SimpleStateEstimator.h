@@ -120,7 +120,8 @@ private:
 		bool usingAdaptive;
 		AdaptiveObservationCovarianceEstimator Radapter;
 	};
-	std::unordered_map<std::string, UpdateRegistration> _updateSubs;
+	typedef std::unordered_map<std::string, UpdateRegistration> UpdateRegistry;
+	UpdateRegistry _updateSubs;
 
 	Mutex _mutex;
 	typedef std::map<ros::Time, argus_msgs::FilterUpdate> UpdateBuffer;

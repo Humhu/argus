@@ -7,6 +7,8 @@
 
 #include "lookup/LookupUtils.hpp"
 
+#include <boost/foreach.hpp>
+
 using namespace argus_msgs;
 using namespace geometry_msgs;
 using namespace nav_msgs;
@@ -309,6 +311,20 @@ void SimpleStateEstimator::Reset( double waitTime, const ros::Time& time )
 	_filter.filter.FullCov() = _initCov;
 	_filter.filterTime = time;
 	_filter.infoNumber++;
+
+	if( _usingAdaptiveTrans )
+	{
+		_Qadapter.Reset();
+	}
+	typedef UpdateRegistry::value_type Item;
+	BOOST_FOREACH( Item& item, _updateSubs )
+	{
+		if( item.second.usingAdaptive )
+		{
+			item.second.Radapter.Reset();
+		}
+	}
+
 }
 
 bool SimpleStateEstimator::ResetFilterCallback( ResetFilter::Request& req,
