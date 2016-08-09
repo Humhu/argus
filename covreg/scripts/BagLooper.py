@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import rospy, rosbag, roslib, time, random
+import rospy, rosbag, roslib, time, random, sys
 from fieldtrack.srv import ResetFilter
 
 class BagLooper:
@@ -24,7 +24,7 @@ class BagLooper:
         self.reset_lead = rospy.Duration( rospy.get_param( '~reset_lead', 0.0 ) )
         self.sample_random = rospy.get_param( '~sample_random', False )
         self.offset_random = rospy.get_param( '~offset_random', False )
-        self.playback_length = rospy.Duration( rospy.get_param( '~playback_length', 0.0 ) )
+        self.playback_length = rospy.Duration( rospy.get_param( '~playback_length', sys.maxint ) )
 
         self.start_offset = rospy.Duration( rospy.get_param( '~start_offset', 0.0 ) )
         self.end_offset = rospy.Duration( rospy.get_param( '~end_offset', 0.0 ) )
@@ -75,11 +75,8 @@ class BagLooper:
                 ind += 1
 
             rospy.loginfo( 'Playing bag: ' + path )
-            #bag = rosbag.Bag( path )
             bag = self.bags[path]
 
-            # bag_start = rospy.Time.from_sec( bag.get_start_time() )
-            # bag_end = rospy.Time.from_sec( bag.get_end_time() )
             ( bag_start, bag_end ) = self.times[path]
             bag_start = rospy.Time.from_sec( bag_start )
             bag_end = rospy.Time.from_sec( bag_end )
@@ -88,8 +85,6 @@ class BagLooper:
             message_end = bag_end - self.end_offset
             message_duration = message_end - message_start
 
-            # self.truncate_ratio = 0.0 means we play the whole bag all the time
-            #trunc_duration = rospy.Duration( (1.0 - self.truncate_ratio ) * message_duration )
             if self.playback_length < message_duration:
                 play_duration = self.playback_length
             else:
@@ -105,7 +100,8 @@ class BagLooper:
             trunc_bag_end = trunc_bag_start + play_duration
 
             last_time = None
-            #for (topic, msg, t) in bag.read_messages():
+
+            rospy.loginfo('Playing %d messages', len(bag))
 
             for (topic, msg, t) in bag:
                 
@@ -114,15 +110,25 @@ class BagLooper:
                 if rospy.is_shutdown():
                     return
 
-                if t < trunc_bag_start:
+                try:
+                    stamp = msg.header.stamp
+                except AttributeError:
+                    stamp = t
+
+                if stamp < trunc_bag_start:
+                    rospy.loginfo('Skipping message stamp %f from start %f', stamp.to_sec(), trunc_bag_start.to_sec() )
                     continue
-                if t > trunc_bag_end:
+                elif stamp > trunc_bag_end:
+                    rospy.loginfo('Reached end of bag at stamp %f with end %f', stamp.to_sec(), trunc_bag_end.to_sec() )
                     break
 
-                time_from_trunc_start = t - trunc_bag_start
+                time_from_trunc_start = stamp - trunc_bag_start
                 if time_from_trunc_start.to_sec() < 0:
                     raise RuntimeError('Time less than 0!')
+                
+                # NOTE Since msg is a reference, we need to restore its timestamp afterwards
                 try:
+                    old_stamp = msg.header.stamp
                     msg.header.stamp = time_from_trunc_start + round_start
                 except AttributeError:
                     pass
@@ -131,7 +137,17 @@ class BagLooper:
                 sleep_time = time_from_trunc_start - curr_from_round_start
                 rospy.sleep( sleep_time )
 
+                # try:
+                #     print 'Publishing %s at time %f' % (topic, msg.header.stamp.to_sec() )
+                # except AttributeError:
+                #     pass
+
                 self.publishers[ topic ].publish( msg )
+
+                try:
+                    msg.header.stamp = old_stamp
+                except AttributeError:
+                    pass
 
             # bag.close()
 
