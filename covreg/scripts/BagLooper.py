@@ -116,10 +116,10 @@ class BagLooper:
                     stamp = t
 
                 if stamp < trunc_bag_start:
-                    rospy.loginfo('Skipping message stamp %f from start %f', stamp.to_sec(), trunc_bag_start.to_sec() )
+                    # rospy.loginfo('Skipping message stamp %f from start %f', stamp.to_sec(), trunc_bag_start.to_sec() )
                     continue
                 elif stamp > trunc_bag_end:
-                    rospy.loginfo('Reached end of bag at stamp %f with end %f', stamp.to_sec(), trunc_bag_end.to_sec() )
+                    # rospy.loginfo('Reached end of bag at stamp %f with end %f', stamp.to_sec(), trunc_bag_end.to_sec() )
                     break
 
                 time_from_trunc_start = stamp - trunc_bag_start
