@@ -25,7 +25,7 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	
 	unsigned int initPyramidLevel;
 	GetParamRequired( ph, "pyramid_level", initPyramidLevel );
-	_pyramidLevel.Initialize( ph, initPyramidLevel, "pyramid_levels", 
+	_pyramidLevel.Initialize( ph, initPyramidLevel, "pyramid_level", 
 	                          "Lucas-Kanade max pyramid level." );
 	_pyramidLevel.AddCheck<GreaterThan>( 0 );
 	_pyramidLevel.AddCheck<IntegerValued>( ROUND_CEIL );
