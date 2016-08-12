@@ -35,12 +35,14 @@ class BagLooper:
         self.bags = {}
         self.times = {}
 
+        pre_cache = rospy.get_param( '~pre_cache', True )
+
         for path in self.bag_paths:
             bag = rosbag.Bag( path )
 
-            rospy.loginfo( 'Parsing bag: ' + path )
-            self.bags[path] = list( bag.read_messages() )
-            rospy.loginfo( 'Parsing complete.' )
+            if pre_cache:
+                rospy.loginfo( 'Pre-caching bag: ' + path )
+                self.bags[path] = list( bag.read_messages() )
 
             self.times[path] = ( bag.get_start_time(), bag.get_end_time() )
 
@@ -53,18 +55,12 @@ class BagLooper:
                                                                 msg_class, 
                                                                 queue_size=10 )
 
-
     def Execute( self ):
 
         zero_dur = rospy.Duration( 0 )
 
         ind = 0
         while not rospy.is_shutdown():
-
-            round_start = rospy.Time.now()
-            rospy.loginfo( 'Round start: %f', round_start.to_sec() )
-
-            self.reset_service( 0.0, round_start - self.reset_lead )
 
             if self.sample_random:
                 path = random.sample( self.bag_paths, 1 )[0]
@@ -75,7 +71,21 @@ class BagLooper:
                 ind += 1
 
             rospy.loginfo( 'Playing bag: ' + path )
-            bag = self.bags[path]
+
+            if path in self.bags:
+                rospy.loginfo( 'Found cached messages.' )
+                buildCache = False
+                bag = self.bags[path]
+            else:
+                rospy.loginfo( 'No cached messages found. Building cache may slow playback.' )
+                buildCache = True
+                self.bags[path] = []
+                bag = rosbag.Bag( path )
+
+            round_start = rospy.Time.now()
+            rospy.loginfo( 'Round start: %f', round_start.to_sec() )
+
+            self.reset_service( 0.0, round_start - self.reset_lead )
 
             ( bag_start, bag_end ) = self.times[path]
             bag_start = rospy.Time.from_sec( bag_start )
@@ -101,8 +111,6 @@ class BagLooper:
 
             last_time = None
 
-            rospy.loginfo('Playing %d messages', len(bag))
-
             for (topic, msg, t) in bag:
                 
                 # Try and avoid getting stuck in the publish call and 
@@ -122,6 +130,9 @@ class BagLooper:
                     # rospy.loginfo('Reached end of bag at stamp %f with end %f', stamp.to_sec(), trunc_bag_end.to_sec() )
                     break
 
+                if buildCache:
+                    self.bags[path].append( (topic, msg, t) )
+
                 time_from_trunc_start = stamp - trunc_bag_start
                 if time_from_trunc_start.to_sec() < 0:
                     raise RuntimeError('Time less than 0!')
@@ -139,6 +150,11 @@ class BagLooper:
 
                 # try:
                 #     print 'Publishing %s at time %f' % (topic, msg.header.stamp.to_sec() )
+                # except AttributeError:
+                #     pass
+
+                # try:
+                #     rospy.loginfo( 'Latency: %f', (rospy.Time.now() - msg.header.stamp).to_sec() )
                 # except AttributeError:
                 #     pass
 
