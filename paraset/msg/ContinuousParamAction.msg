@@ -4,8 +4,8 @@
 # frame_id - The policy name
 std_msgs/Header header
 
-# The inputs at the time
-float64[] inputs
+# The input at the time
+float64[] input
 
-# The outputs executed
-float64[] outputs
+# The output executed
+float64[] output

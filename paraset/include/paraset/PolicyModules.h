@@ -39,6 +39,10 @@ public:
 
 	void SetSource( InputSourceType* s );
 
+	OutputSourceType& GetProbabilitySource();
+
+	void SetOutputOffsets( const VectorType& probs );
+
 	virtual void Foreprop();
 
 	virtual void BackpropImplementation( const MatrixType& nextDodx );
@@ -52,58 +56,22 @@ private:
 
 };
 
-class PolicyModule
-: public percepto::Source<MatrixType>
-{
-public:
-	
-	typedef percepto::Source<VectorType> InputSourceType;
-	typedef percepto::Source<MatrixType> OutputSourceType;
-	typedef percepto::Sink<MatrixType> SinkType;
-
-	PolicyModule();
-	virtual ~PolicyModule();
-
-	virtual percepto::Parameters::Ptr CreateParameters() = 0;
-
-	virtual void SetSource( InputSourceType* s ) = 0;
-
-	virtual void Foreprop();
-
-	virtual void BackpropImplementation( const MatrixType& nextDodx );
-
-protected:
-
-	SinkType _outputPort;
-
-	void SetOutputModule( OutputSourceType* outputModule );
-
-private:
-
-	PolicyModule( const PolicyModule& other );
-	PolicyModule& operator=( const PolicyModule& other );
-
-
-};
-
 class VarReLUGaussian
-: public PolicyModule
 {
 public:
 
-	typedef percepto::Source<VectorType> InputSourceType;
-	typedef percepto::Source<MatrixType> OutputSourceType;
+	typedef percepto::Source<VectorType> VectorSourceType;
+	typedef percepto::Source<MatrixType> MatrixSourceType;
 	typedef percepto::Sink<MatrixType> SinkType;
 
 	typedef std::shared_ptr<VarReLUGaussian> Ptr;
 
-	percepto::TerminalSource<VectorType> input;
 	percepto::ReLUNet reg; // Regresses mean and variances
+	percepto::ConstantVectorRegressor lReg;
 
 	percepto::SubvectorWrapper meanWrapper;
 	percepto::SubvectorWrapper varWrapper;
 
-	percepto::ConstantVectorRegressor lReg;
 	percepto::ExponentialWrapper expModule;
 	percepto::ModifiedCholeskyWrapper psdModule;
 	percepto::OffsetWrapper<MatrixType> pdModule;
@@ -119,20 +87,21 @@ public:
 	// dReg.SetParameters
 	VarReLUGaussian( const VarReLUGaussian& other );
 
-	virtual percepto::Parameters::Ptr CreateParameters();
+	percepto::Parameters::Ptr CreateParameters();
 
-	virtual void SetSource( InputSourceType* s );
+	void Foreprop();
+	void Invalidate();
 
-	virtual void Invalidate();
+	VectorSourceType& GetMeanSource();
+	MatrixSourceType& GetInfoSource();
 
-	virtual void Foreprop();
+	void SetOutputOffsets( const VectorType& means,
+	                       const VectorType& vars );
 
-	virtual void BackpropImplementation( const MatrixType& nextDodx );
-
-private:
-
-	percepto::Sink<VectorType> _inputPort;
+	friend std::ostream& operator<<( std::ostream& os, const VarReLUGaussian& vrlg );
 
 };
+
+std::ostream& operator<<( std::ostream& os, const VarReLUGaussian& vrlg );
 
 }

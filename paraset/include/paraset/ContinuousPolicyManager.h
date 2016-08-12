@@ -15,27 +15,38 @@ class ContinuousPolicyManager
 {
 public:
 
+	struct DistributionParameters
+	{
+		VectorType mean;
+		MatrixType info;
+	};
+
+	typedef VarReLUGaussian NetworkType;
+
 	ContinuousPolicyManager();
 	
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
+	const NetworkType& GetPolicyModule() const;
+	percepto::Parameters::Ptr GetParameters();
+
+	StampedFeatures GetInput( const ros::Time& time );
+	DistributionParameters GetDistributionParams( const ros::Time& time );
+	void SetOutput( const VectorType& out );
+	unsigned int GetNumOutputs() const;
+	ContinuousPolicy& GetPolicyInterface();
+
 private:
 
 	ContinuousPolicy _policyInterface;
-	ros::Publisher _actionPub;
 	ros::Subscriber _paramSub;
 
-	VarReLUGaussian::Ptr _network;
+	BroadcastMultiReceiver _inputStreams;
+
+	NetworkType::Ptr _network;
 	percepto::TerminalSource<VectorType> _networkInput;
 	percepto::Parameters::Ptr _networkParameters;
 
-	BroadcastMultiReceiver _inputStreams;
-	double _sampleDevs;
-
-	MultivariateGaussian<> _dist;
-	ros::Timer _timer;
-
-	void UpdateCallback( const ros::TimerEvent& event );
 	void ParamCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg );
 };
 

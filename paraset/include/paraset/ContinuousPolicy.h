@@ -15,13 +15,15 @@ public:
 
 	ContinuousPolicy();
 
-	void Initialize( ros::NodeHandle& ph );
+	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
 	// Get the number of parameters this policy wraps
 	unsigned int GetNumOutputs() const;
 
+	std::vector<std::string> GetParameterNames() const;
+
 	// Set each parameter to the specified parameter
-	void SetOutput( const std::vector<double>& outputs );
+	void SetOutput( const VectorType& outputs );
 
 private:
 

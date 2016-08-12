@@ -9,7 +9,6 @@
 
 #include <boost/random/random_device.hpp>
 
-using namespace paraset;
 using namespace argus_msgs;
 
 namespace argus
@@ -22,7 +21,7 @@ void DiscretePolicyManager::Initialize( ros::NodeHandle& nh,
 {
 	_policyInterface.Initialize( ph );
 
-	_actionPub = ph.advertise<DiscreteParamAction>( "actions", 0 );
+	_actionPub = ph.advertise<DiscreteParamAction::MsgType>( "actions", 0 );
 	_paramSub = nh.subscribe( "param_updates", 
 	                          1,
 	                          &DiscretePolicyManager::ParamCallback, 
@@ -36,10 +35,10 @@ void DiscretePolicyManager::Initialize( ros::NodeHandle& nh,
 	unsigned int numHiddenLayers, layerWidth;
 	GetParamRequired( ph, "network/num_hidden_layers", numHiddenLayers );
 	GetParamRequired( ph, "network/layer_width", layerWidth );
-	_network = std::make_shared<NormalizedPerceptron>( inputDim, 
-	                                                   outputDim, 
-	                                                   numHiddenLayers, 
-	                                                   layerWidth );
+	_network = std::make_shared<NetworkType>( inputDim, 
+	                                          outputDim, 
+	                                          numHiddenLayers, 
+	                                          layerWidth );
 	_network->SetSource( &_networkInput );
 	_networkParameters = _network->CreateParameters();
 	VectorType w = _networkParameters->GetParamsVec();
@@ -63,6 +62,12 @@ void DiscretePolicyManager::Initialize( ros::NodeHandle& nh,
 	_timer = ph.createTimer( ros::Duration( 1.0/updateRate ),
 	                         &DiscretePolicyManager::UpdateCallback,
 	                         this );
+}
+
+const DiscretePolicyManager::NetworkType&
+DiscretePolicyManager::GetPolicyModule() const
+{
+	return *_network;
 }
 
 void DiscretePolicyManager::UpdateCallback( const ros::TimerEvent& event )
@@ -92,11 +97,10 @@ void DiscretePolicyManager::UpdateCallback( const ros::TimerEvent& event )
 	_policyInterface.SetOutputIndices( indices );
 
 	// TODO name policy
-	DiscreteParamAction outMsg;
-	outMsg.header.stamp = event.current_real;
-	SerializeMatrix( inputs.features, outMsg.inputs );
-	outMsg.index = actionIndex;
-	_actionPub.publish( outMsg );
+	DiscreteParamAction action( event.current_real,
+	                            inputs.features,
+	                            actionIndex );
+	_actionPub.publish( action.ToMsg() );
 }
 
 void DiscretePolicyManager::ParamCallback( const FloatVectorStamped::ConstPtr& msg )

@@ -12,7 +12,8 @@ namespace argus
 
 ContinuousPolicy::ContinuousPolicy() {}
 
-void ContinuousPolicy::Initialize( ros::NodeHandle& ph )
+void ContinuousPolicy::Initialize( ros::NodeHandle& nh,
+                                   ros::NodeHandle& ph )
 {
 	YAML::Node policyParams;
 	GetParamRequired( ph, "parameters", policyParams );
@@ -26,13 +27,14 @@ void ContinuousPolicy::Initialize( ros::NodeHandle& ph )
 
 		// Get name
 		registration.name = iter->first.as<std::string>();
+		ROS_INFO_STREAM( "Parsing parameter: " << registration.name );
 
 		// Get service path
 		const YAML::Node& sub = iter->second;
 		std::string servicePath;
 		GetParamRequired( sub, "set_service", servicePath );
 		ros::service::waitForService( servicePath );
-		registration.setService = ph.serviceClient<SetRuntimeParameter>( servicePath );
+		registration.setService = nh.serviceClient<SetRuntimeParameter>( servicePath );
 	}
 }
 
@@ -41,14 +43,30 @@ unsigned int ContinuousPolicy::GetNumOutputs() const
 	return _parameters.size();
 }
 
-void ContinuousPolicy::SetOutput( const std::vector<double>& outputs )
+std::vector<std::string> ContinuousPolicy::GetParameterNames() const
 {
-	if( outputs.size() != _parameters.size() )
+	std::vector<std::string> names;
+	names.reserve( _parameters.size() );
+	for( unsigned int i = 0; i < _parameters.size(); ++i )
+	{
+		names.push_back( _parameters[i].name );
+	}
+	return names;
+}
+
+void ContinuousPolicy::SetOutput( const VectorType& output )
+{
+	if( output.size() != _parameters.size() )
 	{
 		throw std::runtime_error( "ContinuousPolicy: Invalid number of outputs." );
 	}
 
-	std::vector<RuntimeParam> params = ConvertToParamVariants( outputs );
+	std::vector<RuntimeParam> params;
+	params.reserve( output.size() );
+	for( unsigned int i = 0; i < output.size(); ++i )
+	{
+		params.emplace_back( output(i) );
+	}
 
 	SetRuntimeParameter::Request req;
 	SetRuntimeParameter::Response res;
@@ -59,9 +77,9 @@ void ContinuousPolicy::SetOutput( const std::vector<double>& outputs )
 		{
 			ROS_WARN_STREAM( "ContinuousPolicy: Could not set parameter: " << _parameters[i].name );
 		}
-		if( MsgToParamVariant( res.actual ) != params[i] )
+		else if( MsgToParamVariant( res.actual ) != params[i] )
 		{
-			ROS_WARN_STREAM( "ContinuousPolicy: Actual differs from request." );
+			// ROS_WARN_STREAM( "ContinuousPolicy: Actual differs from request." );
 		}
 	}
 }

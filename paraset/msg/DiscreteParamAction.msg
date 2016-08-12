@@ -4,8 +4,8 @@
 # frame_id - The policy name
 std_msgs/Header header
 
-# The inputs at the time
-float64[] inputs
+# The input at the time
+float64[] input
 
 # The action index executed
 uint32 index

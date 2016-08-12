@@ -22,7 +22,7 @@ class RMSPerformanceEvaluator:
         if self.vel_sum == 0.0:
             self.vel_sum = 1.0
 
-        self.reward_pub = rospy.Publisher( 'reward', RewardStamped, queue_size=0 )
+        self.reward_pub = rospy.Publisher( '~reward', RewardStamped, queue_size=0 )
         self.odom_sub = rospy.Subscriber( 'odom', Odometry, self.OdomCallback )
 
     def OdomCallback( self, odom ):
@@ -30,12 +30,12 @@ class RMSPerformanceEvaluator:
         out.header.stamp = odom.header.stamp
 
         pose_cov = np.reshape( odom.pose.covariance, [6,6] )
-        pose_prod = self.pose_weights * pose_cov * pose_cov
-        pose_rms = sqrt( pose_prod.sum() / self.pose_sum )
+        pose_vars = pose_cov.diagonal()
+        pose_rms = ( self.pose_weights * pose_vars ).sum()
 
         vel_cov = np.reshape( odom.twist.covariance, [6,6] )
-        vel_prod = self.vel_weights * vel_cov * vel_cov
-        vel_rms = sqrt( vel_prod.sum() / self.vel_sum )
+        vel_vars = vel_cov.diagonal();
+        vel_rms = ( self.vel_weights * vel_vars ).sum()
 
         out.reward = -pose_rms - vel_rms
         self.reward_pub.publish( out )

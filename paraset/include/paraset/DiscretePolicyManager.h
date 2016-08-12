@@ -15,9 +15,13 @@ class DiscretePolicyManager
 {
 public:
 
+	typedef NormalizedPerceptron NetworkType;
+
 	DiscretePolicyManager();
 
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
+
+	const NetworkType& GetPolicyModule() const;
 
 private:
 
@@ -25,7 +29,7 @@ private:
 	ros::Publisher _actionPub;
 	ros::Subscriber _paramSub;
 	
-	NormalizedPerceptron::Ptr _network;
+	NetworkType::Ptr _network;
 	percepto::TerminalSource<VectorType> _networkInput;
 	percepto::Parameters::Ptr _networkParameters;
 	

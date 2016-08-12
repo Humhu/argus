@@ -37,6 +37,7 @@ add_message_files( FILES
 # Services
 add_service_files( FILES
 	SetRuntimeParameter.srv
+	GetCritique.srv
 	GetParameterInfo.srv
 )
 
@@ -61,12 +62,19 @@ catkin_package(
 
 add_library( paraset
             src/ContinuousPolicy.cpp
+            src/ContinuousPolicyLearner.cpp
             src/ContinuousPolicyManager.cpp
+            src/DifferenceCritic.cpp
             src/DiscretePolicy.cpp
             src/DiscretePolicyManager.cpp
+            src/MonteCarloValue.cpp
 			src/ParasetCommon.cpp
+			src/ParasetActionCommon.cpp
 			src/ParamChecks.cpp
-			src/PolicyModules.cpp )
+			src/PolicyLogGradientModules.cpp
+			src/PolicyModules.cpp
+			src/RewardInterpolater.cpp
+			src/RunningAverageBaseline.cpp )
 add_dependencies( paraset paraset_gencfg ${paraset_EXPORTED_TARGETS} )
 target_link_libraries( paraset
                        ${catkin_LIBRARIES} )
@@ -91,7 +99,25 @@ target_link_libraries( continuous_policy_node
                       ${Boost_LIBRARIES}
                       paraset )
 
-install( TARGETS paraset discrete_policy_node continuous_policy_node
+add_executable( monte_carlo_value_node nodes/monte_carlo_value_node.cpp )
+add_dependencies( monte_carlo_value_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( monte_carlo_value_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
+
+add_executable( continuous_policy_learner_node nodes/continuous_policy_learner_node.cpp )
+add_dependencies( continuous_policy_learner_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( continuous_policy_learner_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
+
+install( TARGETS paraset 
+                 discrete_policy_node 
+                 continuous_policy_node 
+                 monte_carlo_value_node
+                 continuous_policy_learner_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
