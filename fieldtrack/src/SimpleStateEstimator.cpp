@@ -71,7 +71,7 @@ bool StampedFilter::ProcessUpdate( const FilterUpdate& msg, InfoPair& info )
 	ros::Time updateTime = msg.header.stamp;
 	if( updateTime < filterTime )
 	{
-		ROS_WARN_STREAM( "Update received from before time " << updateTime << " before filter time " << filterTime );
+		ROS_WARN_STREAM( "Update received with time " << updateTime << " before filter time " << filterTime );
 		return false;
 	}
 
