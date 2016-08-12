@@ -10,11 +10,13 @@ namespace argus
 
 InnovationClipOptimizer::InnovationClipOptimizer( CovarianceEstimator& qReg,
                                                   const InnovationClipParameters& params )
-: _currentEpisode( nullptr ), _transReg( qReg ), 
-_problem( &_paramWrapper, params.l2Weight, params.batchSize ),
-_maxEpisodeLength( params.maxEpisodeLength )
+: _paramWrapper( std::make_shared<percepto::ParameterWrapper>() ),
+  _currentEpisode( nullptr ),
+  _transReg( qReg ),
+  _problem( _paramWrapper, params.l2Weight, params.batchSize ),
+  _maxEpisodeLength( params.maxEpisodeLength )
 {
-	_paramWrapper.AddParameters( qReg.GetParamSet() );
+	_paramWrapper->AddParameters( qReg.GetParamSet() );
 }
 
 void InnovationClipOptimizer::AddObservationReg( CovarianceEstimator& reg,
@@ -22,7 +24,7 @@ void InnovationClipOptimizer::AddObservationReg( CovarianceEstimator& reg,
 {
 	WriteLock lock( _mutex );
 	_obsRegs.emplace( name, reg );
-	_paramWrapper.AddParameters( reg.GetParamSet() );
+	_paramWrapper->AddParameters( reg.GetParamSet() );
 }
 
 void InnovationClipOptimizer::AddPredict( const PredictInfo& info,
@@ -130,7 +132,7 @@ void InnovationClipOptimizer::InitializeOptimization( const percepto::SimpleConv
 	_convergence = std::make_shared<percepto::SimpleConvergence>( criteria );
 	_optimizer = std::make_shared<percepto::AdamOptimizer>( *_stepper, 
 	                                                        *_convergence,
-	                                                        _paramWrapper );
+	                                                        *_paramWrapper );
 }
 
 bool InnovationClipOptimizer::Optimize()

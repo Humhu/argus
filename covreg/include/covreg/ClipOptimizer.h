@@ -69,6 +69,9 @@ private:
 
 	mutable Mutex _mutex;
 	
+	// All parameters from optimized estimators
+	percepto::ParameterWrapper::Ptr _paramWrapper;
+	
 	KalmanFilterEpisode* _currentEpisode;
 	std::vector< std::pair<PredictInfo,VectorType> > _predBuffer;
 
@@ -80,9 +83,6 @@ private:
 	InnovationLikelihoodProblem _problem;
 	
 	unsigned int _maxEpisodeLength;
-
-	// All parameters from optimized estimators
-	percepto::ParameterWrapper _paramWrapper;
 
 	// Optimization
 	std::shared_ptr<percepto::AdamStepper> _stepper;

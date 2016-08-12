@@ -3,7 +3,7 @@
 namespace argus
 {
 
-InnovationLikelihoodProblem::InnovationLikelihoodProblem( percepto::Parameters* params,
+InnovationLikelihoodProblem::InnovationLikelihoodProblem( percepto::Parameters::Ptr params,
                                                           double l2Weight,
                                                           unsigned int batchSize )
 {

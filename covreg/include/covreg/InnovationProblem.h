@@ -20,7 +20,7 @@ struct InnovationLikelihoodProblem
 	percepto::ParameterL2Cost regularizer;
 	percepto::AdditiveWrapper<double> objective;
 
-	InnovationLikelihoodProblem( percepto::Parameters* params,
+	InnovationLikelihoodProblem( percepto::Parameters::Ptr params,
 	                             double l2Weight,
 	                             unsigned int batchSize );
 
