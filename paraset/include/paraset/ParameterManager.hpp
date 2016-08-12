@@ -37,10 +37,13 @@ public:
 		_name = name;
 		_description = description;
 		_currentValue = initialVal;
-		_setServer = nodeHandle.advertiseService( "set_" + name, 
+		ROS_INFO_STREAM( "Initializing runtime parameter: " << _name << std::endl <<
+		                 "\tDescription: " << description << std::endl <<
+		                 "\tInitial value: " << initialVal );
+		_setServer = nodeHandle.advertiseService( "set_" + _name, 
 		                                          &ParameterManager<T>::SetParameterCallback,
 		                                          this );
-		_infoServer = nodeHandle.advertiseService( "get_" + name + "_info",
+		_infoServer = nodeHandle.advertiseService( "get_" + _name + "_info",
 		                                           &ParameterManager<T>::GetInfoCallback,
 		                                           this );
 	}
@@ -52,6 +55,7 @@ public:
 		Validate();
 		CheckPtr c = std::make_shared<Check<T>>( std::forward<Args>( args )... );
 		_checks.push_back( c );
+		ROS_INFO_STREAM( "Runtime parameter: " << _name << " added check: " << c->GetDescription() );
 	}
 
 	T GetValue() const

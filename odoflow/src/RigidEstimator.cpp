@@ -11,19 +11,21 @@ namespace argus
 RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : MotionEstimator( nh, ph )
 {
-	GetParam<double>( ph, "scale", _scale );
+	GetParam( ph, "scale", _scale );
 
-	double initReprojThreshold;
-	GetParam<double>( ph, "reprojection_threshold", initReprojThreshold);
-	_reprojThreshold.Initialize( ph, initReprojThreshold, "reprojection_threshold", 
+	FullNumericRange reprojThreshold;
+	GetParam( ph, "reprojection_threshold", reprojThreshold);
+	_reprojThreshold.Initialize( ph, reprojThreshold.init, "reprojection_threshold", 
 	                             "RANSAC reprojection inlier threshold" );
-	_reprojThreshold.AddCheck<GreaterThan>( 0 );
+	_reprojThreshold.AddCheck<GreaterThanOrEqual>( reprojThreshold.min );
+	_reprojThreshold.AddCheck<LessThanOrEqual>( reprojThreshold.max );
 
-	unsigned int initMaxIters;
-	GetParam<unsigned int>( ph, "max_iters", initMaxIters );
-	_maxIters.Initialize( ph, initMaxIters, "max_iters",
+	FullNumericRange maxIters;
+	GetParam( ph, "max_iters", maxIters );
+	_maxIters.Initialize( ph, maxIters.init, "max_iters",
 	                      "RANSAC max iterations" );
-	_maxIters.AddCheck<GreaterThan>( 0 );
+	_maxIters.AddCheck<GreaterThanOrEqual>( maxIters.min );
+	_maxIters.AddCheck<LessThanOrEqual>( maxIters.max );
 	_maxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 }
 

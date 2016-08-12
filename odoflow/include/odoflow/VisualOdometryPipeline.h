@@ -17,6 +17,8 @@
 
 #include "paraset/ParameterManager.hpp"
 
+#include "broadcast/BroadcastTransmitter.h"
+
 namespace argus
 {
 
@@ -59,7 +61,10 @@ private:
 	ros::Publisher _dispPub;
 	image_transport::ImageTransport _imagePort;
 	image_transport::CameraSubscriber _imageSub;
+	
 	image_transport::Publisher _debugPub;
+
+	BroadcastTransmitter _featureTx;
 	
 	LookupInterface _lookupInterface;
 	ExtrinsicsInfoManager _extrinsicsManager;

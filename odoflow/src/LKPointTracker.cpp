@@ -10,38 +10,42 @@ namespace argus
 LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : InterestPointTracker( nh, ph )
 {
-	unsigned int initMaxIters;
-	GetParamRequired<unsigned int>( ph, "max_iters", initMaxIters );
-	_solverMaxIters.Initialize( ph, initMaxIters, "max_iters", 
+	FullNumericRange maxIters;
+	GetParamRequired( ph, "max_iters", maxIters );
+	_solverMaxIters.Initialize( ph, maxIters.init, "max_iters", 
 	                            "Lucas-Kanade solver max iterations." );
-	_solverMaxIters.AddCheck<GreaterThan>( 0 );
+	_solverMaxIters.AddCheck<GreaterThanOrEqual>( maxIters.min );
+	_solverMaxIters.AddCheck<LessThanOrEqual>( maxIters.max );
 	_solverMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
-	double initMinEps;
-	GetParamRequired( ph, "min_eps", initMinEps );
-	_solverMinEpsilon.Initialize( ph, initMinEps, "min_eps", 
+	MaxNumericRange minEps;
+	GetParamRequired( ph, "min_eps", minEps );
+	_solverMinEpsilon.Initialize( ph, minEps.init, "min_eps", 
 	                              "Lucas-Kande solver min epsilon." );
 	_solverMinEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
+	_solverMinEpsilon.AddCheck<LessThanOrEqual>( minEps.max );
 	
-	unsigned int initPyramidLevel;
-	GetParamRequired( ph, "pyramid_level", initPyramidLevel );
-	_pyramidLevel.Initialize( ph, initPyramidLevel, "pyramid_level", 
+	MaxNumericRange pyramidLevel;
+	GetParamRequired( ph, "pyramid_level", pyramidLevel );
+	_pyramidLevel.Initialize( ph, pyramidLevel.init, "pyramid_level", 
 	                          "Lucas-Kanade max pyramid level." );
-	_pyramidLevel.AddCheck<GreaterThan>( 0 );
-	_pyramidLevel.AddCheck<IntegerValued>( ROUND_CEIL );
+	_pyramidLevel.AddCheck<GreaterThanOrEqual>( 0 );
+	_pyramidLevel.AddCheck<LessThanOrEqual>( pyramidLevel.max );
+	_pyramidLevel.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	unsigned int initWindowDim;
-	GetParamRequired( ph, "window_dim", initWindowDim );
-	_flowWindowDim.Initialize( ph, initWindowDim, "window_dim", 
+	MaxNumericRange windowDim;
+	GetParamRequired( ph, "window_dim", windowDim );
+	_flowWindowDim.Initialize( ph, windowDim.init, "window_dim", 
 	                           "Lucas-Kanade search window dim." );
-	_flowWindowDim.AddCheck<GreaterThanOrEqual>( 0 );
+	_flowWindowDim.AddCheck<GreaterThanOrEqual>( 3 ); // OpenCV requirements
+	_flowWindowDim.AddCheck<LessThanOrEqual>( windowDim.max );
 	_flowWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	double initFlowThreshold;
-	GetParamRequired( ph, "flow_eigenvalue_threshold", initFlowThreshold );
-	_flowEigenThreshold.Initialize( ph, initFlowThreshold, "flow_eigenvalue_threshold", 
+	MaxNumericRange flowThreshold;
+	_flowEigenThreshold.Initialize( ph, flowThreshold.init, "flow_eigenvalue_threshold", 
 	                                "Lucas-Kanade spatial gradient eigenvalue threshold." );
 	_flowEigenThreshold.AddCheck<GreaterThanOrEqual>( 0 );
+	_flowEigenThreshold.AddCheck<LessThanOrEqual>( flowThreshold.max );
 }
 
 void LKPointTracker::TrackInterestPoints( const cv::Mat& firstImage,

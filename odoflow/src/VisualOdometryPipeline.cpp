@@ -33,6 +33,14 @@ _extrinsicsManager( _lookupInterface )
 	_privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
 	_lookupInterface.SetLookupNamespace( lookupNamespace );
 	
+	std::string featureName;
+	GetParam<std::string>( ph, "feature_name", featureName, "vo_features" );
+	std::vector<std::string> featureDescriptions = { "num_inliers" };
+	_featureTx.InitializePushStream( featureName, 
+	                                 ph,
+	                                 1,
+	                                 featureDescriptions );
+
 	unsigned int initRedectThresh;
 	GetParamRequired( ph, "redetection_threshold", initRedectThresh );
 	_redetectionThreshold.Initialize( ph, initRedectThresh, "redetection_threshold", 
@@ -62,9 +70,9 @@ _extrinsicsManager( _lookupInterface )
 	}
 		
 	std::string detectorType, trackerType, estimatorType;
-	GetParam<std::string>( ph, "detector/type", detectorType, "corner" );
-	GetParam<std::string>( ph, "tracker/type", trackerType, "lucas_kanade" );
-	GetParam<std::string>( ph, "estimator/type", estimatorType, "rigid" );
+	GetParamRequired( ph, "detector/type", detectorType );
+	GetParamRequired( ph, "tracker/type", trackerType );
+	GetParamRequired( ph, "estimator/type", estimatorType );
 
 	ros::NodeHandle detectorHandle( "~detector" );
 	if( detectorType == "corner" )
@@ -199,13 +207,12 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	UndistortPoints( keyframeInliersImage, cameraModel, false, true, 
 	                 keyframePointsNormalized );
 	
-
 	// Estimate motion between frames
 	PoseSE3 currentPose;
 	PoseSE2 pixPose;
 	std::vector<uchar> motionInliers;
 	if( !_estimator->EstimateMotion( currentPointsNormalized, keyframePointsNormalized, 
-	                                motionInliers, currentPose, pixPose ) )
+	                                 motionInliers, currentPose, pixPose ) )
 	{
 		ROS_WARN_STREAM( "Could not estimate motion between frames. Resetting keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
@@ -224,6 +231,10 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	reg.keyframePointsImage = keyframeMotionInliers;
 	ROS_DEBUG_STREAM( "Kept " << currentMotionInliers.size() << " inliers after motion estimation." );
 	
+	VectorType feats(1);
+	feats(0) = currentMotionInliers.size();
+	_featureTx.Publish( msg->header.stamp, feats );
+
 	// Have to calculate dt before getting timestamp
     PoseSE3 cameraDisplacement = reg.lastPointsPose.Inverse() * currentPose;
 	const ExtrinsicsInfo& cameraInfo = _extrinsicsManager.GetInfo( cameraName );
