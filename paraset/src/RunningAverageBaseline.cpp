@@ -17,7 +17,7 @@ void RunningAverageBaseline::Initialize( ros::NodeHandle& nh,
                                          ros::NodeHandle& ph )
 {
 	GetParam( ph, "initial_value", _acc, 0.0 );
-	GetParamRequired( ph, "discount_factor", _gamma );
+
 	GetParamRequired( ph, "cache_time", _cacheTime );
 
 	double pollOffsetTime, pollRate;
@@ -39,11 +39,34 @@ void RunningAverageBaseline::Initialize( ros::NodeHandle& nh,
 		                          this );
 	}
 
+	_acc = 0;
+	_accInitialized = false;
+	_delayStarted = false;
+	double initDelay;
+	GetParam( ph, "init_delay", initDelay, 0.0 );
+	_initDelay = ros::Duration( initDelay );
+
+	_burnInStarted = false;
+	double burnInTime;
+	GetParam( ph, "burn_in_time", burnInTime, 0.0 );
+	_burnInDuration = ros::Duration( burnInTime );
+
+	double discountRate;
+	GetParamRequired( ph, "discount_rate", discountRate );
+	_gamma = std::exp( 1.0/pollRate * std::log( discountRate ) );
+	ROS_INFO_STREAM( "Computed discount factor of " << _gamma << " from rate " << discountRate );
+
+
 	_outputPub = ph.advertise<paraset::RewardStamped>( "output", 0 );
 }
 
 double RunningAverageBaseline::Evaluate( const ParamAction& act ) const
 {
+	if( !IsBurnedIn() )
+	{
+		throw std::out_of_range( "RunningAverageBaseline: Not ready - still burning in.");
+	}
+
 	CacheType::const_iterator before, after;
 	if( !get_closest_greater_eq( _cache, act.time, before ) ||
 	    !get_closest_lesser_eq( _cache, act.time, after ) )
@@ -66,7 +89,23 @@ void RunningAverageBaseline::Publish( const ParamAction& x ) const
 
 void RunningAverageBaseline::Update( const ros::Time& time, double reward )
 {
-	_acc = _acc * _gamma + (1.0 - _gamma) * reward;
+	if( !_delayStarted )
+	{
+		_delayStarted = true;
+		_startDelayTime = time;
+	}
+	if( (time - _startDelayTime) < _initDelay ) { return; }
+
+	if( !_accInitialized )
+	{
+		_acc = reward;
+		_accInitialized = true;
+	}
+	else
+	{
+		_acc = _acc * _gamma + (1.0 - _gamma) * reward;
+	}
+
 	_cache[ time ] = _acc;
 	while( GetSpan() > _cacheTime )
 	{
@@ -87,9 +126,10 @@ double RunningAverageBaseline::GetSpan() const
 
 void RunningAverageBaseline::TimerCallback( const ros::TimerEvent& event )
 {
+	ros::Time queryTime;
 	try
 	{
-		ros::Time queryTime = event.current_real - _pollOffset;
+		queryTime = event.current_expected - _pollOffset;
 		double reward = _source->Evaluate( ParamAction( queryTime, VectorType() ) );
 		Update( queryTime, reward );
 	}
@@ -98,10 +138,24 @@ void RunningAverageBaseline::TimerCallback( const ros::TimerEvent& event )
 		ROS_WARN_STREAM( "RunningAverageBaseline: Could not poll source." );
 	}
 
+	if( !_burnInStarted )
+	{
+		_burnInStarted = true;
+		_startBurnTime = queryTime;
+	}
+	_lastBurnTime = queryTime;
+
 	while( GetSpan() > _cacheTime )
 	{
 		remove_lowest( _cache );
 	}
 }
+
+bool RunningAverageBaseline::IsBurnedIn() const
+{
+	if( !_burnInStarted ) { return false; }
+	return ( _lastBurnTime - _startBurnTime ) > _burnInDuration;
+}
+
 
 }

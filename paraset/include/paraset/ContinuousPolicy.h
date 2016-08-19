@@ -25,6 +25,9 @@ public:
 	// Set each parameter to the specified parameter
 	void SetOutput( const VectorType& outputs );
 
+	const VectorType& GetLowerLimits() const;
+	const VectorType& GetUpperLimits() const;
+
 private:
 
 	struct ParameterRegistration
@@ -34,6 +37,9 @@ private:
 		RuntimeParamType type;
 	};
 	std::vector<ParameterRegistration> _parameters;
+
+	VectorType _lowerActionLimits;
+	VectorType _upperActionLimits;
 
 	friend std::ostream& operator<<( std::ostream& os, const ContinuousPolicy& policy );
 };

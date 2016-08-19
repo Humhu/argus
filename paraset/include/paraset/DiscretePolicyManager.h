@@ -1,7 +1,7 @@
 #pragma once
 
 #include "paraset/DiscretePolicy.h"
-#include "paraset/PolicyModules.h"
+#include "paraset/DiscretePolicyModules.h"
 #include "argus_msgs/FloatVectorStamped.h"
 #include "broadcast/BroadcastMultiReceiver.h"
 

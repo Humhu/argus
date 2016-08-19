@@ -4,6 +4,15 @@
 
 using namespace argus;
 
+void SquashOutput( VectorType& in )
+{
+	for( unsigned int i = 0; i < in.size(); ++i )
+	{
+		if( in(i) < 0.0 ) { in(i) = 0.0; }
+		if( in(i) > 1.0 ) { in(i) = 1.0; }
+	}
+}
+
 class ContinuousPolicyWrapper
 {
 public:
@@ -11,7 +20,8 @@ public:
 	ContinuousPolicyWrapper( ros::NodeHandle& nh,
 	                         ros::NodeHandle& ph )
 	{
-		_manager.Initialize( nh, ph );
+		ros::NodeHandle lh( ph.resolveName( "policy" ) );
+		_manager.Initialize( nh, lh );
 		_paramNames = _manager.GetPolicyInterface().GetParameterNames();
 
 		// Advertise action message topic
@@ -69,11 +79,21 @@ private:
 		}
 
 		// Sample from mean and covariance
-		ROS_INFO_STREAM( "mean: " << distParams.mean.transpose() << std::endl <<
-		                 "info: " << std::endl << distParams.info );
 		_dist.SetMean( distParams.mean );
 		_dist.SetInformation( distParams.info );
-		VectorType policyOutput = _dist.Sample( _sampleDevs );
+		VectorType normalizedOutput = _dist.Sample( _sampleDevs );
+		SquashOutput( normalizedOutput );
+
+		VectorType policyOutput = ( _manager.GetScales() * normalizedOutput.array() ).matrix()
+		                          + _manager.GetOffsets();
+
+		ROS_INFO_STREAM( "input: " << policyInputs.features.transpose() << std::endl <<
+		                 "raw mean: " << distParams.mean.transpose() << std::endl <<
+		                 "raw info: " << std::endl << distParams.info << std::endl <<
+		                 "raw sample: " << normalizedOutput.transpose() << std::endl <<
+		                 "scales: " << _manager.GetScales().transpose() << std::endl <<
+		                 "offsets: " << _manager.GetOffsets().transpose() << std::endl <<
+		                 "output: " << policyOutput.transpose() );
 
 		std::stringstream ss;
 		ss << "Setting outputs:" << std::endl;
@@ -85,12 +105,13 @@ private:
 
 		if( !policyOutput.allFinite() )
 		{
-			ROS_WARN_STREAM( "Outputs are not all finite! Skipping action." );
-			return;
+			ROS_WARN_STREAM( "Outputs are not all finite!" );
 		}
-
-		// Set policyOutput
-		_manager.SetOutput( policyOutput );
+		else
+		{
+			// Set policyOutput
+			_manager.SetOutput( policyOutput );
+		}
 
 		// TODO Name policy
 		ContinuousParamAction action( event.current_real,

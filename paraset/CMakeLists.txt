@@ -61,20 +61,24 @@ catkin_package(
 )
 
 add_library( paraset
+            src/ApproximateValue.cpp
             src/ContinuousPolicy.cpp
             src/ContinuousPolicyLearner.cpp
             src/ContinuousPolicyManager.cpp
+            src/ContinuousPolicyModules.cpp
             src/DifferenceCritic.cpp
             src/DiscretePolicy.cpp
             src/DiscretePolicyManager.cpp
+            src/DiscretePolicyModules.cpp
             src/MonteCarloValue.cpp
 			src/ParasetCommon.cpp
 			src/ParasetActionCommon.cpp
 			src/ParamChecks.cpp
 			src/PolicyLogGradientModules.cpp
-			src/PolicyModules.cpp
 			src/RewardInterpolater.cpp
-			src/RunningAverageBaseline.cpp )
+			src/RunningAverageBaseline.cpp
+			src/ValueFunctionModules.cpp
+			src/ValueResidualModules.cpp )
 add_dependencies( paraset paraset_gencfg ${paraset_EXPORTED_TARGETS} )
 target_link_libraries( paraset
                        ${catkin_LIBRARIES} )

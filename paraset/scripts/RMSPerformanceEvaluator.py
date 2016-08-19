@@ -31,11 +31,11 @@ class RMSPerformanceEvaluator:
 
         pose_cov = np.reshape( odom.pose.covariance, [6,6] )
         pose_vars = pose_cov.diagonal()
-        pose_rms = ( self.pose_weights * pose_vars ).sum()
+        pose_rms = sqrt( ( self.pose_weights * pose_vars ).sum() )
 
         vel_cov = np.reshape( odom.twist.covariance, [6,6] )
         vel_vars = vel_cov.diagonal();
-        vel_rms = ( self.vel_weights * vel_vars ).sum()
+        vel_rms = sqrt( ( self.vel_weights * vel_vars ).sum() )
 
         out.reward = -pose_rms - vel_rms
         self.reward_pub.publish( out )
