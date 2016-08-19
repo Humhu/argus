@@ -42,6 +42,10 @@ namespace argus
 	Eigen::Matrix<D, height, width>
 	MatToEigen( cv::Mat& mat )
 	{
+		if( mat.size().height != height || mat.size().width != width )
+		{
+			throw std::invalid_argument( "MatToEigen: Matrix dimension mismatch." );
+		}
 		Eigen::Matrix<D, height, width> ret;
 		for( unsigned int i = 0; i < height; i++ )
 		{

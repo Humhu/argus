@@ -35,7 +35,10 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
                                      PoseSE3& transform,
                                      PoseSE2& frameTransform )
 {
-       
+	if( srcPoints.empty() || dstPoints.empty() )
+	{
+		return false;
+	}
 
 	cv::Mat Hxest = cv::findHomography( srcPoints, dstPoints, cv::RANSAC, 
 	                                    _reprojThreshold, inliers, _maxIters );
@@ -55,7 +58,12 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 	  }
 
 	cv::Mat Hest = cv::estimateRigidTransform( srcInliers, dstInliers, false );
-	
+	if( Hest.size().height == 0 || Hest.size().width == 0 )
+	{
+		ROS_WARN_STREAM( "RigidEstimator: Could not estimate motion." );
+		return false;
+	}
+
 	Eigen::Matrix<double,2,3> Ab = MatToEigen<double,2,3>( Hest );
 	
 	// Extract the rotation using Procrustes solution
