@@ -35,7 +35,7 @@ _extrinsicsManager( _lookupInterface )
 	
 	std::string featureName;
 	GetParam<std::string>( ph, "feature_name", featureName, "vo_features" );
-	std::vector<std::string> featureDescriptions = { "num_inliers" };
+	std::vector<std::string> featureDescriptions = { "inlier_ratio" };
 	_featureTx.InitializePushStream( featureName, 
 	                                 ph,
 	                                 1,
@@ -45,15 +45,15 @@ _extrinsicsManager( _lookupInterface )
 	GetParamRequired( ph, "redetection_threshold", initRedectThresh );
 	_redetectionThreshold.Initialize( ph, initRedectThresh, "redetection_threshold", 
 	                                  "Pipeline feature redetection min threshold" );
-	_redetectionThreshold.AddCheck<GreaterThan>( 0 );
-	_redetectionThreshold.AddCheck<IntegerValued>( ROUND_CEIL );
+	_redetectionThreshold.AddCheck<GreaterThanOrEqual>( 0 );
+	_redetectionThreshold.AddCheck<LessThanOrEqual>( 1.0 );
 
-	unsigned int initMinInlierNum;
-	GetParamRequired( ph, "min_inlier_num", initMinInlierNum );
-	_minNumInliers.Initialize( ph, initMinInlierNum, "min_inlier_num",
+	double initMinInlierRatio;
+	GetParamRequired( ph, "min_inlier_ratio", initMinInlierRatio );
+	_minInlierRatio.Initialize( ph, initMinInlierRatio, "min_inlier_ratio",
 	                           "Pipeline min feature inlier threshold" );
-	_minNumInliers.AddCheck<GreaterThan>( 0 );
-	_minNumInliers.AddCheck<IntegerValued>( ROUND_CEIL );
+	_minInlierRatio.AddCheck<GreaterThan>( 0 );
+	_redetectionThreshold.AddCheck<LessThanOrEqual>( 1.0 );
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
@@ -159,24 +159,16 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	{
 	  ROS_DEBUG_STREAM( "Initializing keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
+
+		VectorType feats(1);
+		feats(0) = 1.0;
+		_featureTx.Publish( msg->header.stamp, feats );
+
 		return;
 	}
 
-	// Predict point motion
-	// InterestPoints predictedPoints;
 	double dt = ( msg->header.stamp - reg.lastPointsTimestamp ).toSec();
-	// PoseSE2 disp = PoseSE2::Exp( -reg.lastVelocity*dt );
-	// std::cout << "vel: " << reg.lastVelocity.transpose() << std::endl;
-	// std::cout << "displacement: " << disp << std::endl;
-	// TransformPoints( reg.lastPointsImage, disp, predictedPoints );
-	// reg.lastPointsPredicted = predictedPoints;
-
-	// for( unsigned int i = 0; i < reg.lastPointsImage.size(); ++i )
-	// {
-	// 	std::cout << "prev: " << reg.lastPointsImage[i].x << ", " << reg.lastPointsImage[i].y << std::endl;
-	// 	std::cout << "est: " << predictedPoints[i].x << ", " << predictedPoints[i].y << std::endl;
-	// }
-
+	
 	// Track interest points into current frame
 	InterestPoints keyframeInliersImage, currentInliersImage;
 	ROS_DEBUG_STREAM( "Keyframe points size: " << reg.keyframePointsImage.size() );
@@ -187,10 +179,17 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Failure if not enough inliers in tracking
 	size_t numInliers = keyframeInliersImage.size();
-	if( numInliers < _minNumInliers )
+	double inlierRatio = numInliers / (double) reg.originalNumKeypoints;
+	if( inlierRatio <= _minInlierRatio )
 	{
-		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers, less than min " << _minNumInliers );
+		size_t minNumInliers = std::ceil( _minInlierRatio * (double) reg.originalNumKeypoints );
+		ROS_WARN_STREAM( "Tracked " << numInliers << " inliers less than min " << minNumInliers );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
+
+		VectorType feats(1);
+		feats(0) = 0;
+		_featureTx.Publish( msg->header.stamp, feats );
+
 		return;
 	}
 	ROS_DEBUG_STREAM( "Tracked " << numInliers << " inliers." );
@@ -216,6 +215,11 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	{
 		ROS_WARN_STREAM( "Could not estimate motion between frames. Resetting keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
+
+		VectorType feats(1);
+		feats(0) = 0;
+		_featureTx.Publish( msg->header.stamp, feats );
+
 		return;
 	}
 	
@@ -230,34 +234,12 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	}
 	reg.keyframePointsImage = keyframeMotionInliers;
 	ROS_DEBUG_STREAM( "Kept " << currentMotionInliers.size() << " inliers after motion estimation." );
-	
-	VectorType feats(1);
-	feats(0) = currentMotionInliers.size();
-	_featureTx.Publish( msg->header.stamp, feats );
 
 	// Have to calculate dt before getting timestamp
     PoseSE3 cameraDisplacement = reg.lastPointsPose.Inverse() * currentPose;
 	const ExtrinsicsInfo& cameraInfo = _extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
-	// ROS_DEBUG_STREAM( "Camera velocity " << cameraName << ": " << cameraVelocity.transpose() );
-	// ROS_DEBUG_STREAM( "Frame velocity " << cameraName << ": " << frameVelocity.transpose() );
-
-	// camplex::CameraCalibration cal( "", *info_msg );
-	// MatrixType intrinsics = MatrixType::Identity(3,3);
-	// intrinsics(0,0) = cal.GetFx();
-	// intrinsics(1,1) = cal.GetFy();
-	// intrinsics(0,2) = cal.GetCx();
-	// intrinsics(1,2) = cal.GetCy();
-	// std::cout << "normalized pixel pose: " << pixPose << std::endl;
-	// MatrixType p = pixPose.ToTransform().matrix() * intrinsics;
-	// PoseSE2 pp( p );
-	// std::cout << "raw pixel pose: " << pp << std::endl;
-	// std::cout << "last pixel pose: " << reg.lastPixelsPose << std::endl;
-	// PoseSE2 pixelDisplacement = reg.lastPixelsPose.Inverse() * pp;
-	// reg.lastVelocity = PoseSE2::Log( pixelDisplacement ) / dt;
-	// std::cout << "pixel vel: " << reg.lastVelocity.transpose() << std::endl;
-	// reg.lastPixelsPose = pp;
 
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = now;
@@ -273,8 +255,14 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 
 	if( _showOutput ) { VisualizeFrame( reg, currentFrame, now ); }
 	
+	
+	double keypointRatio = reg.keyframePointsImage.size() / (double) reg.originalNumKeypoints;
+	VectorType feats(1);
+	feats(0) = keypointRatio;
+	_featureTx.Publish( msg->header.stamp, feats );
+
 	// If we don't have enough inlier interest points, redetect on our keyframe
-	if( reg.keyframePointsImage.size() < _redetectionThreshold )
+	if( keypointRatio <= _redetectionThreshold )
 	{
 		ROS_DEBUG_STREAM( "Not enough keyframe points. Resetting keyframe." );
 		SetKeyframe( reg, currentFrame, cameraModel, now );
@@ -368,7 +356,7 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
 	reg.lastPointsPose = PoseSE3(); //__extrinsicsManager.GetExtrinsics( reg.name ).Inverse(); //PoseSE3();
 	InterestPoints detected = _detector->FindInterestPoints( reg.keyframe );
 	UndistortPoints( detected, model, true, false, reg.keyframePointsImage );
-	//reg.keyframePointsImage = detected;
+	reg.originalNumKeypoints = detected.size();
 	ROS_DEBUG_STREAM( "Found " << reg.keyframePointsImage.size() << " points." );	
 }
 

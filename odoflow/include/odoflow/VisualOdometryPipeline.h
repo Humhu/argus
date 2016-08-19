@@ -80,6 +80,7 @@ private:
 		std::string name;
 		ros::Time keyframeTimestamp;
 		cv::Mat keyframe;
+		size_t originalNumKeypoints; // Number of keypoints on detection
 		InterestPoints keyframePointsImage;
 		ros::Time lastPointsTimestamp;
 		InterestPoints lastPointsImage;
@@ -93,7 +94,7 @@ private:
 	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
 	
 	NumericParam _redetectionThreshold;
-	NumericParam _minNumInliers;
+	NumericParam _minInlierRatio;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
 	
