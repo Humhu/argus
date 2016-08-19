@@ -29,4 +29,21 @@ BellmanResidualModule::BellmanResidualModule( ScalarFieldApproximator::Ptr estVa
 	loss.SetTarget( 0.0 );
 }
 
+void BellmanResidualModule::Foreprop()
+{
+	input.Foreprop();
+	nextInput.Foreprop();
+}
+
+void BellmanResidualModule::Invalidate()
+{
+	input.Invalidate();
+	nextInput.Invalidate();
+}
+
+percepto::Source<double>& BellmanResidualModule::GetOutputSource()
+{
+	return loss;
+}
+
 }

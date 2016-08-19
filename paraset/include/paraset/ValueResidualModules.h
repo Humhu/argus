@@ -11,12 +11,6 @@ namespace argus
 
 struct BellmanResidualModule
 {
-	BellmanResidualModule( ScalarFieldApproximator::Ptr estValueModule,
-	                       const VectorType& prevIn,
-	                       ScalarFieldApproximator::Ptr nextValueModule,
-	                       const VectorType& nextIn,
-	                       double reward,
-	                       double gamma );
 
 	percepto::TerminalSource<VectorType> input;
 	ScalarFieldApproximator::Ptr estValue;
@@ -28,6 +22,18 @@ struct BellmanResidualModule
 	
 	percepto::DifferenceWrapper<double> residual;
 	percepto::SquaredLoss<double> loss;
+
+	BellmanResidualModule( ScalarFieldApproximator::Ptr estValueModule,
+	                       const VectorType& currIn,
+	                       ScalarFieldApproximator::Ptr nextValueModule,
+	                       const VectorType& nextIn,
+	                       double reward,
+	                       double gamma );
+
+	void Foreprop();
+	void Invalidate();
+
+	percepto::Source<double>& GetOutputSource();
 };
 
 }

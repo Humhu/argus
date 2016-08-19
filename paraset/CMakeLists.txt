@@ -62,6 +62,7 @@ catkin_package(
 
 add_library( paraset
             src/ApproximateValue.cpp
+            src/ApproximateValueLearner.cpp
             src/ContinuousPolicy.cpp
             src/ContinuousPolicyLearner.cpp
             src/ContinuousPolicyManager.cpp
@@ -117,11 +118,27 @@ target_link_libraries( continuous_policy_learner_node
                       ${Boost_LIBRARIES}
                       paraset )
 
+add_executable( approximate_value_learner_node nodes/value_approximator_learner_node.cpp )
+add_dependencies( approximate_value_learner_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( approximate_value_learner_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
+
+add_executable( approximate_value_node nodes/value_approximator_node.cpp )
+add_dependencies( approximate_value_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( approximate_value_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
+
 install( TARGETS paraset 
                  discrete_policy_node 
                  continuous_policy_node 
                  monte_carlo_value_node
                  continuous_policy_learner_node
+                 approximate_value_learner_node
+                 approximate_value_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

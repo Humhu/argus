@@ -50,6 +50,8 @@ public:
 	                                unsigned int numHiddenLayers,
 	                                unsigned int layerWidth );
 
+	PerceptronFunctionApproximator( const PerceptronFunctionApproximator& other );
+
 	virtual void SetInputSource( InputSourceType* src );
 	virtual OutputSourceType& GetOutputSource();
 

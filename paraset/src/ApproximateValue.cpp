@@ -1,6 +1,8 @@
 #include "paraset/ApproximateValue.h"
 #include "paraset/RewardStamped.h"
 
+#include "percepto/utils/Randomization.hpp"
+
 namespace argus
 {
 
@@ -31,8 +33,26 @@ void ApproximateValue::Initialize( ros::NodeHandle& nh,
 		throw std::invalid_argument( "ApproximateValue: Unknown network type: " + _moduleType );
 	}
 	_approximator->SetInputSource( &_approximatorInput );
+	_approximatorParams = _approximator->CreateParameters();
+
+	double initialValue, initialMagnitude;
+	GetParamRequired( mh, "initial_magnitude", initialMagnitude );
+	GetParamRequired( ph, "initial_value", initialValue );
+
+	VectorType w = _approximatorParams->GetParamsVec();
+	percepto::randomize_vector( w, -initialMagnitude, initialMagnitude );
+	_approximatorParams->SetParamsVec( w );
+	_approximator->InitializeOutput( initialValue );
+
+	ROS_INFO_STREAM( "ApproximateValue: Network initialized: " << std::endl << _approximator->Print() );
 
 	_outputPub = ph.advertise<paraset::RewardStamped>( "output", 0 );
+
+	std::string updateTopic;
+	if( GetParam( ph, "update_topic", updateTopic ) )
+	{
+		_paramsSub = nh.subscribe( updateTopic, 1, &ApproximateValue::ParamsCallback, this );
+	}
 }
 
 // TODO Move this to some common class
@@ -55,14 +75,29 @@ double ApproximateValue::Evaluate( const ParamAction& x ) const
 
 	_approximatorInput.Invalidate();
 	_approximator->Invalidate();
-	_approximatorInput.SetOutput( features.features );
+	_approximatorInput.SetOutput( GetInput( x.time ) );
 	_approximatorInput.Foreprop();
 	_approximator->Foreprop();
 	return _approximator->GetOutputSource().GetOutput();
 }
 
+VectorType ApproximateValue::GetInput( const ros::Time& time ) const
+{
+	StampedFeatures features;
+	if( !_receiver.ReadStream( time, features ) )
+	{
+		throw std::out_of_range( "ApproximateValue: Could not get input stream." );
+	}
+	return features.features;
+}
+
+percepto::Parameters::Ptr ApproximateValue::GetParameters() const
+{
+	return _approximatorParams;
+}
+
 ScalarFieldApproximator::Ptr 
-ApproximateValue::GetApproximatorModule() const
+ApproximateValue::CreateApproximatorModule() const
 {
 	if( _moduleType == "perceptron" )
 	{
@@ -74,6 +109,11 @@ ApproximateValue::GetApproximatorModule() const
 	{
 		throw std::invalid_argument( "ApproximateValue: Unknown network type: " + _moduleType );
 	}
+}
+
+void ApproximateValue::ParamsCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg )
+{
+	_approximatorParams->SetParamsVec( GetVectorView( msg->values ) );
 }
 
 }

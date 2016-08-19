@@ -17,7 +17,7 @@ PolicyGradientOptimization::PolicyGradientOptimization()
 void PolicyGradientOptimization::Initialize( percepto::Parameters::Ptr params,
                                              double l2Weight )
 {
-	parameters = params;
+	// parameters = params;
 	regularizer.SetParameters( params );
 	regularizer.SetWeight( l2Weight );
 	objective.SetSourceA( &rewards );
@@ -98,7 +98,6 @@ void ContinuousPolicyLearner::Initialize( ros::NodeHandle& nh, ros::NodeHandle& 
 	_manager.Initialize( nh, ih );
 
 	ros::NodeHandle lh( ph.resolveName( "optimization" ) );
-	percepto::SimpleConvergenceCriteria criteria;
 	
 	GetParamRequired( lh, "min_num_modules", _minModulesToOptimize );
 	GetParam( lh, "clear_optimized_modules", _clearAfterOptimize, false );
@@ -106,7 +105,8 @@ void ContinuousPolicyLearner::Initialize( ros::NodeHandle& nh, ros::NodeHandle& 
 	{
 		GetParamRequired( lh, "max_num_modules", _maxModulesToKeep );
 	}
-
+	
+	percepto::SimpleConvergenceCriteria criteria;
 	GetParam( lh, "convergence/max_time", criteria.maxRuntime, std::numeric_limits<double>::infinity() );
 	GetParam( lh, "convergence/max_iters", criteria.maxIterations, std::numeric_limits<unsigned int>::max() );
 	GetParam( lh, "convergence/min_avg_delta", criteria.minAverageDelta, -std::numeric_limits<double>::infinity() );

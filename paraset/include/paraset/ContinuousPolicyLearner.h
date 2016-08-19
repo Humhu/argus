@@ -50,7 +50,7 @@ struct PolicyGradientOptimization
 
 	double GetOutput() const;
 
-	percepto::Parameters::Ptr parameters;;
+	// percepto::Parameters::Ptr parameters;
 };
 
 class ContinuousPolicyLearner
@@ -91,7 +91,6 @@ private:
 	unsigned int _minModulesToOptimize;
 	unsigned int _maxModulesToKeep;
 
-	std::deque<ContinuousLogGradientModule> _gradModules;
 	std::shared_ptr<percepto::DirectStepper> _stepper;
 	std::shared_ptr<percepto::SimpleConvergence> _convergence;
 	// std::shared_ptr<percepto::DirectOptimizer> _optimizer;

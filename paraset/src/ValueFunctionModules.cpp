@@ -15,6 +15,14 @@ PerceptronFunctionApproximator::PerceptronFunctionApproximator( unsigned int inp
            percepto::SigmoidActivation(),
            percepto::PerceptronNet::OUTPUT_UNRECTIFIED ) 
 {
+	output.SetIndex( 0 );
+	output.SetSource( &network.GetOutputSource() );
+}
+
+PerceptronFunctionApproximator::PerceptronFunctionApproximator( const PerceptronFunctionApproximator& other )
+: network( other.network ),
+  output( other.output )
+{
 	output.SetSource( &network.GetOutputSource() );
 }
 
