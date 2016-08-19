@@ -40,7 +40,7 @@ bool BroadcastMultiReceiver::IsReady() const
 }
 
 bool BroadcastMultiReceiver::ReadStream( const ros::Time& time,
-                                         StampedFeatures& features )
+                                         StampedFeatures& features ) const
 {
 	if( !IsReady() ) { return false; }
 	features.name = GetStreamName();;
@@ -48,7 +48,7 @@ bool BroadcastMultiReceiver::ReadStream( const ros::Time& time,
 	features.features = VectorType( GetDim() );
 	StampedFeatures subF;
 	unsigned int ind = 0;
-	BOOST_FOREACH( BroadcastReceiver& rx, _receivers )
+	BOOST_FOREACH( const BroadcastReceiver& rx, _receivers )
 	{
 		if( !rx.ReadStream( time, subF ) ) { return false; }
 		features.features.segment( ind, rx.GetDim() ) = subF.features;

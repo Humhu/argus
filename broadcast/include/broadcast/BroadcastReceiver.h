@@ -39,7 +39,7 @@ public:
 	
 	bool IsReady() const;
 
-	bool ReadStream( const ros::Time& time, StampedFeatures& features );
+	bool ReadStream( const ros::Time& time, StampedFeatures& features ) const;
 
 private:
 
@@ -54,13 +54,13 @@ private:
 	QueryMode _queryMode;
 
 	ros::Subscriber _pushSub;
-	ros::ServiceClient _pullClient;
+	mutable ros::ServiceClient _pullClient;
 
 	typedef std::map<ros::Time,StampedFeatures> StreamCache;
 	StreamCache _featureCache;
 	double _maxTimespan;
 
-	bool PullStream( const ros::Time& time, StampedFeatures& f );
+	bool PullStream( const ros::Time& time, StampedFeatures& f ) const;
 	bool ReadCached( const ros::Time& time, StampedFeatures& f ) const;
 
 	void FeatureCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg );

@@ -111,7 +111,7 @@ bool BroadcastReceiver::IsReady() const
 	}
 }
 
-bool BroadcastReceiver::ReadStream( const ros::Time& time, StampedFeatures& f )
+bool BroadcastReceiver::ReadStream( const ros::Time& time, StampedFeatures& f ) const
 {
 	ReadLock lock( _mutex );
 	
@@ -126,7 +126,7 @@ bool BroadcastReceiver::ReadStream( const ros::Time& time, StampedFeatures& f )
 	}
 }
 
-bool BroadcastReceiver::PullStream( const ros::Time& time, StampedFeatures& f )
+bool BroadcastReceiver::PullStream( const ros::Time& time, StampedFeatures& f ) const
 {
 	broadcast::QueryFeatures srv;
 	srv.request.time_mode = _queryMode;

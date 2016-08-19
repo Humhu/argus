@@ -37,7 +37,7 @@ public:
 
 	bool IsReady() const;
 
-	bool ReadStream( const ros::Time& time, StampedFeatures& features );
+	bool ReadStream( const ros::Time& time, StampedFeatures& features ) const;
 
 private:
 
