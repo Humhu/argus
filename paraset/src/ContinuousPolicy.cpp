@@ -19,6 +19,7 @@ void ContinuousPolicy::Initialize( ros::NodeHandle& nh,
 	GetParamRequired( ph, "parameters", policyParams );
 
 	// Read all parameters
+	std::vector<double> lower, upper;
 	YAML::const_iterator iter;
 	for( iter = policyParams.begin(); iter != policyParams.end(); ++iter )
 	{
@@ -29,6 +30,11 @@ void ContinuousPolicy::Initialize( ros::NodeHandle& nh,
 		registration.name = iter->first.as<std::string>();
 		ROS_INFO_STREAM( "Parsing parameter: " << registration.name );
 
+		lower.emplace_back();
+		upper.emplace_back();
+		GetParam( iter->second, "lower_limit", lower.back(), -std::numeric_limits<double>::infinity() );
+		GetParam( iter->second, "upper_limit", upper.back(), std::numeric_limits<double>::infinity() );
+
 		// Get service path
 		const YAML::Node& sub = iter->second;
 		std::string servicePath;
@@ -36,6 +42,9 @@ void ContinuousPolicy::Initialize( ros::NodeHandle& nh,
 		ros::service::waitForService( servicePath );
 		registration.setService = nh.serviceClient<SetRuntimeParameter>( servicePath );
 	}
+
+	_lowerActionLimits = GetVectorView( lower );
+	_upperActionLimits = GetVectorView( upper );
 }
 
 unsigned int ContinuousPolicy::GetNumOutputs() const
@@ -52,6 +61,16 @@ std::vector<std::string> ContinuousPolicy::GetParameterNames() const
 		names.push_back( _parameters[i].name );
 	}
 	return names;
+}
+
+const VectorType& ContinuousPolicy::GetLowerLimits() const
+{
+	return _lowerActionLimits;
+}
+
+const VectorType& ContinuousPolicy::GetUpperLimits() const
+{
+	return _upperActionLimits;
 }
 
 void ContinuousPolicy::SetOutput( const VectorType& output )

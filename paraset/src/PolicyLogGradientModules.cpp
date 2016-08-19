@@ -3,7 +3,7 @@
 namespace argus
 {
 
-DiscreteLogGradientModule::DiscreteLogGradientModule( const NetworkType& net,
+DiscreteLogGradientModule::DiscreteLogGradientModule( DiscretePolicyModule::Ptr net,
                                                       const VectorType& input,
                                                       unsigned int actionIndex,
                                                       double actionAdvantage )
@@ -11,13 +11,13 @@ DiscreteLogGradientModule::DiscreteLogGradientModule( const NetworkType& net,
 {
 	networkInput.SetOutput( input );
 
-	network.SetSource( &networkInput );
+	network->SetInputSource( &networkInput );
 
-	logProb.SetSource( &network.GetProbabilitySource() );
+	logProb.SetSource( &network->GetProbabilitySource() );
 	logProb.SetIndex( actionIndex );
 
-	logExpectation.SetSource( &logProb );
-	logExpectation.SetScale( actionAdvantage );
+	logExpectedAdvantage.SetSource( &logProb );
+	logExpectedAdvantage.SetScale( actionAdvantage );
 }
 
 void DiscreteLogGradientModule::Foreprop()
@@ -33,43 +33,43 @@ void DiscreteLogGradientModule::Invalidate()
 DiscreteLogGradientModule::SourceType*
 DiscreteLogGradientModule::GetOutputSource()
 {
-	return &logExpectation;
+	return &logExpectedAdvantage;
 }
 
-ContinuousLogGradientModule::ContinuousLogGradientModule( const NetworkType& net,
+ContinuousLogGradientModule::ContinuousLogGradientModule( ContinuousPolicyModule::Ptr net,
                                                           const VectorType& input,
                                                           const VectorType& action,
                                                           double actionAdvantage )
 : network( net )
 {
 	networkInput.SetOutput( input );
+	network->SetInputSource( &networkInput );
 
-	network.reg.SetSource( &networkInput );
-
-	logProb.SetMeanSource( &network.GetMeanSource() );
-	logProb.SetInfoSource( &network.GetInfoSource() );
+	logProb.SetMeanSource( &network->GetMeanSource() );
+	logProb.SetInfoSource( &network->GetInfoSource() );
 	logProb.SetSample( action );
+	// logProb.modName = "logprob";
 
-	logExpectation.SetSource( &logProb );
-	logExpectation.SetScale( actionAdvantage );
+	logExpectedAdvantage.SetSource( &logProb );
+	logExpectedAdvantage.SetScale( actionAdvantage );
 }
 
 void ContinuousLogGradientModule::Foreprop()
 {
 	networkInput.Foreprop();
-	network.Foreprop();
+	network->Foreprop();
 }
 
 void ContinuousLogGradientModule::Invalidate()
 {
 	networkInput.Invalidate();
-	network.Invalidate();
+	network->Invalidate();
 }
 
 ContinuousLogGradientModule::SourceType*
 ContinuousLogGradientModule::GetOutputSource()
 {
-	return &logExpectation;
+	return &logExpectedAdvantage;
 }
 
 }

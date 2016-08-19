@@ -33,6 +33,16 @@ private:
 	ros::Duration _pollOffset;
 	ros::Timer _pollTimer;
 
+	bool _accInitialized;
+	bool _delayStarted;
+	ros::Time _startDelayTime;
+	ros::Duration _initDelay;
+
+	bool _burnInStarted;
+	ros::Time _startBurnTime;
+	ros::Time _lastBurnTime;
+	ros::Duration _burnInDuration;
+
 	ros::Publisher _outputPub;
 	typedef std::map<ros::Time, double> CacheType;
 	CacheType _cache;
@@ -42,6 +52,8 @@ private:
 	void RewardCallback( const paraset::RewardStamped::ConstPtr& msg );
 	double GetSpan() const;
 	void TimerCallback( const ros::TimerEvent& event );
+
+	bool IsBurnedIn() const;
 };
 
 }

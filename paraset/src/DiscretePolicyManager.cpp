@@ -39,7 +39,7 @@ void DiscretePolicyManager::Initialize( ros::NodeHandle& nh,
 	                                          outputDim, 
 	                                          numHiddenLayers, 
 	                                          layerWidth );
-	_network->SetSource( &_networkInput );
+	_network->SetInputSource( &_networkInput );
 	_networkParameters = _network->CreateParameters();
 	VectorType w = _networkParameters->GetParamsVec();
 	percepto::randomize_vector( w, -0.1, 0.1 );
@@ -83,7 +83,7 @@ void DiscretePolicyManager::UpdateCallback( const ros::TimerEvent& event )
 	_networkInput.SetOutput( inputs.features );
 	_networkInput.Invalidate();
 	_networkInput.Foreprop();
-	VectorType pmf = _network->GetOutput();
+	VectorType pmf = _network->GetProbabilitySource().GetOutput();
 
 	// Sample from PMF
 	std::vector<double> weights( pmf.data(), pmf.data() + pmf.size() );

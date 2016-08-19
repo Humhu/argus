@@ -23,7 +23,7 @@ namespace argus
 struct PolicyGradientOptimization
 {
 	std::deque<ContinuousLogGradientModule> modules;
-	percepto::MeanCost<double> loss;
+	percepto::MeanCost<double> rewards;
 	percepto::ParameterL2Cost regularizer;
 	percepto::AdditiveWrapper<double> objective;
 
@@ -36,24 +36,26 @@ struct PolicyGradientOptimization
 	void EmplaceModule( Args&&... args )
 	{
 		modules.emplace_back( args... );
-		loss.AddSource( modules.back().GetOutputSource() );
+		rewards.AddSource( modules.back().GetOutputSource() );
 	}
 
-	void ClearModules();
+	ContinuousLogGradientModule& GetLatestModule();
+	void RemoveOldest();
 	size_t NumModules() const;
 
 	void Invalidate();
 	void Foreprop();
 	void Backprop();
+	void BackpropNatural();
 
 	double GetOutput() const;
+
+	percepto::Parameters::Ptr parameters;;
 };
 
 class ContinuousPolicyLearner
 {
 public:
-
-	typedef ContinuousPolicyManager::NetworkType NetworkType;
 
 	ContinuousPolicyLearner();
 
@@ -73,17 +75,27 @@ private:
 	ros::Timer _updateTimer;
 
 	double _l2Weight;
+	double _logdetWeight;
+
+	double _actionBoundWeight;
+	VectorType _scaledActionLowerLimit;
+	VectorType _scaledActionUpperLimit;
+
 	std::shared_ptr<PolicyGradientOptimization> _optimization;
 
 	double _actionDelay;
 	typedef std::map<ros::Time, paraset::ContinuousParamAction> ActionBuffer;
 	ActionBuffer _actionBuffer;
 
+	bool _clearAfterOptimize;
 	unsigned int _minModulesToOptimize;
+	unsigned int _maxModulesToKeep;
+
 	std::deque<ContinuousLogGradientModule> _gradModules;
-	std::shared_ptr<percepto::AdamStepper> _stepper;
+	std::shared_ptr<percepto::DirectStepper> _stepper;
 	std::shared_ptr<percepto::SimpleConvergence> _convergence;
-	std::shared_ptr<percepto::AdamOptimizer> _optimizer;
+	// std::shared_ptr<percepto::DirectOptimizer> _optimizer;
+	std::shared_ptr<percepto::SimpleNaturalOptimizer> _optimizer;
 
 	void ActionCallback( const paraset::ContinuousParamAction::ConstPtr& msg );
 	void TimerCallback( const ros::TimerEvent& event );

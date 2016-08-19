@@ -17,15 +17,11 @@ PolicyGradientOptimization::PolicyGradientOptimization()
 void PolicyGradientOptimization::Initialize( percepto::Parameters::Ptr params,
                                              double l2Weight )
 {
+	parameters = params;
 	regularizer.SetParameters( params );
 	regularizer.SetWeight( l2Weight );
-	objective.SetSourceA( &loss );
+	objective.SetSourceA( &rewards );
 	objective.SetSourceB( &regularizer );
-}
-
-void PolicyGradientOptimization::ClearModules()
-{
-	modules.clear();
 }
 
 size_t PolicyGradientOptimization::NumModules() const
@@ -56,9 +52,40 @@ void PolicyGradientOptimization::Backprop()
 	objective.Backprop( MatrixType::Identity(1,1) );
 }
 
+void PolicyGradientOptimization::BackpropNatural()
+{
+	VectorType scales( modules.size() );
+	for( unsigned int i = 0; i < modules.size(); ++i )
+	{
+		scales(i) = modules[i].logExpectedAdvantage.GetScale();
+		modules[i].logExpectedAdvantage.SetScale( 1.0 );
+	}
+	double l2 = regularizer.GetWeight();
+	regularizer.SetWeight( 0 );
+
+	Backprop();
+
+	for( unsigned int i = 0; i < modules.size(); ++i )
+	{
+		modules[i].logExpectedAdvantage.SetScale( scales(i) );
+	}
+	regularizer.SetWeight( l2 );
+}
+
 double PolicyGradientOptimization::GetOutput() const
 {
 	return objective.GetOutput();
+}
+
+void PolicyGradientOptimization::RemoveOldest()
+{
+	rewards.RemoveOldestSource();
+	modules.pop_front();
+}
+
+ContinuousLogGradientModule& PolicyGradientOptimization::GetLatestModule()
+{
+	return modules.back();
 }
 
 ContinuousPolicyLearner::ContinuousPolicyLearner() {}
@@ -70,27 +97,44 @@ void ContinuousPolicyLearner::Initialize( ros::NodeHandle& nh, ros::NodeHandle& 
 	ros::NodeHandle ih( ph.resolveName( "policy" ) );
 	_manager.Initialize( nh, ih );
 
-
 	ros::NodeHandle lh( ph.resolveName( "optimization" ) );
 	percepto::SimpleConvergenceCriteria criteria;
+	
 	GetParamRequired( lh, "min_num_modules", _minModulesToOptimize );
+	GetParam( lh, "clear_optimized_modules", _clearAfterOptimize, false );
+	if( !_clearAfterOptimize )
+	{
+		GetParamRequired( lh, "max_num_modules", _maxModulesToKeep );
+	}
+
 	GetParam( lh, "convergence/max_time", criteria.maxRuntime, std::numeric_limits<double>::infinity() );
 	GetParam( lh, "convergence/max_iters", criteria.maxIterations, std::numeric_limits<unsigned int>::max() );
 	GetParam( lh, "convergence/min_avg_delta", criteria.minAverageDelta, -std::numeric_limits<double>::infinity() );
 	GetParam( lh, "convergence/min_avg_grad", criteria.minAverageGradient, -std::numeric_limits<double>::infinity() );
-	percepto::AdamParameters stepperParams;
+	// percepto::DirectStepperParameters stepperParams;
+	percepto::NaturalStepperParameters stepperParams;
 	GetParam( lh, "stepper/step_size", stepperParams.alpha, 1E-3 );
 	GetParam( lh, "stepper/max_step", stepperParams.maxStepElement, 1.0 );
-	GetParam( lh, "stepper/beta1", stepperParams.beta1, 0.9 );
-	GetParam( lh, "stepper/beta2", stepperParams.beta2, 0.99 );
+	// GetParam( lh, "stepper/beta1", stepperParams.beta1, 0.9 );
+	// GetParam( lh, "stepper/beta2", stepperParams.beta2, 0.99 );
+	GetParam<unsigned int>( lh, "stepper/window_len", stepperParams.windowLen, 100 );
 	GetParam( lh, "stepper/epsilon", stepperParams.epsilon, 1E-7 );
 	GetParam( lh, "stepper/enable_decay", stepperParams.enableDecay, false );
-	_stepper = std::make_shared<percepto::AdamStepper>( stepperParams );
+	// _stepper = std::make_shared<percepto::DirectStepper>( stepperParams );
 	_convergence = std::make_shared<percepto::SimpleConvergence>( criteria );
-	_optimizer = std::make_shared<percepto::AdamOptimizer>( *_stepper, 
-	                                                        *_convergence,
-	                                                        *_manager.GetParameters(),
-	                                                        percepto::AdamOptimizer::OPT_MAXIMIZATION );
+	// _optimizer = std::make_shared<percepto::DirectOptimizer>( *_stepper, 
+	//                                                           *_convergence,
+	//                                                           *_manager.GetParameters(),
+	//                                                           percepto::OPT_MAXIMIZATION );
+	_optimizer = std::make_shared<percepto::SimpleNaturalOptimizer>( *_convergence,
+	                                                                 *_manager.GetParameters(),
+	                                                                 stepperParams,
+	                                                                 percepto::OPT_MAXIMIZATION );
+
+	_scaledActionLowerLimit = ( _manager.GetPolicyInterface().GetLowerLimits().array() / _manager.GetScales() ).matrix();
+	_scaledActionUpperLimit = ( _manager.GetPolicyInterface().GetUpperLimits().array() / _manager.GetScales() ).matrix();
+	ROS_INFO_STREAM( "Scaled lower bounds: " << _scaledActionLowerLimit.transpose() );
+	ROS_INFO_STREAM( "Scaled upper bounds: " << _scaledActionUpperLimit.transpose() );
 
 	GetParamRequired( lh, "l2_weight", _l2Weight );
 	InitializeOptimization();
@@ -145,18 +189,19 @@ void ContinuousPolicyLearner::TimerCallback( const ros::TimerEvent& event )
 	{
 		ContinuousParamAction action( _actionBuffer.begin()->second );
 		remove_lowest( _actionBuffer );
+		action.output = ( (action.output - _manager.GetOffsets()).array() / _manager.GetScales() ).matrix();
 
+		if( !action.input.allFinite() )
+		{
+			ROS_WARN_STREAM( "Received non-finite input: " << action.input.transpose() );
+			continue;
+		}
 		if( !action.output.allFinite() )
 		{
 			ROS_WARN_STREAM( "Received non-finite action: " << action.output.transpose() );
 			continue;
 		}
-		else if( !action.input.allFinite() )
-		{
-			ROS_WARN_STREAM( "Received non-finite input: " << action.input.transpose() );
-			continue;
-		}
-		
+
 		double advantage;
 		try
 		{
@@ -174,11 +219,20 @@ void ContinuousPolicyLearner::TimerCallback( const ros::TimerEvent& event )
 			continue;
 		}
 
-		_critic->Publish( action );
+		// _optimization->EmplaceModule( _manager.GetPolicyModule(),
+		//                               action.input, 
+		//                               action.output,
+		//                               advantage,
+		//                               _scaledActionLowerLimit,
+		//                               _scaledActionUpperLimit,
+		//                               _actionBoundWeight );
 		_optimization->EmplaceModule( _manager.GetPolicyModule(),
-                                      action.input, 
-                                      action.output,
-                                      advantage );
+		                              action.input, 
+		                              action.output,
+		                              advantage );
+
+
+		_critic->Publish( action );
 		ROS_INFO_STREAM( "Action: " << action.output.transpose() << " advantage: " << advantage );
 	}
 
@@ -187,18 +241,30 @@ void ContinuousPolicyLearner::TimerCallback( const ros::TimerEvent& event )
 	{
 		ROS_INFO_STREAM( "Num modules: " << _optimization->NumModules() << 
 		                 " less than min: " << _minModulesToOptimize );
-		return; 
 	}
-	percepto::OptimizationResults results = _optimizer->Optimize( *_optimization );
+	else
+	{
+		percepto::OptimizationResults results = _optimizer->Optimize( *_optimization );
 
-	ROS_INFO_STREAM( "Objective: " << results.finalObjective );
-	ROS_INFO_STREAM( "Policy: " << _manager.GetPolicyModule() );
+		ROS_INFO_STREAM( "Objective: " << results.finalObjective );
+		ROS_INFO_STREAM( "Policy: " << *_manager.GetPolicyModule() );
+		// ROS_INFO_STREAM( "Gradients: " << _manager.GetParameters()->GetDerivs() );
+
+		if( _clearAfterOptimize )
+		{
+			InitializeOptimization();
+		}
+		else
+		{
+			while( _optimization->NumModules() > _maxModulesToKeep )
+			{
+				_optimization->RemoveOldest();
+			}
+		}
+	}
 
 	StampedFeatures update( event.current_real, "", _manager.GetParameters()->GetParamsVec() );
 	_paramPub.publish( update.ToMsg() );
-
-	// Reinitialize to clear the modules
-	InitializeOptimization();
 }
 
 }

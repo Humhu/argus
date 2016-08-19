@@ -1,7 +1,7 @@
 #pragma once
 
 #include "paraset/ContinuousPolicy.h"
-#include "paraset/PolicyModules.h"
+#include "paraset/ContinuousPolicyModules.h"
 #include "argus_msgs/FloatVectorStamped.h"
 #include "broadcast/BroadcastMultiReceiver.h"
 
@@ -21,17 +21,21 @@ public:
 		MatrixType info;
 	};
 
-	typedef VarReLUGaussian NetworkType;
-
 	ContinuousPolicyManager();
 	
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
-	const NetworkType& GetPolicyModule() const;
+	ContinuousPolicyModule::Ptr GetPolicyModule() const;
 	percepto::Parameters::Ptr GetParameters();
+	
+	const Eigen::ArrayXd& GetScales() const;
+	const VectorType& GetOffsets() const;
 
 	StampedFeatures GetInput( const ros::Time& time );
+
+	// NOTE Returns normalized distribution parameters
 	DistributionParameters GetDistributionParams( const ros::Time& time );
+
 	void SetOutput( const VectorType& out );
 	unsigned int GetNumOutputs() const;
 	ContinuousPolicy& GetPolicyInterface();
@@ -41,11 +45,17 @@ private:
 	ContinuousPolicy _policyInterface;
 	ros::Subscriber _paramSub;
 
+	Eigen::ArrayXd _policyScales;
+	VectorType _policyOffsets;
+
 	BroadcastMultiReceiver _inputStreams;
 
-	NetworkType::Ptr _network;
+	std::string _moduleType;
+	ContinuousPolicyModule::Ptr _network;
+
 	percepto::TerminalSource<VectorType> _networkInput;
 	percepto::Parameters::Ptr _networkParameters;
+	percepto::Parameters::Ptr _networkCorrParameters;
 
 	void ParamCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg );
 };
