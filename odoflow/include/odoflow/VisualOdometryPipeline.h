@@ -19,6 +19,8 @@
 
 #include "broadcast/BroadcastTransmitter.h"
 
+#include <unordered_set>
+
 namespace argus
 {
 
@@ -58,11 +60,7 @@ private:
 	ros::NodeHandle _nodeHandle;
 	ros::NodeHandle _privHandle;
 	
-	ros::Publisher _dispPub;
 	image_transport::ImageTransport _imagePort;
-	image_transport::CameraSubscriber _imageSub;
-	
-	image_transport::Publisher _debugPub;
 
 	BroadcastTransmitter _featureTx;
 	
@@ -77,39 +75,37 @@ private:
 	
 	struct CameraRegistration
 	{
+		Mutex mutex;
+		
 		std::string name;
-		ros::Time keyframeTimestamp;
-		cv::Mat keyframe;
-		size_t originalNumKeypoints; // Number of keypoints on detection
-		InterestPoints keyframePointsImage;
-		ros::Time lastPointsTimestamp;
-		InterestPoints lastPointsImage;
-		InterestPoints lastPointsPredicted;
-		argus::PoseSE3 lastPointsPose;
-		argus::PoseSE2 lastPixelsPose;
-		argus::PoseSE2::TangentVector lastVelocity;
+		bool showOutput;
+		image_transport::CameraSubscriber imageSub;
+		image_transport::Publisher debugPub;
+		ros::Publisher velPub;
 
-		CameraRegistration() : lastVelocity( argus::PoseSE2::TangentVector::Zero() ) {}
+		FrameInterestPoints keyFrame;
+		FrameInterestPoints lastFrame;
+
+		size_t originalNumKeypoints; // Number of keypoints on detection
+		argus::PoseSE3 lastPointsPose;
+
 	};
 	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
 	
+	// Need this to avoid double-subscribing
+	std::unordered_set<std::string> _imageTopics;
+
 	NumericParam _redetectionThreshold;
 	NumericParam _minInlierRatio;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
+
+	void VisualizeFrame( const CameraRegistration& registration );
 	
-	void VisualizeFrame( const CameraRegistration& registration,
-	                     const cv::Mat& frame,
-	                     const ros::Time& timestamp );
-	
-	void SetKeyframe( CameraRegistration& registration,
-	                  const cv::Mat& frame, 
-	                  const image_geometry::PinholeCameraModel& model,
-	                  const ros::Time& timestamp );
-	
-	bool RegisterCamera( const std::string& name );
 	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
 						const sensor_msgs::CameraInfoConstPtr& info_msg );
+	void SetKeyframe( CameraRegistration& registration,
+	                  const FrameInterestPoints& key );
 	
 };
 

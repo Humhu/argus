@@ -1,8 +1,7 @@
 #include "odoflow/RigidEstimator.h"
-#include "odoflow/OpenCVMod.h"
-
 #include "argus_utils/utils/ParamUtils.h"
 
+#include <opencv2/calib3d.hpp>
 #include <Eigen/SVD>
 
 namespace argus
@@ -29,43 +28,54 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_maxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 }
 
-bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
-                                     const InterestPoints& dstPoints,
-                                     std::vector<uchar>& inliers,
-                                     PoseSE3& transform,
-                                     PoseSE2& frameTransform )
+bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
+                                     FrameInterestPoints& tar,
+                                     PoseSE3& transform )
 {
-	if( srcPoints.empty() || dstPoints.empty() )
+	if( key.points.empty() || tar.points.empty() )
 	{
+		ROS_INFO_STREAM( "RigidEstimator: Received empty points." );
 		return false;
 	}
 
-	cv::Mat Hxest = cv::findHomography( srcPoints, dstPoints, cv::RANSAC, 
-	                                    _reprojThreshold, inliers, _maxIters );
+	std::vector<char> inliers;
+	FrameInterestPoints keyNormalized = key.Normalize();
+	FrameInterestPoints tarNormalized = tar.Normalize();
+
+	// We want tar in frame of key, so this is the ordering
+	cv::Mat Hxest = cv::findHomography( tarNormalized.points, 
+	                                    keyNormalized.points, 
+	                                    cv::RANSAC, 
+	                                    _reprojThreshold, 
+	                                    inliers, 
+	                                    _maxIters );
 	if( Hxest.empty() )
 	{
+		ROS_INFO_STREAM( "RigidEstimator: Failed to find homography." );
 		return false;
 	}
 
-	InterestPoints srcInliers, dstInliers;
-	for( unsigned int i = 0; i < srcPoints.size(); i++ )
-	  {
-	    if( inliers[i] ) 
-	      {
-		srcInliers.push_back( srcPoints[i] );
-		dstInliers.push_back( dstPoints[i] );
-	      }
-	  }
-
-	cv::Mat Hest = cv::estimateRigidTransform( srcInliers, dstInliers, false );
-	if( Hest.size().height == 0 || Hest.size().width == 0 )
+	InterestPoints keyInliers, tarInliers;
+	for( unsigned int i = 0; i < inliers.size(); i++ )
 	{
-		ROS_WARN_STREAM( "RigidEstimator: Could not estimate motion." );
-		return false;
+		if( inliers[i] )
+		{
+			keyInliers.push_back( key.points[i] );
+			tarInliers.push_back( tar.points[i] );
+		}
 	}
+	key.points = keyInliers;
+	tar.points = tarInliers;
 
-	Eigen::Matrix<double,2,3> Ab = MatToEigen<double,2,3>( Hest );
-	
+	// cv::Mat Hest = cv::estimateRigidTransform( key, tar, false );
+	// if( Hest.size().height == 0 || Hest.size().width == 0 )
+	// {
+	// 	ROS_WARN_STREAM( "RigidEstimator: Could not estimate motion." );
+	// 	return false;
+	// }
+
+	Eigen::MatrixXd Ab = MatToEigen<double>( Hxest );
+
 	// Extract the rotation using Procrustes solution
 	Eigen::Matrix2d A = Ab.block<2,2>(0,0);
 	Eigen::JacobiSVD<Eigen::Matrix2d> svd( A, Eigen::ComputeFullU | Eigen::ComputeFullV );
@@ -73,12 +83,6 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 	
 	// ROS_INFO_STREAM( "Ab: " << std::endl << Ab );
 	// ROS_INFO_STREAM( "R: " << std::endl << R );
-
-	MatrixType h = MatrixType::Identity(3,3);
-	h.block<2,2>(0,0) = R;
-	h(0,2) = Ab(0,2);
-	h(1,2) = Ab(1,2);
-	frameTransform = PoseSE2(h);
 
 	Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
 	H.block<2,2>(1,1) = R;
@@ -88,5 +92,5 @@ bool RigidEstimator::EstimateMotion( const InterestPoints& srcPoints,
 	return true;
 	
 }
-	
+
 }

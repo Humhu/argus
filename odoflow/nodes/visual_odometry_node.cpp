@@ -17,7 +17,12 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh, ph( "~" );
 	
 	VisualOdometryPipeline vo( nh, ph );
-	ros::spin();
+
+	unsigned int numThreads;
+	GetParam<unsigned int>( ph, "num_threads", numThreads, 2 );
+	ros::AsyncSpinner spinner( numThreads );
+	spinner.start();
+	ros::waitForShutdown();
 	
 	return 0;
 }

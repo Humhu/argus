@@ -16,11 +16,9 @@ public:
 	
 	RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
-	virtual bool EstimateMotion( const InterestPoints& srcPoints,
-	                             const InterestPoints& dstPoints,
-	                             std::vector<uchar>& inliers,
-	                             PoseSE3& transform,
-	                             PoseSE2& frameTransform );
+	virtual bool EstimateMotion( FrameInterestPoints& key,
+	                             FrameInterestPoints& tar,
+	                             PoseSE3& transform );
 	
 private:
 	

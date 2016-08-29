@@ -72,7 +72,6 @@ add_library( odoflow
 	src/FixedPointDetector.cpp
 	src/LKPointTracker.cpp
 	src/OdoflowCommon.cpp
-	src/OpenCVMod.cpp
 	src/RigidEstimator.cpp
 	src/VisualOdometryPipeline.cpp
 )

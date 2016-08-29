@@ -42,76 +42,68 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_flowWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	MaxNumericRange flowThreshold;
+	GetParamRequired( ph, "flow_eigenvalue_threshold", flowThreshold );
 	_flowEigenThreshold.Initialize( ph, flowThreshold.init, "flow_eigenvalue_threshold", 
 	                                "Lucas-Kanade spatial gradient eigenvalue threshold." );
 	_flowEigenThreshold.AddCheck<GreaterThanOrEqual>( 0 );
 	_flowEigenThreshold.AddCheck<LessThanOrEqual>( flowThreshold.max );
+
+	double flowErrThreshold;
+	GetParamRequired( ph, "flow_error_threshold", flowErrThreshold );
+	_maxFlowError.Initialize( ph, flowErrThreshold, "flow_error_threshold", 
+	                                "Lucas-Kanade max solution error threshold." );
+	_maxFlowError.AddCheck<GreaterThanOrEqual>( 0 );
 }
 
-void LKPointTracker::TrackInterestPoints( const cv::Mat& firstImage,
-                                          const cv::Mat& secondImage,
-                                          const InterestPoints& firstPoints,
-                                          const InterestPoints& secondPointsGuess,
-                                          InterestPoints& firstInliers,
-                                          InterestPoints& secondInliers )
+bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
+	                                      FrameInterestPoints& tar )
 {
-	firstInliers.clear();
-	secondInliers.clear();
-	
 	// Make sure we have points to track
-	if( firstImage.empty() || secondImage.empty() || firstPoints.empty() )
+	if( key.frame.empty() || tar.frame.empty() || key.points.empty() )
 	{
-		return;
+		return false;
 	}
 	
 	// OpenCV's Lucas-Kanade requires single-precision floating point
-	std::vector<cv::Point2f> firstConvertedPoints( firstPoints.size() );
-	std::vector<cv::Point2f> secondConvertedPoints( secondPointsGuess.size() );
-	for( unsigned int i = 0; i < firstPoints.size(); i++ )
+	InterestPointsf keyPoints = DowncastInterestPoints( key.points );
+	InterestPointsf targetPoints = DowncastInterestPoints( tar.points );
+	if( targetPoints.empty() )
 	{
-		firstConvertedPoints[i] = cv::Point2f( firstPoints[i].x, firstPoints[i].y );
-	}
-	
-	if( secondPointsGuess.size() == firstPoints.size() )
-	{
-		for( unsigned int i = 0; i < secondPointsGuess.size(); i++ )
-		{
-			secondConvertedPoints[i] = cv::Point2f( secondPointsGuess[i].x, secondPointsGuess[i].y );
-		}
-	}
-	else
-	{
-		secondConvertedPoints = firstConvertedPoints;
+		targetPoints = keyPoints;
 	}
 	
 	cv::TermCriteria termCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
-	                                                 _solverMaxIters, _solverMinEpsilon );
+	                                                  _solverMaxIters, 
+	                                                  _solverMinEpsilon );
 	std::vector<uchar> status;
 	std::vector<float> errors;
-	cv::Size winSize( _flowWindowDim, _flowWindowDim );
-	cv::calcOpticalFlowPyrLK( firstImage, 
-	                          secondImage, 
-	                          firstConvertedPoints, 
-	                          secondConvertedPoints, 
+	cv::calcOpticalFlowPyrLK( key.frame, 
+	                          tar.frame, 
+	                          keyPoints, 
+	                          targetPoints, 
 	                          status, 
 	                          errors, 
-	                          winSize,
+	                          cv::Size( _flowWindowDim, _flowWindowDim ),
 	                          _pyramidLevel,
 	                          termCriteria, 
 	                          cv::OPTFLOW_USE_INITIAL_FLOW, 
-	                          _flowEigenThreshold ); 
+	                          _flowEigenThreshold );
 	
-	// 2. Grab good matches
-	firstInliers.reserve( firstPoints.size() );
-	secondInliers.reserve( firstPoints.size() );
-	for( unsigned int i = 0; i < firstPoints.size(); i++)
+	InterestPointsf keyInliers, targetInliers;
+	for( unsigned int i = 0; i < status.size(); ++i )
 	{
-		if( !status[i] ) { 
-			continue; 
+		if( status[i] == 0 || errors[i] < _maxFlowError )
+		{
+			keyInliers.push_back( keyPoints[i] );
+			targetInliers.push_back( targetPoints[i] );
 		}
-		firstInliers.push_back( InterestPoint( firstConvertedPoints[i].x, firstConvertedPoints[i].y ) );
-		secondInliers.push_back( InterestPoint( secondConvertedPoints[i].x, secondConvertedPoints[i].y ) );
 	}
+
+	// 2. Grab good matches
+	key.points = UpcastInterestPoints( keyInliers );
+	tar.points = UpcastInterestPoints( targetInliers );
+
+	return !key.points.empty();
 }
 	
 }

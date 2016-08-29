@@ -19,12 +19,8 @@ public:
 	
 	LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
-	virtual void TrackInterestPoints( const cv::Mat& firstImage,
-	                                  const cv::Mat& secondImage,
-	                                  const InterestPoints& firstPoints,
-	                                  const InterestPoints& secondPointsGuess,
-	                                  InterestPoints& firstInliers,
-	                                  InterestPoints& secondInliers );
+	virtual bool TrackInterestPoints( FrameInterestPoints& key,
+	                                  FrameInterestPoints& tar );
 	
 	void SetFlowCriteria( int maxIters, double epsilon );
 	void SetFlowWindow( int width, int height );
@@ -38,6 +34,7 @@ private:
 	NumericParam _flowEigenThreshold;
 	NumericParam _solverMaxIters;
 	NumericParam _solverMinEpsilon;
+	NumericParam _maxFlowError;
 
 	cv::TermCriteria _flowTermCriteria;
 

@@ -1,38 +1,75 @@
 #include "odoflow/OdoflowCommon.h"
-
-using namespace image_geometry;
+#include <opencv2/imgproc.hpp>
 
 namespace argus
 {
-	
-bool UndistortPoints( const InterestPoints& points, 
-                      const PinholeCameraModel& model,
-                      bool undistort, bool normalize,
-                      InterestPoints& undistorted )
+
+std::ostream& operator<<( std::ostream& os, const InterestPoints& points )
 {
-	undistorted.clear();
-	if( points.empty() ) { return true; }
-	
-	// TODO Check more
-	if( std::isnan( model.fx() ) ) { return false; }
-	
+	os << "Interest points: " << std::endl;
+	for( unsigned int i = 0; i < points.size(); ++i )
+	{
+		os << "\t(x: " << points[i].x << ", y: " << points[i].y << ")" << std::endl;
+	}
+	return os;
+}
+
+InterestPointsf DowncastInterestPoints( const InterestPoints& in )
+{
+	InterestPointsf out( in.size() );
+	for( unsigned int i = 0; i < in.size(); i++ )
+	{
+		out[i] = cv::Point2f( in[i].x, in[i].y );
+	}
+	return out;
+}
+
+InterestPoints UpcastInterestPoints( const InterestPointsf& in )
+{
+	InterestPoints out( in.size() );
+	for( unsigned int i = 0; i < in.size(); i++ )
+	{
+		out[i] = cv::Point2d( in[i].x, in[i].y );
+	}
+	return out;
+}
+
+
+InterestPoints UndistortPoints( const InterestPoints& points, 
+                                const camplex::CameraCalibration& model,
+                                bool undistort, 
+                                bool normalize )
+{
+	if( points.empty() )
+	{
+		throw std::invalid_argument( "UndistortPoints: Empty points given." );
+	}
+	if( !std::isfinite( model.GetFx() ) )
+	{
+		throw std::invalid_argument( "UndistortPoints: Invalid camera model." );
+	}
+
 	// Perform undistortion
 	cv::Mat distortionCoeffs;
 	cv::Matx33d outputCameraMatrix;
 	
-	if( undistort ) { distortionCoeffs = model.distortionCoeffs(); }
-	outputCameraMatrix = normalize ? cv::Matx33d::eye() : model.intrinsicMatrix();
+	if( undistort ) { distortionCoeffs = model.GetDistortionCoeffs(); }
+	outputCameraMatrix = normalize ? cv::Matx33d::eye() : model.GetIntrinsicMatrix();
 	
-	cv::undistortPoints( points, undistorted, model.intrinsicMatrix(),
+	InterestPoints undistorted;
+	cv::undistortPoints( points, undistorted, model.GetIntrinsicMatrix(),
 	                     distortionCoeffs, cv::noArray(), outputCameraMatrix );
-	return true;
+	return undistorted;
 }
 
-void TransformPoints( const InterestPoints& points,
-                      const PoseSE2& trans,
-                      InterestPoints& transformed )
+InterestPoints TransformPoints( const InterestPoints& points,
+                                const PoseSE2& trans )
 {
-	if( points.size() == 0 ) { return; }
+	if( points.empty() )
+	{
+		throw std::invalid_argument( "TransformPoints: Empty points given." );
+	}
+
 	Eigen::Matrix<double, 2, Eigen::Dynamic> pts( 2, points.size() );
 	for( unsigned int i = 0; i < points.size(); ++i )
 	{
@@ -41,11 +78,52 @@ void TransformPoints( const InterestPoints& points,
 	}
 
 	pts = trans.ToTransform() * pts;
+	InterestPoints transformed;
 	transformed.reserve( points.size() );
 	for( unsigned int i = 0; i < points.size(); ++i )
 	{
 		transformed.emplace_back( pts(0,i), pts(1,i) );
 	}
+	return transformed;
 }
-	
+
+FrameInterestPoints
+FrameInterestPoints::Undistort() const
+{
+	FrameInterestPoints ret( *this );
+	cv::undistortPoints( points, 
+	                     ret.points,
+	                     cameraModel.GetIntrinsicMatrix(),
+	                     cameraModel.GetDistortionCoeffs(), 
+	                     cv::noArray(), 
+	                     cameraModel.GetIntrinsicMatrix() );
+	return ret;
+}
+
+FrameInterestPoints 
+FrameInterestPoints::Normalize() const
+{
+	FrameInterestPoints ret( *this );
+	cv::undistortPoints( points, 
+	                     ret.points, 
+	                     cameraModel.GetIntrinsicMatrix(),
+	                     cv::Mat(), 
+	                     cv::noArray(), 
+	                     cv::Matx33d::eye() );
+	return ret;
+}
+
+FrameInterestPoints 
+FrameInterestPoints::UndistortAndNormalize() const
+{
+	FrameInterestPoints ret( *this );
+	cv::undistortPoints( points, 
+	                     ret.points, 
+	                     cameraModel.GetIntrinsicMatrix(),
+	                     cameraModel.GetDistortionCoeffs(), 
+	                     cv::noArray(), 
+	                     cameraModel.GetIntrinsicMatrix() );
+	return ret;
+}
+
 }

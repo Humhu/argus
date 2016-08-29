@@ -20,13 +20,11 @@ public:
 	MotionEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ) {}
 	
-	/*! \brief Estimates the transform that turns srcPoints into dstPoints.
+	/*! \brief Estimates the transform that turns tar into key.
 	 * Returns success. */
-	virtual bool EstimateMotion( const InterestPoints& srcPoints,
-	                             const InterestPoints& dstPoints,
-	                             std::vector<uchar>& inliers,
-	                             argus::PoseSE3& transform,
-	                             argus::PoseSE2& frameTransform ) = 0;
+	virtual bool EstimateMotion( FrameInterestPoints& key,
+	                             FrameInterestPoints& tar,
+	                             argus::PoseSE3& transform ) = 0;
 
 	/*! \brief Rectifies points into normalized camera coordinates. */
 	// TODO Use undistortion parameters?
