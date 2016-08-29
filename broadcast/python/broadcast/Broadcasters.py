@@ -48,17 +48,12 @@ class Transmitter:
         rospy.loginfo( 'Registering broadcast (' + stream_name + ') to topic ('
                        + topic_path + ')' )
 
-        rospy.set_param( namespace + 'feature_size', feature_size )
-        rospy.set_param( namespace + 'descriptions', descriptions )
-        rospy.set_param( namespace + 'topic', topic_path )
-
         self.stream_name = stream_name
         self.mode = mode
         if mode == 'push':
             self.publisher = rospy.Publisher( topic_path,
-                                              StampedFeatures, 
+                                              FloatVectorStamped, 
                                               queue_size=kwargs['queue_size'] )
-
         elif mode == 'pull':
             self.cache = TimeSeries( diff = ros_time_diff )
             self.cache_time = kwargs['cache_time']
@@ -67,6 +62,11 @@ class Transmitter:
                                          self.query_callback )
         else:
             raise ValueError( 'Invalid mode: ' + mode )
+
+        rospy.set_param( namespace + 'feature_size', feature_size )
+        rospy.set_param( namespace + 'descriptions', descriptions )
+        rospy.set_param( namespace + 'topic', topic_path )
+        rospy.set_param( namespace + 'mode', mode )
     
     def publish( self, time, feats ):
         '''Publish a message to the broadcast topic.'''
