@@ -28,6 +28,7 @@ find_package(Boost REQUIRED COMPONENTS random)
 find_package(Eigen3 REQUIRED)
 
 add_message_files( FILES
+    ContinuousActionCritique.msg
     ContinuousParamAction.msg
     DiscreteParamAction.msg
     RewardStamped.msg
@@ -72,14 +73,15 @@ add_library( paraset
             src/DiscretePolicyManager.cpp
             src/DiscretePolicyModules.cpp
             src/MonteCarloValue.cpp
-			src/ParasetCommon.cpp
-			src/ParasetActionCommon.cpp
-			src/ParamChecks.cpp
-			src/PolicyLogGradientModules.cpp
-			src/RewardInterpolater.cpp
-			src/RunningAverageBaseline.cpp
-			src/ValueFunctionModules.cpp
-			src/ValueResidualModules.cpp )
+            src/ParasetCommon.cpp
+            src/ParasetActionCommon.cpp
+            src/ParamChecks.cpp
+            src/PolicyLogGradientModules.cpp
+            src/RewardInterpolater.cpp
+            src/RunningAverageBaseline.cpp
+            src/TDErrorCritic.cpp
+            src/ValueFunctionModules.cpp
+            src/ValueResidualModules.cpp )
 add_dependencies( paraset paraset_gencfg ${paraset_EXPORTED_TARGETS} )
 target_link_libraries( paraset
                        ${catkin_LIBRARIES} )
@@ -132,6 +134,20 @@ target_link_libraries( approximate_value_node
                       ${Boost_LIBRARIES}
                       paraset )
 
+add_executable( td_error_node nodes/td_error_node.cpp )
+add_dependencies( td_error_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( td_error_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
+
+add_executable( critic_node nodes/critic_node.cpp )
+add_dependencies( critic_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( critic_node
+                      ${catkin_LIBRARIES}
+                      ${Boost_LIBRARIES}
+                      paraset )
+
 install( TARGETS paraset 
                  discrete_policy_node 
                  continuous_policy_node 
@@ -139,6 +155,8 @@ install( TARGETS paraset
                  continuous_policy_learner_node
                  approximate_value_learner_node
                  approximate_value_node
+                 td_error_node
+                 critic_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

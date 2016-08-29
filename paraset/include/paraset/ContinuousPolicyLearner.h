@@ -11,7 +11,7 @@
 
 #include <percepto/optim/OptimizerTypes.h>
 #include <percepto/optim/ParameterL2Cost.hpp>
-#include <percepto/optim/MeanCost.hpp>
+#include <percepto/optim/StochasticMeanCost.hpp>
 #include <percepto/compo/AdditiveWrapper.hpp>
 
 #include <deque>
@@ -23,14 +23,15 @@ namespace argus
 struct PolicyGradientOptimization
 {
 	std::deque<ContinuousLogGradientModule> modules;
-	percepto::MeanCost<double> rewards;
+	percepto::StochasticMeanCost<double> rewards;
 	percepto::ParameterL2Cost regularizer;
 	percepto::AdditiveWrapper<double> objective;
 
 	PolicyGradientOptimization();
 
 	void Initialize( percepto::Parameters::Ptr params,
-	                 double l2Weight );
+	                 double l2Weight,
+	                 unsigned int batchSize );
 
 	template <class ... Args>
 	void EmplaceModule( Args&&... args )
@@ -45,12 +46,27 @@ struct PolicyGradientOptimization
 
 	void Invalidate();
 	void Foreprop();
+	void ForepropAll();
 	void Backprop();
 	void BackpropNatural();
 
 	double GetOutput() const;
 
-	// percepto::Parameters::Ptr parameters;
+	// Computes the mean log-likelihood of all the modules
+	double ComputeLogProb();
+};
+
+struct PolicyDivergenceChecker
+{
+	PolicyGradientOptimization& optimization;
+	double maxDivergence;
+	double startingLogLikelihood;
+
+	PolicyDivergenceChecker( PolicyGradientOptimization& opt );
+
+	void SetDivergenceLimit( double m );
+	void ResetDivergence();
+	bool ExceededLimits();
 };
 
 class ContinuousPolicyLearner
@@ -73,17 +89,17 @@ private:
 	PolicyCritic::Ptr _critic;
 
 	ros::Timer _updateTimer;
+	ros::Time _lastOptimizationTime;
 
-	double _l2Weight;
 	double _logdetWeight;
 
 	double _actionBoundWeight;
 	VectorType _scaledActionLowerLimit;
 	VectorType _scaledActionUpperLimit;
 
-	std::shared_ptr<PolicyGradientOptimization> _optimization;
+	PolicyGradientOptimization _optimization;
+	PolicyDivergenceChecker _optimizationChecker;
 
-	double _actionDelay;
 	typedef std::map<ros::Time, paraset::ContinuousParamAction> ActionBuffer;
 	ActionBuffer _actionBuffer;
 
@@ -91,14 +107,14 @@ private:
 	unsigned int _minModulesToOptimize;
 	unsigned int _maxModulesToKeep;
 
-	std::shared_ptr<percepto::DirectStepper> _stepper;
+	std::shared_ptr<percepto::AdamStepper> _stepper;
 	std::shared_ptr<percepto::SimpleConvergence> _convergence;
-	// std::shared_ptr<percepto::DirectOptimizer> _optimizer;
-	std::shared_ptr<percepto::SimpleNaturalOptimizer> _optimizer;
+	std::shared_ptr<percepto::AdamOptimizer> _optimizer;
+
+	// std::shared_ptr<percepto::SimpleNaturalOptimizer> _optimizer;
 
 	void ActionCallback( const paraset::ContinuousParamAction::ConstPtr& msg );
 	void TimerCallback( const ros::TimerEvent& event );
-	void InitializeOptimization();
 };
 
 }

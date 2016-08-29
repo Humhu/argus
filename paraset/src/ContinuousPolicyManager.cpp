@@ -40,7 +40,11 @@ void ContinuousPolicyManager::Initialize( ros::NodeHandle& nh,
 	unsigned int inputDim = _inputStreams.GetDim();
 	unsigned int matDim = _policyInterface.GetNumOutputs();
 
-	if( _moduleType == "fixed_variance_gaussian" )
+	if( _moduleType == "linear_gaussian" )
+	{
+		_network = std::make_shared<LinearGaussian>( inputDim, matDim );
+	}
+	else if( _moduleType == "fixed_variance_gaussian" )
 	{
 		_network = std::make_shared<FixedVarianceGaussian>( inputDim, 
 		                                                    matDim, 
@@ -60,13 +64,22 @@ void ContinuousPolicyManager::Initialize( ros::NodeHandle& nh,
 	}
 
 	_network->SetInputSource( &_networkInput );
-	_networkParameters = _network->CreateParameters();
+	_networkMeanParameters = _network->CreateMeanParameters();
+	_networkCovParameters = _network->CreateCovParameters();
+	percepto::ParameterWrapper::Ptr netParams = std::make_shared<percepto::ParameterWrapper>();
+	netParams->AddParameters( _networkMeanParameters );
+	netParams->AddParameters( _networkCovParameters );
+	_networkParameters = netParams;
 
 	double initScale;
 	GetParam( ph, "network/initial_magnitude", initScale, 1.0 );
-	VectorType paramVec = _networkParameters->GetParamsVec();
+	VectorType paramVec = _networkMeanParameters->GetParamsVec();
 	percepto::randomize_vector( paramVec, -initScale, initScale );
-	_networkParameters->SetParamsVec( paramVec );
+	_networkMeanParameters->SetParamsVec( paramVec );
+
+	paramVec = _networkCovParameters->GetParamsVec();
+	percepto::randomize_vector( paramVec, -initScale, initScale );
+	_networkCovParameters->SetParamsVec( paramVec );
 
 	// Read initialization if we have it
 	const VectorType& lowerLimit = _policyInterface.GetLowerLimits();
@@ -94,7 +107,7 @@ void ContinuousPolicyManager::Initialize( ros::NodeHandle& nh,
 		          "parameters/" + paramNames[i] + "/initial_mean", 
 		          initMean(i),
 		          0.5 * ( upperLimit(i) - lowerLimit(i) ) );
-		initMean(i) = initMean(i) / _policyScales(i) - 0.5;
+		initMean(i) = initMean(i) / _policyScales(i);
 
 		double stdDev;
 		GetParam( ph, 
@@ -115,7 +128,12 @@ void ContinuousPolicyManager::Initialize( ros::NodeHandle& nh,
 ContinuousPolicyModule::Ptr
 ContinuousPolicyManager::GetPolicyModule() const
 {
-	if( _moduleType == "fixed_variance_gaussian" )
+	if( _moduleType == "linear_gaussian" )
+	{
+		LinearGaussian::Ptr net = std::dynamic_pointer_cast<LinearGaussian>( _network );
+		return std::make_shared<LinearGaussian>( *net );
+	}
+	else if( _moduleType == "fixed_variance_gaussian" )
 	{
 		FixedVarianceGaussian::Ptr net = std::dynamic_pointer_cast<FixedVarianceGaussian>( _network );
 		return std::make_shared<FixedVarianceGaussian>( *net );
@@ -146,6 +164,16 @@ StampedFeatures ContinuousPolicyManager::GetInput( const ros::Time& time )
 percepto::Parameters::Ptr ContinuousPolicyManager::GetParameters()
 {
 	return _networkParameters;
+}
+
+percepto::Parameters::Ptr ContinuousPolicyManager::GetMeanParameters()
+{
+	return _networkMeanParameters;
+}
+
+percepto::Parameters::Ptr ContinuousPolicyManager::GetCovParameters()
+{
+	return _networkCovParameters;
 }
 
 const Eigen::ArrayXd& ContinuousPolicyManager::GetScales() const

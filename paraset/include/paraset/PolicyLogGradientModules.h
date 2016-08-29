@@ -50,6 +50,7 @@ struct ContinuousLogGradientModule
 	void Invalidate();
 
 	SourceType* GetOutputSource();
+	SourceType* GetLogProbSource();
 
 };
 

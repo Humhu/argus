@@ -72,4 +72,10 @@ ContinuousLogGradientModule::GetOutputSource()
 	return &logExpectedAdvantage;
 }
 
+ContinuousLogGradientModule::SourceType*
+ContinuousLogGradientModule::GetLogProbSource()
+{
+	return &logProb;
+}
+
 }

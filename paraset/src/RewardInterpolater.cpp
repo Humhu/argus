@@ -30,7 +30,9 @@ RewardInterpolater::RewardInterpolater() {}
 void RewardInterpolater::Initialize( ros::NodeHandle& nh,
                                      ros::NodeHandle& ph )
 {
-	GetParamRequired( ph, "cache_time", _cacheTime );
+	double cacheDur;
+	GetParamRequired( ph, "cache_time", cacheDur );
+	_cacheTime = ros::Duration( cacheDur );
 
 	std::string modeStr;
 	GetParamRequired( ph, "interpolation_mode", modeStr );
@@ -42,17 +44,59 @@ void RewardInterpolater::Initialize( ros::NodeHandle& nh,
 	                           this );
 }
 
-double RewardInterpolater::Evaluate( const ros::Time& t ) const
+double RewardInterpolater::InstantaneousReward( const ros::Time& t ) const
 {
 	switch( _interpMode )
 	{
 		case INTERP_ZERO_ORDER_HOLD:
-			return EvaluateZOH( t );
+			return InterpolateZeroOrderHold( t );
 		case INTERP_PIECEWISE_LINEAR:
-			return EvaluatePWL( t );
+			return InterpolatePiecewiseLinear( t );
 		default:
 			throw std::invalid_argument( "RewardInterpolater: Invalid interpolation mode." );
 	}
+}
+
+double RewardInterpolater::IntegratedReward( const ros::Time& start, const ros::Time& finish ) const
+{
+	double rAcc = 0;
+	double tAcc = 0;
+	double prevReward = InstantaneousReward( start );
+	ros::Time prevTime = start;
+	
+	RewardSeries::const_iterator iter;
+	if( !get_closest_greater_eq( _rewards, start, iter ) ) 
+	{ 
+		throw std::out_of_range( "RewardInterpolater: Integration start time out of bounds." );
+	}
+
+	while( true )
+	{
+		double currReward = iter->second;
+		ros::Time currTime = iter->first;
+		double dt = (currTime - prevTime).toSec();
+		rAcc += 0.5 * (currReward + prevReward) * dt;
+		tAcc += dt;
+
+		++iter;
+		prevReward = currReward;
+		prevTime = currTime;
+
+		if( iter == _rewards.end() )
+		{
+			throw std::out_of_range( "RewardInterpolater: Could not integrate range." );
+		}
+		if( iter->first > finish )
+		{
+			break;
+		}
+	}
+
+	double currReward = InstantaneousReward( finish );
+	double dt = (finish - prevTime).toSec();
+	rAcc += 0.5 * (currReward + prevReward) * dt;
+	tAcc += dt;
+	return rAcc / tAcc;
 }
 
 void RewardInterpolater::RewardCallback( const RewardStamped::ConstPtr& msg )
@@ -65,12 +109,12 @@ void RewardInterpolater::RewardCallback( const RewardStamped::ConstPtr& msg )
 	}
 }
 
-double RewardInterpolater::ComputeSpan() const
+ros::Duration RewardInterpolater::ComputeSpan() const
 {
-	return ( get_highest_key( _rewards ) - get_lowest_key( _rewards ) ).toSec();
+	return get_highest_key( _rewards ) - get_lowest_key( _rewards );
 }
 
-double RewardInterpolater::EvaluatePWL( const ros::Time& t ) const
+double RewardInterpolater::InterpolateZeroOrderHold( const ros::Time& t ) const
 {
 	RewardSeries::const_iterator prev, after;
 	if( !get_closest_lesser_eq( _rewards, t, prev ) ||
@@ -88,7 +132,7 @@ double RewardInterpolater::EvaluatePWL( const ros::Time& t ) const
 	return interp;
 }
 
-double RewardInterpolater::EvaluateZOH( const ros::Time& t ) const
+double RewardInterpolater::InterpolatePiecewiseLinear( const ros::Time& t ) const
 {
 	RewardSeries::const_iterator prev;
 	if( !get_closest_lesser_eq( _rewards, t, prev ) )

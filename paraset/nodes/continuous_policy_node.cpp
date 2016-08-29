@@ -82,7 +82,7 @@ private:
 		_dist.SetMean( distParams.mean );
 		_dist.SetInformation( distParams.info );
 		VectorType normalizedOutput = _dist.Sample( _sampleDevs );
-		SquashOutput( normalizedOutput );
+		// SquashOutput( normalizedOutput );
 
 		VectorType policyOutput = ( _manager.GetScales() * normalizedOutput.array() ).matrix()
 		                          + _manager.GetOffsets();

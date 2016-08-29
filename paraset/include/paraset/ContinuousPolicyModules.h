@@ -1,5 +1,6 @@
 #pragma once
 
+#include <percepto/compo/LinearRegressor.hpp>
 #include <percepto/compo/ConstantRegressor.hpp>
 #include <percepto/compo/ExponentialWrapper.hpp>
 #include <percepto/compo/OffsetWrapper.hpp>
@@ -31,7 +32,8 @@ public:
 	virtual void Foreprop() = 0;
 	virtual void Invalidate() = 0;
 
-	virtual percepto::Parameters::Ptr CreateParameters() = 0;
+	virtual percepto::Parameters::Ptr CreateMeanParameters() = 0;
+	virtual percepto::Parameters::Ptr CreateCovParameters() = 0;
 
 	virtual void InitializeMean( const VectorType& u ) = 0;
 	virtual void InitializeInformation( const MatrixType& n ) = 0;
@@ -41,6 +43,45 @@ public:
 
 std::ostream& operator<<( std::ostream& os, const ContinuousPolicyModule& m );
 
+class LinearGaussian
+: public ContinuousPolicyModule
+{
+public:
+
+	typedef percepto::Source<VectorType> VectorSourceType;
+	typedef percepto::Source<MatrixType> MatrixSourceType;
+
+	typedef std::shared_ptr<LinearGaussian> Ptr;
+
+	percepto::LinearRegressor mean;
+	percepto::ConstantVectorRegressor correlations;
+	percepto::ConstantVectorRegressor logVariances;
+
+	percepto::ExponentialWrapper variances;
+	percepto::ModifiedCholeskyWrapper psdModule;
+	percepto::OffsetWrapper<MatrixType> information;
+
+	LinearGaussian( unsigned int inputDim,
+	                unsigned int matDim );
+
+	LinearGaussian( const LinearGaussian& other );
+
+	virtual void SetInputSource( VectorSourceType* src );
+	virtual VectorSourceType& GetMeanSource();
+	virtual MatrixSourceType& GetInfoSource();
+
+	virtual void Foreprop();
+	virtual void Invalidate();
+
+	virtual percepto::Parameters::Ptr CreateMeanParameters();
+	virtual percepto::Parameters::Ptr CreateCovParameters();
+
+	virtual void InitializeMean( const VectorType& u );
+	virtual void InitializeInformation( const MatrixType& n );
+
+	virtual std::string Print() const;
+};
+
 class FixedVarianceGaussian
 : public ContinuousPolicyModule
 {
@@ -48,7 +89,6 @@ public:
 
 	typedef percepto::Source<VectorType> VectorSourceType;
 	typedef percepto::Source<MatrixType> MatrixSourceType;
-	typedef percepto::Sink<MatrixType> SinkType;
 
 	typedef std::shared_ptr<FixedVarianceGaussian> Ptr;
 
@@ -74,7 +114,8 @@ public:
 	virtual void Foreprop();
 	virtual void Invalidate();
 
-	virtual percepto::Parameters::Ptr CreateParameters();
+	virtual percepto::Parameters::Ptr CreateMeanParameters();
+	virtual percepto::Parameters::Ptr CreateCovParameters();
 
 	virtual void InitializeMean( const VectorType& u );
 	virtual void InitializeInformation( const MatrixType& n );
@@ -91,7 +132,6 @@ public:
 
 	typedef percepto::Source<VectorType> VectorSourceType;
 	typedef percepto::Source<MatrixType> MatrixSourceType;
-	typedef percepto::Sink<MatrixType> SinkType;
 
 	typedef std::shared_ptr<VariableVarianceGaussian> Ptr;
 
@@ -117,7 +157,8 @@ public:
 	virtual void Foreprop();
 	virtual void Invalidate();
 
-	virtual percepto::Parameters::Ptr CreateParameters();
+	virtual percepto::Parameters::Ptr CreateMeanParameters();
+	virtual percepto::Parameters::Ptr CreateCovParameters();
 
 	virtual void InitializeMean( const VectorType& u );
 	virtual void InitializeInformation( const MatrixType& n );

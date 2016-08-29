@@ -25,23 +25,23 @@ public:
 
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
-	double Evaluate( const ros::Time& t ) const;
+	double InstantaneousReward( const ros::Time& t ) const;
+	double IntegratedReward( const ros::Time& start, const ros::Time& end ) const;
 
 private:
 
 	typedef std::map<ros::Time, double> RewardSeries;
-
 	RewardSeries _rewards;
 
-	double _cacheTime;
+	ros::Duration _cacheTime;
 	InterpolationMode _interpMode;
 	ros::Subscriber _rewardSub;
 
 	void RewardCallback( const paraset::RewardStamped::ConstPtr& msg );
-	double ComputeSpan() const;
+	ros::Duration ComputeSpan() const;
 
-	double EvaluateZOH( const ros::Time& t ) const;
-	double EvaluatePWL( const ros::Time& t ) const;
+	double InterpolateZeroOrderHold( const ros::Time& t ) const;
+	double InterpolatePiecewiseLinear( const ros::Time& t ) const;
 };
 
 }

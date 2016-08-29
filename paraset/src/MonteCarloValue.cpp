@@ -52,7 +52,7 @@ double MonteCarloValue::Evaluate( const ParamAction& x ) const
 	ros::Time time = x.time;
 	for( unsigned int i = 0; i < _horizonSteps; ++i )
 	{
-		acc += gamma * _rewardFunction.Evaluate( time );
+		acc += gamma * _rewardFunction.IntegratedReward( time, time + _timestep );
 		gamma *= _discountFactor;
 		time += _timestep;
 	}

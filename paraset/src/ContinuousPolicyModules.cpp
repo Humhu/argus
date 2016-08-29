@@ -19,6 +19,99 @@ std::ostream& operator<<( std::ostream& os, const ContinuousPolicyModule& m )
 	return os;
 }
 
+LinearGaussian::LinearGaussian( unsigned int inputDim,
+                                unsigned int matDim )
+: mean( inputDim, matDim ),
+  correlations( matDim*(matDim-1)/2 ),
+  logVariances( matDim )
+{
+	variances.SetSource( &logVariances );
+	psdModule.SetLSource( &correlations );
+	psdModule.SetDSource( &variances );
+	information.SetSource( &psdModule );
+	information.SetOffset( POSDEF_OFFSET_SCALE * 
+	                    MatrixType::Identity( matDim, matDim ) );
+}
+
+LinearGaussian::LinearGaussian( const LinearGaussian& other )
+: mean( other.mean ),
+  correlations( other.correlations ),
+  logVariances( other.logVariances ),
+  information( other.information )
+{
+	variances.SetSource( &logVariances );
+	psdModule.SetLSource( &correlations );
+	psdModule.SetDSource( &variances );
+	information.SetSource( &psdModule );
+}
+
+void LinearGaussian::SetInputSource( VectorSourceType* src )
+{
+	mean.SetSource( src );
+}
+
+LinearGaussian::VectorSourceType&
+LinearGaussian::GetMeanSource()
+{
+	return mean;
+}
+
+LinearGaussian::MatrixSourceType&
+LinearGaussian::GetInfoSource()
+{
+	return information;
+}
+
+void LinearGaussian::Foreprop()
+{
+	correlations.Foreprop();
+	logVariances.Foreprop();
+}
+
+void LinearGaussian::Invalidate()
+{
+	correlations.Invalidate();
+	logVariances.Invalidate();
+}
+
+percepto::Parameters::Ptr LinearGaussian::CreateMeanParameters()
+{
+	return mean.CreateParameters();
+}
+
+percepto::Parameters::Ptr LinearGaussian::CreateCovParameters()
+{
+	Parameters::Ptr corrParams = correlations.CreateParameters();
+	Parameters::Ptr logVarParams = logVariances.CreateParameters();
+	
+	ParameterWrapper::Ptr params = std::make_shared<ParameterWrapper>();
+	params->AddParameters( corrParams );
+	params->AddParameters( logVarParams );
+	return params;
+}
+
+void LinearGaussian::InitializeMean( const VectorType& u )
+{
+	mean.SetOffsets( u );
+}
+
+void LinearGaussian::InitializeInformation( const MatrixType& n )
+{
+	Eigen::LDLT<MatrixType> ldlt( n );
+	VectorType d = ldlt.vectorD();
+	VectorType l = GetLowerTriangular( MatrixType( ldlt.matrixL() ), 1 );
+	logVariances.SetOutput( d.array().log().matrix() );
+	correlations.SetOutput( l );
+}
+
+std::string LinearGaussian::Print() const
+{
+	std::stringstream ss;
+	ss << "Mean regressor: " << std::endl << mean.GetWeights() << std::endl;
+	// TODO: Display L and D terms
+	return ss.str();
+}
+
 FixedVarianceGaussian::FixedVarianceGaussian( unsigned int inputDim, 
                                               unsigned int matDim,
                                               unsigned int numHiddenLayers,
@@ -86,14 +179,17 @@ void FixedVarianceGaussian::Invalidate()
 	logVariances.Invalidate();
 }
 
-percepto::Parameters::Ptr FixedVarianceGaussian::CreateParameters()
+percepto::Parameters::Ptr FixedVarianceGaussian::CreateMeanParameters()
 {
-	Parameters::Ptr meanParams = mean.CreateParameters();
+	return mean.CreateParameters();
+}
+
+percepto::Parameters::Ptr FixedVarianceGaussian::CreateCovParameters()
+{
 	corrParams = correlations.CreateParameters();
 	Parameters::Ptr logVarParams = logVariances.CreateParameters();
 	
 	ParameterWrapper::Ptr params = std::make_shared<ParameterWrapper>();
-	params->AddParameters( meanParams );
 	params->AddParameters( corrParams );
 	params->AddParameters( logVarParams );
 	return params;
@@ -201,9 +297,13 @@ void VariableVarianceGaussian::InitializeInformation( const MatrixType& n )
 	correlations.SetOutputOffsets( l );
 }
 
-percepto::Parameters::Ptr VariableVarianceGaussian::CreateParameters()
+percepto::Parameters::Ptr VariableVarianceGaussian::CreateMeanParameters()
 {
-	percepto::Parameters::Ptr meanParams = mean.CreateParameters();
+	return mean.CreateParameters();
+}
+
+percepto::Parameters::Ptr VariableVarianceGaussian::CreateCovParameters()
+{
 	corrParams = correlations.CreateParameters();
 	percepto:: Parameters::Ptr logVarParams = logVariances.CreateParameters();
 	
@@ -212,8 +312,7 @@ percepto::Parameters::Ptr VariableVarianceGaussian::CreateParameters()
 	corrParams->SetParamsVec( w );
 	
 	ParameterWrapper::Ptr params = std::make_shared<ParameterWrapper>();
-	params->AddParameters( meanParams );
-	params->AddParameters( corrParams );
+	// params->AddParameters( corrParams );
 	params->AddParameters( logVarParams );
 	return params;
 }

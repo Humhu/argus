@@ -26,8 +26,11 @@ public:
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
 	ContinuousPolicyModule::Ptr GetPolicyModule() const;
+
 	percepto::Parameters::Ptr GetParameters();
-	
+	percepto::Parameters::Ptr GetMeanParameters();
+	percepto::Parameters::Ptr GetCovParameters();
+
 	const Eigen::ArrayXd& GetScales() const;
 	const VectorType& GetOffsets() const;
 
@@ -54,8 +57,9 @@ private:
 	ContinuousPolicyModule::Ptr _network;
 
 	percepto::TerminalSource<VectorType> _networkInput;
+	percepto::Parameters::Ptr _networkMeanParameters;
+	percepto::Parameters::Ptr _networkCovParameters;
 	percepto::Parameters::Ptr _networkParameters;
-	percepto::Parameters::Ptr _networkCorrParameters;
 
 	void ParamCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg );
 };
