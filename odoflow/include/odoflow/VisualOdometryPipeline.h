@@ -87,7 +87,7 @@ private:
 		FrameInterestPoints lastFrame;
 
 		size_t originalNumKeypoints; // Number of keypoints on detection
-		argus::PoseSE3 lastPointsPose;
+		PoseSE3 lastPointsPose;
 
 	};
 	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
@@ -99,6 +99,8 @@ private:
 	NumericParam _minInlierRatio;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
+
+	void RegisterCamera( const std::string& name, const YAML::Node& info );
 
 	void VisualizeFrame( const CameraRegistration& registration );
 	

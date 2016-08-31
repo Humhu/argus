@@ -70,6 +70,8 @@ CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& 
 InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
 {
 	InterestPoints points;
+	if( image.empty() ) { return points; }
+	
 	cv::goodFeaturesToTrack( image, 
 	                         points, 
 	                         _featureMaxPoints, 
@@ -79,7 +81,9 @@ InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
 	                         _featureBlockDim,
 	                         _useHarris, 
 	                         _harrisK );
-	
+
+	if( points.size() == 0 ) { return points; }
+
 	// TODO Subpixel refinement
 	if( _enableRefine )
 	{

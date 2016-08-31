@@ -4,7 +4,6 @@
 
 #include "odoflow/InterestPointDetector.h"
 #include "argus_utils/geometry/PoseSE3.h"
-#include "argus_utils/geometry/PoseSE2.h"
 
 namespace argus
 {
@@ -20,6 +19,8 @@ public:
 	MotionEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ) {}
 	
+	virtual ~MotionEstimator() {}
+
 	/*! \brief Estimates the transform that turns tar into key.
 	 * Returns success. */
 	virtual bool EstimateMotion( FrameInterestPoints& key,

@@ -116,55 +116,60 @@ _extrinsicsManager( _lookupInterface )
 	for( iter = sources.begin(); iter != sources.end(); ++iter )
 	{
 		const std::string name = iter->first.as<std::string>();
-		ROS_INFO_STREAM( "Registering camera " << name );
-
-		if( !_extrinsicsManager.HasMember( name ) )
-		{
-			if( !_extrinsicsManager.ReadMemberInfo( name, false ) ) 
-			{ 
-				throw std::runtime_error( "VisualOdometryPipeline: Could not retrieve extrinsics for " 
-				                          + name );
-			}
-		}
-
-		CameraRegistration& reg = _cameraRegistry[ name ];
-		reg.name = name;
-
 		const YAML::Node& info = iter->second;;
-		unsigned int buffSize;
-		GetParam<unsigned int>( info, "buffer_size", buffSize, 1 );
-		
-		std::string imageTopic;
-		GetParamRequired( info, "image_topic", imageTopic );
-		if( _imageTopics.count( imageTopic ) > 0 )
-		{
-			ROS_WARN_STREAM( "Source: " << name << " image topic: " <<
-			                 imageTopic << " already has subscriptions. Skipping subscribe step." );
-		}
-		else
-		{
-			reg.imageSub = _imagePort.subscribeCamera( imageTopic, 
-			                                           buffSize, 
-			                                           &VisualOdometryPipeline::ImageCallback, 
-			                                           this );
-			_imageTopics.insert( imageTopic );
-		}
-
-		GetParamRequired( info, "show_output", reg.showOutput );
-		if( reg.showOutput )
-		{
-			std::string debugTopicName = _privHandle.resolveName( name + "/image_debug" );
-			ROS_INFO_STREAM( "Displaying debug output for " << name << 
-			                 " on topic" << debugTopicName );
-			reg.debugPub = _imagePort.advertise( debugTopicName, 1 );
-		}
-		std::string velTopic;
-		GetParamRequired( info, "output_topic", velTopic );
-		reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( velTopic, 0 );
+		RegisterCamera( name, info );
 	}
 }
 
 VisualOdometryPipeline::~VisualOdometryPipeline() {}
+
+void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML::Node& info )
+{
+	ROS_INFO_STREAM( "Registering camera " << name );
+
+	if( !_extrinsicsManager.HasMember( name ) )
+	{
+		if( !_extrinsicsManager.ReadMemberInfo( name, false ) ) 
+		{ 
+			throw std::runtime_error( "VisualOdometryPipeline: Could not retrieve extrinsics for " 
+			                          + name );
+		}
+	}
+
+	CameraRegistration& reg = _cameraRegistry[ name ];
+	reg.name = name;
+
+	unsigned int buffSize;
+	GetParam<unsigned int>( info, "buffer_size", buffSize, 1 );
+	
+	std::string imageTopic;
+	GetParamRequired( info, "image_topic", imageTopic );
+	if( _imageTopics.count( imageTopic ) > 0 )
+	{
+		ROS_WARN_STREAM( "Source: " << name << " image topic: " <<
+		                 imageTopic << " already has subscriptions. Skipping subscribe step." );
+	}
+	else
+	{
+		reg.imageSub = _imagePort.subscribeCamera( imageTopic, 
+		                                           buffSize, 
+		                                           &VisualOdometryPipeline::ImageCallback, 
+		                                           this );
+		_imageTopics.insert( imageTopic );
+	}
+
+	GetParamRequired( info, "show_output", reg.showOutput );
+	if( reg.showOutput )
+	{
+		std::string debugTopicName = _privHandle.resolveName( name + "/image_debug" );
+		ROS_INFO_STREAM( "Displaying debug output for " << name << 
+		                 " on topic" << debugTopicName );
+		reg.debugPub = _imagePort.advertise( debugTopicName, 1 );
+	}
+	std::string velTopic;
+	GetParamRequired( info, "output_topic", velTopic );
+	reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( velTopic, 0 );
+}
 
 void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& msg,
                                             const sensor_msgs::CameraInfoConstPtr& info_msg )
@@ -194,7 +199,9 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 
 	// Track interest points into current frame
 	// TODO Initialize a better guess
-	current.points = reg.lastFrame.points;
+	PoseSE2 guessPose;
+	guessPose.FromSE3( reg.lastPointsPose );
+	current.points = TransformPoints( reg.keyFrame.points, guessPose );
 	if( !_tracker->TrackInterestPoints( reg.keyFrame, 
 	                                    current) )
 	{
@@ -247,7 +254,8 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
 	// ROS_INFO_STREAM( "dt: " << dt << std::endl <<
 	//                  "displacement: " << cameraDisplacement << std::endl <<
-	//                  "cam velocity: " << cameraVelocity.transpose() );
+	//                  "cam velocity: " << cameraVelocity.transpose() << std::endl <<
+	//                  "current pose: " << currentPose );
 
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = current.time;
@@ -277,6 +285,11 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg )
 {
 	unsigned int width = reg.keyFrame.frame.cols;
 	unsigned int height = reg.keyFrame.frame.rows;
+	if( width == 0 || height == 0 )
+	{
+		ROS_WARN_STREAM( "VisualOdometryPipeline: Cannot visualize empty frame!" );
+		return;
+	}
 
 	// Create image side-by-side
 	cv::Mat visImage( height, width*2, reg.keyFrame.frame.type() );
@@ -297,30 +310,6 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg )
 		cv::circle( visRight, reg.lastFrame.points[i], 3, cv::Scalar(0), -1, 8 );
 		cv::circle( visRight, reg.lastFrame.points[i], 2, cv::Scalar(255), -1, 8 );
 	}
-	// for( unsigned int i = 0; i < reg.lastPointsPredicted.size(); i++ )
-	// {
-	// 	cv::circle( visRight, reg.lastPointsPredicted[i], 3, cv::Scalar(0), -1, 8 );
-	// 	cv::circle( visRight, reg.lastPointsPredicted[i], 2, cv::Scalar(128), -1, 8 );
-	// }
-	
-	// TODO?
-	// Display linear velocity vector
-// 	cv::Size imgSize = visImage.size();
-// 	cv::Point2d imgCenter( imgSize.width/2, imgSize.height/2 );
-// 	cv::Point2d arrowDisplacement( w(0), w(1) );
-// 	cv::arrowedLine( visImage, imgCenter, imgCenter + arrowDisplacement, 
-// 						cv::Scalar(0), 3 );
-// 	cv::arrowedLine( visImage, imgCenter, imgCenter + arrowDisplacement, 
-// 						cv::Scalar(255), 2 );
-	
-	// Display angular velocity
-// 	int hudRadius = 15;
-// 	double vw = w(5);
-// 	cv::Point2f wIndicator( hudRadius*std::sin( vw ), hudRadius*std::cos( vw ) );
-// 	cv::ellipse( visImage, imgCenter, cv::Size( hudRadius, hudRadius ), 90,
-// 					0, vw*180/M_PI, cv::Scalar(0), 3 );
-// 	cv::ellipse( visImage, imgCenter, cv::Size( hudRadius, hudRadius ), 90,
-// 					0, vw*180/M_PI, cv::Scalar(255), 2 );
 	
 	std_msgs::Header header;
 	header.stamp = reg.lastFrame.time;
@@ -332,15 +321,23 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg )
 void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
                                           const FrameInterestPoints& key )
 {
+	ROS_INFO_STREAM( "Setting keyframe..." );
 	reg.keyFrame = key;
 	reg.keyFrame.points = _detector->FindInterestPoints( reg.keyFrame.frame );
+	reg.originalNumKeypoints = reg.keyFrame.points.size();
+	if( reg.originalNumKeypoints == 0 )
+	{
+		ROS_INFO_STREAM( "Could not find interest points in keyframe. Resetting..." );
+		reg.keyFrame.frame = cv::Mat();
+		return;
+	}
+
 	// NOTE We want to keep them unnormalized for tracking purposes
 	reg.keyFrame = reg.keyFrame.Undistort();
 
 	reg.lastFrame = reg.keyFrame;
 
 	reg.lastPointsPose = PoseSE3();
-	reg.originalNumKeypoints = reg.keyFrame.points.size();
 }
 
 } // end namespace odoflow

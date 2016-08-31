@@ -48,11 +48,12 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_flowEigenThreshold.AddCheck<GreaterThanOrEqual>( 0 );
 	_flowEigenThreshold.AddCheck<LessThanOrEqual>( flowThreshold.max );
 
-	double flowErrThreshold;
+	FullNumericRange flowErrThreshold;
 	GetParamRequired( ph, "flow_error_threshold", flowErrThreshold );
-	_maxFlowError.Initialize( ph, flowErrThreshold, "flow_error_threshold", 
+	_maxFlowError.Initialize( ph, flowErrThreshold.init, "flow_error_threshold", 
 	                                "Lucas-Kanade max solution error threshold." );
-	_maxFlowError.AddCheck<GreaterThanOrEqual>( 0 );
+	_maxFlowError.AddCheck<GreaterThanOrEqual>( flowErrThreshold.min );
+	_maxFlowError.AddCheck<LessThanOrEqual>( flowErrThreshold.max );
 }
 
 bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
@@ -88,11 +89,11 @@ bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
 	                          termCriteria, 
 	                          cv::OPTFLOW_USE_INITIAL_FLOW, 
 	                          _flowEigenThreshold );
-	
+
 	InterestPointsf keyInliers, targetInliers;
 	for( unsigned int i = 0; i < status.size(); ++i )
 	{
-		if( status[i] == 0 || errors[i] < _maxFlowError )
+		if( status[i] == 1 && errors[i] < _maxFlowError )
 		{
 			keyInliers.push_back( keyPoints[i] );
 			targetInliers.push_back( targetPoints[i] );
