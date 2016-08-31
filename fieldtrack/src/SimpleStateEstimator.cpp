@@ -196,7 +196,7 @@ Odometry StampedFilter::GetOdomMsg() const
 	                                                  FilterType::TangentDim>(), 
 	                 msg.twist.covariance );
 	return msg;
-F}
+}
 
 SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle, 
                                             ros::NodeHandle& privHandle )

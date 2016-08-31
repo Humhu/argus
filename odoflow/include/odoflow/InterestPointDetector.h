@@ -24,6 +24,8 @@ public:
 	
 	InterestPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ) {}
+
+	virtual ~InterestPointDetector() {};
 	
 	/*! \brief Return interest points in a target image. Type of image
 		* required depends on point finder instantiation. */

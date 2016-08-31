@@ -38,6 +38,7 @@ bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
 		return false;
 	}
 
+
 	std::vector<char> inliers;
 	FrameInterestPoints keyNormalized = key.Normalize();
 	FrameInterestPoints tarNormalized = tar.Normalize();
@@ -84,7 +85,7 @@ bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
 	// ROS_INFO_STREAM( "Ab: " << std::endl << Ab );
 	// ROS_INFO_STREAM( "R: " << std::endl << R );
 
-	Eigen::Matrix<double,4,4> H = Eigen::Matrix<double,4,4>::Identity();
+	MatrixType H = MatrixType::Identity(4,4);
 	H.block<2,2>(1,1) = R;
 	H(1,3) = -Ab(0,2) * _scale; // Image x corresponds to camera -y
 	H(2,3) = -Ab(1,2) * _scale; // Image y corresponds to camera -z

@@ -11,29 +11,32 @@ namespace argus
 FASTPointDetector::FASTPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : InterestPointDetector( nh, ph )
 {
-	unsigned int initIntensityThreshold;
-	GetParamRequired<unsigned int>( ph, "intensity_threshold", initIntensityThreshold );
-	_intensityThreshold.Initialize( ph, initIntensityThreshold, "intensity_threshold",
+	FullNumericRange intensityThreshold;
+	GetParamRequired( ph, "intensity_threshold", intensityThreshold );
+	_intensityThreshold.Initialize( ph, intensityThreshold.init, "intensity_threshold",
 	                                "Minimum central pixel intensity difference" );
-	_intensityThreshold.AddCheck<GreaterThan>( 0 );
-	_intensityThreshold.AddCheck<IntegerValued>( ROUND_CEIL );
+	_intensityThreshold.AddCheck<GreaterThan>( intensityThreshold.min );
+	_intensityThreshold.AddCheck<LessThan>( intensityThreshold.max );
+	_intensityThreshold.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	bool initUseNMS;
 	GetParamRequired<bool>( ph, "enable_nonmax_suppression", initUseNMS );
 	_enableNMS.Initialize( ph, initUseNMS, "enable_nonmax_suppression", 
 	                       "Usage of non-maximum suppression" );
 
-	unsigned int initMaxNumPoints;
-	GetParamRequired<unsigned int>( ph, "max_num_points", initMaxNumPoints );
-	_maxNumPoints.Initialize( ph, initMaxNumPoints, "max_num_points",
+	FullNumericRange maxNumPoints;
+	GetParamRequired( ph, "max_num_points", maxNumPoints );
+	_maxNumPoints.Initialize( ph, maxNumPoints.init, "max_num_points",
 	                          "Maximum number of points to find" );
-	_maxNumPoints.AddCheck<GreaterThan>( 0 );
+	_maxNumPoints.AddCheck<GreaterThanOrEqual>( maxNumPoints.min );
+	_maxNumPoints.AddCheck<LessThanOrEqual>( maxNumPoints.max );
 	_maxNumPoints.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	std::string initType;
 	GetParamRequired<std::string>( ph, "detector_type", initType );
 	_detectorType.Initialize( ph, initType, "detector_type",
 	                          "FAST detector type" );
+	// TODO Set type at runtime?
 }
 
 bool CompareKeypoints( const cv::KeyPoint& a, const cv::KeyPoint& b )

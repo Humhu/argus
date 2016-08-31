@@ -15,6 +15,8 @@ public:
 	InterestPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: nodeHandle( nh ), privHandle( ph ) {}
 	
+	virtual ~InterestPointTracker() {}
+
 	/*! \brief Tracks points in first image to second image. If guess is empty,
 		* firstPoints are used as initialization. */
 	virtual bool TrackInterestPoints( FrameInterestPoints& key,
