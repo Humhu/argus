@@ -168,7 +168,10 @@ void StampedFilter::EnforceTwoDimensionality()
 	{
 		filter.FullCov().block( 6*i+2, 0, 3, FilterType::CovarianceDim ).setZero();
 		filter.FullCov().block( 0, 6*i+2, FilterType::CovarianceDim, 3 ).setZero();
-		derivs.segment( 6*i+2, 3 ).setZero();
+	}
+	for( unsigned int i = 0; i < FilterType::CovarianceDim/6 - 1; ++i )
+	{
+		derivs.segment( (6*i) + 2, 3 ).setZero();
 	}
 	filter.Derivs() = derivs;
 }
@@ -193,7 +196,7 @@ Odometry StampedFilter::GetOdomMsg() const
 	                                                  FilterType::TangentDim>(), 
 	                 msg.twist.covariance );
 	return msg;
-}
+F}
 
 SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle, 
                                             ros::NodeHandle& privHandle )
@@ -499,9 +502,6 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 	msg.header.frame_id = _referenceFrame;
 	msg.child_frame_id = _bodyFrame;
 	_latestOdomPub.publish( msg );
-
-	// PoseType::TangentVector tanXls = estFilter.filter.Derivs().segment<FilterType::TangentDim>( FilterType::TangentDim );
-	// _xlTx.Publish( event.current_real, tanXls );
 }
 
 }
