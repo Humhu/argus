@@ -52,11 +52,18 @@ public:
 		{
 			_filter = std::make_shared<ApproximateVoxelGridFilter>();
 		}
+		else if( type == "none" )
+		{
+			// Do nothing
+		}
 		else
 		{
 			throw std::invalid_argument( "Unknown filter type: " + type );
 		}
-		_filter->Initialize( fh );
+		if( _filter )
+		{
+			_filter->Initialize( fh );
+		}
 
 		YAML::Node sources;
 		GetParamRequired( ph, "sources", sources );
@@ -141,8 +148,16 @@ private:
 		if( _cloudRegistry.count( laserName ) == 0 ) { return; }
 
 		// Parse message fields
-		LaserCloudType::Ptr currCloud = boost::make_shared<LaserCloudType>();
-		_filter->Filter( msg, *currCloud );
+		LaserCloudType::Ptr currCloud;
+		if( _filter )
+		{
+			currCloud = boost::make_shared<LaserCloudType>();
+			_filter->Filter( msg, *currCloud );
+		}
+		else
+		{
+			currCloud  = boost::make_shared<LaserCloudType>( *msg );
+		}
 
 		ros::Time currTime;
 		pcl_conversions::fromPCL( msg->header.stamp, currTime );

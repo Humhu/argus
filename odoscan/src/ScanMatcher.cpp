@@ -95,9 +95,6 @@ bool ScanMatcher::Match( const LaserCloudType::ConstPtr& key,
 	if( fitness > _maxError ) { return false; }
 
 	FixedMatrixType<4,4> H = matcher->getFinalTransformation().cast<double>();
-	std::cout << "H: " << std::endl << H << std::endl;
-	double yaw = atan2( H(0,1), H(0,0) );
-	std::cout << "yaw: " << yaw << std::endl;
 	pose = PoseSE3( H );
 
 	return true;
