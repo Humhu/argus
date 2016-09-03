@@ -114,6 +114,19 @@ FrameInterestPoints::Normalize() const
 }
 
 FrameInterestPoints 
+FrameInterestPoints::Unnormalize() const
+{
+	FrameInterestPoints ret( *this );
+	cv::undistortPoints( points, 
+	                     ret.points, 
+	                     cv::Matx33d::eye(),
+	                     cv::Mat(), 
+	                     cv::noArray(), 
+	                     cameraModel.GetIntrinsicMatrix() );
+	return ret;
+}
+
+FrameInterestPoints 
 FrameInterestPoints::UndistortAndNormalize() const
 {
 	FrameInterestPoints ret( *this );

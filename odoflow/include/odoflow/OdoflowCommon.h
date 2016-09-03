@@ -37,6 +37,7 @@ struct FrameInterestPoints
 
 	FrameInterestPoints Undistort() const;
 	FrameInterestPoints Normalize() const;
+	FrameInterestPoints Unnormalize() const;
 	FrameInterestPoints UndistortAndNormalize() const;
 };
 

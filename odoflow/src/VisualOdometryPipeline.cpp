@@ -198,10 +198,23 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	}
 
 	// Track interest points into current frame
-	// TODO Initialize a better guess
-	PoseSE2 guessPose;
-	guessPose.FromSE3( reg.lastPointsPose );
-	current.points = TransformPoints( reg.keyFrame.points, guessPose );
+	
+	// TODO Move into a guess module or something?
+	// Extract 2D pose from previou 3D pose
+	MatrixType lastH = reg.lastPointsPose.ToMatrix();
+	PoseSE2::Rotation lastR( 0 );
+	lastR.fromRotationMatrix( lastH.block<2,2>( 1, 1 ) );
+	Translation2Type lastT( lastH.block<2,1>( 1, 3 ) );
+	PoseSE2 guessPose( lastT, lastR );
+
+	// Since pose is in normalized coordniates, have to normalize, transform, then unnormalize again
+	FrameInterestPoints keyFrameNorm = reg.keyFrame.Normalize();
+	current.points = TransformPoints( keyFrameNorm.points, guessPose );
+	current = current.Unnormalize();
+	
+	// ROS_INFO_STREAM( "Prev points: " << reg.lastFrame.points << std::endl <<
+	                 // "Guess points: " << current.points );
+
 	if( !_tracker->TrackInterestPoints( reg.keyFrame, 
 	                                    current) )
 	{
@@ -273,9 +286,9 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// Check if we need to redetect
 	if( keypointRatio <= _redetectionThreshold )
 	{
-		ROS_INFO_STREAM( reg.keyFrame.points.size() << " inliers less than "
-		                 << _redetectionThreshold * reg.originalNumKeypoints 
-		                 << ". Resetting keyframe." );
+		// ROS_INFO_STREAM( reg.keyFrame.points.size() << " inliers less than "
+		//                  << _redetectionThreshold * reg.originalNumKeypoints 
+		//                  << ". Resetting keyframe." );
 		SetKeyframe( reg, current );
 		return;
 	}
@@ -321,13 +334,13 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg )
 void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
                                           const FrameInterestPoints& key )
 {
-	ROS_INFO_STREAM( "Setting keyframe..." );
+	// ROS_INFO_STREAM( "Setting keyframe..." );
 	reg.keyFrame = key;
 	reg.keyFrame.points = _detector->FindInterestPoints( reg.keyFrame.frame );
 	reg.originalNumKeypoints = reg.keyFrame.points.size();
 	if( reg.originalNumKeypoints == 0 )
 	{
-		ROS_INFO_STREAM( "Could not find interest points in keyframe. Resetting..." );
+		// ROS_INFO_STREAM( "Could not find interest points in keyframe. Resetting..." );
 		reg.keyFrame.frame = cv::Mat();
 		return;
 	}
