@@ -198,7 +198,6 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	}
 
 	// Track interest points into current frame
-	
 	// TODO Move into a guess module or something?
 	// Extract 2D pose from previou 3D pose
 	MatrixType lastH = reg.lastPointsPose.ToMatrix();
