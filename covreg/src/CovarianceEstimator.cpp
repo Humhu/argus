@@ -11,26 +11,6 @@ using namespace covreg;
 namespace argus
 {
 
-// CovarianceEstimator::CovarianceEstimator( const std::string& source,
-//                                           unsigned int featDim,
-//                                           unsigned int matDim, 
-//                                           unsigned int numHiddenLayers, 
-//                                           unsigned int layerWidth )
-// : _sourceName( source ),
-//   _inDim( featDim ),
-//   _outDim( matDim ),
-//   _psd( featDim, matDim, numHiddenLayers, layerWidth ),
-//   _learnCorrelations( false )
-//   // _psd( matDim )
-// {
-// 	_psd.SetSource( &_psdPort );
-// 	_lParams = _psd.lReg.CreateParameters();
-// 	_dParams = _psd.dReg.CreateParameters();
-// 	_params = std::make_shared<percepto::ParameterWrapper>();
-// 	// _params->AddParameters( _lParams ); // TODO
-// 	_params->AddParameters( _dParams );
-// }
-
 CovarianceEstimator::CovarianceEstimator( const std::string& source, 
                                           const YAML::Node& info )
 : _sourceName( source ),

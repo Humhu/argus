@@ -23,13 +23,6 @@ public:
 	typedef VarReLUPosDefModule ModuleType;
 	// typedef ConstantPosDefModule ModuleType;
 
-	/*! \brief Construct an estimator and create new parameters. */
-	// CovarianceEstimator( const std::string& source,
-	//                      unsigned int inputDim,
-	//                      unsigned int outputDim, 
-	//                      unsigned int numHiddenLayers, 
-	//                      unsigned int layerWidth );
-
 	// TODO Parse this from an info message of some sort
 	CovarianceEstimator( const std::string& source, const YAML::Node& info );
 

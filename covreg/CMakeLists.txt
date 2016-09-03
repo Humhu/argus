@@ -88,12 +88,12 @@ target_link_libraries( covreg
 	${covreg_LIBS}
 )
 
-add_executable( optimizer_node nodes/covariance_optimizer.cpp )
-add_dependencies( optimizer_node covreg_gencfg )
-target_link_libraries( optimizer_node
-                       ${catkin_LIBRARIES}
-                       ${covreg_LIBS}
-                       covreg )
+# add_executable( optimizer_node nodes/covariance_optimizer.cpp )
+# add_dependencies( optimizer_node covreg_gencfg )
+# target_link_libraries( optimizer_node
+#                        ${catkin_LIBRARIES}
+#                        ${covreg_LIBS}
+#                        covreg )
 
 add_executable( covariance_repeater nodes/covariance_repeater.cpp )
 add_dependencies( covariance_repeater covreg_gencfg )
@@ -124,7 +124,7 @@ target_link_libraries( velocity_visualizer
                        covreg )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS covreg optimizer_node covariance_repeater performance_estimator adaptive_covariance_repeater
+install(TARGETS covreg covariance_repeater performance_estimator adaptive_covariance_repeater #optimizer_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

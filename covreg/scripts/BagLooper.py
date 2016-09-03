@@ -3,6 +3,9 @@
 import rospy, rosbag, roslib, time, random, sys
 from fieldtrack.srv import ResetFilter
 
+from argus_msgs.msg import FloatVectorStamped
+from broadcast import Broadcasters as Trx
+
 class BagLooper:
     '''Loops a bag repeatedly, adjusting header timestamps to be continuous.'''
 
@@ -18,9 +21,14 @@ class BagLooper:
         self.start_times = {}
         self.publishers = {}
 
-        reset_srv = rospy.get_param( '~reset_service' )
-        rospy.wait_for_service( reset_srv )
-        self.reset_service = rospy.ServiceProxy( reset_srv, ResetFilter )
+        if rospy.has_param( '~reset_service' ):
+            reset_srv = rospy.get_param( '~reset_service' )
+            rospy.loginfo( 'Waiting for reset service %s', reset_srv )
+            rospy.wait_for_service( reset_srv )
+            self.reset_service = rospy.ServiceProxy( reset_srv, ResetFilter )
+        else:
+            self.reset_service = None
+
         self.reset_lead = rospy.Duration( rospy.get_param( '~reset_lead', 0.0 ) )
         self.sample_random = rospy.get_param( '~sample_random', False )
         self.offset_random = rospy.get_param( '~offset_random', False )
@@ -55,6 +63,13 @@ class BagLooper:
                                                                 msg_class, 
                                                                 queue_size=10 )
 
+        self.feat_tx = Trx.Transmitter( stream_name='playback_time',
+                                namespace='~',
+                                feature_size=1,
+                                descriptions=['time'],
+                                mode='push',
+                                queue_size=0 )
+
     def Execute( self ):
 
         zero_dur = rospy.Duration( 0 )
@@ -85,7 +100,8 @@ class BagLooper:
             round_start = rospy.Time.now()
             rospy.loginfo( 'Round start: %f', round_start.to_sec() )
 
-            self.reset_service( 0.0, round_start - self.reset_lead )
+            if self.reset_service is not None:
+                self.reset_service( 0.0, round_start - self.reset_lead )
 
             ( bag_start, bag_end ) = self.times[path]
             bag_start = rospy.Time.from_sec( bag_start )
@@ -159,6 +175,8 @@ class BagLooper:
                 #     pass
 
                 self.publishers[ topic ].publish( msg )
+                tProg = time_from_trunc_start.to_sec() / play_duration.to_sec() 
+                self.feat_tx.publish( rospy.Time.now(), (tProg ,) )
 
                 try:
                     msg.header.stamp = old_stamp
