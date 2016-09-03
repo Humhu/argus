@@ -4,7 +4,6 @@ import math
 import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
-from argus_msgs.msg import FloatVectorStamped
 
 from broadcast import Broadcasters as Trx
 

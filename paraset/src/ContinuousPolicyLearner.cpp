@@ -292,7 +292,6 @@ void ContinuousPolicyLearner::TimerCallback( const ros::TimerEvent& event )
 		                             action.output,
 		                             advantage );
 
-		_critic->Publish( action );
 		ROS_INFO_STREAM( "Action: " << action.output.transpose() << 
 		                 " Input: " << action.input.transpose() << 
 		                 " Advantage: " << advantage );

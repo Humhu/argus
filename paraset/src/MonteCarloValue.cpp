@@ -34,15 +34,6 @@ void MonteCarloValue::Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_horizonSteps = std::floor( horizonTime / stepSize );
 	_timestep = ros::Duration( stepSize );
 
-	_outputPub = ph.advertise<paraset::RewardStamped>( "output", 0 );
-}
-
-void MonteCarloValue::Publish( const ParamAction& x ) const
-{
-	paraset::RewardStamped msg;
-	msg.header.stamp = x.time;
-	msg.reward = Evaluate( x );
-	_outputPub.publish( msg );
 }
 
 double MonteCarloValue::Evaluate( const ParamAction& x ) const

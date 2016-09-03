@@ -35,7 +35,10 @@ private:
 	{
 		try
 		{
-			_valueFunction.Publish( ParamAction( event.current_real, VectorType() ) );
+			paraset::RewardStamped msg;
+			msg.header.stamp = event.current_real;
+			msg.reward = _valueFunction.Evaluate( ParamAction( event.current_real, VectorType() ) );
+			_valuePub.publish( msg );
 		}
 		catch( std::out_of_range e )
 		{

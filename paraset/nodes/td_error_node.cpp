@@ -41,7 +41,9 @@ private:
 		ros::Time queryTime = event.current_real - _offset;
 		try
 		{
-			_critic.Publish( ParamAction( queryTime, VectorType() ) );
+			paraset::RewardStamped msg;
+			msg.header.stamp = queryTime;
+			msg.reward = _critic.Evaluate( ParamAction( queryTime, VectorType() ) );
 		}
 		catch( std::out_of_range e )
 		{

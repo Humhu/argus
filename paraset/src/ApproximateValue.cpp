@@ -46,22 +46,11 @@ void ApproximateValue::Initialize( ros::NodeHandle& nh,
 
 	ROS_INFO_STREAM( "ApproximateValue: Network initialized: " << std::endl << _approximator->Print() );
 
-	_outputPub = ph.advertise<paraset::RewardStamped>( "output", 0 );
-
 	std::string updateTopic;
 	if( GetParam( ph, "update_topic", updateTopic ) )
 	{
 		_paramsSub = nh.subscribe( updateTopic, 1, &ApproximateValue::ParamsCallback, this );
 	}
-}
-
-// TODO Move this to some common class
-void ApproximateValue::Publish( const ParamAction& x ) const
-{
-	paraset::RewardStamped msg;
-	msg.header.stamp = x.time;
-	msg.reward = Evaluate( x );
-	_outputPub.publish( msg );
 }
 
 double ApproximateValue::Evaluate( const ParamAction& x ) const

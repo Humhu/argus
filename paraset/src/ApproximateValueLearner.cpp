@@ -237,12 +237,20 @@ void ApproximateValueLearner::AddSample( const ros::Time& time )
 	try
 	{
 		reward = _rewardFunction.IntegratedReward( prevTime, currTime );
+	}
+	catch( std::out_of_range )
+	{
+		ROS_WARN_STREAM( "Could not evaluate reward at time: " << currTime );
+		return;
+	}
+	try
+	{
 		currInput = _valueFunction.GetInput( currTime );
 		prevInput = _valueFunction.GetInput( prevTime );
 	}
 	catch( std::out_of_range )
 	{
-		ROS_WARN_STREAM( "Could not evaluate reward or actions at current time: " << currTime );
+		ROS_WARN_STREAM( "Could not evaluate inputs at time: " << currTime );
 		return;
 	}
 

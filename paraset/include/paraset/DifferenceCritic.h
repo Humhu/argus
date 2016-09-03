@@ -18,8 +18,6 @@ public:
 
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
-	virtual void Publish( const ParamAction& act ) const;
-
 	virtual double Evaluate( const ParamAction& act ) const;
 
 private:

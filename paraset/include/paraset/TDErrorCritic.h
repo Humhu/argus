@@ -18,8 +18,9 @@ public:
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
 	double GetReward( const ros::Time& time ) const;
-	virtual void Publish( const ParamAction& act ) const;
 	virtual double Evaluate( const ParamAction& act ) const;
+
+	ros::Duration GetTimestep() const;
 
 private:
 

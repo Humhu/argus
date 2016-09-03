@@ -71,14 +71,9 @@ double TDErrorCritic::Evaluate( const ParamAction& act ) const
 	return tdError;
 }
 
-void TDErrorCritic::Publish( const ParamAction& act ) const
+ros::Duration TDErrorCritic::GetTimestep() const
 {
-	paraset::RewardStamped msg;
-	msg.header.stamp = act.time;
-	msg.reward = Evaluate( act );
-	_estPub.publish( msg );
-
-	_valueFunction->Publish( act );
+	return _timestep;
 }
 
 }

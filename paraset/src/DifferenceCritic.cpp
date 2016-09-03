@@ -41,12 +41,6 @@ void DifferenceCritic::Initialize( ros::NodeHandle& nh,
 	}
 }
 
-void DifferenceCritic::Publish( const ParamAction& act ) const
-{
-	_valueFunction->Publish( act );
-	_baselineFunction->Publish( act );
-}
-
 double DifferenceCritic::Evaluate( const ParamAction& act ) const
 {
 	return _valueFunction->Evaluate( act ) - _baselineFunction->Evaluate( act );

@@ -18,12 +18,9 @@ public:
 
 	void Initialize( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
-	virtual void Publish( const ParamAction& x ) const;
 	virtual double Evaluate( const ParamAction& x ) const;
 
 private:
-
-	ros::Publisher _outputPub;
 
 	RewardInterpolater _rewardFunction;
 	unsigned int _horizonSteps;

@@ -57,8 +57,6 @@ private:
 	ContinuousPolicyModule::Ptr _network;
 
 	percepto::TerminalSource<VectorType> _networkInput;
-	percepto::Parameters::Ptr _networkMeanParameters;
-	percepto::Parameters::Ptr _networkCovParameters;
 	percepto::Parameters::Ptr _networkParameters;
 
 	void ParamCallback( const argus_msgs::FloatVectorStamped::ConstPtr& msg );
