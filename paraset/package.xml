@@ -20,13 +20,15 @@
   <build_depend>broadcast</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
-  
+  <build_depend>poli</build_depend>
+
   <run_depend>roscpp</run_depend>
   <run_depend>argus_utils</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>broadcast</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
+  <run_depend>poli</run_depend>
   
 </package>
 

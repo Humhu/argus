@@ -1,13 +1,11 @@
 #include "paraset/DiscretePolicy.h"
 #include "paraset/SetRuntimeParameter.h"
-#include "paraset/DiscreteParamAction.h"
+#include "relearn/DiscreteAction.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 
 #include <boost/foreach.hpp>
 #include <ros/service.h>
-
-using namespace paraset;
 
 namespace argus
 {

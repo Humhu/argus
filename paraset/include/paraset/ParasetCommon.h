@@ -1,7 +1,6 @@
 #pragma once
 
 #include "paraset/RuntimeParameter.h"
-#include "paraset/ParasetActionCommon.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 

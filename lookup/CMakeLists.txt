@@ -4,7 +4,11 @@ project(lookup)
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 
-set(CMAKE_BUILD_TYPE Release)
+if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+  message(STATUS "No build type selected, default to Release")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif ()
+message(STATUS "Build configuration: ${CMAKE_BUILD_TYPE}")
 
 find_package(catkin REQUIRED 
 	COMPONENTS		message_generation
