@@ -23,6 +23,7 @@ int main( int argc, char** argv )
 		lookupNamespace += "/"; 
 		
 	}
+	ROS_INFO_STREAM( "Using lookup namespace: " << lookupNamespace );
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
 	std::string targetName;
@@ -35,7 +36,7 @@ int main( int argc, char** argv )
 	std::string targetNamespace;
 	ph.param<std::string>( "target_namespace", targetNamespace, "" );
 	
-	lookupInterface.WriteNamespace( targetName, targetNamespace );	
+	lookupInterface.WriteNamespace( targetName, targetNamespace );
 	
 	bool keepParams;
 	ph.param( "keep_params", keepParams, false );

@@ -2,6 +2,7 @@
 
 #include "broadcast/BroadcastReceiver.h"
 
+#include <memory>
 #include <deque>
 
 namespace argus
@@ -10,6 +11,8 @@ namespace argus
 class BroadcastMultiReceiver
 {
 public:
+
+	typedef std::shared_ptr<BroadcastMultiReceiver> Ptr;
 
 	BroadcastMultiReceiver();
 
