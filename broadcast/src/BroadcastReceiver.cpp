@@ -126,6 +126,16 @@ bool BroadcastReceiver::ReadStream( const ros::Time& time, StampedFeatures& f ) 
 	}
 }
 
+ros::Time BroadcastReceiver::EarliestTime() const
+{
+	return get_lowest_key( _featureCache );
+}
+
+ros::Time BroadcastReceiver::LatestTime() const
+{
+	return get_highest_key( _featureCache );
+}
+
 bool BroadcastReceiver::PullStream( const ros::Time& time, StampedFeatures& f ) const
 {
 	broadcast::QueryFeatures srv;

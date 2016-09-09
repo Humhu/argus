@@ -57,4 +57,26 @@ bool BroadcastMultiReceiver::ReadStream( const ros::Time& time,
 	return true;
 }
 
+ros::Time BroadcastMultiReceiver::EarliestTime() const
+{
+	ros::Time latestEarliest = _receivers[0].EarliestTime();
+	for( unsigned int i = 1; i < _receivers.size(); ++i )
+	{
+		ros::Time t = _receivers[i].EarliestTime();
+		if( t > latestEarliest ) { latestEarliest = t; }
+	}
+	return latestEarliest;
+}
+
+ros::Time BroadcastMultiReceiver::LatestTime() const
+{
+	ros::Time earliestLatest = _receivers[0].LatestTime();
+	for( unsigned int i = 1; i < _receivers.size(); ++i )
+	{
+		ros::Time t = _receivers[i].LatestTime();
+		if( t < earliestLatest ) { earliestLatest = t; }
+	}
+	return earliestLatest;
+}
+
 }

@@ -41,6 +41,9 @@ public:
 
 	bool ReadStream( const ros::Time& time, StampedFeatures& features ) const;
 
+	ros::Time EarliestTime() const;
+	ros::Time LatestTime() const;
+
 private:
 
 	mutable Mutex _mutex;
