@@ -77,6 +77,7 @@ private:
 	{
 		Mutex mutex;
 		
+		unsigned int framesSkipped;
 		std::string name;
 		bool showOutput;
 		image_transport::CameraSubscriber imageSub;
@@ -97,6 +98,7 @@ private:
 
 	NumericParam _redetectionThreshold;
 	NumericParam _minInlierRatio;
+	NumericParam _subsampleRate;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
 

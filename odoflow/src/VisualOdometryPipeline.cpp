@@ -52,6 +52,13 @@ _extrinsicsManager( _lookupInterface )
 	                           "Pipeline min feature inlier threshold" );
 	_minInlierRatio.AddCheck<GreaterThan>( 0 );
 	_minInlierRatio.AddCheck<LessThanOrEqual>( 1.0 );
+
+	double initSubsampleRate;
+	GetParamRequired( ph, "subsample_rate", initSubsampleRate );
+	_subsampleRate.Initialize( ph, initSubsampleRate, "subsample_rate",
+	                           "Frame subsampling rate" );
+	_subsampleRate.AddCheck<GreaterThanOrEqual>( 0 );
+	_subsampleRate.AddCheck<IntegerValued>( ROUND_CLOSEST );
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
@@ -138,6 +145,7 @@ void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML
 
 	CameraRegistration& reg = _cameraRegistry[ name ];
 	reg.name = name;
+	reg.framesSkipped = 0;
 
 	unsigned int buffSize;
 	GetParam<unsigned int>( info, "buffer_size", buffSize, 1 );
@@ -185,6 +193,14 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	CameraRegistration& reg = _cameraRegistry[ cameraName ];
 	WriteLock lock( reg.mutex );
 
+	// Check for subsampling
+	if( reg.framesSkipped < _subsampleRate )
+	{
+		reg.framesSkipped++;
+		return;
+	}
+	reg.framesSkipped = 0;
+
 	FrameInterestPoints current;
 	current.time = msg->header.stamp;
 	current.cameraModel = camplex::CameraCalibration( "calib", *info_msg );
@@ -224,15 +240,17 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	}
 
 	// Failure if not enough inliers in tracking
-	double inlierRatio = current.points.size() / (double) reg.originalNumKeypoints;
-	if( inlierRatio <= _minInlierRatio )
+	size_t numTrackingInliers = current.points.size();
+	double trackingInlierRatio = numTrackingInliers / (double) reg.originalNumKeypoints;
+	if( trackingInlierRatio <= _minInlierRatio )
 	{
-		ROS_INFO_STREAM( current.points.size() << " inliers after tracking less than min " <<
+		ROS_INFO_STREAM( numTrackingInliers << " inliers after tracking less than min " <<
 		                 reg.originalNumKeypoints * _minInlierRatio << ". Resetting keyframe." );
 		SetKeyframe( reg, current );
 		if( reg.showOutput ) { VisualizeFrame( reg ); }
 		return;
 	}
+	ROS_INFO_STREAM( "Post tracking inliers: " << numTrackingInliers );
 	
 	// Estimate motion between frames
 	PoseSE3 currentPose;
@@ -247,16 +265,18 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	}
 
 	// Check number of inliers
-	double keypointRatio = reg.keyFrame.points.size() / (double) reg.originalNumKeypoints;
-	if( keypointRatio <= _minInlierRatio )
+	size_t numMotionInliers = current.points.size();
+	double motionInlierRatio = numMotionInliers / (double) numTrackingInliers;
+	if( motionInlierRatio <= _minInlierRatio )
 	{
-		ROS_INFO_STREAM( reg.keyFrame.points.size() << " inliers after motion estimation less than "
-		                 << _minInlierRatio * reg.originalNumKeypoints 
+		ROS_INFO_STREAM( numMotionInliers << " inliers after motion estimation less than "
+		                 << _minInlierRatio * numTrackingInliers
 		                 << ". Resetting keyframe." );
 		SetKeyframe( reg, current );
 		if( reg.showOutput ) { VisualizeFrame( reg ); }
 		return;
 	}
+	ROS_INFO_STREAM( "Post estimation inliers: " << numMotionInliers );
 
 	// Have to calculate dt before getting timestamp
 	double dt = ( current.time - reg.lastFrame.time ).toSec();
@@ -283,7 +303,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	if( reg.showOutput ) { VisualizeFrame( reg ); }
 
 	// Check if we need to redetect
-	if( keypointRatio <= _redetectionThreshold )
+	if( motionInlierRatio <= _redetectionThreshold )
 	{
 		// ROS_INFO_STREAM( reg.keyFrame.points.size() << " inliers less than "
 		//                  << _redetectionThreshold * reg.originalNumKeypoints 
