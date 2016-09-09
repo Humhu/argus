@@ -4,7 +4,7 @@ import rospy
 import numpy as np
 from math import sqrt
 from nav_msgs.msg import Odometry
-from paraset.msg import RewardStamped
+from percepto_msgs.msg import RewardStamped
 
 class RMSPerformanceEvaluator:
     '''Publishes reward messages from odometry RMS error.'''

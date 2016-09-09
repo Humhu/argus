@@ -109,7 +109,7 @@ void ContinuousParamPolicy::SetOutput( const VectorType& output )
 		}
 		else if( MsgToParamVariant( res.actual ) != params[i] )
 		{
-			ROS_WARN_STREAM( "ContinuousParamPolicy: Actual differs from request." );
+			// ROS_WARN_STREAM( "ContinuousParamPolicy: Actual differs from request." );
 		}
 	}
 }
