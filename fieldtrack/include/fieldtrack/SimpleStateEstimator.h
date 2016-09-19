@@ -98,8 +98,8 @@ private:
 	bool _usingAdaptiveTrans;
 	
 	// TODO For some reason an uninitialiezd estimtaor seems to cause a growing memory footprint over time...
-	CovarianceManager _Qestimator;
-	AdaptiveTransitionCovarianceEstimator _Qadapter;
+	percepto::CovarianceManager _Qestimator;
+	percepto::AdaptiveTransitionCovarianceEstimator _Qadapter;
 
 	ros::Duration _updateLag;
 
@@ -118,7 +118,7 @@ private:
 	{
 		ros::Subscriber sub;
 		bool usingAdaptive;
-		AdaptiveObservationCovarianceEstimator Radapter;
+		percepto::AdaptiveObservationCovarianceEstimator Radapter;
 	};
 	typedef std::unordered_map<std::string, UpdateRegistration> UpdateRegistry;
 	UpdateRegistry _updateSubs;
