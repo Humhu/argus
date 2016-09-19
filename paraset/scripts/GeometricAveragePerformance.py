@@ -4,33 +4,31 @@ import rospy
 import numpy as np
 from math import sqrt
 from percepto_msgs.msg import RewardStamped
-from collections import deque
 
 class RunningAveragePerformance:
-    '''Outputs a running average window reward.'''
+    '''Outputs a geometric average reward.'''
 
     def __init__( self ):
         rospy.init_node( 'running_average_performance' )
 
-        self.max_window_len = round( rospy.get_param( '~window_length' ) )
-        if self.max_window_len < 0:
-            raise ValueError( 'window_length must be positive.' )
+        self.gamma = rospy.get_param( '~gamma' )
+        if self.gamma < 0 or self.gamma > 1.0:
+            raise ValueError( 'gamma must be between 0 and 1.' )
+
+        self.acc = rospy.get_param( '~initial_average', None )
 
         self.reward_pub = rospy.Publisher( '~average', RewardStamped, queue_size=0 )
         self.odom_sub = rospy.Subscriber( 'reward', RewardStamped, self.RewardCallback )
-        self.window = deque()
-        self.acc = 0
 
     def RewardCallback( self, msg ):
-        self.acc += msg.reward
-        self.window.append( msg.reward )
-
-        while len( self.window ) > self.max_window_len:
-            self.acc = self.acc - self.window.popleft()
+        if self.acc is None:
+            self.acc = msg.reward
+        else:
+            self.acc = self.acc * self.gamma + (1.0 - self.gamma) * msg.reward
 
         out = RewardStamped()
         out.header.stamp = msg.header.stamp
-        out.reward = self.acc / len( self.window )
+        out.reward = self.acc
 
         self.reward_pub.publish( out )
 
