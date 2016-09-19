@@ -99,6 +99,7 @@ private:
 	NumericParam _redetectionThreshold;
 	NumericParam _minInlierRatio;
 	NumericParam _subsampleRate;
+	NumericParam _maxFrameDt;
 
 	PoseSE3::CovarianceMatrix _obsCovariance;
 

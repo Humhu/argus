@@ -59,6 +59,11 @@ _extrinsicsManager( _lookupInterface )
 	                           "Frame subsampling rate" );
 	_subsampleRate.AddCheck<GreaterThanOrEqual>( 0 );
 	_subsampleRate.AddCheck<IntegerValued>( ROUND_CLOSEST );
+
+	double initMaxFrameDt;
+	GetParamRequired( ph, "max_frame_dt", initMaxFrameDt );
+	_maxFrameDt.Initialize( ph, initMaxFrameDt, "max_frame_dt",
+	                        "Maximum frame time difference" );
 	
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
@@ -193,6 +198,20 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	CameraRegistration& reg = _cameraRegistry[ cameraName ];
 	WriteLock lock( reg.mutex );
 
+	FrameInterestPoints current;
+	current.time = msg->header.stamp;
+	current.cameraModel = camplex::CameraCalibration( "calib", *info_msg );
+	cv::cvtColor( cv_bridge::toCvShare( msg )->image, current.frame, CV_BGR2GRAY );
+	
+	// Initialization catch
+	double timeSinceLastFrame = ( current.time - reg.lastFrame.time ).toSec();
+	if( reg.keyFrame.frame.empty() || timeSinceLastFrame > _maxFrameDt )
+	{
+		SetKeyframe( reg, current );
+		if( reg.showOutput ) { VisualizeFrame( reg ); }
+		return;
+	}
+
 	// Check for subsampling
 	if( reg.framesSkipped < _subsampleRate )
 	{
@@ -200,18 +219,6 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 		return;
 	}
 	reg.framesSkipped = 0;
-
-	FrameInterestPoints current;
-	current.time = msg->header.stamp;
-	current.cameraModel = camplex::CameraCalibration( "calib", *info_msg );
-	cv::cvtColor( cv_bridge::toCvShare( msg )->image, current.frame, CV_BGR2GRAY );
-	
-	// Initialization catch
-	if( reg.keyFrame.frame.empty() )
-	{
-		SetKeyframe( reg, current );
-		return;
-	}
 
 	// Track interest points into current frame
 	// TODO Move into a guess module or something?
