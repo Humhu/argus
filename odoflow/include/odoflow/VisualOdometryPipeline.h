@@ -96,6 +96,7 @@ private:
 	// Need this to avoid double-subscribing
 	std::unordered_set<std::string> _imageTopics;
 
+	NumericParam _minNumKeypoints;
 	NumericParam _redetectionThreshold;
 	NumericParam _minInlierRatio;
 	NumericParam _subsampleRate;

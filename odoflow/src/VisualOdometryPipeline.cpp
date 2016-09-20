@@ -65,6 +65,11 @@ _extrinsicsManager( _lookupInterface )
 	_maxFrameDt.Initialize( ph, initMaxFrameDt, "max_frame_dt",
 	                        "Maximum frame time difference" );
 	
+	unsigned int initMinKeypoints;
+	GetParamRequired( ph, "min_num_keypoints", initMinKeypoints );
+	_minNumKeypoints.Initialize( ph, initMinKeypoints, "min_num_keypoints",
+	                             "Minimum number of keyframe points." );
+
 	std::vector<double> covarianceData;
 	if( ph.getParam( "velocity_covariance", covarianceData ) )
 	{
@@ -205,7 +210,9 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	
 	// Initialization catch
 	double timeSinceLastFrame = ( current.time - reg.lastFrame.time ).toSec();
-	if( reg.keyFrame.frame.empty() || timeSinceLastFrame > _maxFrameDt )
+	if( reg.keyFrame.frame.empty() || 
+		timeSinceLastFrame > _maxFrameDt ||
+		reg.keyFrame.points.size() < _minNumKeypoints )
 	{
 		SetKeyframe( reg, current );
 		if( reg.showOutput ) { VisualizeFrame( reg ); }
@@ -291,10 +298,21 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	const ExtrinsicsInfo& cameraInfo = _extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
-	// ROS_INFO_STREAM( "dt: " << dt << std::endl <<
-	//                  "displacement: " << cameraDisplacement << std::endl <<
-	//                  "cam velocity: " << cameraVelocity.transpose() << std::endl <<
-	//                  "current pose: " << currentPose );
+
+	if( frameVelocity.norm() > 100 )
+	{
+		for( unsigned int i = 0; i < current.points.size(); i++ )
+		{
+			ROS_INFO_STREAM( "Point " << i << ": " << current.points[i].x << ", " << current.points[i].y );
+		}
+
+		ROS_INFO_STREAM( "dt: " << dt << std::endl <<
+		                 "displacement: " << cameraDisplacement << std::endl <<
+		                 "cam velocity: " << cameraVelocity.transpose() << std::endl <<
+		                 "last pose: " << reg.lastPointsPose << std::endl <<
+		                 "current pose: " << currentPose );
+		throw std::runtime_error( "Large velocity!" );
+	}
 
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = current.time;
@@ -364,10 +382,12 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
 	reg.keyFrame = key;
 	reg.keyFrame.points = _detector->FindInterestPoints( reg.keyFrame.frame );
 	reg.originalNumKeypoints = reg.keyFrame.points.size();
-	if( reg.originalNumKeypoints == 0 )
+	if( reg.originalNumKeypoints < _minNumKeypoints )
 	{
-		// ROS_INFO_STREAM( "Could not find interest points in keyframe. Resetting..." );
+		ROS_INFO_STREAM( "Found " << reg.originalNumKeypoints << " keypoints, less than min: " <<
+			             (unsigned int) _minNumKeypoints );
 		reg.keyFrame.frame = cv::Mat();
+		reg.keyFrame.points.clear();
 		return;
 	}
 
