@@ -106,6 +106,8 @@ private:
 	bool twoDimensional;
 	bool velocityOnly;
 
+	double _maxEntropy;
+
 	std::string _referenceFrame;
 	std::string _bodyFrame;
 	ros::Timer _updateTimer;
@@ -153,6 +155,8 @@ private:
 	//                                         const MatrixType& C, 
 	//                                         const MatrixType& R );
 	void TimerCallback( const ros::TimerEvent& event );
+
+	void CheckForDivergence( const ros::Time& now );
 };
 
 }

@@ -281,6 +281,8 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	privHandle.param<bool>( "velocity_only", velocityOnly, false );
 	ROS_INFO_STREAM( "Velocity only mode: " << velocityOnly );
 
+	GetParamRequired( privHandle, "max_entropy", _maxEntropy );
+
 	_resetHandler = privHandle.advertiseService( "reset", 
 		                                         &SimpleStateEstimator::ResetFilterCallback,
 		                                         this );
@@ -437,9 +439,47 @@ MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 //                                         const MatrixType& R )
 // {}
 
+void SimpleStateEstimator::CheckForDivergence( const ros::Time& now )
+{
+	// Entropy of our state estimate is log-determinant of covariances
+	WriteLock lock( _mutex );
+
+	Eigen::LDLT<FilterType::FullCovType> ldlt( _filter.filter.FullCov() );
+	VectorType Dvec = ldlt.transpositionsP().transpose() * ldlt.vectorD();
+
+	if( velocityOnly )
+	{
+		Dvec.head<6>() = FixedVectorType<6>::Constant( 1.0 );
+	}
+
+	if( twoDimensional )
+	{
+		for( unsigned int i = 0; i < FilterType::CovarianceDim/6; ++i )
+		{
+			Dvec.segment( 6*i + 2, 3 ) = FixedVectorType<3>::Ones();
+		}
+	}
+
+	double entropy = std::log( Dvec.array().prod() );
+	// ROS_INFO_STREAM( "Dvec: " << Dvec.transpose() );
+	// ROS_INFO_STREAM( "Entropy: " << entropy );
+
+	lock.unlock();
+
+	if( entropy > _maxEntropy )
+	{
+		ROS_WARN_STREAM( "Filter entropy: " << entropy << " greater than max: " << _maxEntropy <<
+		                 " Resetting filter..." );
+		Reset( 0, now );
+	}
+}
+
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
+
+	CheckForDivergence( now );
+
 	WriteLock lock( _mutex );
 	if( now < _filter.filterTime )
 	{
