@@ -22,6 +22,7 @@ CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& 
 	GetParamRequired<double>( ph, "min_separation", initMinSeparation );
 	_featureMinSeparation.Initialize( ph, initMinSeparation, "min_separation", "Minimum feature separation (pix)" );
 	_featureMinSeparation.AddCheck<GreaterThanOrEqual>( 0 );
+	_featureMinSeparation.AddCheck<LessThanOrEqual>( 1.0 );
 
 	unsigned int initBlockDim;
 	GetParamRequired<unsigned int>( ph, "block_dim", initBlockDim );
@@ -72,11 +73,13 @@ InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
 	InterestPoints points;
 	if( image.empty() ) { return points; }
 	
+	double imageScale = ( image.size().width + image.size().height ) * 0.5;
+	double separation = _featureMinSeparation * imageScale;
 	cv::goodFeaturesToTrack( image, 
 	                         points, 
 	                         _featureMaxPoints, 
 	                         _featureMinQuality, 
-	                         _featureMinSeparation, 
+	                         separation, 
 	                         cv::noArray(), 
 	                         _featureBlockDim,
 	                         _useHarris, 
