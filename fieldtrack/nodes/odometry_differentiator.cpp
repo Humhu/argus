@@ -2,6 +2,7 @@
 
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/TwistStamped.h"
+#include "geometry_msgs/PoseStamped.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/geometry/GeometryUtils.h"
@@ -21,46 +22,100 @@ public:
 		GetParam<double>( ph, "min_dt", dt, 0.1 );
 		_minDt = ros::Duration( dt );
 
-		_twistPub = nh.advertise<geometry_msgs::TwistStamped>( "velocity", 
-		                                                  buffLen );
-		_odomSub = nh.subscribe( "odom", 
-		                         buffLen, 
-		                         &OdometryDifferentiator::OdomCallback, 
-		                         this );
+		GetParamRequired( ph, "output_mode", _outputMode );
+		if( _outputMode == "twist_stamped" )
+		{
+			_outputPub = nh.advertise<geometry_msgs::TwistStamped>( "output", buffLen );
+		}
+		else if( _outputMode == "odometry" )
+		{
+			_outputPub = nh.advertise<nav_msgs::Odometry>( "output", buffLen );
+		}
+		else
+		{
+			throw std::invalid_argument( "Unknown output mode: " + _outputMode );
+		}
+
+		std::string inputMode;
+		GetParamRequired( ph, "input_mode", inputMode );
+		if( inputMode == "odometry" )
+		{
+			_inputSub = nh.subscribe( "input", 
+			                         buffLen, 
+			                         &OdometryDifferentiator::OdomCallback, 
+			                         this );
+		}
+		else if( inputMode == "pose_stamped" )
+		{
+			_inputSub = nh.subscribe( "input",
+			                          buffLen,
+			                          &OdometryDifferentiator::PoseStampedCallback,
+			                          this );
+		}
+		else
+		{
+			throw std::invalid_argument( "Unknown input mode: " + inputMode );
+		}
 	}
 
 private:
 
-	ros::Publisher _twistPub;
-	ros::Subscriber _odomSub;
-	PoseSE3 _lastPose;
-	ros::Time _lastPoseTime;
+	ros::Publisher _outputPub;
+	ros::Subscriber _inputSub;
+
 	bool initialized;
 	ros::Duration _minDt;
+	std::string _outputMode;
+
+	PoseSE3 _lastPose;
+	ros::Time _lastPoseTime;
 
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
 		PoseSE3 pose = MsgToPose( msg->pose.pose );
+		ProcessPose( pose, msg->header );
+	}
+
+	void PoseStampedCallback( const geometry_msgs::PoseStamped::ConstPtr& msg )
+	{
+		PoseSE3 pose = MsgToPose( msg->pose );
+		ProcessPose( pose, msg->header );
+	}
+
+	void ProcessPose( const PoseSE3& pose, 
+	                  const std_msgs::Header& header )
+	{
 		if( !initialized )
 		{
 			_lastPose = pose;
-			_lastPoseTime = msg->header.stamp;
+			_lastPoseTime = header.stamp;
 			initialized = true;
 			return;
 		}
-		if( msg->header.stamp - _lastPoseTime < _minDt ) { return; }
+		if( header.stamp - _lastPoseTime < _minDt ) { return; }
 
 		PoseSE3 delta = _lastPose.Inverse() * pose;
-		double dt = ( msg->header.stamp - _lastPoseTime ).toSec();
+		double dt = ( header.stamp - _lastPoseTime ).toSec();
 		PoseSE3::TangentVector twist = PoseSE3::Log( delta ) / dt;
 
-		geometry_msgs::TwistStamped out;
-		out.header = msg->header;
-		out.twist = TangentToMsg( twist );
-		_twistPub.publish( out );
+		if( _outputMode == "twist_stamped" )
+		{
+			geometry_msgs::TwistStamped out;
+			out.header = header;
+			out.twist = TangentToMsg( twist );
+			_outputPub.publish( out );
+		}
+		else if( _outputMode == "odometry" )
+		{
+			nav_msgs::Odometry out;
+			out.header = header;
+			out.pose.pose = PoseToMsg( pose );
+			out.twist.twist = TangentToMsg( twist );
+			_outputPub.publish( out );
+		}
 
 		_lastPose = pose;
-		_lastPoseTime = msg->header.stamp;
+		_lastPoseTime = header.stamp;
 	}
 
 };
