@@ -12,19 +12,18 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 {
 	GetParam( ph, "scale", _scale );
 
-	FullNumericRange reprojThreshold;
+	double reprojThreshold;
 	GetParam( ph, "reprojection_threshold", reprojThreshold);
-	_reprojThreshold.Initialize( ph, reprojThreshold.init, "reprojection_threshold", 
+	_reprojThreshold.Initialize( ph, reprojThreshold, "reprojection_threshold", 
 	                             "RANSAC reprojection inlier threshold" );
-	_reprojThreshold.AddCheck<GreaterThanOrEqual>( reprojThreshold.min );
-	_reprojThreshold.AddCheck<LessThanOrEqual>( reprojThreshold.max );
+	_reprojThreshold.AddCheck<GreaterThan>( 0 );
+	_reprojThreshold.AddCheck<LessThan>( 1.0 );
 
-	FullNumericRange maxIters;
+	unsigned int maxIters;
 	GetParam( ph, "max_iters", maxIters );
-	_maxIters.Initialize( ph, maxIters.init, "max_iters",
+	_maxIters.Initialize( ph, maxIters, "max_iters",
 	                      "RANSAC max iterations" );
-	_maxIters.AddCheck<GreaterThanOrEqual>( maxIters.min );
-	_maxIters.AddCheck<LessThanOrEqual>( maxIters.max );
+	_maxIters.AddCheck<GreaterThan>( 0 );
 	_maxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 }
 

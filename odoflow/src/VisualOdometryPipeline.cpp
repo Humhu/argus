@@ -299,21 +299,6 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
 
-	if( frameVelocity.norm() > 100 )
-	{
-		for( unsigned int i = 0; i < current.points.size(); i++ )
-		{
-			ROS_INFO_STREAM( "Point " << i << ": " << current.points[i].x << ", " << current.points[i].y );
-		}
-
-		ROS_INFO_STREAM( "dt: " << dt << std::endl <<
-		                 "displacement: " << cameraDisplacement << std::endl <<
-		                 "cam velocity: " << cameraVelocity.transpose() << std::endl <<
-		                 "last pose: " << reg.lastPointsPose << std::endl <<
-		                 "current pose: " << currentPose );
-		throw std::runtime_error( "Large velocity!" );
-	}
-
 	geometry_msgs::TwistWithCovarianceStamped tmsg;
 	tmsg.header.stamp = current.time;
 	tmsg.header.frame_id = cameraInfo.referenceFrame;

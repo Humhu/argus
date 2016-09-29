@@ -13,12 +13,11 @@ FixedPointDetector::FixedPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph
 _cachedGridSize( 0, 0 )
 {
 
-	FullNumericRange gridDim;
+	unsigned int gridDim;
 	GetParamRequired( privHandle, "grid_dim", gridDim );
-	_gridDim.Initialize( ph, gridDim.init, "grid_dim", 
+	_gridDim.Initialize( ph, gridDim, "grid_dim", 
 	                     "Interest point grid width and height." );
-	_gridDim.AddCheck<GreaterThanOrEqual>( gridDim.min );
-	_gridDim.AddCheck<LessThanOrEqual>( gridDim.max );
+	_gridDim.AddCheck<GreaterThan>( 0 );
 	_gridDim.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	UpdateInterestPoints();

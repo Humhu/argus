@@ -11,25 +11,24 @@ namespace argus
 FASTPointDetector::FASTPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : InterestPointDetector( nh, ph )
 {
-	FullNumericRange intensityThreshold;
+	unsigned int intensityThreshold;
 	GetParamRequired( ph, "intensity_threshold", intensityThreshold );
-	_intensityThreshold.Initialize( ph, intensityThreshold.init, "intensity_threshold",
+	_intensityThreshold.Initialize( ph, intensityThreshold, "intensity_threshold",
 	                                "Minimum central pixel intensity difference" );
-	_intensityThreshold.AddCheck<GreaterThan>( intensityThreshold.min );
-	_intensityThreshold.AddCheck<LessThan>( intensityThreshold.max );
+	_intensityThreshold.AddCheck<GreaterThanOrEqual>( 0 );
+	_intensityThreshold.AddCheck<LessThanOrEqual>( 255 );
 	_intensityThreshold.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	bool initUseNMS;
-	GetParamRequired<bool>( ph, "enable_nonmax_suppression", initUseNMS );
-	_enableNMS.Initialize( ph, initUseNMS, "enable_nonmax_suppression", 
+	bool useNMS;
+	GetParamRequired<bool>( ph, "enable_nonmax_suppression", useNMS );
+	_enableNMS.Initialize( ph, useNMS, "enable_nonmax_suppression", 
 	                       "Usage of non-maximum suppression" );
 
-	FullNumericRange maxNumPoints;
+	unsigned int maxNumPoints;
 	GetParamRequired( ph, "max_num_points", maxNumPoints );
-	_maxNumPoints.Initialize( ph, maxNumPoints.init, "max_num_points",
+	_maxNumPoints.Initialize( ph, maxNumPoints, "max_num_points",
 	                          "Maximum number of points to find" );
-	_maxNumPoints.AddCheck<GreaterThanOrEqual>( maxNumPoints.min );
-	_maxNumPoints.AddCheck<LessThanOrEqual>( maxNumPoints.max );
+	_maxNumPoints.AddCheck<GreaterThanOrEqual>( 0 );
 	_maxNumPoints.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	std::string initType;
