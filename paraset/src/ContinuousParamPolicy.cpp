@@ -37,6 +37,14 @@ void ContinuousParamPolicy::Initialize( ros::NodeHandle& nh,
 		          "upper_limit", 
 		          registration.upperLimit, 
 		          std::numeric_limits<double>::infinity() );
+		GetParam( info,
+		          "scale",
+		          registration.scale,
+		          1.0 );
+		GetParam( info, 
+		          "offset",
+		          registration.offset,
+		          0.0 );
 
 		// Get service path
 		std::string servicePath;
@@ -47,10 +55,14 @@ void ContinuousParamPolicy::Initialize( ros::NodeHandle& nh,
 
 	_upperLimits = VectorType( _parameters.size() );
 	_lowerLimits = VectorType( _parameters.size() );
+	_scales = VectorType( _parameters.size() );
+	_offsets = VectorType( _parameters.size() );
 	for( unsigned int i = 0; i < _parameters.size(); ++i )
 	{
 		_lowerLimits(i) = _parameters[i].lowerLimit;
 		_upperLimits(i) = _parameters[i].upperLimit;
+		_scales(i) = _parameters[i].scale;
+		_offsets(i) = _parameters[i].offset;
 	}
 }
 
@@ -89,17 +101,22 @@ void ContinuousParamPolicy::SetOutput( const VectorType& output )
 
 	std::vector<RuntimeParam> params;
 	params.reserve( output.size() );
+	std::stringstream setss;
 	for( unsigned int i = 0; i < output.size(); ++i )
 	{
 		double out = output(i);
 		const ParameterRegistration& reg = _parameters[i];
+		out = reg.scale * out + reg.offset;
+		params.emplace_back( out );
 		out = std::max( out, reg.lowerLimit );
 		out = std::min( out, reg.upperLimit );
-		params.emplace_back( out );
+		setss << reg.name << ": " << out << std::endl;
 	}
+	ROS_INFO_STREAM( "Setting parameters: " << std::endl << setss.str() );
 
 	paraset::SetRuntimeParameter::Request req;
 	paraset::SetRuntimeParameter::Response res;
+	std::stringstream actss;
 	for( unsigned int i = 0; i < _parameters.size(); ++i )
 	{
 		req.param = ParamVariantToMsg( params[i] );
@@ -107,11 +124,11 @@ void ContinuousParamPolicy::SetOutput( const VectorType& output )
 		{
 			ROS_WARN_STREAM( "ContinuousParamPolicy: Could not set parameter: " << _parameters[i].name );
 		}
-		else if( MsgToParamVariant( res.actual ) != params[i] )
-		{
-			// ROS_WARN_STREAM( "ContinuousParamPolicy: Actual differs from request." );
-		}
+
+		RuntimeParam actual = MsgToParamVariant( res.actual );
+		actss << _parameters[i].name << ": " << ParamVariantToString( actual ) << std::endl;
 	}
+	ROS_INFO_STREAM( "Actual parameters: " << std::endl << actss.str() );
 }
 
 std::ostream& operator<<( std::ostream& os, const ContinuousParamPolicy& policy )

@@ -37,12 +37,16 @@ private:
 
 	VectorType _lowerLimits;
 	VectorType _upperLimits;
+	VectorType _scales;
+	VectorType _offsets;
 
 	struct ParameterRegistration
 	{
 		std::string name;
 		double lowerLimit;
 		double upperLimit;
+		double scale;
+		double offset;
 		ros::ServiceClient setService;
 	};
 	std::vector<ParameterRegistration> _parameters;

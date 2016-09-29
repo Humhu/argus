@@ -31,6 +31,7 @@ add_message_files( FILES
 add_service_files( FILES
 	SetRuntimeParameter.srv
 	GetParameterInfo.srv
+	StartEvaluation.srv
 )
 
 generate_messages( 
@@ -71,7 +72,11 @@ add_executable( continuous_parameter_policy nodes/continuous_parameter_policy.cp
 add_dependencies( continuous_parameter_policy paraset )
 target_link_libraries( continuous_parameter_policy paraset ${catkin_LIBRARIES} )
 
-install( TARGETS paraset continuous_parameter_policy
+add_executable( continuous_parameter_interface nodes/continuous_parameter_interface.cpp )
+add_dependencies( continuous_parameter_interface paraset )
+target_link_libraries( continuous_parameter_interface paraset ${catkin_LIBRARIES} )
+
+install( TARGETS paraset continuous_parameter_policy continuous_parameter_interface
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
