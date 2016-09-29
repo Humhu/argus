@@ -1,6 +1,0 @@
-# Service to request critic feedback
-
-time stamp
-float64[] input
----
-float64 advantage
