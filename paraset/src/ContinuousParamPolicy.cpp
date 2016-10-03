@@ -107,9 +107,9 @@ void ContinuousParamPolicy::SetOutput( const VectorType& output )
 		double out = output(i);
 		const ParameterRegistration& reg = _parameters[i];
 		out = reg.scale * out + reg.offset;
-		params.emplace_back( out );
 		out = std::max( out, reg.lowerLimit );
 		out = std::min( out, reg.upperLimit );
+		params.emplace_back( out );
 		setss << reg.name << ": " << out << std::endl;
 	}
 	ROS_INFO_STREAM( "Setting parameters: " << std::endl << setss.str() );
