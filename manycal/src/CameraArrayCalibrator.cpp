@@ -45,9 +45,10 @@ bool CameraArrayCalibrator::WriteResults( manycal::WriteCalibration::Request& re
 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
 		ROS_INFO_STREAM( "Camera " << name << " pose " << extrinsics );
 		
-		extrinsicsManager.GetInfo( name ).extrinsics = extrinsics;
-		extrinsicsManager.GetInfo( name ).referenceFrame = referenceFrame;
-		extrinsicsManager.WriteMemberInfo( name );
+		ExtrinsicsInfo info;
+		info.extrinsics = extrinsics;
+		info.referenceFrame = referenceFrame;
+		extrinsicsManager.WriteMemberInfo( name, info, true );
 
 		YAML::Node node;
 		PopulateExtrinsicsCalibration( extrinsicsManager.GetInfo( name ), node );

@@ -147,7 +147,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 		poseMsg.relative_pose.target_time = msg->header.stamp;
 		poseMsg.relative_pose.relative_pose = PoseToMsg( frameRelativePose );
 		double quality = sumMinDists / detections.size();
-		SerializeSymmetricMatrix( covariance / quality, poseMsg.covariance );
+		SerializeMatrix( covariance / quality, poseMsg.covariance );
 		posePub.publish( poseMsg );
 	}
 }

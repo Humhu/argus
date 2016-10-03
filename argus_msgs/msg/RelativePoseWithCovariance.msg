@@ -8,4 +8,4 @@ std_msgs/Header header
 argus_msgs/RelativePose relative_pose
 
 # Covariance associated with relative pose
-float64[21] covariance
+float64[36] covariance
