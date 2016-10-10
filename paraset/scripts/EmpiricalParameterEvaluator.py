@@ -6,6 +6,7 @@ from percepto_msgs.srv import GetCritique, GetCritiqueRequest, GetCritiqueRespon
 from percepto_msgs.srv import SetParameters, SetParametersRequest
 from percepto_msgs.msg import RewardStamped
 from paraset.srv import StartEvaluation
+from fieldtrack.srv import ResetFilter, ResetFilterRequest
 
 class EmpiricalParameterEvaluator:
 
@@ -20,6 +21,11 @@ class EmpiricalParameterEvaluator:
         evaluation_topic = rospy.get_param( '~start_evaluation_service' )
         rospy.wait_for_service( evaluation_topic )
         self.evaluation_proxy = rospy.ServiceProxy( evaluation_topic, StartEvaluation )
+
+        # Create filter reset proxy
+        reset_topic = rospy.get_param( '~reset_filter_service' )
+        rospy.wait_for_service( reset_topic )
+        self.reset_proxy = rospy.ServiceProxy( reset_topic, ResetFilter )
 
         # Subscribe to reward topic
         self.reward_lock = Lock()
@@ -45,6 +51,16 @@ class EmpiricalParameterEvaluator:
             self.setter_proxy.call( preq )
         except rospy.ServiceException:
             rospy.logerror( 'Could not set parameters to %s', (str(req.parameters),) )
+            return None
+
+        # Reset state estimator
+        resreq = ResetFilterRequest()
+        resreq.time_to_wait = 0
+        resreq.filter_time = rospy.Time.now()
+        try:
+            self.reset_proxy.call( resreq )
+        except rospy.ServiceException:
+            rospy.logerror( 'Could not reset filter.' )
             return None
 
         # Wait until evaluation is done

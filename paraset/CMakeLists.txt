@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
 					std_msgs
 					nav_msgs
 					poli
+					bandito
 )
 
 # Use Boost for most utilities, threading
@@ -49,6 +50,7 @@ catkin_package(
 					std_msgs
 					nav_msgs
 					poli
+					bandito
 					
 	DEPENDS 		Boost 
 					system_lib

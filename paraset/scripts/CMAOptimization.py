@@ -25,7 +25,7 @@ class CMAOptimization:
 
         # Read initialization
         self.mean = rospy.get_param( '~initial_mean' )
-        self.cov = rospy.get_param( '~initial_variances' )
+        self.cov = rospy.get_param( '~initial_std_dev' )
 
         # Custom termination conditions
         self.max_iters = rospy.get_param( '~convergence/max_iters', float('Inf') )
@@ -35,6 +35,8 @@ class CMAOptimization:
         self.num_restarts = rospy.get_param( '~num_restarts', 0 )
 
         self.cma_options = cma.CMAOptions()
+        self.cma_options['verb_disp'] = 1
+        self.cma_options['verb_plot'] = 1
         self.cma_options['popsize'] = rospy.get_param( '~population_size' )
         self.cma_options['tolfun'] = float( rospy.get_param( '~convergence/output_change', -float('Inf') ) )
         self.cma_options['tolx'] = float( rospy.get_param( '~convergence/input_change', -float('Inf') ) )
@@ -67,9 +69,12 @@ class CMAOptimization:
         optimizer = cma.CMAEvolutionStrategy( self.mean, self.cov, self.cma_options )
         while not optimizer.stop() and not rospy.is_shutdown():
             inputs = optimizer.ask()
-            optimizer.tell( [ inputs, self.EvaluateInput( inval ) for inval in inputs ] )
+            optimizer.tell( inputs, [ self.EvaluateInput( inval ) for inval in inputs ] )
             optimizer.logger.add()
             optimizer.disp()
+            cma.show()
+            optimizer.logger.plot()
+            self.iter_counter += 1
         self.loggers.append( optimizer.logger )
         return optimizer.best
 
@@ -80,13 +85,15 @@ class CMAOptimization:
             res = self.critique_service.call( req )
         except rospy.ServiceException:
             raise RuntimeError( 'Could not evaluate item: ' + PrintArray( inval ) )
-        sample = CrossEntropySample( input=, output=res.critique )
+        sample = CrossEntropySample( input=inval, output=res.critique )
         self.Log( 'Evaluated: ' + PrintCES( sample ) )
-        return res.critique
 
-    def HasTerminated( self ):
+        # Critique is a reward so we have to negate it to get a cost
+        return -res.critique
+
+    def HasTerminated( self, optimizer ):
         runtime_exceeded = (rospy.Time.now() - self.start_time).to_sec() > self.max_runtime
-        iters_exceeded = self.iter_counter > self.max_iters
+        iters_exceeded = self.iter_counter >= self.max_iters
         return runtime_exceeded or iters_exceeded
 
     def Execute( self ):
@@ -95,12 +102,14 @@ class CMAOptimization:
 
         while not rospy.is_shutdown():
             for restart_iter in range( 0, self.num_restarts + 1 ):
-                result = OptimizationIteration()
+                result = self.OptimizationIteration()
                 self.Log( 'Iteration best: input: %s output: %f' % ( PrintArray( result.x ), 
                                                                                  result.f ) )
-                best_solution.update( results )
+                best_solution.update( result )
                 self.Log( 'Best so far: input: %s output: %f' % ( PrintArray( best_solution.x ), 
                                                                   best_solution.f ) )
+            break
+
         # Clean up
         self.output_log.close()
 
