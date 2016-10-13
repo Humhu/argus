@@ -19,23 +19,6 @@ class ParameterBanditNode:
         random.seed( seed )
 
         self.num_rounds = rospy.get_param('~num_rounds', float('Inf'))
-
-        # Sample arms
-        num_arms = rospy.get_param('~num_arms')
-        lower_limits = np.array(rospy.get_param('~params_lower_limits'))
-        upper_limits = np.array(rospy.get_param('~params_upper_limits'))
-        if len( lower_limits ) != len( upper_limits ):
-            raise ValueError( 'Lower and upper limits must have save length.' )
-        
-        self.arms = [ [ random.uniform(low,upp) for (low,upp) 
-                        in izip( lower_limits, upper_limits ) ]
-                      for i in range(num_arms) ]
-
-        b = rospy.get_param('~reward_scale', 1.0)
-        c = rospy.get_param('~criteria_c', 1.0)
-        self.criterion = lambda h,e: criterions.ucbv_criterion(h,e,b,c)
-        self.bandit = bandits.BanditInterface( self.criterion,
-                                               num_arms = num_arms )
         
         # Output log
         log_path = rospy.get_param('~output_log')
@@ -43,24 +26,59 @@ class ParameterBanditNode:
         if self.out_log is None:
             raise IOError('Could not open output log at: ' + log_path)
 
+        num_arms = rospy.get_param('~num_arms', 0)
+        b = rospy.get_param('~reward_scale', 1.0)
+        c = rospy.get_param('~criteria_c', 1.0)
+        beta = rospy.get_param('~beta')
+
         # Print header
         self.out_log.write('Random seed: %s\n' % str(seed))
         self.out_log.write('Reward scale: %f\n' % b)
         self.out_log.write('Criteria c: %f\n' % c)
-        self.out_log.write('Num arms: %d\n' % num_arms)
-        self.out_log.write('Num rounds: %f\n' % self.num_rounds)
+        self.out_log.write('Hardness beta: %f\n' % beta)
+        self.out_log.write('Init arms: %d\n' % num_arms)
+        self.out_log.write('Num rounds: %d\n' % self.num_rounds)
 
-        # Print arms
-        for i,arm in enumerate(self.arms):
-            msg = 'Arm: %d Params: %s\n' % (i, str(arm))
-            rospy.loginfo( msg )
-            self.out_log.write( msg )
-        self.out_log.flush()
+        # Sample arms
+        self.param_lower_lims = np.array(rospy.get_param('~params_lower_limits'))
+        self.param_upper_lims = np.array(rospy.get_param('~params_upper_limits'))
+        if len( self.param_lower_lims ) != len( self.param_upper_lims ):
+            raise ValueError( 'Lower and upper limits must have save length.' )
+        
+        self.arms = []
+        for i in range(num_arms):
+            self.add_arm()
+
+        self.criterion = lambda h,e: criterions.ucb_v_criterion( history=h,
+                                                                 exp_factor=e,
+                                                                 reward_scale=b,
+                                                                 c=c )
+        anytime_mode = rospy.get_param( '~anytime_mode', False )
+        if anytime_mode:
+            self.air = lambda K, i: criterions.ucb_air_criterion( num_arms=K,
+                                                                  round_num=i,
+                                                                  beta=beta,
+                                                                  max_attainable=True )
+        else:
+            self.air = None
+
+        self.bandit = bandits.BanditInterface( self.criterion,
+                                               arm_func = self.air,
+                                               num_arms = num_arms )
 
         # Create critique service proxy
         critique_topic = rospy.get_param( '~critic_service' )
         rospy.wait_for_service( critique_topic )
         self.critique_service = rospy.ServiceProxy( critique_topic, GetCritique, True )
+
+    def add_arm( self ):
+        arm = [ random.uniform(low,upp) for (low,upp) 
+                in izip( self.param_lower_lims, self.param_upper_lims ) ]
+        self.arms.append( arm )
+        msg = 'Arm: %d Params: %s\n' % (len(self.arms)-1, str(arm))
+        rospy.loginfo( msg )
+        self.out_log.write( msg )
+        self.out_log.flush()
 
     def evaluate_input( self, inval ):
         req = GetCritiqueRequest()
@@ -75,6 +93,9 @@ class ParameterBanditNode:
         i = 0
         while not rospy.is_shutdown() and i < self.num_rounds:
             ind = self.bandit.ask()
+            if ind >= len( self.arms ):
+                self.add_arm()
+
             rospy.loginfo( 'Evaluating arm %d...' % ind )
             reward = self.evaluate_input( self.arms[ind] )
             rospy.loginfo( 'Arm %d returned reward %f' % (ind,reward) )
