@@ -74,6 +74,8 @@ public:
 			const YAML::Node& info = iter->second;
 			RegisterCloudSource( name, info );
 		}
+
+		GetParamRequired( ph, "max_dt", _maxDt );
 	}
 
 private:
@@ -86,6 +88,7 @@ private:
 
 	LookupInterface _lookupInterface;
 	ExtrinsicsInfoManager _extrinsicsManager;
+	double _maxDt;
 
 	struct CloudRegistration
 	{
@@ -174,6 +177,13 @@ private:
 		}
 
 		double dt = ( currTime - reg.lastCloudTime ).toSec();
+		if( dt > _maxDt )
+		{
+			reg.lastCloud = currCloud;
+			reg.lastCloudTime = currTime;
+			return;
+		}
+
 		LaserCloudType::Ptr aligned = boost::make_shared<LaserCloudType>();
 
 		PoseSE3 laserDisplacement;
