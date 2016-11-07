@@ -265,7 +265,9 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 
 	// Initialize
 	GetParam<double>( privHandle, "initial_covariance", _initCov, FilterType::FullCovType::Identity() );
+
 	ROS_INFO_STREAM( "Using initial covariance: " << std::endl << _initCov );
+	ROS_INFO_STREAM( "Using covariance rate: " << std::endl << _Qrate );
 
 	// TODO Initial state?
 	WriteLock lock( _mutex );

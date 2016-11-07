@@ -193,10 +193,15 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
                                             const sensor_msgs::CameraInfoConstPtr& info_msg )
 {
 	// Get the camera reg
-	const std::string& cameraName = msg->header.frame_id;
+	std::string cameraName = msg->header.frame_id;
+	if( cameraName[0] == '/' )
+	  {
+	    cameraName.erase(0, 1);
+	  }
 	if( _cameraRegistry.count( cameraName ) == 0 )
 	{
 		// TODO Printout?
+	  ROS_WARN_STREAM("Camera " << cameraName << " not registered.");
 		return;
 	}
 
@@ -205,7 +210,14 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 
 	FrameInterestPoints current;
 	current.time = msg->header.stamp;
-	current.cameraModel = camplex::CameraCalibration( "calib", *info_msg );
+	camplex::CameraCalibration cc( "calib", *info_msg );
+	if( cc.GetFx() == 0.0 or std::isnan( cc.GetFx() ) )
+	  {
+	    ROS_WARN_STREAM( "Camera " << cameraName << " has invalid intrinsics." );
+	    return;
+	  }
+	
+	current.cameraModel = cc;
 	cv::cvtColor( cv_bridge::toCvShare( msg )->image, current.frame, CV_BGR2GRAY );
 	
 	// Initialization catch
