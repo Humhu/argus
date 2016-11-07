@@ -238,7 +238,8 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 		_updateSubs[sourceName].usingAdaptive = iter->second["adaptive"].as<bool>();
 		if( _updateSubs[sourceName].usingAdaptive )
 		{
-			_updateSubs[sourceName].Radapter.Initialize( privHandle, "update_sources/" + sourceName );
+			ros::NodeHandle subh( privHandle.resolveName( "update_sources/" + sourceName ) );
+			_updateSubs[sourceName].Radapter.Initialize( subh );
 		}
 	}
 
@@ -252,7 +253,8 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	}
 	else if( privHandle.hasParam( "transition_cov_adapter" ) )
 	{
-		_Qadapter.Initialize( privHandle, "transition_cov_adapter" );
+		ros::NodeHandle subh( privHandle.resolveName( "transition_cov_adapter" ) );
+		_Qadapter.Initialize( subh );
 		_usingAdaptiveTrans = true;
 	}
 	else
@@ -281,7 +283,7 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	privHandle.param<bool>( "velocity_only", velocityOnly, false );
 	ROS_INFO_STREAM( "Velocity only mode: " << velocityOnly );
 
-	GetParamRequired( privHandle, "max_entropy", _maxEntropy );
+	GetParam( privHandle, "max_entropy", _maxEntropy, std::numeric_limits<double>::infinity() );
 
 	_resetHandler = privHandle.advertiseService( "reset", 
 		                                         &SimpleStateEstimator::ResetFilterCallback,
@@ -409,18 +411,15 @@ MatrixType SimpleStateEstimator::GetCovarianceRate( const ros::Time& time )
 	if( !_usingAdaptiveTrans && _Qestimator.IsReady() )
 	{
 		MatrixType q = _Qestimator.EstimateCovariance( time );
-		// ROS_INFO_STREAM( "Got Q: " << std::endl << q );
 		return q;
 	}
-	else if( _usingAdaptiveTrans && _Qadapter.IsReady() )
+	else if( _usingAdaptiveTrans )
 	{
 		MatrixType q = _Qadapter.GetQ();
-		// ROS_INFO_STREAM( "Got Q: " << std::endl << q );
 		return q;
 	}
 	else
 	{
-		// ROS_WARN_STREAM( "Transition covariance estimator not ready. Using fixed rate." );
 		return _Qrate;
 	}
 }
