@@ -19,7 +19,7 @@ message( STATUS ${CATKIN_DEVEL_PREFIX} )
 include( ExternalProject )
 ExternalProject_Add(
 	isam_external
-	GIT_REPOSITORY git@github.com:Humhu/isam.git
+	GIT_REPOSITORY https://github.com/Humhu/isam.git #git@github.com:Humhu/isam.git
 	BUILD_COMMAND cmake --build .
 	INSTALL_COMMAND make install
 	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CATKIN_DEVEL_PREFIX}
