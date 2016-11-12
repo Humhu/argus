@@ -6,48 +6,56 @@ namespace argus
 {
 
 TargetState::TargetState()
-: velocity( VelocityType::Zero() ), poseCovariance( CovarianceType::Zero() ),
-velocityCovariance( CovarianceType::Zero() )
+: pose(),
+  poseCovariance( PoseSE3::CovarianceMatrix::Zero() ),
+  velocity( PoseSE3::TangentVector::Zero() ), 
+  velocityCovariance( PoseSE3::CovarianceMatrix::Zero() )
 {}
-	
-argus_msgs::CompactOdometry TargetToCompactOdom( const TargetState& state )
+
+TargetState::TargetState( const nav_msgs::Odometry& odom )
 {
-	argus_msgs::CompactOdometry odom;
-	odom.pose.pose = PoseToMsg( state.pose );
-	SerializeSymmetricMatrix( state.poseCovariance, odom.pose.covariance );
-	odom.twist.twist = TangentToMsg( state.velocity );
-	SerializeSymmetricMatrix( state.velocityCovariance, odom.twist.covariance );
+	referenceFrame = odom.header.frame_id;
+	bodyFrame = odom.child_frame_id;
+	timestamp = odom.header.stamp;
+	pose = MsgToPose( odom.pose.pose );
+	ParseMatrix( odom.pose.covariance, poseCovariance );
+	velocity = MsgToTangent( odom.twist.twist );
+	ParseMatrix( odom.twist.covariance, velocityCovariance );
+}
+
+nav_msgs::Odometry TargetState::ToMsg() const
+{
+	nav_msgs::Odometry odom;
+	odom.header.frame_id = referenceFrame;
+	odom.header.stamp = timestamp;
+	odom.child_frame_id = bodyFrame;
+	odom.pose.pose = PoseToMsg( pose );
+	SerializeMatrix( poseCovariance, odom.pose.covariance );
+	odom.twist.twist = TangentToMsg( velocity );
+	SerializeMatrix( velocityCovariance, odom.twist.covariance );
 	return odom;
 }
 
-TargetState CompactOdomToTarget( const argus_msgs::CompactOdometry& odom )
+FilterUpdate::FilterUpdate() {}
+
+FilterUpdate::FilterUpdate( const argus_msgs::FilterUpdate& msg )
 {
-	TargetState state;
-	state.pose = MsgToPose( odom.pose.pose );
-	ParseSymmetricMatrix( odom.pose.covariance, state.poseCovariance );
-	state.velocity = MsgToTangent( odom.twist.twist );
-	ParseSymmetricMatrix( odom.twist.covariance, state.velocityCovariance );
-	return state;
+	sourceName = msg.header.frame_id;
+	timestamp = msg.header.stamp;
+	observationMatrix = MsgToMatrix( msg.observation_matrix );
+	observationCov = MsgToMatrix( msg.observation_cov );
+	observation = GetVectorView( msg.observation );
 }
 
-nav_msgs::Odometry TargetToOdom( const TargetState& state )
+argus_msgs::FilterUpdate FilterUpdate::ToMsg() const
 {
-	nav_msgs::Odometry odom;
-	odom.pose.pose = PoseToMsg( state.pose );
-	SerializeMatrix( state.poseCovariance, odom.pose.covariance );
-	odom.twist.twist = TangentToMsg( state.velocity );
-	SerializeMatrix( state.velocityCovariance, odom.twist.covariance );
-	return odom;	
+	argus_msgs::FilterUpdate msg;
+	msg.header.frame_id = sourceName;
+	msg.header.stamp = timestamp;
+	msg.observation_matrix = MatrixToMsg( observationMatrix );
+	msg.observation_cov = MatrixToMsg( observationCov );
+	SerializeMatrix( observation, msg.observation );
+	return msg;
 }
 
-TargetState OdomToTarget( const nav_msgs::Odometry& odom )
-{
-	TargetState state;
-	state.pose = MsgToPose( odom.pose.pose );
-	ParseMatrix( odom.pose.covariance, state.poseCovariance );
-	state.velocity = MsgToTangent( odom.twist.twist );
-	ParseMatrix( odom.twist.covariance, state.velocityCovariance );
-	return state;
-}
-	
 }

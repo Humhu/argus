@@ -32,7 +32,7 @@ bool CameraArrayState::Activate( const std::string& name )
 }
 
 AccelerationAction::AccelerationAction()
-: acceleration( TargetState::VelocityType::Zero() )
+: acceleration( PoseSE3::TangentVector::Zero() )
 {}
 
 std::ostream& operator<<( std::ostream& os, const CameraArrayAction& action )

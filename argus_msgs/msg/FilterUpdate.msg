@@ -8,7 +8,6 @@ std_msgs/Header header
 MatrixFloat64 observation_matrix
 
 # Observation covariance
-# TODO Make SymmetricFloat64
 MatrixFloat64 observation_cov
 
 # The observation in vector form

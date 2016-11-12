@@ -10,48 +10,34 @@ using namespace argus_msgs;
 namespace argus
 {
 	
-FiducialArrayCalibrator::FiducialArrayCalibrator( const ros::NodeHandle& nh,
-                                                  const ros::NodeHandle& ph )
-: nodeHandle( nh ), privHandle( ph ), fiducialManager( lookupInterface ),
-extrinsicsManager( lookupInterface ), detCounter( 0 )
+FiducialArrayCalibrator::FiducialArrayCalibrator( ros::NodeHandle& nh,
+                                                  ros::NodeHandle& ph )
+: _fiducialManager( _lookupInterface ),
+  _extrinsicsManager( _lookupInterface ), 
+  _detCounter( 0 )
 {
-	if( !ph.getParam( "source_camera", sourceCamera ) )
-	{
-		ROS_ERROR_STREAM( "Must specify source camera for calibration." );
-		exit( -1 );
-	}
+	GetParamRequired( ph, "reference_frame", _referenceFrame );
 	
-	if( !ph.getParam( "reference_frame", referenceFrame ) )
-	{
-		ROS_ERROR_STREAM( "Must specify reference frame ID." );
-		exit( -1 );
-	}
-	
-	GetParam<unsigned int>( privHandle, "batch_period", batchPeriod );
+	GetParamRequired<unsigned int>( ph, "batch_period", _batchPeriod );
 
-	double writeFrequency;
-	ph.param( "write_frequency", writeFrequency, 1.0 );
-	writeTimer = nodeHandle.createTimer( ros::Duration( 1.0 / writeFrequency ),
-	                                     &FiducialArrayCalibrator::WriteResults,
-	                                     this );
-
-	cameraIntrinsics = std::make_shared <isam::MonocularIntrinsics_Node>();
-	cameraIntrinsics->init( isam::MonocularIntrinsics( 1.0, 1.0, Eigen::Vector2d( 0, 0 ) ) );
+	_cameraIntrinsics = std::make_shared <isam::MonocularIntrinsics_Node>();
+	_cameraIntrinsics->init( isam::MonocularIntrinsics( 1.0, 1.0, Eigen::Vector2d( 0, 0 ) ) );
 	
 	std::string lookupNamespace;
 	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
-	lookupInterface.SetLookupNamespace( lookupNamespace );
+	_lookupInterface.SetLookupNamespace( lookupNamespace );
 
-	slam = std::make_shared<isam::Slam>();
+	ros::NodeHandle oh( ph.resolveName( "optimizer" ) );
+	_optimizer = GraphOptimizer( oh );
 	
-	fiducialReference = std::make_shared<isam::PoseSE3_Node>();
-	fiducialReference->init( isam::PoseSE3() );
+	_fiducialReference = std::make_shared<isam::PoseSE3_Node>();
+	_fiducialReference->init( isam::PoseSE3() );
 	// NOTE Don't optimize this
 	
-	detSub = nodeHandle.subscribe( "detections", 
-	                               0, 
-	                               &FiducialArrayCalibrator::DetectionCallback,
-	                               this );
+	_detSub = nh.subscribe( "detections", 
+	                        0, 
+	                        &FiducialArrayCalibrator::DetectionCallback,
+	                        this );
 }
 
 FiducialArrayCalibrator::~FiducialArrayCalibrator() 
@@ -59,33 +45,27 @@ FiducialArrayCalibrator::~FiducialArrayCalibrator()
 
 void FiducialArrayCalibrator::WriteResults( const ros::TimerEvent& event ) 
 {
-	BOOST_FOREACH( const FiducialRegistry::value_type& item, fiducialRegistry )
+	BOOST_FOREACH( const FiducialRegistry::value_type& item, _fiducialRegistry )
 	{
 		const std::string& name = item.first;
 		const FiducialRegistration& registration = item.second;
 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
-		std::cout << "Fiducial " << name << " pose " << extrinsics << std::endl;
+		ROS_INFO_STREAM( "Fiducial " << name << " pose " << extrinsics );
 		
 		ExtrinsicsInfo info;
-		info.referenceFrame = referenceFrame;
+		info.referenceFrame = _referenceFrame;
 		info.extrinsics = extrinsics;
 
-		extrinsicsManager.WriteMemberInfo( name, info, true );
+		_extrinsicsManager.WriteMemberInfo( name, info, true );
 	}
 }
 
 void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr& msg )
 {
-	if( msg->header.frame_id != sourceCamera ) 
-	{
-		ROS_WARN_STREAM( "Received image from non-source camera." );
-		return;
-	}
-	
 	if( msg->detections.size() < 2 ) 
 	{
-		ROS_INFO_STREAM( "Not enough tags in image. Skipping..." );
-		return; 
+		ROS_INFO_STREAM( "Not enough tags in image. Skipping." );
+		return;
 	}
 
 	// Initialize the camera pose for this observation using an initialized fiducial
@@ -93,19 +73,19 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 	BOOST_FOREACH( const FiducialDetection& detection, msg->detections )
 	{
 		// If the fiducial is uninitialized, see if there's a pose prior for it
-		if( fiducialRegistry.count( detection.name ) == 0 )
+		if( _fiducialRegistry.count( detection.name ) == 0 )
 		{
 			if( HasExtrinsicsPrior( detection.name ) && HasIntrinsicsPrior( detection.name ) )
 			{
-				const PoseSE3& prior = extrinsicsManager.GetInfo( detection.name ).extrinsics;
+				const PoseSE3& prior = _extrinsicsManager.GetInfo( detection.name ).extrinsics;
 				if( !RegisterFiducial( detection.name, prior, true ) ) { continue; }
 			}
 		}
 		
-		if( fiducialRegistry.count( detection.name ) > 0 )
+		if( _fiducialRegistry.count( detection.name ) > 0 )
 		{
 			// Initialize the first camera position based on the observation+
-			const FiducialRegistration& fidReg = fiducialRegistry[ detection.name ];
+			const FiducialRegistration& fidReg = _fiducialRegistry[ detection.name ];
 			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
 			                                     nullptr,
 			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
@@ -116,8 +96,8 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 			
 			cameraNode = std::make_shared <isam::PoseSE3_Node>();
 			cameraNode->init( isam::PoseSE3( cameraPose ) );
-			cameraPoses.push_back( cameraNode );
-			slam->add_node( cameraNode.get() );
+			_cameraPoses.push_back( cameraNode );
+			_optimizer.GetOptimizer().add_node( cameraNode.get() );
 			
 			// TODO Prior?
 			
@@ -135,11 +115,11 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 	BOOST_FOREACH( const FiducialDetection& detection, msg->detections )
 	{
 		// If we haven't seen this fiducial before, initialize it
-		if( fiducialRegistry.count( detection.name ) == 0 )
+		if( _fiducialRegistry.count( detection.name ) == 0 )
 		{
 			if( !HasIntrinsicsPrior( detection.name ) ) { continue; }
 			
-			const Fiducial& intrinsics = fiducialManager.GetInfo( detection.name );
+			const Fiducial& intrinsics = _fiducialManager.GetInfo( detection.name );
 			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
 			                                     nullptr,
 			                                     MsgToPoints( intrinsics.points ) );
@@ -147,7 +127,7 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 			PoseSE3 fiducialPose = cameraPose * relPose;
 			RegisterFiducial( detection.name, fiducialPose );
 		}
-		const FiducialRegistration& reg = fiducialRegistry[ detection.name ];
+		const FiducialRegistration& reg = _fiducialRegistry[ detection.name ];
 		
 		// TODO
 		double imageCoordinateErr = std::pow( 0.03, 2 );
@@ -162,32 +142,33 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		props.optFidExtrinsics = true;
 		
 		isam::FiducialFactor::Ptr factor = std::make_shared<isam::FiducialFactor>
-		    ( cameraNode.get(), cameraIntrinsics.get(), nullptr,
-		      fiducialReference.get(), reg.intrinsics.get(), reg.extrinsics.get(),
+		    ( cameraNode.get(), _cameraIntrinsics.get(), nullptr,
+		      _fiducialReference.get(), reg.intrinsics.get(), reg.extrinsics.get(),
 		      DetectionToIsam( detection ), cov, props );
-		slam->add_factor( factor.get() );
-		observations.push_back( factor );
+		_optimizer.GetOptimizer().add_factor( factor.get() );
+		_observations.push_back( factor );
 	}
 	
 
-	if( detCounter % batchPeriod == 0 )
+	if( _detCounter % _batchPeriod == 0 )
 	{
-		slam->batch_optimization();
+		_optimizer.GetOptimizer().batch_optimization();
+		_optimizer.GetOptimizer().print_graph();
 	}
 	else
 	{
-		slam->update();
+		_optimizer.GetOptimizer().update();
 	}
-	detCounter++;
+	_detCounter++;
 }
 
 // Check to see if there is a prior for the name
 bool FiducialArrayCalibrator::HasExtrinsicsPrior( const std::string& name )
 {
-	if( !extrinsicsManager.HasMember( name ) )
+	if( !_extrinsicsManager.HasMember( name ) )
 	{
-		if( !extrinsicsManager.ReadMemberInfo( name, false ) ||
-		    extrinsicsManager.GetInfo( name ).referenceFrame != referenceFrame )
+		if( !_extrinsicsManager.ReadMemberInfo( name, false ) ||
+		    _extrinsicsManager.GetInfo( name ).referenceFrame != _referenceFrame )
 		{ 
 			return false; 
 		}
@@ -198,9 +179,9 @@ bool FiducialArrayCalibrator::HasExtrinsicsPrior( const std::string& name )
 
 bool FiducialArrayCalibrator::HasIntrinsicsPrior( const std::string& name )
 {
-	if( !fiducialManager.HasMember( name ) )
+	if( !_fiducialManager.HasMember( name ) )
 	{
-		if( !fiducialManager.ReadMemberInfo( name, false ) )
+		if( !_fiducialManager.ReadMemberInfo( name, false ) )
 		{
 			ROS_WARN_STREAM( "Could not retrieve fiducial info for " << name );
 			return false;
@@ -214,12 +195,12 @@ bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
                                                 const PoseSE3& pose,
                                                 bool addPrior )
 {
-	if( fiducialRegistry.count( name ) > 0 ) { return true; }
+	if( _fiducialRegistry.count( name ) > 0 ) { return true; }
 	
 	ROS_INFO_STREAM( "Registering fiducial " << name << " with pose " << pose );
 	
 	FiducialRegistration registration;
-	isam::FiducialIntrinsics intrinsics = FiducialToIsam( fiducialManager.GetInfo( name ) );
+	isam::FiducialIntrinsics intrinsics = FiducialToIsam( _fiducialManager.GetInfo( name ) );
 	registration.intrinsics = 
 	    std::make_shared<isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );
 	registration.intrinsics->init( intrinsics );
@@ -227,7 +208,7 @@ bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
 	
 	registration.extrinsics = std::make_shared<isam::PoseSE3_Node>();
 	registration.extrinsics->init( isam::PoseSE3( pose ) );
-	slam->add_node( registration.extrinsics.get() );
+	_optimizer.GetOptimizer().add_node( registration.extrinsics.get() );
 	
 	if( addPrior )
 	{
@@ -236,10 +217,10 @@ bool FiducialArrayCalibrator::RegisterFiducial( const std::string& name,
 			std::make_shared<isam::PoseSE3_Prior>( registration.extrinsics.get(),
 			                                       isam::PoseSE3( pose ),
 			                                       priorCov );
-		slam->add_factor( registration.extrinsicsPrior.get() );
+		_optimizer.GetOptimizer().add_factor( registration.extrinsicsPrior.get() );
 	}
 
-	fiducialRegistry[ name ] = registration;
+	_fiducialRegistry[ name ] = registration;
 	return true;
 }
 

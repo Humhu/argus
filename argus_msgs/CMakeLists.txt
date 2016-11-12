@@ -4,6 +4,7 @@ project(argus_msgs)
 find_package(catkin REQUIRED COMPONENTS
                     message_generation
                     geometry_msgs
+                    nav_msgs
                     std_msgs
                     sensor_msgs
 )
@@ -11,7 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate service files
 add_message_files( FILES
                   CompactOdometry.msg
-                  CompactOdometryArray.msg
                   CompactPoseWithCovariance.msg
                   CompactTwistWithCovariance.msg
                   EstimatePerformance.msg
@@ -22,6 +22,7 @@ add_message_files( FILES
                   FloatVectorStamped.msg
                   ImageFiducialDetections.msg
                   MatrixFloat64.msg
+                  OdometryArray.msg
                   OdometryBounds.msg
                   Point2D.msg
                   RelativePose.msg
@@ -32,9 +33,11 @@ add_message_files( FILES
 generate_messages( DEPENDENCIES 
                    std_msgs
                    sensor_msgs
+                   nav_msgs
 )
 
 catkin_package( CATKIN_DEPENDS message_runtime 
                                std_msgs 
                                sensor_msgs
+                               nav_msgs
 )

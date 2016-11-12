@@ -97,7 +97,8 @@ private:
 	FilterType::FullCovType _Qrate;
 	bool _usingAdaptiveTrans;
 	
-	// TODO For some reason an uninitialiezd estimtaor seems to cause a growing memory footprint over time...
+	// TODO For some reason an uninitialized estimator seems to cause 
+	// a growing memory footprint over time...
 	percepto::CovarianceManager _Qestimator;
 	percepto::AdaptiveTransitionCovarianceEstimator _Qadapter;
 
@@ -112,8 +113,6 @@ private:
 	std::string _bodyFrame;
 	ros::Timer _updateTimer;
 	unsigned int _infoNumber;
-
-	// BroadcastTransmitter _xlTx;
 
 	// Subscribers to argus_msgs::FilterUpdate
 	struct UpdateRegistration
@@ -130,8 +129,6 @@ private:
 	UpdateBuffer _updateBuffer;
 
 	ros::Publisher _latestOdomPub; // Publishes nav_msgs::Odometry
-	ros::Publisher _laggedOdomPub; // Publishes lagged odometry
-	ros::Publisher _transCovPub;
 	ros::Publisher _stepPub; // Publishes argus_msgs::FilterStepInfo
 	ros::ServiceServer _resetHandler;
 
@@ -139,8 +136,10 @@ private:
 
 	void UpdateCallback( const argus_msgs::FilterUpdate::ConstPtr& msg );
 	
-	// Process all messages until the specified time
-	void ProcessUpdateBuffer( const ros::Time& until );
+	// \brief Process all messages until the specified time
+	void ProcessUpdateBuffer( const ros::Time& until, 
+	                          bool publishInfo,
+	                          bool clearUsed );
 
 	bool ResetFilterCallback( fieldtrack::ResetFilter::Request& req,
 	                          fieldtrack::ResetFilter::Response& res );

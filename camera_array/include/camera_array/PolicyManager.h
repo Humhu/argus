@@ -9,7 +9,7 @@
 #include "lookup/LookupInterface.h"
 
 #include "nav_msgs/Odometry.h"
-#include "argus_msgs/CompactOdometryArray.h"
+#include "argus_msgs/OdometryArray.h"
 
 namespace argus
 {
@@ -35,7 +35,7 @@ protected:
 	ros::Subscriber odomSub;
 	
 	nav_msgs::Odometry::ConstPtr lastOdometry;
-	argus_msgs::CompactOdometryArray::ConstPtr lastTargets;
+	argus_msgs::OdometryArray::ConstPtr lastTargets;
 	
 	LookupInterface lookupInterface;
 	FiducialDetectionModel::Ptr fiducialModel;
@@ -49,7 +49,7 @@ protected:
 	
 	RobotArrayPolicy::Ptr policy;
 	
-	void TargetCallback( const argus_msgs::CompactOdometryArray::ConstPtr& msg );
+	void TargetCallback( const argus_msgs::OdometryArray::ConstPtr& msg );
 	void OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg );
 	void TimerCallback( const ros::TimerEvent& event );
 };

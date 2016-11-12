@@ -61,7 +61,7 @@ void PolicyManager::OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	lastOdometry = msg;
 }
 
-void PolicyManager::TargetCallback( const argus_msgs::CompactOdometryArray::ConstPtr& msg )
+void PolicyManager::TargetCallback( const argus_msgs::OdometryArray::ConstPtr& msg )
 {
 	lastTargets = msg;
 }
@@ -74,14 +74,14 @@ void PolicyManager::TimerCallback( const ros::TimerEvent& event )
 	
 	RobotTargetState state;
 	state.array = manager->GetState();
-	state.robot = OdomToTarget( *lastOdometry );
+	state.robot = TargetState( *lastOdometry );
 	
 	if( lastTargets )
 	{
 		for( unsigned int i = 0; i < lastTargets->odometry.size(); i++ )
 		{
 			const std::string& name = lastTargets->odometry[i].child_frame_id;
-			state.targets[ name ] = CompactOdomToTarget( lastTargets->odometry[i] );
+			state.targets[ name ] = TargetState( lastTargets->odometry[i] );
 		}
 	}
 	

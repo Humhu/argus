@@ -1,6 +1,6 @@
 #pragma once
 
-#include "argus_msgs/CompactOdometry.h"
+#include "argus_msgs/FilterUpdate.h"
 #include "nav_msgs/Odometry.h"
 
 #include "argus_utils/geometry/PoseSE3.h"
@@ -10,30 +10,41 @@
 namespace argus
 {
 
-class TargetState
+// The C++ counterpart of nav_msgs::Odometry
+struct TargetState
 {
-public:
-	
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	
-	typedef std::shared_ptr<TargetState> Ptr;
-	typedef PoseSE3 PoseType;
-	typedef PoseSE3::TangentVector VelocityType;
-	typedef PoseSE3::CovarianceMatrix CovarianceType;
-	
-	PoseType pose;
-	VelocityType velocity;
-	CovarianceType poseCovariance;
-	CovarianceType velocityCovariance;
+	std::string referenceFrame;
+	std::string bodyFrame;
+	ros::Time timestamp;
+	PoseSE3 pose;
+	PoseSE3::CovarianceMatrix poseCovariance;
+	PoseSE3::TangentVector velocity;
+	PoseSE3::CovarianceMatrix velocityCovariance;
 	
 	TargetState();
+	TargetState( const nav_msgs::Odometry& odom );
 
+	nav_msgs::Odometry ToMsg() const;
 };
-	
-argus_msgs::CompactOdometry TargetToCompactOdom( const TargetState& state );
-TargetState CompactOdomToTarget( const argus_msgs::CompactOdometry& odom );
 
-nav_msgs::Odometry TargetToOdom( const TargetState& state );
-TargetState OdomToTarget( const nav_msgs::Odometry& odom );
+// The C++ counterpart of argus_msgs::FilterUpdate
+struct FilterUpdate
+{
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+	std::string sourceName;
+	ros::Time timestamp;
+	MatrixType observationMatrix;
+	MatrixType observationCov;
+	VectorType observation;
+
+	FilterUpdate();
+	FilterUpdate( const argus_msgs::FilterUpdate& msg );
+
+	argus_msgs::FilterUpdate ToMsg() const;
+};
+
 
 }

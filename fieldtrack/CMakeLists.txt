@@ -62,7 +62,8 @@ add_library( fieldtrack
 	src/FiducialPoseEstimator.cpp
 	src/FieldtrackCommon.cpp
 	src/FixedFrameTracker.cpp
-	src/SimpleStateEstimator.cpp
+	src/StateEstimator.cpp
+	#src/SimpleStateEstimator.cpp
 	src/TargetInfoManager.cpp
 	src/VelocityIntegrator.cpp
 )
