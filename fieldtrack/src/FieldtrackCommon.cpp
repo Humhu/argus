@@ -2,6 +2,8 @@
 #include "argus_utils/geometry/GeometryUtils.h"
 #include "argus_utils/utils/MatrixUtils.h"
 
+#define POSE_DIM (PoseSE3::TangentDimension)
+
 namespace argus
 {
 
@@ -27,35 +29,75 @@ std::string CovModeToString( CovarianceMode mode )
 	}
 }
 
-TargetState::TargetState()
-: pose(),
-  poseCovariance( PoseSE3::CovarianceMatrix::Zero() ),
-  velocity( PoseSE3::TangentVector::Zero() ), 
-  velocityCovariance( PoseSE3::CovarianceMatrix::Zero() )
-{}
+TargetState::TargetState() {}
+
+TargetState::TargetState( const fieldtrack::TargetState& state )
+{
+	referenceFrame = state.header.frame_id;
+	bodyFrame = state.body_frame_id;
+	timestamp = state.header.stamp;
+	
+	pose = MsgToPose( state.pose );
+	derivatives = GetVectorView( state.derivatives );
+	
+	unsigned int N = POSE_DIM + derivatives.size();
+	covariance = MatrixType(N,N);
+	ParseMatrix( state.covariance, covariance );
+}
+
 
 TargetState::TargetState( const nav_msgs::Odometry& odom )
 {
 	referenceFrame = odom.header.frame_id;
 	bodyFrame = odom.child_frame_id;
 	timestamp = odom.header.stamp;
+	
 	pose = MsgToPose( odom.pose.pose );
-	ParseMatrix( odom.pose.covariance, poseCovariance );
-	velocity = MsgToTangent( odom.twist.twist );
-	ParseMatrix( odom.twist.covariance, velocityCovariance );
+	derivatives = MsgToTangent( odom.twist.twist );
+	
+	covariance = MatrixType( 2*POSE_DIM, 2*POSE_DIM );
+	MatrixType temp( POSE_DIM, POSE_DIM );
+	ParseMatrix( odom.pose.covariance, temp );
+	covariance.topLeftCorner( POSE_DIM, POSE_DIM ) = temp;
+	ParseMatrix( odom.twist.covariance, temp );
+	covariance.bottomRightCorner( POSE_DIM, POSE_DIM ) = temp;
 }
 
-nav_msgs::Odometry TargetState::ToMsg() const
+nav_msgs::Odometry TargetState::ToOdometryMsg() const
 {
 	nav_msgs::Odometry odom;
 	odom.header.frame_id = referenceFrame;
 	odom.header.stamp = timestamp;
 	odom.child_frame_id = bodyFrame;
+	
 	odom.pose.pose = PoseToMsg( pose );
-	SerializeMatrix( poseCovariance, odom.pose.covariance );
+	if( derivatives.size() < POSE_DIM )
+	{
+		throw std::invalid_argument( "Cannot convert TargetState with no derivatives to odom." );
+	}
+
+	// Need to explicitly call the PoseSE3::TangentVector version of TangentToMsg
+	PoseSE3::TangentVector velocity = derivatives.head<POSE_DIM>();
 	odom.twist.twist = TangentToMsg( velocity );
-	SerializeMatrix( velocityCovariance, odom.twist.covariance );
+
+	SerializeMatrix( covariance.block<POSE_DIM,POSE_DIM>(0,0), 
+	                 odom.pose.covariance );
+	SerializeMatrix( covariance.block<POSE_DIM,POSE_DIM>(POSE_DIM,POSE_DIM), 
+	                 odom.twist.covariance );
 	return odom;
+}
+
+fieldtrack::TargetState TargetState::ToStateMsg() const
+{
+	fieldtrack::TargetState msg;
+	msg.header.frame_id = referenceFrame;
+	msg.header.stamp = timestamp;
+	msg.body_frame_id = bodyFrame;
+
+	msg.pose = PoseToMsg( pose );
+	SerializeMatrix( derivatives, msg.derivatives );
+	SerializeMatrix( covariance, msg.covariance );
+	return msg;
 }
 
 }

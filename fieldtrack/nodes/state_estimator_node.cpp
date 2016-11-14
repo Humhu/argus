@@ -9,6 +9,7 @@
 #include "argus_msgs/FilterUpdate.h"
 #include <nav_msgs/Odometry.h>
 #include "fieldtrack/ResetFilter.h"
+#include "fieldtrack/TargetState.h"
 
 using namespace argus;
 
@@ -70,14 +71,28 @@ public:
 			}
 		}
 
-		unsigned int outputBuffLen;
-		GetParam( ph, "output_buff_len", outputBuffLen, (unsigned int) 10 );
-		_odomPub = nh.advertise<nav_msgs::Odometry>( "odom", outputBuffLen );
+		GetParam( ph, "publish_odom", _publishOdom, false );
+		if( _publishOdom )
+		{
+			ROS_INFO_STREAM( "Publishing odometry output" );
+			unsigned int odomBuffLen;
+			GetParam( ph, "odom_buff_len", odomBuffLen, (unsigned int) 10 );
+			_odomPub = nh.advertise<nav_msgs::Odometry>( "odom", odomBuffLen );
+		}
+
+		GetParam( ph, "publish_state", _publishState, false );
+		if( _publishState )
+		{
+			ROS_INFO_STREAM( "Publishing state output" );
+			unsigned int stateBuffLen;
+			GetParam( ph, "state_buff_len", stateBuffLen, (unsigned int) 10 );
+			_statePub = nh.advertise<fieldtrack::TargetState>( "state", stateBuffLen );
+		}
 
 		// NOTE We have to reset the filter to compensate for the lag, otherwise the
 		// first timer call will request it predict to the past
 		_estimator.Reset( ros::Time::now() - _headLag );
-		
+
 		double updateRate;
 		GetParamRequired( ph, "update_rate", updateRate );
 		_updateTimer = nh.createTimer( ros::Duration( 1.0/updateRate ),
@@ -112,7 +127,17 @@ public:
 		
 		StateEstimator rollOutEstimator( _estimator );
 		rollOutEstimator.Process( event.current_real );
-		_odomPub.publish( rollOutEstimator.GetState().ToMsg() );
+
+		TargetState state = rollOutEstimator.GetState();
+
+		if( _publishOdom )
+		{
+			_odomPub.publish( state.ToOdometryMsg() );
+		}
+		if( _publishState )
+		{
+			_statePub.publish( state.ToStateMsg() );
+		}
 	}
 
 	bool ResetCallback( fieldtrack::ResetFilter::Request& req,
@@ -126,7 +151,13 @@ public:
 public:
 
 	std::vector<ros::Subscriber> _updateSubs;
+	
+	bool _publishOdom;
 	ros::Publisher _odomPub;
+
+	bool _publishState;
+	ros::Publisher _statePub;
+
 	ros::ServiceServer _resetServer;
 	ros::Timer _updateTimer;
 

@@ -2,6 +2,7 @@
 
 #include "argus_utils/geometry/PoseSE3.h"
 #include "nav_msgs/Odometry.h"
+#include "fieldtrack/TargetState.h"
 
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -40,14 +41,15 @@ struct TargetState
 	std::string bodyFrame;
 	ros::Time timestamp;
 	PoseSE3 pose;
-	PoseSE3::CovarianceMatrix poseCovariance;
-	PoseSE3::TangentVector velocity;
-	PoseSE3::CovarianceMatrix velocityCovariance;
+	VectorType derivatives;
+	MatrixType covariance;
 	
 	TargetState();
+	TargetState( const fieldtrack::TargetState& state );
 	TargetState( const nav_msgs::Odometry& odom );
 
-	nav_msgs::Odometry ToMsg() const;
+	fieldtrack::TargetState ToStateMsg() const;
+	nav_msgs::Odometry ToOdometryMsg() const;
 };
 
 typedef boost::variant< geometry_msgs::PoseStamped,

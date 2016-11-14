@@ -140,10 +140,8 @@ TargetState StateEstimator::GetState() const
 	state.bodyFrame = _bodyFrame;
 	state.timestamp = _filterTime;
 	state.pose = _filter.Pose();
-	state.poseCovariance  = _filter.PoseCov();
-	state.velocity = _filter.Derivs().head( PoseSE3::TangentDimension );
-	state.velocityCovariance = _filter.DerivsCov().topLeftCorner( PoseSE3::TangentDimension,
-	                                                              PoseSE3::TangentDimension );
+	state.derivatives = _filter.Derivs();
+	state.covariance = _filter.FullCov();
 	return state;
 }
 

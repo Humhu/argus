@@ -32,7 +32,11 @@ find_package( Eigen3 REQUIRED )
 add_service_files( FILES ResetFilter.srv 
 )
 
-generate_messages()
+add_message_files( FILES TargetState.msg 
+)
+
+generate_messages( DEPENDENCIES std_msgs
+                                geometry_msgs )
 
 # Package configuration
 # =====================

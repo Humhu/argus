@@ -1,6 +1,8 @@
 #include "camera_array/SystemModels.h"
 #include <boost/foreach.hpp>
 
+#define POSE_DIM (PoseSE3::TangentDimension)
+
 namespace argus
 {
 
@@ -109,10 +111,11 @@ FixedStepTargetTransitionFunction::Transition( const TargetState& state,
                                                const AccelerationAction& action )
 {
 	TargetState next( state );
-	PoseSE3 displacement = PoseSE3::Exp( dt * state.velocity + 
+	PoseSE3::TangentDim velocity = state.derivatives.head<POSE_DIM>();
+	PoseSE3 displacement = PoseSE3::Exp( dt * velocity + 
 	                                     0.5 * dt * dt * action.acceleration );
 	next.pose = state.pose * displacement;
-	next.velocity = state.velocity + dt * action.acceleration;
+	next.derivatives = velocity + dt * action.acceleration;
 	return next;
 }
 

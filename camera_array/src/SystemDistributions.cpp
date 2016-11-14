@@ -1,6 +1,8 @@
 #include "camera_array/SystemDistributions.h"
 #include <boost/foreach.hpp>
 
+#define POSE_DIM (PoseSE3::TangentDimension)
+
 namespace argus
 {
 
@@ -24,13 +26,15 @@ RobotTargetState RobotTargetDistribution::Sample()
 	
 	if( properties.sampleRobotPose )
 	{
-		sample.robot.pose = SamplePose( base.robot.pose, 
-		                                base.robot.poseCovariance );
+		PoseSE3::CovarianceMatrix poseCov = 
+		    base.robot.covariance.topLeftCorner( POSE_DIM, POSE_DIM );
+		sample.robot.pose = SamplePose( base.robot.pose, poseCov );
 	}
 	if( properties.sampleRobotVelocity )
 	{
-		sample.robot.velocity = SampleVelocity( base.robot.velocity,
-		                                        base.robot.velocityCovariance );
+		PoseSE3::CovarianceMatrix velCov = 
+		    base.robot.covariance.block( POSE_DIM, POSE_DIM, POSE_DIM, POSE_DIM );
+		sample.robot.velocity = SampleVelocity( base.robot.velocity, velCov );
 	}
 	if( properties.sampleTargetPoses )
 	{
@@ -38,8 +42,9 @@ RobotTargetState RobotTargetDistribution::Sample()
 		{
 			const std::string& name = item.first;
 			const TargetState& state = item.second;
-			sample.targets[ name ].pose = SamplePose( state.pose, 
-			                                          state.poseCovariance );
+			PoseSE3::CovarianceMatrix poseCov = 
+			    state.covariance.topLeftCorner( POSE_DIM, POSE_DIM );
+			sample.targets[ name ].pose = SamplePose( state.pose, poseCov );
 		}
 	}
 	if( properties.sampleTargetVelocities )
@@ -48,8 +53,9 @@ RobotTargetState RobotTargetDistribution::Sample()
 		{
 			const std::string& name = item.first;
 			const TargetState& state = item.second;
-			sample.targets[ name ].velocity = SampleVelocity( state.velocity, 
-			                                                  state.velocityCovariance );
+			PoseSE3::CovarianceMatrix velCov = 
+			    state.covariance.block( POSE_DIM, POSE_DIM, POSE_DIM, POSE_DIM );
+			sample.targets[ name ].velocity = SampleVelocity( state.velocity, velCov );
 		}
 	}
 	return sample;
