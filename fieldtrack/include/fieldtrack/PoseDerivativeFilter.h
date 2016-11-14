@@ -74,7 +74,7 @@ private:
 };
 
 class ObservationLikelihoodVisitor
-: public boost::static_visitor<Observation>
+: public boost::static_visitor<double>
 {
 public:
 

@@ -111,17 +111,29 @@ void StateEstimator::Process( const ros::Time& until )
 		Observation obs = boost::apply_visitor( _sourceRegistry.at( sourceName ), msg );
 		ros::Time timestamp = boost::apply_visitor( ObservationTimestampVisitor(), obs );
 		PredictInfo predInfo = PredictUntil( timestamp );
-		UpdateInfo upInfo = boost::apply_visitor( _filter, obs );
 
-		// Update adaptive estimators if needed
-		if( _transitionMode == COV_ADAPTIVE )
+		// Check likelihood after predict
+		ObservationLikelihoodVisitor likelihoodCheck( _filter );
+		double likelihood = boost::apply_visitor( likelihoodCheck, obs );
+		if( likelihood < _likelihoodThreshold )
 		{
-			_adaptiveTransCov.Update( predInfo, upInfo );
+			ROS_WARN_STREAM( "Rejecting observation from " << sourceName << " with likelihood "
+			                 << likelihood << " less than threshold " << _likelihoodThreshold );
 		}
-		_sourceRegistry.at( sourceName ).Update( upInfo );
+		else
+		{
+			// Perform filter update
+			UpdateInfo upInfo = boost::apply_visitor( _filter, obs );
+
+			// Update adaptive estimators if needed
+			if( _transitionMode == COV_ADAPTIVE )
+			{
+				_adaptiveTransCov.Update( predInfo, upInfo );
+			}
+			_sourceRegistry.at( sourceName ).Update( upInfo );
+		}
 
 		_updateBuffer.erase( oldest );
-
 		if( _noPose ) { SquashPose(); }
 		if( _twoDimensional ) { Enforce2D(); }
 		CheckFilter();

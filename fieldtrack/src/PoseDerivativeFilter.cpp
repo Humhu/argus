@@ -210,8 +210,7 @@ PoseDerivativeFilter::operator()( const DerivObservation& obs )
 	MatrixType C = MatrixType::Zero( zDim, CovDim() );
 	for( unsigned int i = 0; i < zDim; i++ )
 	{
-		unsigned int ind = PoseDim() + obs.indices[i];
-		C( i, ind ) = 1;
+		C( i, PoseDim() + obs.indices[i] ) = 1;
 	}
 	
 	VectorType derivsObsed( zDim );
@@ -263,12 +262,16 @@ double ObservationLikelihoodVisitor::operator()( const OrientationObservation& o
 
 double ObservationLikelihoodVisitor::operator()( const DerivObservation& obs )
 {
-	MatrixType C = MatrixType::Zero( obs.indices.size(), _filter.CovDim() );
-	for( unsigned int i = 0; i < obs.indices.size(); ++i )
+	// TODO Reduce code duplication with filter updates
+	unsigned int zDim = obs.indices.size();
+	MatrixType C = MatrixType::Zero( zDim, _filter.CovDim() );
+	for( unsigned int i = 0; i < zDim; ++i )
 	{
-		C( i, obs.indices[i] ) = 1;
+		C( i, _filter.PoseDim() + obs.indices[i] ) = 1;
 	}
-	VectorType v = C * _filter.Derivs() - obs.derivatives;
+	VectorType derivsObsed( zDim );
+	GetSubmatrix( _filter.Derivs(), derivsObsed, obs.indices );
+	VectorType v = obs.derivatives - derivsObsed;
 	MatrixType V = C * _filter.FullCov() * C.transpose() + obs.covariance;
 	return GaussianPDF( V, v );
 }

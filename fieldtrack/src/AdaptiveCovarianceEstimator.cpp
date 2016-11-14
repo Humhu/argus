@@ -15,7 +15,7 @@ AdaptiveTransitionCovarianceEstimator::AdaptiveTransitionCovarianceEstimator() {
 void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "window_length", _windowLength );
-	GetParamRequired( ph, "min_window_ready", _minLength );
+	GetParam( ph, "min_window_ready", _minLength, _windowLength );
 	GetParam( ph, "use_diag", _useDiag, true );
 
 	double decayRate;
@@ -92,7 +92,7 @@ AdaptiveObservationCovarianceEstimator::AdaptiveObservationCovarianceEstimator()
 void AdaptiveObservationCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "window_length", _windowLength );
-	GetParamRequired( ph, "min_window_ready", _minLength );
+	GetParam( ph, "min_window_ready", _minLength, _windowLength );
 	GetParam( ph, "use_diag", _useDiag, true );
 
 	double decayRate;
