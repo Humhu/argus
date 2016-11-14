@@ -1,20 +1,41 @@
 #pragma once
 
-#include "argus_msgs/FilterUpdate.h"
+#include "argus_utils/geometry/PoseSE3.h"
 #include "nav_msgs/Odometry.h"
 
-#include "argus_utils/geometry/PoseSE3.h"
+#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
 
+#include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
+#include "geometry_msgs/TwistWithCovarianceStamped.h"
+
+#include "sensor_msgs/Imu.h"
+
+#include <boost/variant.hpp>
 #include <memory>
 
 namespace argus
 {
 
-// The C++ counterpart of nav_msgs::Odometry
+// Types of filter covariance models
+enum CovarianceMode
+{
+	COV_PASS,     // Pass-through
+	COV_FIXED,    // Fixed value
+	COV_ADAPTIVE, // Window adaptive 
+	//COV_PREDICTIVE // TODO
+};
+CovarianceMode StringToCovMode( const std::string& str );
+std::string CovModeToString( CovarianceMode mode );
+
+// TODO: Print functions for all structs
+
+/*! \brief C++ counterpart of nav_msgs::Odometry message.
+*/
 struct TargetState
 {
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	
 	std::string referenceFrame;
 	std::string bodyFrame;
 	ros::Time timestamp;
@@ -29,22 +50,56 @@ struct TargetState
 	nav_msgs::Odometry ToMsg() const;
 };
 
-// The C++ counterpart of argus_msgs::FilterUpdate
-struct FilterUpdate
+typedef boost::variant< geometry_msgs::PoseStamped,
+                        geometry_msgs::PoseWithCovarianceStamped,
+                        geometry_msgs::TwistStamped,
+                        geometry_msgs::TwistWithCovarianceStamped,
+                        sensor_msgs::Imu >
+        ObservationMessage;
+
+struct ObservationBase
 {
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-	std::string sourceName;
 	ros::Time timestamp;
-	MatrixType observationMatrix;
-	MatrixType observationCov;
-	VectorType observation;
-
-	FilterUpdate();
-	FilterUpdate( const argus_msgs::FilterUpdate& msg );
-
-	argus_msgs::FilterUpdate ToMsg() const;
+	std::string referenceFrame;
 };
 
+struct PoseObservation : public ObservationBase
+{
+	PoseSE3 pose;
+	MatrixType covariance;
+};
+
+struct PositionObservation : public ObservationBase
+{
+	Translation3Type position;
+	MatrixType covariance;
+};
+
+struct OrientationObservation : public ObservationBase
+{
+	QuaternionType orientation;
+	MatrixType covariance;
+};
+
+struct DerivObservation : public ObservationBase
+{
+	VectorType derivatives;
+	MatrixType covariance;
+	std::vector<unsigned int> indices;
+};
+
+typedef boost::variant< PoseObservation, 
+                        PositionObservation, 
+                        OrientationObservation,
+                        DerivObservation > 
+        Observation;
+
+struct ObservationTimestampVisitor
+: public boost::static_visitor<ros::Time>
+{
+	ObservationTimestampVisitor() {}
+
+	ros::Time operator()( const ObservationBase& obs ) const { return obs.timestamp; }
+};
 
 }

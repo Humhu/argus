@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 
-#include "fieldtrack/FiducialPoseEstimator.h"
+#include "fiducials/FiducialPoseEstimator.h"
 
 int main( int argc, char** argv )
 {

@@ -1,40 +1,49 @@
 #pragma once
 
-#include <ros/ros.h>
+#include "fieldtrack/PoseDerivativeFilter.h"
 #include "fieldtrack/FieldtrackCommon.h"
-#include "argus_utils/filters/FilterTypes.h"
-#include "covreg/AdaptiveCovarianceEstimator.h"
+#include "fieldtrack/ObservationSourceManager.h"
+
+#include <ros/ros.h>
 #include <unordered_map>
 
 namespace argus
 {
 
-// Types of filter covariance models
-enum CovarianceMode
-{
-	COV_PASS,     // Pass-through
-	COV_FIXED,    // Fixed value
-	COV_ADAPTIVE, // Window adaptive 
-	//COV_PREDICTIVE // TODO
-};
-CovarianceMode StringToCovMode( const std::string& str );
-std::string CovModeToString( CovarianceMode mode );
-
 class StateEstimator
 {
 public:
-
-	// TODO Make runtime settable?
-	typedef ConstantAccelFilterSE3 FilterType;
-	typedef FilterType::PoseType PoseType;
 
 	StateEstimator();
 
 	void Initialize( ros::NodeHandle& ph );
 	void Reset( const ros::Time& time );
 
-	// Adds a new update to the internal update buffer
-	void BufferUpdate( FilterUpdate update );
+	template <typename M>
+	void BufferObservation( const std::string& sourceName, M msg )
+	{
+		// Make sure message is from a registered source
+		if( _sourceRegistry.count( sourceName ) == 0 )
+		{
+			throw std::invalid_argument( "Unknown source: " + sourceName );
+		}
+
+		// Make sure message does not precede filter
+		if( msg.header.stamp < _filterTime )
+		{
+			ROS_WARN_STREAM( "Dropping measurement from " << sourceName << " since timestamp "
+			                 << msg.header.stamp << " precedes filter time " << _filterTime );
+			return;
+		}
+
+		// For some reason the resolution on the ROS timestamp compare is limited
+		// We avoid overwriting observations by bumping up their timestamps
+		while( _updateBuffer.count( msg.header.stamp ) > 0 )
+		{
+			msg.header.stamp.nsec += 2; 
+		}
+		_updateBuffer[ msg.header.stamp ] = SourceMsg( sourceName, msg );
+	}
 
 	// TODO Return all Predict/Update info pairs
 	// Perform predicts and updates to the specified time
@@ -45,7 +54,7 @@ public:
 
 private:
 
-	FilterType _filter;
+	PoseDerivativeFilter _filter;
 	ros::Time _filterTime;
 
 	bool _noPose;
@@ -60,34 +69,17 @@ private:
 
 	CovarianceMode _transitionMode;
 	MatrixType _fixedTransCov;
-	percepto::AdaptiveTransitionCovarianceEstimator _adaptiveTransCov;;
+	AdaptiveTransitionCovarianceEstimator _adaptiveTransCov;
 
-	struct SourceRegistration
-	{
-		CovarianceMode mode;
-		unsigned int dim;
-		MatrixType fixedCov;
-		percepto::AdaptiveObservationCovarianceEstimator adaptiveCov;
-	};
-	typedef std::unordered_map<std::string, SourceRegistration> SourceRegistry;
-	SourceRegistry _obsRegistry;
+	typedef std::unordered_map<std::string, ObservationSourceManager> SourceRegistry;
+	SourceRegistry _sourceRegistry;
 
-	typedef std::map<ros::Time, FilterUpdate> UpdateBuffer;
+	typedef std::pair<std::string, ObservationMessage> SourceMsg;
+	typedef std::map<ros::Time, SourceMsg> UpdateBuffer;
 	UpdateBuffer _updateBuffer;
-
-	// Performs a predict and update step for a given update
-	void ProcessUpdate( FilterUpdate update );
 
 	// Forward predicts the filter to the specified time
 	PredictInfo PredictUntil( const ros::Time& until );
-
-	// Performs a pose update using the update. Returns whether the update
-	// was used or rejected
-	bool PoseUpdate( const FilterUpdate& update, UpdateInfo& info );
-
-	// Performs a derivative update using the update. Returns whether the update
-	// was used or rejected
-	bool DerivsUpdate( const FilterUpdate& update, UpdateInfo& info );
 
 	// Checks the filter health
 	void CheckFilter();
@@ -95,8 +87,6 @@ private:
 	void SquashPose();
 
 	MatrixType GetTransitionCov( double dt ) const;
-	MatrixType GetObservationCov( const FilterUpdate& update ) const;
-
 };
 
 }

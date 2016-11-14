@@ -5,6 +5,28 @@
 namespace argus
 {
 
+CovarianceMode StringToCovMode( const std::string& str )
+{
+	if( str == "pass" ) { return COV_PASS; }
+	if( str == "fixed" ) { return COV_FIXED; }
+	if( str == "adaptive" ) { return COV_ADAPTIVE; }
+	else
+	{
+		throw std::invalid_argument( "Unknown covariance mode: " + str );
+	}
+}
+
+std::string CovModeToString( CovarianceMode mode )
+{
+	if( mode == COV_PASS ) { return "pass"; }
+	if( mode == COV_FIXED ) { return "fixed"; }
+	if( mode == COV_ADAPTIVE ) { return "adaptive"; }
+	else
+	{
+		throw std::invalid_argument( "Unknown covariance mode: " + mode );
+	}
+}
+
 TargetState::TargetState()
 : pose(),
   poseCovariance( PoseSE3::CovarianceMatrix::Zero() ),
@@ -34,28 +56,6 @@ nav_msgs::Odometry TargetState::ToMsg() const
 	odom.twist.twist = TangentToMsg( velocity );
 	SerializeMatrix( velocityCovariance, odom.twist.covariance );
 	return odom;
-}
-
-FilterUpdate::FilterUpdate() {}
-
-FilterUpdate::FilterUpdate( const argus_msgs::FilterUpdate& msg )
-{
-	sourceName = msg.header.frame_id;
-	timestamp = msg.header.stamp;
-	observationMatrix = MsgToMatrix( msg.observation_matrix );
-	observationCov = MsgToMatrix( msg.observation_cov );
-	observation = GetVectorView( msg.observation );
-}
-
-argus_msgs::FilterUpdate FilterUpdate::ToMsg() const
-{
-	argus_msgs::FilterUpdate msg;
-	msg.header.frame_id = sourceName;
-	msg.header.stamp = timestamp;
-	msg.observation_matrix = MatrixToMsg( observationMatrix );
-	msg.observation_cov = MatrixToMsg( observationCov );
-	SerializeMatrix( observation, msg.observation );
-	return msg;
 }
 
 }

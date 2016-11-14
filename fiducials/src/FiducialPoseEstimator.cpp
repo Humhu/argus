@@ -1,4 +1,4 @@
-#include "fieldtrack/FiducialPoseEstimator.h"
+#include "fiducials/FiducialPoseEstimator.h"
 
 #include "argus_utils/utils/YamlUtils.h"
 #include "argus_utils/utils/MatrixUtils.h"

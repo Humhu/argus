@@ -2,66 +2,70 @@ cmake_minimum_required(VERSION 2.8.3)
 project(fieldtrack)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
-set(CMAKE_BUILD_TYPE Release)
 
-find_package(catkin REQUIRED COMPONENTS
-	message_generation
-	roscpp
-	std_msgs
-	sensor_msgs
-	nav_msgs
-	argus_utils
-	extrinsics_array
-	fiducials
-	lookup
-	covreg
-	broadcast
+if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+  message(STATUS "No build type selected, default to Release")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif ()
+message(STATUS "Build configuration: ${CMAKE_BUILD_TYPE}")
+
+# Finding dependencies
+# ====================
+find_package( catkin REQUIRED 
+              COMPONENTS message_generation
+                         roscpp
+                         std_msgs 
+                         nav_msgs
+                         argus_utils
+                         extrinsics_array
+                         lookup
 )
 
 # Use Boost for most utilities, threading
-find_package(Boost REQUIRED)
+find_package( Boost REQUIRED )
 
 # Use Eigen for matrices, linear algebra
-find_package(Eigen3 REQUIRED)
+find_package( Eigen3 REQUIRED )
 
-add_service_files( FILES
-	ResetFilter.srv
+# Messages and services
+# =====================
+add_service_files( FILES ResetFilter.srv 
 )
 
 generate_messages()
 
-catkin_package(
-	INCLUDE_DIRS	include
-	
-	LIBRARIES		fieldtrack
-					
-	CATKIN_DEPENDS	message_runtime 
-					roscpp 
-					std_msgs
-					nav_msgs
-					argus_utils
-					extrinsics_array
-					fiducials
-					lookup
-					covreg
-					broadcast
-					
-	DEPENDS 		Boost 
-					system_lib
+# Package configuration
+# =====================
+catkin_package( INCLUDE_DIRS   include
+
+                LIBRARIES      fieldtrack
+
+                CATKIN_DEPENDS message_runtime 
+                               roscpp
+                               std_msgs
+                               nav_msgs
+                               argus_utils
+                               extrinsics_array
+                               lookup
+
+                DEPENDS        Boost
+                               system_lib
 )
 
 include_directories( include
-					 ${Boost_INCLUDE_DIRS}
-					 ${EIGEN3_INCLUDE_DIR}
-					 ${catkin_INCLUDE_DIRS}
+                     ${Boost_INCLUDE_DIRS}
+                     ${EIGEN3_INCLUDE_DIR}
+                     ${catkin_INCLUDE_DIRS}
 )
 
 add_library( fieldtrack
+    src/AdaptiveCovarianceEstimator.cpp
 	src/ArrayPoseEstimator.cpp
 	src/BodyFrameTracker.cpp
-	src/FiducialPoseEstimator.cpp
 	src/FieldtrackCommon.cpp
 	src/FixedFrameTracker.cpp
+	src/ObservationSourceManager.cpp
+	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp
 	#src/SimpleStateEstimator.cpp
 	src/TargetInfoManager.cpp
@@ -77,13 +81,6 @@ add_executable( array_pose_estimator
 	nodes/array_pose_estimator.cpp )
 add_dependencies( array_pose_estimator ${PROJECT_NAME}_gencfg )
 target_link_libraries( array_pose_estimator
-	fieldtrack
-	${catkin_LIBRARIES} )
-
-add_executable( fiducial_pose_estimator
-	nodes/fiducial_pose_estimator.cpp )
-add_dependencies( fiducial_pose_estimator ${PROJECT_NAME}_gencfg )
-target_link_libraries( fiducial_pose_estimator
 	fieldtrack
 	${catkin_LIBRARIES} )
 

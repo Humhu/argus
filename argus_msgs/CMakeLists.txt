@@ -11,9 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Generate service files
 add_message_files( FILES
-                  CompactOdometry.msg
-                  CompactPoseWithCovariance.msg
-                  CompactTwistWithCovariance.msg
                   EstimatePerformance.msg
                   FiducialDetection.msg
                   FilterStepInfo.msg
