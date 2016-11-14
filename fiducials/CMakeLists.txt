@@ -15,6 +15,7 @@ find_package(catkin REQUIRED
 					argus_utils
 					lookup
 					camplex
+					extrinsics_array
 )
 
 # Use Boost for most utilities, threading
@@ -49,6 +50,7 @@ catkin_package(
 					argus_utils
 					lookup
 					camplex
+					extrinsics_array
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -67,6 +69,7 @@ add_library( fiducials
 	src/FiducialCalibrationParsers.cpp
 	src/FiducialInfoManager.cpp
 	src/FiducialCommon.cpp
+	src/FiducialPoseEstimator.cpp
 	src/PoseEstimation.cpp
 )
 add_dependencies( fiducials ${fiducials_EXPORTED_TARGETS} )
@@ -75,6 +78,13 @@ target_link_libraries( fiducials
 	${OpenCV_LIBS}
 	${catkin_LIBRARIES}
 )
+
+add_executable( fiducial_pose_estimator
+	nodes/fiducial_pose_estimator.cpp )
+add_dependencies( fiducial_pose_estimator ${PROJECT_NAME}_gencfg )
+target_link_libraries( fiducial_pose_estimator
+	fiducials
+	${catkin_LIBRARIES} )
 
 ## Mark executables and/or libraries for installation
 install(TARGETS fiducials

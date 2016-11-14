@@ -50,7 +50,7 @@ std::ostream& operator<<( std::ostream& os, const CameraArrayAction& action );
 struct AccelerationAction
 {
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	TargetState::VelocityType acceleration;
+	PoseSE3::TangentVector acceleration;
 	
 	/*! \brief Defaults to zero accelerations. */
 	AccelerationAction();

@@ -288,16 +288,19 @@ SimpleStateEstimator::SimpleStateEstimator( ros::NodeHandle& nodeHandle,
 	GetParam( privHandle, "max_entropy", _maxEntropy, std::numeric_limits<double>::infinity() );
 
 	_resetHandler = privHandle.advertiseService( "reset", 
-		                                         &SimpleStateEstimator::ResetFilterCallback,
-		                                         this );
+	                                             &SimpleStateEstimator::ResetFilterCallback,
+	                                             this );
 
-	_latestOdomPub = nodeHandle.advertise<Odometry>( "latest_odometry", 10 );
-	_laggedOdomPub = nodeHandle.advertise<Odometry>( "lagged_odometry", 10 );
-	_transCovPub = nodeHandle.advertise<MatrixFloat64>( "trans_cov", 10 );
+	_latestOdomPub = nodeHandle.advertise<Odometry>( "odom", 10 );
 	
-	unsigned int outBufferSize;
-	GetParam<unsigned int>( privHandle, "info_pub_buffer_size", outBufferSize, (unsigned int) 100 );
-	_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", outBufferSize );
+	bool publishInfo;
+	GetParam( privHandle, "publish_info", false );
+	if( publishInfo )
+	{
+		unsigned int outBufferSize;
+		GetParam<unsigned int>( privHandle, "info_pub_buffer_size", outBufferSize, (unsigned int) 100 );
+		_stepPub = nodeHandle.advertise<argus_msgs::FilterStepInfo>( "filter_info", outBufferSize );
+	}
 	
 	double timerRate;
 	privHandle.param<double>( "update_rate", timerRate, 10.0 );
@@ -345,27 +348,28 @@ bool SimpleStateEstimator::ResetFilterCallback( ResetFilter::Request& req,
 
 void SimpleStateEstimator::UpdateCallback( const FilterUpdate::ConstPtr& msg )
 {
-	// ros::Time now = ros::Time::now();
-	// ros::Duration delay = now - msg->header.stamp;
-	// ROS_INFO_STREAM( "Received update from: " << msg->header.frame_id );
+	const std::string& source = msg->header.frame_id;
+	if( _updateSubs.count( source ) == 0 )
+	{
+		ROS_WARN_STREAM( "Received unregistered observation from: " << source );
+		return;
+	}
 
 	WriteLock lock( _mutex );
-
 	FilterUpdate up = *msg;
 	while( _updateBuffer.count(up.header.stamp) > 0 )
 	{
 		// For some reason the resolution on the timestamp compare is limited
 		up.header.stamp.nsec += 2; 
-		// ROS_WARN_STREAM( "Measurements with duplicate timestamps!" );
 	}
-	// ROS_INFO_STREAM( "Received stamp: " << up.header.stamp );
 
 	_updateBuffer[up.header.stamp] = up;
 }
 
-void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
+void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until,
+                                                bool publishInfo,
+                                                bool clearUsed )
 {
-	// ROS_INFO_STREAM( "Buffer size: " << _updateBuffer.size() );
 	while( !_updateBuffer.empty() )
 	{
 		// TODO Have external locking semantics here to make this explicit
@@ -383,7 +387,7 @@ void SimpleStateEstimator::ProcessUpdateBuffer( const ros::Time& until )
 
 		// ROS_INFO_STREAM( "Updating with: " << msg.header.frame_id );
 		std::pair<FilterStepInfo,FilterStepInfo> infoPair;
-		if( _filter.ProcessUpdate( msg, infoPair ) )
+		if( publishInfo_filter.ProcessUpdate( msg, infoPair ) )
 		{
 			_stepPub.publish( infoPair.first );
 			_transCovPub.publish( infoPair.first.noiseCov );
@@ -478,34 +482,32 @@ void SimpleStateEstimator::CheckForDivergence( const ros::Time& now )
 void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 {
 	ros::Time now = event.current_real;
-
 	CheckForDivergence( now );
 
 	WriteLock lock( _mutex );
+	
+	// This should never happen, but check anyways
 	if( now < _filter.filterTime )
 	{
-		ROS_WARN_STREAM( "Filter time is ahead of timer callback." );
+		ROS_WARN_STREAM( "Filter time is ahead of timer callback!" );
+		return;
 	}
 
-	// Publish all observations to our lagged timepoint
+	// Use all observations to our lagged timepoint
 	ros::Time laggedHead = now - _updateLag;
 	ProcessUpdateBuffer( laggedHead );
+
+	// If we haven't quite reached the lagged timepoint, predict up to it
 	if( laggedHead > _filter.filterTime )
 	{
+		// TODO Move this predict code into a function
 		FilterStepInfo predInfo = _filter.PredictUntil( laggedHead );
 		_stepPub.publish( predInfo );
 		if( _usingAdaptiveTrans )
 		{
 			_Qadapter.ProcessInfo( predInfo );
 		}
-		_transCovPub.publish( predInfo.noiseCov );
 	}
-
-	// Publish a smoother, lagged odometry estimate
-	Odometry msg = _filter.GetOdomMsg();
-	msg.header.frame_id = _referenceFrame;
-	msg.child_frame_id = _bodyFrame;
-	_laggedOdomPub.publish( msg );
 	
 	// Roll forward another filter on all buffered observations
 	StampedFilter estFilter( _filter );
@@ -513,22 +515,11 @@ void SimpleStateEstimator::TimerCallback( const ros::TimerEvent& event )
 
 	typedef UpdateBuffer::value_type Item;
 	StampedFilter::InfoPair info;
-	std::vector<ros::Time> toDelete;
 	BOOST_FOREACH( const Item& item, _updateBuffer )
 	{
-		if( item.second.header.stamp < _filter.filterTime )
-		{
-			toDelete.push_back( item.first );
-			continue;
-		}
 		estFilter.ProcessUpdate( item.second, info );
 		if( velocityOnly ) { estFilter.SquashPoseUncertainty(); }
 		if( twoDimensional ) { estFilter.EnforceTwoDimensionality(); }
-	}
-
-	BOOST_FOREACH( const ros::Time& t, toDelete )
-	{
-		_updateBuffer.erase( t );
 	}
 
 	if( now > estFilter.filterTime ) 

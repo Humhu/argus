@@ -9,53 +9,39 @@ ScanMatcher::~ScanMatcher() {}
 
 void ScanMatcher::Initialize( ros::NodeHandle& ph )
 {
-	FullNumericRange maxIters;
+	unsigned int maxIters;
 	GetParamRequired( ph, "max_iters", maxIters );
-	_maxIters.Initialize( ph, maxIters.init, "max_iters", 
+	_maxIters.Initialize( ph, maxIters, "max_iters", 
 	                      "Maximum number of matching iterations." );
-	_maxIters.AddCheck<GreaterThanOrEqual>( maxIters.min );
-	_maxIters.AddCheck<LessThanOrEqual>( maxIters.max );
-	_maxIters.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	FullNumericRange ransacIters;
+	unsigned int ransacIters;
 	GetParamRequired( ph, "ransac_iters", ransacIters );
-	_ransacIters.Initialize( ph, ransacIters.init, "ransac_iters",
+	_ransacIters.Initialize( ph, ransacIters, "ransac_iters",
 	                         "Maximum number of RANSAC iterations." );
-	_ransacIters.AddCheck<GreaterThanOrEqual>( ransacIters.min );
-	_ransacIters.AddCheck<LessThanOrEqual>( ransacIters.max );
-	_ransacIters.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	FullNumericRange ransacThreshold;
+	double ransacThreshold;
 	GetParamRequired( ph, "ransac_threshold", ransacThreshold );
-	_ransacThreshold.Initialize( ph, ransacThreshold.init, "ransac_threshold", 
+	_ransacThreshold.Initialize( ph, ransacThreshold, "ransac_threshold", 
 	                             "RANSAC outlier rejection distance." );
-	_ransacThreshold.AddCheck<GreaterThanOrEqual>( ransacThreshold.min );
-	_ransacThreshold.AddCheck<LessThanOrEqual>( ransacThreshold.max );
 
-	FullNumericRange maxCorrespondDist;
+	double maxCorrespondDist;
 	GetParamRequired( ph, "max_correspond_dist", maxCorrespondDist );
-	_maxCorrespondDist.Initialize( ph, maxCorrespondDist.init, "max_correspond_dist",
+	_maxCorrespondDist.Initialize( ph, maxCorrespondDist, "max_correspond_dist",
 	                               "Max correspondence distance" );
-	_maxCorrespondDist.AddCheck<GreaterThanOrEqual>( maxCorrespondDist.min );
-	_maxCorrespondDist.AddCheck<LessThanOrEqual>( maxCorrespondDist.max );
 
-	FullNumericRange minTransformEps;
+	double minTransformEps;
 	GetParamRequired( ph, "min_transform_eps", minTransformEps );
-	_minTransformEps.Initialize( ph, minTransformEps.init, "min_transform_eps",
+	_minTransformEps.Initialize( ph, minTransformEps, "min_transform_eps",
 	                             "Min transformation change" );
-	_minTransformEps.AddCheck<GreaterThanOrEqual>( minTransformEps.min );
-	_minTransformEps.AddCheck<LessThanOrEqual>( minTransformEps.max );
 
-	FullNumericRange minObjectiveEps;
+	double minObjectiveEps;
 	GetParamRequired( ph, "min_objective_eps", minObjectiveEps );
-	_minObjectiveEps.Initialize( ph, minObjectiveEps.init, "min_objective_eps",
+	_minObjectiveEps.Initialize( ph, minObjectiveEps, "min_objective_eps",
 	                             "Min objective change" );
-	_minObjectiveEps.AddCheck<GreaterThanOrEqual>( minObjectiveEps.min );
-	_minObjectiveEps.AddCheck<LessThanOrEqual>( minObjectiveEps.max );
 
-	FullNumericRange maxError;
+	double maxError;
 	GetParamRequired( ph, "max_error", maxError );
-	_maxError.Initialize( ph, maxError.init, "max_error",
+	_maxError.Initialize( ph, maxError, "max_error",
 	                      "Maximum alignment mean sum of squared errors." );
 
 	InitializeDerived( ph );

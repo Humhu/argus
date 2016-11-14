@@ -18,6 +18,7 @@ find_package(catkin REQUIRED
 					lookup
 					fieldtrack
 					camplex
+					fiducials
 )
 
 add_message_files(
@@ -52,6 +53,7 @@ catkin_package(
 					lookup
 					fieldtrack
 					camplex
+					fiducials
 	
 	DEPENDS 		Boost 
 					system_lib

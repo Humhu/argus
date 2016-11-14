@@ -6,7 +6,7 @@
 #include "lookup/LookupInterface.h"
 #include "fiducials/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInfoManager.h"
-
+#include "graphopt/GraphOptimizer.h"
 #include "manycal/ManycalCommon.h"
 #include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
@@ -15,36 +15,50 @@ namespace argus
 {
 
 // TODO Add service calls to write results
-/*! \brief Uses a single camera to estimate the extrinsics for an array of fiducials. 
- * Fiducials are initialized as they are observed by the camera, with the first
- * fiducial placed at the origin. Consecutive observations are initialized by using
- * the last estimated pose of the camera. */
+
+/*! \brief Estimates the extrinsics of an array of fiducials with a single image stream.
+ *
+ *  Fiducials are initialized as they are observed by the camera, with the first
+ *  fiducial placed at the origin. Consecutive observations are initialized by using
+ *  the last estimated pose of the camera. 
+ *
+ *  ROS Parameters:
+ *  =======================
+ *  ~reference_frame: string
+ *      Name of the fiducial array reference frame. Will be used when outputting the
+ *      calibration file.
+ *  ~batch_period: unsigned int
+ *      The number of observation factors in between batch optimizations.
+ *  ~lookup_namespace: string (default: "/lookup")
+ *      The lookup parameter base namespace.
+ *
+ *  ROS Topics:
+ *  ===========
+ *  detections: argus_msgs::ImageFiducialDetections
+ *      Stream of detections coming from a single camera. Should be rectified and normalized.
+ */
 class FiducialArrayCalibrator
 {
 public:
 	
-	FiducialArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
+	FiducialArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	~FiducialArrayCalibrator();
 	
 	void WriteResults( const ros::TimerEvent& event );
 	
 private:
 	
-	ros::NodeHandle nodeHandle;
-	ros::NodeHandle privHandle;
-	ros::Subscriber detSub;
-	ros::Timer writeTimer;
+	ros::Subscriber _detSub;
 
-	LookupInterface lookupInterface;
-	FiducialInfoManager fiducialManager;
-	ExtrinsicsInfoManager extrinsicsManager;
+	LookupInterface _lookupInterface;
+	FiducialInfoManager _fiducialManager;
+	ExtrinsicsInfoManager _extrinsicsManager;
 
-	std::string sourceCamera;
-	std::string referenceFrame;
-	isam::MonocularIntrinsics_Node::Ptr cameraIntrinsics;
+	std::string _referenceFrame;
+	isam::MonocularIntrinsics_Node::Ptr _cameraIntrinsics;
 
-	unsigned int detCounter;
-	unsigned int batchPeriod;
+	unsigned int _detCounter;
+	unsigned int _batchPeriod;
 	
 	struct FiducialRegistration
 	{
@@ -53,13 +67,13 @@ private:
 		isam::PoseSE3_Prior::Ptr extrinsicsPrior;
 	};
 	
-	isam::Slam::Ptr slam;
-	isam::PoseSE3_Node::Ptr fiducialReference;
-	std::vector <isam::PoseSE3_Node::Ptr> cameraPoses;
-	std::vector <isam::FiducialFactor::Ptr> observations;
+	GraphOptimizer _optimizer;
+	isam::PoseSE3_Node::Ptr _fiducialReference;
+	std::vector <isam::PoseSE3_Node::Ptr> _cameraPoses;
+	std::vector <isam::FiducialFactor::Ptr> _observations;
 	
 	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
-	FiducialRegistry fiducialRegistry;
+	FiducialRegistry _fiducialRegistry;
 	
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	

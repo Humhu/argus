@@ -1,39 +1,107 @@
 #pragma once
 
-#include "argus_msgs/CompactOdometry.h"
-#include "nav_msgs/Odometry.h"
-
 #include "argus_utils/geometry/PoseSE3.h"
+#include "nav_msgs/Odometry.h"
+#include "fieldtrack/TargetState.h"
 
+#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+
+#include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
+#include "geometry_msgs/TwistWithCovarianceStamped.h"
+
+#include "sensor_msgs/Imu.h"
+
+#include <boost/variant.hpp>
 #include <memory>
 
 namespace argus
 {
 
-class TargetState
+// Types of filter covariance models
+enum CovarianceMode
 {
-public:
-	
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-	
-	typedef std::shared_ptr<TargetState> Ptr;
-	typedef PoseSE3 PoseType;
-	typedef PoseSE3::TangentVector VelocityType;
-	typedef PoseSE3::CovarianceMatrix CovarianceType;
-	
-	PoseType pose;
-	VelocityType velocity;
-	CovarianceType poseCovariance;
-	CovarianceType velocityCovariance;
+	COV_PASS,     // Pass-through
+	COV_FIXED,    // Fixed value
+	COV_ADAPTIVE, // Window adaptive 
+	//COV_PREDICTIVE // TODO
+};
+CovarianceMode StringToCovMode( const std::string& str );
+std::string CovModeToString( CovarianceMode mode );
+
+// TODO: Print functions for all structs
+
+/*! \brief C++ counterpart of nav_msgs::Odometry message.
+*/
+struct TargetState
+{
+	std::string referenceFrame;
+	std::string bodyFrame;
+	ros::Time timestamp;
+	PoseSE3 pose;
+	VectorType derivatives;
+	MatrixType covariance;
 	
 	TargetState();
+	TargetState( const fieldtrack::TargetState& state );
+	TargetState( const nav_msgs::Odometry& odom );
 
+	fieldtrack::TargetState ToStateMsg() const;
+	nav_msgs::Odometry ToOdometryMsg() const;
 };
-	
-argus_msgs::CompactOdometry TargetToCompactOdom( const TargetState& state );
-TargetState CompactOdomToTarget( const argus_msgs::CompactOdometry& odom );
 
-nav_msgs::Odometry TargetToOdom( const TargetState& state );
-TargetState OdomToTarget( const nav_msgs::Odometry& odom );
+typedef boost::variant< geometry_msgs::PoseStamped,
+                        geometry_msgs::PoseWithCovarianceStamped,
+                        geometry_msgs::TwistStamped,
+                        geometry_msgs::TwistWithCovarianceStamped,
+                        sensor_msgs::Imu >
+        ObservationMessage;
+
+struct ObservationBase
+{
+	ros::Time timestamp;
+	std::string referenceFrame;
+};
+
+struct PoseObservation : public ObservationBase
+{
+	PoseSE3 pose;
+	MatrixType covariance;
+};
+
+struct PositionObservation : public ObservationBase
+{
+	Translation3Type position;
+	MatrixType covariance;
+};
+
+struct OrientationObservation : public ObservationBase
+{
+	QuaternionType orientation;
+	MatrixType covariance;
+};
+
+struct DerivObservation : public ObservationBase
+{
+	VectorType derivatives;
+	MatrixType covariance;
+	std::vector<unsigned int> indices;
+};
+
+typedef boost::variant< PoseObservation, 
+                        PositionObservation, 
+                        OrientationObservation,
+                        DerivObservation > 
+        Observation;
+
+struct ObservationTimestampVisitor
+: public boost::static_visitor<ros::Time>
+{
+	ObservationTimestampVisitor() {}
+
+	ros::Time operator()( const ObservationBase& obs ) const { return obs.timestamp; }
+};
 
 }

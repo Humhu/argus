@@ -26,7 +26,7 @@ message( STATUS ${CATKIN_DEVEL_PREFIX} )
 include( ExternalProject )
 ExternalProject_Add(
 	apriltags_external
-	GIT_REPOSITORY git@github.com:Humhu/apriltags.git
+	GIT_REPOSITORY https://github.com/Humhu/apriltags.git #git@github.com:Humhu/apriltags.git
 	BUILD_COMMAND cmake --build .
 	INSTALL_COMMAND make install
 	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CATKIN_DEVEL_PREFIX}
