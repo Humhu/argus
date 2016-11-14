@@ -3,8 +3,6 @@
 #include <ros/ros.h>
 #include <yaml-cpp/yaml.h>
 
-#include "graphopt/SaveGraph.h"
-
 #include <isam/Slam.h>
 
 namespace argus
