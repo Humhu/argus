@@ -10,6 +10,7 @@ find_package(catkin REQUIRED
 	COMPONENTS		roscpp
 					argus_utils
 					lookup
+					tf2_ros
 )
 
 # Use Boost for most utilities, threading
@@ -30,6 +31,7 @@ catkin_package(
 	CATKIN_DEPENDS 	roscpp 
 					argus_utils
 					lookup
+					tf2_ros
 					
 	DEPENDS 		Boost 
 					system_lib
@@ -45,14 +47,22 @@ include_directories( include
 add_library( extrinsics_array
 	src/ExtrinsicsCalibrationParsers.cpp
 	src/ExtrinsicsInfoManager.cpp
+	src/ExtrinsicsInterface.cpp
 )
 target_link_libraries( extrinsics_array
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
 
+add_executable( extrinsics_publisher_node nodes/extrinsics_publisher_node.cpp )
+add_dependencies( extrinsics_publisher_node extrinsics_array 
+                                            ${catkin_EXPORTED_TARGETS} )
+target_link_libraries( extrinsics_publisher_node extrinsics_array
+                                                 ${catkin_LIBRARIES} )
+
 ## Mark executables and/or libraries for installation
-install(TARGETS extrinsics_array
+install(TARGETS extrinsics_array 
+                extrinsics_publisher_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
