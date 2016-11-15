@@ -36,7 +36,7 @@ void FiducialInfoManager::PopulateMemberInfo( const Fiducial& fid,
                                               const std::string& memberNamespace )
 {
 	YAML::Node yaml;
-	PopulateFiducialCalibration( fid.ToInfo(), yaml );
+	PopulateFiducialCalibration( fid.ToMsg(), yaml );
 	std::string intrinsicsKey = GenerateIntrinsicsKey( memberNamespace );
 	SetYamlParam( _nodeHandle, intrinsicsKey, yaml );
 }

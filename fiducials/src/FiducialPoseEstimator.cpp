@@ -1,12 +1,12 @@
 #include "fiducials/FiducialPoseEstimator.h"
 
+#include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/utils/YamlUtils.h"
 #include "argus_utils/utils/MatrixUtils.h"
 
-#include "argus_msgs/RelativePoseWithCovariance.h"
+#include "geometry_msgs/TransformStamped.h"
 
 #include "fiducials/FiducialArray.h"
-#include "fiducials/PoseEstimation.h"
 
 #include <boost/foreach.hpp>
 
@@ -15,141 +15,83 @@
 namespace argus
 {
 	
-FiducialPoseEstimator::FiducialPoseEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: lookupInterface(), fiducialManager( lookupInterface ), extrinsicsManager( lookupInterface )
+FiducialPoseEstimator::FiducialPoseEstimator( ros::NodeHandle& nh, 
+                                              ros::NodeHandle& ph )
+: _fiducialManager( _lookupInterface ),
+  _extrinsicsInterface( nh, ph )
 {
-	std::string lookupNamespace;
-	ph.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
-	lookupInterface.SetLookupNamespace( lookupNamespace );
-	
-	std::vector<double> covData;
-	if( !ph.getParam( "pose_covariance", covData ) )
+	GetParam<std::string>( ph, "reference_frame", _refFrame, "" );
+
+	unsigned int inBuffSize, outBuffSize;
+	GetParam( ph, "input_buffer_size", inBuffSize, (unsigned int) 20 );
+	GetParam( ph, "output_buffer_size", outBuffSize, (unsigned int) 20 );
+
+	_detSub = nh.subscribe( "detections", 
+	                        inBuffSize, 
+	                        &FiducialPoseEstimator::DetectionsCallback, 
+	                        this );
+	_posePub = ph.advertise<geometry_msgs::TransformStamped>( "relative_pose", 
+	                                                         outBuffSize );
+}
+
+bool FiducialPoseEstimator::GetFiducial( const std::string& name,
+                                         const ros::Time& time,
+                                         Fiducial& fid )
+{
+	// Force lookup of fiducials in case initialization is slow
+	// NOTE This means "rogue" undocumented fiducials will slow the system down
+	Fiducial raw;
+	if( !_fiducialManager.HasMember( name ) )
 	{
-		covariance = PoseSE3::CovarianceMatrix::Identity();
-	}
-	else
-	{
-		if( !ParseMatrix( covData, covariance ) )
+		if( !_fiducialManager.ReadMemberInfo( name, true ) ) 
 		{
-			ROS_ERROR_STREAM( "Could not parse covariance matrix." );
-			exit( -1 );
+			ROS_INFO_STREAM( "Could not read intrinsics for " << name );
+			return false;
 		}
 	}
+	raw = _fiducialManager.GetInfo( name );
 	
-	detSub = nh.subscribe( "detections", 20, &FiducialPoseEstimator::DetectionsCallback, this );
-	posePub = nh.advertise<argus_msgs::RelativePoseWithCovariance>( "relative_pose", 20 );
-}
-
-bool FiducialPoseEstimator::RetrieveCameraInfo( const std::string& cameraName )
-{
-	if( !extrinsicsManager.HasMember( cameraName ) )
+	PoseSE3 extrinsics;
+	try
 	{
-		// Force lookup of cameras, since any cameras we receive data from should be onboard
-		if( !extrinsicsManager.ReadMemberInfo( cameraName, true ) ) { return false; }
+		extrinsics = _extrinsicsInterface.GetExtrinsics( name, _refFrame, time );
 	}
-	return true;
-}
-
-bool FiducialPoseEstimator::RetrieveFiducialInfo( const std::string& fidName )
-{
-	if( !extrinsicsManager.HasMember( fidName ) )
+	catch( ExtrinsicsException& ex )
 	{
-		// Don't force lookup of fiducials since there may be "rogue" fiducials
-		if( !extrinsicsManager.ReadMemberInfo( fidName, false ) ) { return false; }
+		ROS_INFO_STREAM( "Could not get extrinsics for " << name << std::endl << ex.what() );
+		return false;
 	}
-		
-	if( !fiducialManager.HasMember( fidName ) )
-	{
-		if( !fiducialManager.ReadMemberInfo( fidName ) ) { return false; }
-		const PoseSE3& extrinsics = extrinsicsManager.GetInfo( fidName ).extrinsics;
-		const Fiducial& intrinsics = fiducialManager.GetInfo( fidName );
-		transformedFiducials[ fidName ] = intrinsics.Transform( extrinsics );
-	}
+	fid = raw.Transform( extrinsics );
 	return true;
 }
 
 void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
 {
-
-	// Map from reference frame names to fiducial detections
-	typedef std::unordered_map< std::string, std::vector< argus_msgs::FiducialDetection > > 
-	        DetectionMap;
-	DetectionMap sorter;
+	const std::string& cameraName = msg->header.frame_id;
+	const ros::Time& detTime = msg->header.stamp;
 	
-	// 0. Retrieve the camera information
-	std::string cameraName = msg->header.frame_id;
-	if( !RetrieveCameraInfo( cameraName ) )
+	std::vector<Fiducial> fids;
+	std::vector<FiducialDetection> detections;
+	// 1. Process all fiducials
+	BOOST_FOREACH( const argus_msgs::FiducialDetection& det, msg->detections )
 	{
-		ROS_WARN_STREAM( "Could not retrieve information for camera: " << cameraName );
+		Fiducial fid;
+		if( !GetFiducial( det.name, detTime, fid ) ) { continue; }
+		fids.push_back( fid );
+		detections.push_back( det );
+	}
+	if( detections.empty() )
+	{
 		return;
 	}
-	
-	const ExtrinsicsInfo& cameraInfo = extrinsicsManager.GetInfo( cameraName );
-	
-	// 1. Group detected fiducials into arrays
-	for( unsigned int i = 0; i < msg->detections.size(); i++ )
-	{
-		const argus_msgs::FiducialDetection& det = msg->detections[i];
-		const std::string& fidName = det.name;
-		if( !RetrieveFiducialInfo( fidName ) )
-		{
-			ROS_WARN_STREAM( "Could not retrieve information for fiducial: " << fidName );
-			return;
-		}
-		const std::string& fiducialFrameName = extrinsicsManager.GetInfo( fidName ).referenceFrame;
-		sorter[ fiducialFrameName ].push_back( det );
-	}
-	
-	// 2. Convert detections into relative pose observations
-	// TODO Spin off array trackers instead so they can initialize the PnP with state
-	BOOST_FOREACH( const DetectionMap::value_type& item, sorter )
-	{
-		const std::string& fiducialFrameName = item.first;
-		const std::vector<argus_msgs::FiducialDetection>& detections = item.second;
-		
-		// Collect all fiducial points from all detections in order
-		std::vector<cv::Point3f> fiducialFramePoints;
-		std::vector<cv::Point2f> imageFramePoints;
-		double sumMinDists = 0;
-		BOOST_FOREACH( const argus_msgs::FiducialDetection& detection, detections )
-		{
-			const std::string& fiducialName = detection.name;
-			if( !detection.normalized )
-			{
-				ROS_WARN_STREAM( "Received unnormalized detection of: " << fiducialName
-				    << " from camera: " << cameraName );
-				return;
-			}
-			sumMinDists += FindMinDistance( detection.points );
-			const Fiducial& fiducial = transformedFiducials[ fiducialName ];
-			const std::vector<cv::Point3f>& fidPoints = MsgToPoints( fiducial.points );
-			fiducialFramePoints.insert( fiducialFramePoints.end(), fidPoints.begin(), fidPoints.end() );
-			
-			const std::vector<cv::Point2f>& imgPoints = MsgToPoints( detection.points );
-			imageFramePoints.insert( imageFramePoints.end(), imgPoints.begin(), imgPoints.end() );
-		}
-		
-		PoseSE3 cameraRelativePose = EstimateArrayPose( imageFramePoints, nullptr, fiducialFramePoints );
-		
-		PoseSE3 frameRelativePose = cameraInfo.extrinsics * cameraRelativePose;
+	PoseSE3 relPose = EstimateArrayPose( detections, fids );
 
-		//EulerAngles euler = QuaternionToEuler( cameraRelativePose.GetQuaternion() );
-		//EulerAngles finalEuler = QuaternionToEuler( frameRelativePose.GetQuaternion() );
-		//ROS_INFO_STREAM( "Relative orientation of target to camera: " << euler );
-		//ROS_INFO_STREAM( "Relative orientation of target to robot: " << finalEuler );
-
-		argus_msgs::RelativePoseWithCovariance poseMsg;
-		poseMsg.header.stamp = msg->header.stamp;
-		poseMsg.header.frame_id = msg->header.frame_id;
-		poseMsg.relative_pose.observer_name = cameraInfo.referenceFrame;
-		poseMsg.relative_pose.observer_time = msg->header.stamp;
-		poseMsg.relative_pose.target_name = fiducialFrameName;
-		poseMsg.relative_pose.target_time = msg->header.stamp;
-		poseMsg.relative_pose.relative_pose = PoseToMsg( frameRelativePose );
-		double quality = sumMinDists / detections.size();
-		SerializeMatrix( covariance / quality, poseMsg.covariance );
-		posePub.publish( poseMsg );
-	}
+	geometry_msgs::TransformStamped poseMsg;
+	poseMsg.header.stamp = msg->header.stamp;
+	poseMsg.header.frame_id = cameraName;
+	poseMsg.child_frame_id = _refFrame;
+	poseMsg.transform = PoseToTransform( relPose );
+	_posePub.publish( poseMsg );
 }
 	
 } // end namespace fieldtrack

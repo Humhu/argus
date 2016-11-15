@@ -8,57 +8,77 @@
 #include "argus_msgs/ImageFiducialDetections.h"
 
 #include "argus_utils/geometry/PoseSE3.h"
+#include "geometry_msgs/Point.h"
 
-#include "fiducials/Fiducial.h"
 #include "fiducials/FiducialInfo.h"
 
 namespace argus
 {
 
-/*! \brief Convert ROS message types to OpenCV points. */
-std::vector <cv::Point2f> MsgToPoints( const std::vector <argus_msgs::Point2D>& msg );
-std::vector <cv::Point3f> MsgToPoints( const std::vector <geometry_msgs::Point>& msg );
+// C++ counterpart of fiducials::FiducialInfo
+struct Fiducial 
+{
+	/*! \brief This fiducials ordered points. */
+	std::vector <Translation3Type> points;
+	
+	/*! \brief Constructs an empty fiducial. */
+	Fiducial();
+	
+	/*! \brief Constructs from a fiducial info message. */
+	Fiducial( const fiducials::FiducialInfo& info );
+	
+	/*! \brief Returns a fiducial with transformation applied to the points. */
+	Fiducial Transform( const PoseSE3& pose ) const;
+		
+	/*! \brief Returns a corresponding info message. */
+	fiducials::FiducialInfo ToMsg() const;
+};
 
-/*! \brief Convert OpenCV points to ROS message types. */
-std::vector <argus_msgs::Point2D> PointsToMsg( const std::vector <cv::Point2f>& points );
-std::vector <geometry_msgs::Point> PointsToMsg( const std::vector <cv::Point3f>& points );
+// C++ counterpart of argus_msgs::FiducialDetection
+struct FiducialDetection
+{
+	std::string name;
+	bool undistorted;
+	bool normalized;
+	std::vector<Translation2Type> points;
 
-/*! \brief Convert OpenCV points to Eigen matrix. */
-Eigen::Matrix <double, 2, Eigen::Dynamic> PointsToMatrix( const std::vector <cv::Point2f>& points );
-Eigen::Matrix <double, 3, Eigen::Dynamic> PointsToMatrix( const std::vector <cv::Point3f>& points );
+	FiducialDetection();
+	FiducialDetection( const argus_msgs::FiducialDetection& msg );
 
-/*! \brief Convert Eigen matrix to OpenCV points. */
-std::vector <cv::Point2f> MatrixToPoints( const Eigen::Matrix <double, 2, Eigen::Dynamic>& mat );
-std::vector <cv::Point3f> MatrixToPoints( const Eigen::Matrix <double, 3, Eigen::Dynamic>& mat );
+	FiducialDetection Undistort( const camplex::CameraCalibration& cameraModel,
+	                             bool undistort = true, 
+	                             bool normalize = true );
 
-/*! \brief Convert ROS message types to Eigen matrix. */
-std::vector <argus_msgs::Point2D> MatrixToMsg( const Eigen::Matrix <double, 2, Eigen::Dynamic>& mat );
-std::vector <geometry_msgs::Point> MatrixToMsg( const Eigen::Matrix <double, 3, Eigen::Dynamic>& mat );
+	argus_msgs::FiducialDetection ToMsg() const;
+};
 
-/*! \brief Convert Eigen matrices to ROS message types. */
-Eigen::Matrix <double, 2, Eigen::Dynamic> MsgToMatrix( const std::vector <argus_msgs::Point2D>& msg );
-Eigen::Matrix <double, 3, Eigen::Dynamic> MsgToMatrix( const std::vector <geometry_msgs::Point>& msg );
+std::vector<cv::Point2f> PointsToCv( const std::vector<Translation2Type>& points );
+std::vector<Translation2Type> CvToPoints( const std::vector<cv::Point2f>& cv );
 
-/*! \brief Undistort and normalize fiducial detections in-place. Assumes all detections
- * have the same undistortion/normalization status. */
-bool UndistortDetections( const std::vector <argus_msgs::FiducialDetection>& detections,
-                          const camplex::CameraCalibration& cameraModel, 
-                          bool undistort, bool normalize,
-                          std::vector< argus_msgs::FiducialDetection >& undistorted );
+std::vector<cv::Point3f> PointsToCv( const std::vector<Translation3Type>& points );
+std::vector<Translation3Type> CvToPoints( const std::vector<cv::Point3f>& cv );
 
 /*! \brief Simulates a fiducial detection. Ignores ROI constraints. Does not
  populate name field of detection. Returns success. */
 bool ProjectDetection( const Fiducial& fiducial,
                        const camplex::CameraCalibration& cameraModel,
                        const PoseSE3& fiducialToCam,
-                       argus_msgs::FiducialDetection& detection );
+                       FiducialDetection& detection );
 
 /*! \brief Returns whether the detected points are entirely in the ROI. */
-bool CheckDetectionROI( const argus_msgs::FiducialDetection& det, 
+bool CheckDetectionROI( const FiducialDetection& det, 
                         const cv::Rect& roi );
 
 /*! \brief Returns the min distance between a set of 2D points. Useful for estimating
  * if a fiducial detection will be valid. */
 double FindMinDistance( const std::vector <argus_msgs::Point2D>& points );
+
+/*! \brief Estimates the array pose using OpenCV's solvePnP. Requires normalized and
+ * undistorted detections. Assumes standard camera convention (z-forward) for 
+ * imagePoints and object convention (x-forward) for input and returned poses. */
+// NOTE Currently the guess functionality is broken?
+PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
+                           const std::vector<Fiducial>& fiducials,
+                           const PoseSE3& guess = PoseSE3() );
 
 }

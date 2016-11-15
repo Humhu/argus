@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fiducials/Fiducial.h"
+#include "fiducials/FiducialCommon.h"
 #include "fiducials/FiducialInfo.h"
 
 #include <opencv2/core.hpp>

@@ -5,26 +5,23 @@
 namespace argus 
 {
 
-argus_msgs::FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
+FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
                                              const std::string& family )
 {
-	argus_msgs::FiducialDetection det;
+	FiducialDetection det;
 	det.name = "apriltag_" + family + "_id" + std::to_string( tag.id );
 	det.undistorted = false;
 	det.normalized = false;
 	det.points.reserve( 4 );
 	for( unsigned int i = 0; i < 4; i++ )
 	{
-		argus_msgs::Point2D point;
-		point.x = tag.p[i].first;
-		point.y = tag.p[i].second;
-		det.points.push_back( point );
+		det.points.emplace_back( tag.p[i].first, tag.p[i].second );
 	}
 	return det;
 }
 
 PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
-                                   double fx, double fy, double px, double py )
+                        double fx, double fy, double px, double py )
 {
 	PoseSE3 pose;
 	FixedVectorType<3> translation;

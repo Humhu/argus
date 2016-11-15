@@ -3,7 +3,7 @@
 #include <ros/ros.h>
 
 #include "lookup/InfoManager.h"
-#include "fiducials/Fiducial.h"
+#include "fiducials/FiducialCommon.h"
 
 namespace argus
 {

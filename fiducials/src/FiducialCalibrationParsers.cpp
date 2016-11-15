@@ -29,15 +29,13 @@ bool ParseFiducialCalibration( const YAML::Node& yaml, fiducials::FiducialInfo& 
 		return false;
 	}
 
-	info.points.clear();
-	info.points.reserve( pointsX.size() );
 	geometry_msgs::Point point;
+	info.points.resize( pointsX.size() );
 	for( unsigned int i = 0; i < pointsX.size(); i++ )
 	{
-		point.x = pointsX[i];
-		point.y = pointsY[i];
-		point.z = pointsZ[i];
-		info.points.push_back( point );
+		info.points[i].x = pointsX[i];
+		info.points[i].y = pointsY[i];
+		info.points[i].z = pointsZ[i];
 	}
 	return true;
 }

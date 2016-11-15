@@ -17,43 +17,43 @@
 
 using namespace argus;
 
-/*! \brief A single-threaded AprilTag detector. */
+/*! \brief A single-threaded AprilTag _detector. */
 class AtagNode
 {
 public:
 
 AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: imagePort( nh )
+: _imagePort( nh )
 {
-	ph.param( "enable_undistortion", enableUndistortion, false );
-	ph.param( "enable_normalization", enableNormalization, false );
+	ph.param( "enable_undistortion", _enableUndistortion, false );
+	ph.param( "enable_normalization", _enableNormalization, false );
 
-	rawPublisher = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_raw", 20 );
-	if( enableUndistortion || enableNormalization )
+	_rawPub = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_raw", 20 );
+	if( _enableUndistortion || _enableNormalization )
 	{
-		processedPublisher = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_processed", 20 );
+		_procPub = ph.advertise<argus_msgs::ImageFiducialDetections>( "detections_processed", 20 );
 	}
 	
-	ph.param<std::string>( "tag_family", tagFamily, "36h11" );
-	if( tagFamily == "16h5" )
+	ph.param<std::string>( "tag_family", _tagFamily, "36h11" );
+	if( _tagFamily == "16h5" )
 	{
-		detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes16h5 );
+		_detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes16h5 );
 	}
-	else if( tagFamily == "25h7" )
+	else if( _tagFamily == "25h7" )
 	{
-		detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes25h7 );
+		_detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes25h7 );
 	}
-	else if( tagFamily == "25h9" )
+	else if( _tagFamily == "25h9" )
 	{
-		detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes25h9 );
+		_detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes25h9 );
 	}
-	else if( tagFamily == "36h9" )
+	else if( _tagFamily == "36h9" )
 	{
-		detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes36h9 );
+		_detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes36h9 );
 	}
-	else if( tagFamily == "36h11" )
+	else if( _tagFamily == "36h11" )
 	{
-		detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes36h11 );
+		_detector = std::make_shared<AprilTags::TagDetector>( AprilTags::tagCodes36h11 );
 	}
 	else
 	{
@@ -61,30 +61,30 @@ AtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		exit( -1 );
 	}
 	
-	ph.param( "max_skewness_ratio", maxSkewnessRatio, 3.0 );
-	ph.param( "min_area_product", minAreaProduct, 4000.0 );
+	ph.param( "max_skewness_ratio", _maxSkewnessRatio, 3.0 );
+	ph.param( "min_area_product", _minAreaProduct, 4000.0 );
 	
 	int buffLen;
 	ph.param( "buffer_size", buffLen, 5 );
-	cameraSub = imagePort.subscribeCamera( "image", buffLen, &AtagNode::ImageCallback, this );
+	_cameraSub = _imagePort.subscribeCamera( "image", buffLen, &AtagNode::ImageCallback, this );
 }
 	
 private:
 	
-std::string tagFamily;
-AprilTags::TagDetector::Ptr detector;
+std::string _tagFamily;
+AprilTags::TagDetector::Ptr _detector;
 
-bool enableUndistortion;
-bool enableNormalization;
+bool _enableUndistortion;
+bool _enableNormalization;
 
-double maxSkewnessRatio; // Used to filter out skew detections
-double minAreaProduct; // Used to filter out small detections
+double _maxSkewnessRatio; // Used to filter out skew detections
+double _minAreaProduct; // Used to filter out small detections
 
-ros::Publisher rawPublisher;
-ros::Publisher processedPublisher;
+ros::Publisher _rawPub;
+ros::Publisher _procPub;
 
-image_transport::ImageTransport imagePort;
-image_transport::CameraSubscriber cameraSub;
+image_transport::ImageTransport _imagePort;
+image_transport::CameraSubscriber _cameraSub;
 
 void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
                     const sensor_msgs::CameraInfo::ConstPtr& info )
@@ -103,13 +103,16 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		frame = msgFrame;
 	}
 
-	std::vector<AprilTags::TagDetection> tagDetections = detector->extractTags( frame );
+	std::vector<AprilTags::TagDetection> tagDetections = _detector->extractTags( frame );
 	
 	if( tagDetections.size() == 0 ) { return; }
 	
-	// Publish raw
-	std::vector<argus_msgs::FiducialDetection> fidDetections;
-	fidDetections.reserve( tagDetections.size() );
+	argus_msgs::ImageFiducialDetections rawMsg;
+	rawMsg.header.frame_id = msg->header.frame_id;
+	rawMsg.header.stamp = msg->header.stamp;
+	rawMsg.detections.reserve( tagDetections.size() );
+
+	argus_msgs::ImageFiducialDetections procMsg( rawMsg );
 	for( unsigned int i = 0; i < tagDetections.size(); i++ )
 	{
 		std::pair<double,double> diagLengths = ComputeDiagonals( tagDetections[i] );
@@ -120,33 +123,28 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 		double eratio = elarge / esmall;
 		double eprod = diagLengths.first * diagLengths.second;
 		//ROS_INFO_STREAM( "ID: " << tagDetections[i].id << " ratio: " << eratio << " area: " << eprod );
-;		if( eratio > maxSkewnessRatio ) { continue; }
-		if( eprod < minAreaProduct ) { continue; }
+;		if( eratio > _maxSkewnessRatio ) { continue; }
+		if( eprod < _minAreaProduct ) { continue; }
 		
-		fidDetections.push_back( TagToFiducial( tagDetections[i], tagFamily ) );
-	}
-	if( fidDetections.empty() ) { return; }
-	
-	argus_msgs::ImageFiducialDetections detMsg;
-	detMsg.detections = fidDetections;
-	detMsg.header.frame_id = msg->header.frame_id;
-	detMsg.header.stamp = msg->header.stamp;
-	
-	rawPublisher.publish( detMsg );
-	
-	// Publish processed
-	if( enableUndistortion || enableNormalization )
-	{
-		
-		if( !UndistortDetections( fidDetections, cameraModel,
-		                          enableUndistortion, enableNormalization,
-		                          detMsg.detections ) )
+		FiducialDetection fid = TagToFiducial( tagDetections[i], _tagFamily );
+		rawMsg.detections.push_back( fid.ToMsg() );
+
+		if( _enableUndistortion || _enableNormalization )
 		{
-			ROS_WARN_STREAM( "Could not undistort or normalize detections." );
-			return;
+			FiducialDetection fidProc = fid.Undistort( cameraModel, 
+			                                           _enableUndistortion,
+			                                           _enableNormalization );
+			procMsg.detections.push_back( fidProc.ToMsg() );
 		}
-		
-		processedPublisher.publish( detMsg );
+	}
+
+	// Don't publish if no detections
+	if( rawMsg.detections.empty() ) { return; }
+	_rawPub.publish( rawMsg );
+	
+	if( _enableUndistortion || _enableNormalization )
+	{
+		_procPub.publish( procMsg );
 	}
 }
 	
@@ -155,7 +153,7 @@ void ImageCallback( const sensor_msgs::Image::ConstPtr& msg,
 int main( int argc, char** argv )
 {
 	
-	ros::init( argc, argv, "atag_detector" );
+	ros::init( argc, argv, "atag__detector" );
 	
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );

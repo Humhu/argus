@@ -3,12 +3,14 @@
 #include "argus_utils/geometry/PoseSE3.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
+#include "fiducials/FiducialCommon.h"
 #include "fiducials/FiducialInfoManager.h"
-#include "extrinsics_array/ExtrinsicsInfoManager.h"
+#include "extrinsics_array/ExtrinsicsInterface.h"
 
 namespace argus
 {
 
+// TODO Be able to publish multiple ref frame observations
 /*! \brief Listens to fiducial detections and converts them to relative poses. */
 class FiducialPoseEstimator
 {
@@ -20,23 +22,20 @@ public:
 	
 private:
 	
-	/*! \brief Subscribes to /detections. Should be remapped. */
-	ros::Subscriber detSub;
+	std::string _refFrame;
+	ros::Subscriber _detSub;
+	ros::Publisher _posePub;
 	
-	ros::Publisher posePub;
+	LookupInterface _lookupInterface;
+	FiducialInfoManager _fiducialManager;
+	ExtrinsicsInterface _extrinsicsInterface;
 	
-	LookupInterface lookupInterface;
-	FiducialInfoManager fiducialManager;
-	ExtrinsicsInfoManager extrinsicsManager;
+	std::unordered_map<std::string, Fiducial> _transformedFiducials;
 	
-	// TODO
-	argus::PoseSE3::CovarianceMatrix covariance;
-	
-	std::unordered_map<std::string, Fiducial> transformedFiducials;
-	
+	// Gets the specified fiducial transformed into _refFrame at the specified time
+	bool GetFiducial( const std::string& name, const ros::Time& time, Fiducial& fid );
 	void DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg ); 
 	
-	bool RetrieveCameraInfo( const std::string& cameraName );
 	bool RetrieveFiducialInfo( const std::string& fidName );
 	
 };
