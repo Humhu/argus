@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include <yaml-cpp/yaml.h>
-#include "argus_utils/utils/YamlUtils.h"
+#include "argus_utils/utils/ParamUtils.h"
 #include "lookup/LookupInterface.h"
 
 using namespace argus;
@@ -26,23 +26,15 @@ int main( int argc, char** argv )
 	ROS_INFO_STREAM( "Using lookup namespace: " << lookupNamespace );
 	lookupInterface.SetLookupNamespace( lookupNamespace );
 	
-	std::string targetName;
-	if( !ph.getParam( "target_name", targetName ) )
+	YAML::Node targets;
+	GetParamRequired( ph, "", targets );
+	YAML::Node::const_iterator iter;
+	for( iter = targets.begin(); iter != targets.end(); iter++ )
 	{
-		ROS_ERROR_STREAM( "Must specify the target name." );
-		return -1;
-	}
-	
-	std::string targetNamespace;
-	ph.param<std::string>( "target_namespace", targetNamespace, "" );
-	
-	lookupInterface.WriteNamespace( targetName, targetNamespace );
-	
-	bool keepParams;
-	ph.param( "keep_params", keepParams, false );
-	if( !keepParams )
-	{
-		ph.deleteParam("");
+		const std::string& name = iter->first.as<std::string>();
+		const std::string& target = iter->second.as<std::string>();
+		ROS_INFO_STREAM( "Writing entry for " << name << " routing to " << target );
+		lookupInterface.WriteNamespace( name, target );
 	}
 	
 	return 0;
