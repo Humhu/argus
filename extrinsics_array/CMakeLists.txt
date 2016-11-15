@@ -60,9 +60,16 @@ add_dependencies( extrinsics_publisher_node extrinsics_array
 target_link_libraries( extrinsics_publisher_node extrinsics_array
                                                  ${catkin_LIBRARIES} )
 
+add_executable( transform_repeater_node nodes/transform_repeater_node.cpp )
+add_dependencies( transform_repeater_node extrinsics_array 
+                                            ${catkin_EXPORTED_TARGETS} )
+target_link_libraries( transform_repeater_node extrinsics_array
+                                                 ${catkin_LIBRARIES} )
+
 ## Mark executables and/or libraries for installation
 install(TARGETS extrinsics_array 
                 extrinsics_publisher_node
+                transform_repeater_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

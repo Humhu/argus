@@ -17,7 +17,7 @@ int main( int argc, char** argv )
 	msg.header.stamp = ros::Time::now();
 
 	YAML::Node transforms;
-	GetParamRequired( ph, "transforms", transforms );
+	GetParamRequired( ph, "", transforms );
 	YAML::Node::const_iterator iter;
 	for( iter = transforms.begin(); iter != transforms.end(); ++iter )
 	{
@@ -25,7 +25,7 @@ int main( int argc, char** argv )
 		YAML::Node info = iter->second;
 
 		GetParamRequired( info, "parent_id", msg.header.frame_id );
-		GetParamRequired( info, "child_id", msg.child_frame_id );
+		msg.child_frame_id = iter->first.as<std::string>();
 		PoseSE3 pose;
 		GetParamRequired( info, "pose", pose );
 		msg.transform = PoseToTransform( pose );
