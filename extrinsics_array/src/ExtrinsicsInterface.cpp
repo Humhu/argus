@@ -50,11 +50,11 @@ PoseSE3 ExtrinsicsInterface::GetExtrinsics( const std::string& target,
 	{
 		throw ExtrinsicsException( err );
 	}
-	geometry_msgs::TransformStamped msg = _tfBuffer->lookupTransform( target,
-	                                                                  targetTime,
-	                                                                  ref, 
+	geometry_msgs::TransformStamped msg = _tfBuffer->lookupTransform( ref,
 	                                                                  refTime,
-	                                                                  ref,
+	                                                                  target, 
+	                                                                  targetTime,
+	                                                                  target,
 	                                                                  ros::Duration(0) );
 	return TransformToPose( msg.transform );
 }
