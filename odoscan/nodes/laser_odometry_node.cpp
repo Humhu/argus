@@ -136,7 +136,7 @@ private:
 
 		std::string outputTopic;
 		GetParamRequired( info, "output_topic", outputTopic );
-		reg.velPub = _privHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( outputTopic, 0 );
+		reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( outputTopic, 0 );
 
 		unsigned int buffSize;
 		std::string inputTopic;
