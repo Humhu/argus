@@ -12,13 +12,9 @@
 #include "argus_utils/geometry/PoseSE3.h"
 #include "argus_utils/geometry/PoseSE2.h"
 
-#include "lookup/LookupInterface.h"
-#include "extrinsics_array/ExtrinsicsInfoManager.h"
-
 #include "paraset/ParameterManager.hpp"
 
-#include "broadcast/BroadcastTransmitter.h"
-
+#include <unordered_map>
 #include <unordered_set>
 
 namespace argus
@@ -28,9 +24,8 @@ namespace argus
 // TODO Abstract keyframe, redetection policies?
 // TODO Covariance estimator interface
 
-/*! \brief A complete VO pipeline that consumes images and outputs velocity estimates.
- * Subscribes to "/image_raw" for the image source. Uses the lookup system to
- * get extrinsics for cameras.
+/*! \brief A VO pipeline that consumes images and outputs velocity estimates
+ * for each camera.
  *
  * detector:
  *   type: [string] {corner, fixed, FAST} (corner)
@@ -62,11 +57,6 @@ private:
 	
 	image_transport::ImageTransport _imagePort;
 
-	BroadcastTransmitter _featureTx;
-	
-	LookupInterface _lookupInterface;
-	ExtrinsicsInfoManager _extrinsicsManager;
-	
 	InterestPointDetector::Ptr _detector;
 	InterestPointTracker::Ptr _tracker;
 	MotionEstimator::Ptr _estimator;
@@ -101,8 +91,6 @@ private:
 	NumericParam _minInlierRatio;
 	NumericParam _subsampleRate;
 	NumericParam _maxFrameDt;
-
-	PoseSE3::CovarianceMatrix _obsCovariance;
 
 	void RegisterCamera( const std::string& name, const YAML::Node& info );
 

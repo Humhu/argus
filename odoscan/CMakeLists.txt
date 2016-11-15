@@ -11,7 +11,6 @@ find_package(catkin REQUIRED
 					geometry_msgs
 					argus_utils
 					lookup
-					extrinsics_array
 					paraset
 					pcl_ros
 )
@@ -30,14 +29,13 @@ catkin_package(
 
 	LIBRARIES 		odoscan
 
-	CATKIN_DEPENDS 	roscpp 
+	CATKIN_DEPENDS	roscpp
 					sensor_msgs 
 					geometry_msgs 
 					std_msgs 
 					message_runtime
 					argus_utils
 					lookup
-					extrinsics_array
 					paraset
 					pcl_ros
 					

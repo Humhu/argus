@@ -14,7 +14,7 @@
 
 #include "camplex/CameraCalibration.h"
 
-#include <geometry_msgs/TwistWithCovarianceStamped.h>
+#include <geometry_msgs/TwistStamped.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -24,21 +24,8 @@ namespace argus
 VisualOdometryPipeline::VisualOdometryPipeline( ros::NodeHandle& nh, ros::NodeHandle& ph )
 : _nodeHandle( nh ), 
 _privHandle( ph ), 
-_imagePort( _nodeHandle ), 
-_extrinsicsManager( _lookupInterface )
+_imagePort( _nodeHandle )
 {
-	std::string lookupNamespace;
-	_privHandle.param<std::string>( "lookup_namespace", lookupNamespace, "/lookup" );
-	_lookupInterface.SetLookupNamespace( lookupNamespace );
-	
-	std::string featureName;
-	GetParam<std::string>( ph, "feature_name", featureName, "vo_features" );
-	std::vector<std::string> featureDescriptions = { "inlier_ratio" };
-	_featureTx.InitializePushStream( featureName, 
-	                                 ph,
-	                                 1,
-	                                 featureDescriptions );
-
 	double initRedectThresh;
 	GetParamRequired( ph, "redetection_threshold", initRedectThresh );
 	_redetectionThreshold.Initialize( ph, initRedectThresh, "redetection_threshold", 
@@ -69,20 +56,6 @@ _extrinsicsManager( _lookupInterface )
 	GetParamRequired( ph, "min_num_keypoints", initMinKeypoints );
 	_minNumKeypoints.Initialize( ph, initMinKeypoints, "min_num_keypoints",
 	                             "Minimum number of keyframe points." );
-
-	std::vector<double> covarianceData;
-	if( ph.getParam( "velocity_covariance", covarianceData ) )
-	{
-		if( !ParseMatrix( covarianceData, _obsCovariance ) )
-		{
-			ROS_ERROR_STREAM( "Could not parse observation covariance matrix." );
-			exit( -1 );
-		}
-	}
-	else
-	{
-		_obsCovariance = PoseSE3::CovarianceMatrix::Identity();
-	}
 		
 	std::string detectorType, trackerType, estimatorType;
 	GetParamRequired( ph, "detector/type", detectorType );
@@ -144,15 +117,6 @@ void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML
 {
 	ROS_INFO_STREAM( "Registering camera " << name );
 
-	if( !_extrinsicsManager.HasMember( name ) )
-	{
-		if( !_extrinsicsManager.ReadMemberInfo( name, false ) ) 
-		{ 
-			throw std::runtime_error( "VisualOdometryPipeline: Could not retrieve extrinsics for " 
-			                          + name );
-		}
-	}
-
 	CameraRegistration& reg = _cameraRegistry[ name ];
 	reg.name = name;
 	reg.framesSkipped = 0;
@@ -186,22 +150,23 @@ void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML
 	}
 	std::string velTopic;
 	GetParamRequired( info, "output_topic", velTopic );
-	reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( velTopic, 0 );
+	reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistStamped>( velTopic, 0 );
 }
 
 void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& msg,
                                             const sensor_msgs::CameraInfoConstPtr& info_msg )
 {
-	// Get the camera reg
+	
+	// NOTE Hack needed to sanitize some old tf conventions
 	std::string cameraName = msg->header.frame_id;
 	if( cameraName[0] == '/' )
-	  {
-	    cameraName.erase(0, 1);
-	  }
+	{
+		cameraName.erase(0, 1);
+	}
+
 	if( _cameraRegistry.count( cameraName ) == 0 )
 	{
-		// TODO Printout?
-	  ROS_WARN_STREAM("Camera " << cameraName << " not registered.");
+		ROS_WARN_STREAM("Camera " << cameraName << " not registered.");
 		return;
 	}
 
@@ -211,11 +176,12 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	FrameInterestPoints current;
 	current.time = msg->header.stamp;
 	camplex::CameraCalibration cc( "calib", *info_msg );
+	// TODO A more complete check of intrinsics validity
 	if( cc.GetFx() == 0.0 or std::isnan( cc.GetFx() ) )
-	  {
-	    ROS_WARN_STREAM( "Camera " << cameraName << " has invalid intrinsics." );
-	    return;
-	  }
+	{
+		ROS_WARN_STREAM( "Camera " << cameraName << " has invalid intrinsics." );
+		return;
+	}
 	
 	current.cameraModel = cc;
 	cv::cvtColor( cv_bridge::toCvShare( msg )->image, current.frame, CV_BGR2GRAY );
@@ -307,15 +273,12 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// Have to calculate dt before getting timestamp
 	double dt = ( current.time - reg.lastFrame.time ).toSec();
 	PoseSE3 cameraDisplacement = reg.lastPointsPose.Inverse() * currentPose;
-	const ExtrinsicsInfo& cameraInfo = _extrinsicsManager.GetInfo( cameraName );
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
-	PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( cameraInfo.extrinsics ) * cameraVelocity;
 
-	geometry_msgs::TwistWithCovarianceStamped tmsg;
+	geometry_msgs::TwistStamped tmsg;
 	tmsg.header.stamp = current.time;
-	tmsg.header.frame_id = cameraInfo.referenceFrame;
-	tmsg.twist.twist= TangentToMsg( frameVelocity );
-	SerializeMatrix( _obsCovariance, tmsg.twist.covariance );
+	tmsg.header.frame_id = cameraName; // NOTE This is the sanitized msg->header.frame_id
+	tmsg.twist= TangentToMsg( cameraVelocity );
 	reg.velPub.publish( tmsg );
 	
 	// Update registration

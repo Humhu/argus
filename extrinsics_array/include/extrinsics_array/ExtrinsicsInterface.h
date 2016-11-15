@@ -2,7 +2,7 @@
 #include <tf2_ros/transform_listener.h>
 
 #include <argus_utils/geometry/PoseSE3.h>
-
+#include <memory>
 #include <exception>
 
 namespace argus
@@ -26,6 +26,8 @@ private:
 class ExtrinsicsInterface
 {
 public:
+
+	typedef std::shared_ptr<ExtrinsicsInterface> Ptr;
 
 	ExtrinsicsInterface( ros::NodeHandle& nh, ros::NodeHandle& ph );
 

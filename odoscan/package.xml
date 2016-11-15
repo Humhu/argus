@@ -23,7 +23,6 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>argus_utils</build_depend>
   <build_depend>lookup</build_depend>
-  <build_depend>extrinsics_array</build_depend>
   <build_depend>paraset</build_depend>
   <build_depend>pcl_ros</build_depend>
   
@@ -34,7 +33,6 @@
   <run_depend>message_runtime</run_depend>
   <run_depend>argus_utils</run_depend>
   <run_depend>lookup</run_depend>
-  <run_depend>extrinsics_array</run_depend>
   <run_depend>paraset</run_depend>
   <run_depend>pcl_ros</run_depend>
   

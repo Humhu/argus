@@ -14,10 +14,7 @@ find_package(catkin REQUIRED
 					image_geometry
 					argus_utils
 					camplex
-					lookup
-					extrinsics_array
 					paraset
-					broadcast
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -45,10 +42,7 @@ catkin_package(
 					message_runtime
 					argus_utils
 					camplex
-					lookup
-					extrinsics_array
 					paraset
-					broadcast
 					
 	DEPENDS 		Boost 
 					OpenCV 

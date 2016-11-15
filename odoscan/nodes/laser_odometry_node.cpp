@@ -7,10 +7,9 @@
 #include "odoscan/ScanMatcher.h"
 #include "odoscan/ICPMatcher.h"
 
-#include "geometry_msgs/TwistWithCovarianceStamped.h"
+#include "geometry_msgs/TwistStamped.h"
 
 #include "lookup/LookupInterface.h"
-#include "extrinsics_array/ExtrinsicsInfoManager.h"
 #include "argus_utils/synchronization/SynchronizationTypes.h"
 
 #include <pcl_ros/point_cloud.h>
@@ -87,7 +86,6 @@ private:
 	ScanMatcher::Ptr _matcher;
 
 	LookupInterface _lookupInterface;
-	ExtrinsicsInfoManager _extrinsicsManager;
 	double _maxDt;
 
 	struct CloudRegistration
@@ -113,15 +111,6 @@ private:
 
 		CloudRegistration& reg = _cloudRegistry[ name ];
 
-		if( !_extrinsicsManager.HasMember( name ) )
-		{
-			if( !_extrinsicsManager.ReadMemberInfo( name, true, ros::Duration( 10.0 ) ) ) 
-			{ 
-				throw std::runtime_error( "LaserOdometryPipeline: Could not retrieve extrinsics for " 
-				                          + name );
-			}
-		}
-
 		GetParam( info, "show_output", reg.showOutput, false );
 		if( reg.showOutput )
 		{
@@ -136,7 +125,7 @@ private:
 
 		std::string outputTopic;
 		GetParamRequired( info, "output_topic", outputTopic );
-		reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistWithCovarianceStamped>( outputTopic, 0 );
+		reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistStamped>( outputTopic, 0 );
 
 		unsigned int buffSize;
 		std::string inputTopic;
@@ -203,18 +192,15 @@ private:
 			reg.debugKeyPub.publish( reg.lastCloud );
 		}
 
-		const ExtrinsicsInfo& laserInfo = _extrinsicsManager.GetInfo( laserName );
 		PoseSE3::TangentVector laserVelocity = PoseSE3::Log( laserDisplacement ) / dt;
-		PoseSE3::TangentVector frameVelocity = PoseSE3::Adjoint( laserInfo.extrinsics ) * laserVelocity;
 		// ROS_INFO_STREAM( "Frame velocity: " << frameVelocity.transpose() << std::endl <<
 		//                  "Laser displacement: " << laserDisplacement << std::endl <<
 		//                  "dt: " << dt );
 
-		geometry_msgs::TwistWithCovarianceStamped out;
+		geometry_msgs::TwistStamped out;
 		out.header.stamp = currTime;
 		out.header.frame_id = laserInfo.referenceFrame;
-		out.twist.twist = TangentToMsg( frameVelocity );
-		SerializeMatrix( MatrixType::Identity(6,6), out.twist.covariance );
+		out.twist = TangentToMsg( laserVelocity );
 		reg.velPub.publish( out );
 
 		// Update
