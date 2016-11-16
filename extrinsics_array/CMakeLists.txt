@@ -46,6 +46,7 @@ include_directories( include
 
 add_library( extrinsics_array
 	src/ExtrinsicsCalibrationParsers.cpp
+	src/ExtrinsicsCommon.cpp
 	src/ExtrinsicsInfoManager.cpp
 	src/ExtrinsicsInterface.cpp
 )
