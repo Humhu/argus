@@ -24,8 +24,7 @@ class LaserOdometryNode
 public:
 
 	LaserOdometryNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-	: _nodeHandle( nh ), _privHandle( ph ),
-	  _extrinsicsManager( _lookupInterface )
+	: _nodeHandle( nh ), _privHandle( ph )
 	  
 	{
 		ros::NodeHandle mh( _privHandle.resolveName( "matcher" ) );
@@ -199,7 +198,7 @@ private:
 
 		geometry_msgs::TwistStamped out;
 		out.header.stamp = currTime;
-		out.header.frame_id = laserInfo.referenceFrame;
+		out.header.frame_id = laserName;
 		out.twist = TangentToMsg( laserVelocity );
 		reg.velPub.publish( out );
 
