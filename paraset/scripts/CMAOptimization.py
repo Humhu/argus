@@ -30,19 +30,10 @@ class CMAOptimization:
         # Custom termination conditions
         self.max_iters = rospy.get_param( '~convergence/max_iters', float('Inf') )
         self.max_runtime = float(rospy.get_param( '~convergence/max_time', float('Inf') ) )
+        self.min_std_dev = rospy.get_param( '~convergence/min_std_dev', float('-Inf'))
 
         # Read optimization parameters
         self.num_restarts = rospy.get_param( '~num_restarts', 0 )
-
-        self.cma_options = cma.CMAOptions()
-        self.cma_options['verb_disp'] = 1
-        self.cma_options['verb_plot'] = 1
-        self.cma_options['popsize'] = rospy.get_param( '~population_size' )
-        self.cma_options['tolfun'] = float( rospy.get_param( '~convergence/output_change', -float('Inf') ) )
-        self.cma_options['tolx'] = float( rospy.get_param( '~convergence/input_change', -float('Inf') ) )
-        if rospy.get_param( '~diagonal_only', True ):
-            self.cma_options['CMA_diagonal'] = True
-        self.cma_options['termination_callback'] = self.HasTerminated
 
         # I/O initialization
         output_path = rospy.get_param( '~output_log_path' )
@@ -51,9 +42,31 @@ class CMAOptimization:
             raise RuntimeError( 'Could not open output log at path: ' + output_path )
         self.loggers = []
 
+        self.cma_options = cma.CMAOptions()
+        
+        self.ReadCMAParam( ros_key='~random_seed', cma_key='seed' )
+        self.ReadCMAParam( ros_key='~population_size', cma_key='popsize' )
+        self.ReadCMAParam( ros_key='~diagonal_only', cma_key='CMA_diagonal' )
+        self.cma_options['tolfun'] = float( rospy.get_param( '~convergence/output_change', -float('Inf') ) )
+        self.cma_options['tolx'] = float( rospy.get_param( '~convergence/input_change', -float('Inf') ) )
+
+        if rospy.has_param( '~bounds' ):
+            raw = rospy.get_param( '~bounds' )
+            bounds = [ float(r) for r in raw ]
+            self.cma_options['bounds'] = bounds
+
+        self.cma_options['verb_disp'] = 1
+        self.cma_options['verb_plot'] = 1        
+        
     def __del__( self ):
         if self.output_log is not None:
             self.output_log.close()
+
+    def ReadCMAParam( self, ros_key, cma_key ):
+        if rospy.has_param( ros_key ):
+            val = rospy.get_param( ros_key )
+            self.cma_options[cma_key] = val
+            self.Log( cma_key + ': ' + str( val ) )
 
     def Log( self, msg ):
         rospy.loginfo( msg )
@@ -69,6 +82,10 @@ class CMAOptimization:
         optimizer = cma.CMAEvolutionStrategy( self.mean, self.cov, self.cma_options )
         while not optimizer.stop() and not rospy.is_shutdown():
             inputs = optimizer.ask()
+
+            if self.HasTerminated( inputs ):
+                break
+
             optimizer.tell( inputs, [ self.EvaluateInput( inval ) for inval in inputs ] )
             optimizer.logger.add()
             optimizer.disp()
@@ -91,10 +108,21 @@ class CMAOptimization:
         # Critique is a reward so we have to negate it to get a cost
         return -res.critique
 
-    def HasTerminated( self, optimizer ):
+    def HasTerminated( self, queries ):
+        queries = np.asarray(queries)
+        input_stds = np.sqrt( np.diag( np.cov(queries.T) ) )
+
         runtime_exceeded = (rospy.Time.now() - self.start_time).to_sec() > self.max_runtime
+        if runtime_exceeded:
+            print 'Runtime exceeded.'
+            return True
+
         iters_exceeded = self.iter_counter >= self.max_iters
-        return runtime_exceeded or iters_exceeded
+        if iters_exceeded:
+            print 'Max iterations exceeded'
+            return True
+
+        return False
 
     def Execute( self ):
 

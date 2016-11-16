@@ -37,6 +37,11 @@ class StepResponse:
         self.num_samples = rospy.get_param( '~num_samples' )
         self.step_time = rospy.Duration( float( rospy.get_param( '~step_time') ) )
 
+        if rospy.has_param( '~random_seed' ):
+            seed = rospy.get_param( '~random_seed')
+            random.seed( seed )
+            print( 'Seeding RNG with: %d' % seed )
+
         # Recording state
         self.mutex = Lock()
         self.traj_start_time = rospy.Time.now()
