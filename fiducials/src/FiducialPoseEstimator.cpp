@@ -88,8 +88,8 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 
 	geometry_msgs::TransformStamped poseMsg;
 	poseMsg.header.stamp = msg->header.stamp;
-	poseMsg.header.frame_id = cameraName;
-	poseMsg.child_frame_id = _refFrame;
+	poseMsg.header.frame_id = _refFrame;
+	poseMsg.child_frame_id = cameraName;
 	poseMsg.transform = PoseToTransform( relPose );
 	_posePub.publish( poseMsg );
 }

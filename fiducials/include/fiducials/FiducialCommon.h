@@ -73,6 +73,10 @@ bool CheckDetectionROI( const FiducialDetection& det,
  * if a fiducial detection will be valid. */
 double FindMinDistance( const std::vector <argus_msgs::Point2D>& points );
 
+PoseSE3 EstimateArrayPose( const FiducialDetection& detection,
+                           const Fiducial& fiducial,
+                           const PoseSE3& guess = PoseSE3() );
+
 /*! \brief Estimates the array pose using OpenCV's solvePnP. Requires normalized and
  * undistorted detections. Assumes standard camera convention (z-forward) for 
  * imagePoints and object convention (x-forward) for input and returned poses. */

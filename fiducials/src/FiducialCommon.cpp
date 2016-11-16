@@ -243,6 +243,16 @@ double FindMinDistance( const std::vector <argus_msgs::Point2D>& points )
 	return std::sqrt( minSeen );
 }
 
+PoseSE3 EstimateArrayPose( const FiducialDetection& detection,
+                           const Fiducial& fiducial,
+                           const PoseSE3& guess )
+{
+	std::vector<FiducialDetection> detections;
+	detections.push_back( detection );
+	std::vector<Fiducial> fiducials;
+	fiducials.push_back( fiducial );
+	return EstimateArrayPose( detections, fiducials, guess );
+}
 
 // TODO if info is null, assume normalized and undistorted detections
 PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
