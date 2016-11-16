@@ -64,14 +64,13 @@ include_directories( include
 
 add_library( fieldtrack
     src/AdaptiveCovarianceEstimator.cpp
-	src/ArrayPoseEstimator.cpp
-	src/BodyFrameTracker.cpp
+	#src/BodyFrameTracker.cpp
 	src/FieldtrackCommon.cpp
-	src/FixedFrameTracker.cpp
+	src/FilterUtils.cpp
+	#src/FixedFrameTracker.cpp
 	src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp
-	#src/SimpleStateEstimator.cpp
 	src/TargetInfoManager.cpp
 	src/VelocityIntegrator.cpp
 )
@@ -80,39 +79,25 @@ target_link_libraries( fieldtrack
 	${catkin_LIBRARIES}
 )
 add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} )
- 
-add_executable( array_pose_estimator
-	nodes/array_pose_estimator.cpp )
-add_dependencies( array_pose_estimator ${PROJECT_NAME}_gencfg )
-target_link_libraries( array_pose_estimator
-	fieldtrack
-	${catkin_LIBRARIES} )
 
-add_executable( fixed_frame_tracker
-	nodes/fixed_frame_tracker.cpp )
-add_dependencies( fixed_frame_tracker ${PROJECT_NAME}_gencfg )
-target_link_libraries( fixed_frame_tracker
-	fieldtrack
-	${catkin_LIBRARIES} )
+# add_executable( fixed_frame_tracker
+# 	nodes/fixed_frame_tracker.cpp )
+# add_dependencies( fixed_frame_tracker ${PROJECT_NAME}_gencfg )
+# target_link_libraries( fixed_frame_tracker
+# 	fieldtrack
+# 	${catkin_LIBRARIES} )
 
-add_executable( body_frame_tracker
-	nodes/body_frame_tracker.cpp )
-add_dependencies( body_frame_tracker ${PROJECT_NAME}_gencfg )
-target_link_libraries( body_frame_tracker
-	fieldtrack
-	${catkin_LIBRARIES} )
+# add_executable( body_frame_tracker
+# 	nodes/body_frame_tracker.cpp )
+# add_dependencies( body_frame_tracker ${PROJECT_NAME}_gencfg )
+# target_link_libraries( body_frame_tracker
+# 	fieldtrack
+# 	${catkin_LIBRARIES} )
 
 add_executable( velocity_integrator_node
 	nodes/velocity_integrator_node.cpp )
 add_dependencies( velocity_integrator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( velocity_integrator_node
-	fieldtrack
-	${catkin_LIBRARIES} )
-
-add_executable( pose_reference_resolver
-	nodes/pose_reference_resolver.cpp )
-add_dependencies( pose_reference_resolver ${PROJECT_NAME}_gencfg )
-target_link_libraries( pose_reference_resolver
 	fieldtrack
 	${catkin_LIBRARIES} )
 
@@ -138,7 +123,10 @@ target_link_libraries( odometry_differentiator_node
 	${catkin_LIBRARIES} )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS 
+install(TARGETS velocity_integrator_node
+                state_estimator_node
+                odometry_converter_node
+                odometry_differentiator_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

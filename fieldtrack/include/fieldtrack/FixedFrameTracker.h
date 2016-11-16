@@ -7,7 +7,6 @@
 
 #include "argus_msgs/RelativePoseWithCovariance.h"
 #include "fieldtrack/TargetInfoManager.h"
-#include "argus_utils/filters/FilterTypes.h"
 
 #include <unordered_map>
 
