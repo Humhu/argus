@@ -19,7 +19,8 @@ public:
 
 	StateEstimatorNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	{
-		_estimator.Initialize( ph );
+		_extrinsicsManager = std::make_shared<ExtrinsicsInterface>( nh, ph );
+		_estimator.Initialize( ph, _extrinsicsManager );
 
 		double headLag;
 		GetParamRequired( ph, "update_lag", headLag );
@@ -60,6 +61,10 @@ public:
 			else if( type == "deriv_cov_stamped" )
 			{
 				SubscribeToUpdates<geometry_msgs::TwistWithCovarianceStamped>( nh, topic, buffSize, sourceName );
+			}
+			else if( type == "transform_stamped" )
+			{
+				SubscribeToUpdates<geometry_msgs::TransformStamped>( nh, topic, buffSize, sourceName );
 			}
 			else if( type == "imu" )
 			{
@@ -150,6 +155,7 @@ public:
 
 public:
 
+	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	std::vector<ros::Subscriber> _updateSubs;
 	
 	bool _publishOdom;

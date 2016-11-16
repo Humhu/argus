@@ -3,6 +3,7 @@
 #include "fieldtrack/PoseDerivativeFilter.h"
 #include "fieldtrack/FieldtrackCommon.h"
 #include "fieldtrack/ObservationSourceManager.h"
+#include "extrinsics_array/ExtrinsicsInterface.h"
 
 #include <ros/ros.h>
 #include <unordered_map>
@@ -16,7 +17,7 @@ public:
 
 	StateEstimator();
 
-	void Initialize( ros::NodeHandle& ph );
+	void Initialize( ros::NodeHandle& ph, ExtrinsicsInterface::Ptr extrinsics );
 	void Reset( const ros::Time& time );
 
 	template <typename M>
@@ -54,6 +55,7 @@ public:
 
 private:
 
+	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	PoseDerivativeFilter _filter;
 	ros::Time _filterTime;
 

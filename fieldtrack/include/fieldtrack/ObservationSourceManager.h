@@ -2,6 +2,8 @@
 
 #include "fieldtrack/FieldtrackCommon.h"
 #include "fieldtrack/AdaptiveCovarianceEstimator.h"
+#include "extrinsics_array/ExtrinsicsInterface.h"
+
 #include <boost/variant.hpp>
 
 namespace argus
@@ -12,19 +14,29 @@ class ObservationSourceManager
 {
 public:
 
-	ObservationSourceManager( ros::NodeHandle& ph );
+	// Initialize a manager, specifying the frame all observations should be
+	// transformed into and giving the interface to do it with
+	ObservationSourceManager( ros::NodeHandle& ph, 
+	                          const std::string& targetFrame,
+	                          const std::string& refFrame,
+	                          ExtrinsicsInterface::Ptr extrinsics );
 
 	void Update( const UpdateInfo& info );
 	void Reset();
 
+	// NOTE We assume for Pose messages that their effective child_frame_id is _refFrame
 	Observation operator()( const geometry_msgs::PoseStamped& msg );
 	Observation operator()( const geometry_msgs::PoseWithCovarianceStamped& msg );
 	Observation operator()( const geometry_msgs::TwistStamped& msg );
 	Observation operator()( const geometry_msgs::TwistWithCovarianceStamped& msg );
+	Observation operator()( const geometry_msgs::TransformStamped& msg );
 	Observation operator()( const sensor_msgs::Imu& msg );
 
 private:
 
+	std::string _refFrame;
+	std::string _targetFrame;
+	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	CovarianceMode _mode;
 	MatrixType _fixedCov;
 	AdaptiveObservationCovarianceEstimator _adaptiveCov;

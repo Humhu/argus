@@ -9,8 +9,11 @@ namespace argus
 
 StateEstimator::StateEstimator() {}
 
-void StateEstimator::Initialize( ros::NodeHandle& ph )
+void StateEstimator::Initialize( ros::NodeHandle& ph, 
+                                 ExtrinsicsInterface::Ptr extrinsics )
 {
+	_extrinsicsManager = extrinsics;
+	
 	GetParamRequired( ph, "reference_frame", _referenceFrame );
 	GetParamRequired( ph, "body_frame", _bodyFrame );
 	GetParam( ph, 
@@ -60,7 +63,12 @@ void StateEstimator::Initialize( ros::NodeHandle& ph )
 	{
 		const std::string& sourceName = iter->first.as<std::string>();
 		ros::NodeHandle sh = ph.resolveName( "update_sources/" + sourceName );
-		_sourceRegistry.emplace( sourceName, sh );
+		_sourceRegistry.emplace( std::piecewise_construct,
+		                         std::forward_as_tuple( sourceName ), 
+		                         std::forward_as_tuple( sh, 
+		                                                _bodyFrame, 
+		                                                _referenceFrame, 
+		                                                _extrinsicsManager ) );
 	}
 }
 

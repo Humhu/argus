@@ -10,7 +10,13 @@
 namespace argus
 {
 
-ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph )
+ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
+                                                    const std::string& targetFrame,
+                                                    const std::string& refFrame,
+                                                    ExtrinsicsInterface::Ptr extrinsics )
+: _targetFrame( targetFrame ),
+  _refFrame( refFrame ),
+  _extrinsicsManager( extrinsics )
 {
 	std::string mode;
 	GetParamRequired( ph, "mode", mode );
@@ -143,6 +149,12 @@ ObservationSourceManager::ParseImu( const std_msgs::Header& header,
 Observation ObservationSourceManager::operator()( const geometry_msgs::PoseStamped& msg )
 {
 	PoseSE3 pose = MsgToPose( msg.pose );
+	if( msg.header.frame_id != _targetFrame )
+	{
+		PoseSE3 ext = _extrinsicsManager->GetExtrinsics( _targetFrame, msg.header.frame_id );
+		pose = pose * ext;
+	}
+
 	MatrixType cov( POSE_DIM, POSE_DIM );
 	
 	std::vector<unsigned int> valid;
@@ -176,6 +188,12 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::PoseStamp
 Observation ObservationSourceManager::operator()( const geometry_msgs::PoseWithCovarianceStamped& msg )
 {
 	PoseSE3 pose = MsgToPose( msg.pose.pose );
+	if( msg.header.frame_id != _targetFrame )
+	{
+		PoseSE3 ext = _extrinsicsManager->GetExtrinsics( _targetFrame, msg.header.frame_id );
+		pose = pose * ext;
+	}
+
 	MatrixType cov( POSE_DIM, POSE_DIM );
 	ParseMatrix( msg.pose.covariance, cov );
 
@@ -206,7 +224,14 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::PoseWithC
 
 Observation ObservationSourceManager::operator()( const geometry_msgs::TwistStamped& msg )
 {
-	VectorType derivs = MsgToTangent( msg.twist );
+	PoseSE3::TangentVector derivs = MsgToTangent( msg.twist );
+	if( msg.header.frame_id != _targetFrame )
+	{
+		// TODO Transform covariances according to extrinsics also
+		PoseSE3 ext = _extrinsicsManager->GetExtrinsics( msg.header.frame_id, _targetFrame );
+		derivs = TransformTangent( derivs, ext );
+	}
+
 	MatrixType cov( POSE_DIM, POSE_DIM );
 	std::vector<unsigned int> valid;
 	if( _mode == COV_PASS )
@@ -238,8 +263,14 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::TwistStam
 
 Observation ObservationSourceManager::operator()( const geometry_msgs::TwistWithCovarianceStamped& msg )
 {
-	VectorType derivs = MsgToTangent( msg.twist.twist );
-	
+	PoseSE3::TangentVector derivs = MsgToTangent( msg.twist.twist );
+	if( msg.header.frame_id != _targetFrame )
+	{
+		// TODO Transform covariances according to extrinsics also
+		PoseSE3 ext = _extrinsicsManager->GetExtrinsics( msg.header.frame_id, _targetFrame );
+		derivs = TransformTangent( derivs, ext );
+	}
+
 	MatrixType cov( POSE_DIM, POSE_DIM );
 	ParseMatrix( msg.twist.covariance, cov );
 	
@@ -268,6 +299,45 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::TwistWith
 	return ParseDerivatives( msg.header, derivs, cov, valid );
 }
 
+Observation ObservationSourceManager::operator()( const geometry_msgs::TransformStamped& msg )
+{
+	PoseSE3 pose = TransformToPose( msg.transform );
+	pose = _extrinsicsManager->Convert( msg.header.frame_id, 
+	                                    msg.child_frame_id,
+	                                    msg.header.stamp,
+	                                    pose,
+	                                    _targetFrame,
+	                                    _refFrame );
+
+	MatrixType cov( POSE_DIM, POSE_DIM );
+	std::vector<unsigned int> valid;
+	if( _mode == COV_PASS )
+	{
+		throw std::runtime_error( "TransformStamped cannot have COV_PASS mode!" );
+	}
+	else if( _mode == COV_FIXED )
+	{
+		cov = _fixedCov;
+		CheckMatrixSize( cov, POSE_DIM );
+		valid = ParseCovarianceMask( cov );
+	}
+	else if( _mode == COV_ADAPTIVE )
+	{
+		if( _fixedCov.size() == 0 )
+		{
+			throw std::runtime_error( "TransformStamped does not have init_covariance in COV_ADAPTIVE mode." );
+		}
+		CheckMatrixSize( _fixedCov, POSE_DIM );
+		valid = ParseCovarianceMask( _fixedCov );
+		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : _fixedCov;
+	}
+	else
+	{
+		throw std::invalid_argument( "Unknown covariance mode." );
+	}
+	return ParsePoseMessage( msg.header, pose, cov, valid );
+}
+
 Observation ObservationSourceManager::operator()( const sensor_msgs::Imu& msg )
 {
 	// TODO Support orientation updates from IMU
@@ -275,6 +345,15 @@ Observation ObservationSourceManager::operator()( const sensor_msgs::Imu& msg )
 	VectorType derivs = VectorType::Zero(POSE_DIM);
 	derivs.head<3>() = MsgToVector3( msg.angular_velocity );
 	derivs.tail<3>() = MsgToVector3( msg.linear_acceleration );
+	
+	if( msg.header.frame_id != _targetFrame )
+	{
+		PoseSE3 ext = _extrinsicsManager->GetExtrinsics( msg.header.frame_id, _targetFrame );
+		PoseSE3::TangentVector v = PoseSE3::TangentVector::Zero();
+		v.head<3>() = derivs.tail<3>();
+		v = TransformTangent( v, ext );
+		derivs.tail<3>() = v.head<3>();
+	}
 
 	// We assume no correlation between gyro/xl measurements in the message
 	MatrixType cov = MatrixType::Zero(POSE_DIM,POSE_DIM);

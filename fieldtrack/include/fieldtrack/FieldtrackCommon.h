@@ -12,6 +12,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/TwistWithCovarianceStamped.h"
 
+#include "geometry_msgs/TransformStamped.h"
 #include "sensor_msgs/Imu.h"
 
 #include <boost/variant.hpp>
@@ -56,6 +57,7 @@ typedef boost::variant< geometry_msgs::PoseStamped,
                         geometry_msgs::PoseWithCovarianceStamped,
                         geometry_msgs::TwistStamped,
                         geometry_msgs::TwistWithCovarianceStamped,
+                        geometry_msgs::TransformStamped,
                         sensor_msgs::Imu >
         ObservationMessage;
 
@@ -96,6 +98,7 @@ typedef boost::variant< PoseObservation,
                         DerivObservation > 
         Observation;
 
+// Various observation visitors
 struct ObservationTimestampVisitor
 : public boost::static_visitor<ros::Time>
 {
@@ -103,5 +106,7 @@ struct ObservationTimestampVisitor
 
 	ros::Time operator()( const ObservationBase& obs ) const { return obs.timestamp; }
 };
+
+
 
 }
