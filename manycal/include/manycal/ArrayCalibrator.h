@@ -118,7 +118,7 @@ private:
 	                              TargetRegistration& cameraFrame,
 	                              FiducialRegistration& fiducial,
 	                              TargetRegistration& fiducialFrame,
-	                              const argus_msgs::FiducialDetection& detection,
+	                              const FiducialDetection& detection,
 								  ros::Time t );
 	
 };

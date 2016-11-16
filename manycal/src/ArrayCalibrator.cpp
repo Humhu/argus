@@ -9,11 +9,8 @@
 #include "argus_utils/utils/YamlUtils.h"
 
 #include "fiducials/FiducialCommon.h"
-#include "fiducials/PoseEstimation.h"
 
 #include <boost/foreach.hpp>
-
-using namespace argus_msgs;
 
 namespace argus
 {
@@ -268,7 +265,7 @@ void ArrayCalibrator::OdometryCallback( const geometry_msgs::PoseWithCovarianceS
 	                                isam::Covariance( cov ) );
 }
 
-void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr& msg )
+void ArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
 {
 	ROS_INFO_STREAM( "Detection received." );
 
@@ -306,9 +303,8 @@ void ArrayCalibrator::DetectionCallback( const ImageFiducialDetections::ConstPtr
 				return;
 			}
 
-			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-		                                         nullptr,
-		                                         MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
+			PoseSE3 relPose = EstimateArrayPose( detection,
+		                                         IsamToFiducial( fidReg.intrinsics->value() ) );
 		
 			ROS_INFO_STREAM( "Fiducial detected at: " << relPose );
 			
@@ -507,7 +503,7 @@ void ArrayCalibrator::RegisterFiducial( const std::string& fidName, bool calibra
 	pts.reserve( fiducial.points.size() );
 	for( unsigned int i = 0; i < fiducial.points.size(); i++ )
 	{
-		pts.push_back( MsgToIsam( fiducial.points[i] ) );
+		pts.push_back( PointToIsam( fiducial.points[i] ) );
 	}
 	isam::FiducialIntrinsics intrinsics( pts );
 	registration.intrinsics = std::make_shared <isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );

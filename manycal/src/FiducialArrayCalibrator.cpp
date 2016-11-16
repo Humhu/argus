@@ -1,5 +1,4 @@
 #include "manycal/FiducialArrayCalibrator.h"
-#include "fiducials/PoseEstimation.h"
 #include "argus_utils/utils/ParamUtils.h"
 
 #include <boost/foreach.hpp>
@@ -86,9 +85,8 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 		{
 			// Initialize the first camera position based on the observation+
 			const FiducialRegistration& fidReg = _fiducialRegistry[ detection.name ];
-			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-			                                     nullptr,
-			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
+			PoseSE3 relPose = EstimateArrayPose( detection,
+			                                     IsamToFiducial( fidReg.intrinsics->value() ) );
 			PoseSE3 fiducialPose = fidReg.extrinsics->value().pose;
 			PoseSE3 cameraPose = fiducialPose * relPose.Inverse();
 			
@@ -120,9 +118,7 @@ void FiducialArrayCalibrator::DetectionCallback( const ImageFiducialDetections::
 			if( !HasIntrinsicsPrior( detection.name ) ) { continue; }
 			
 			const Fiducial& intrinsics = _fiducialManager.GetInfo( detection.name );
-			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-			                                     nullptr,
-			                                     MsgToPoints( intrinsics.points ) );
+			PoseSE3 relPose = EstimateArrayPose( detection, intrinsics );
 			PoseSE3 cameraPose = cameraNode->value().pose;
 			PoseSE3 fiducialPose = cameraPose * relPose;
 			RegisterFiducial( detection.name, fiducialPose );

@@ -1,6 +1,5 @@
 #include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
 #include "manycal/CameraArrayCalibrator.h"
-#include "fiducials/PoseEstimation.h"
 #include <boost/foreach.hpp>
 
 using namespace argus_msgs;
@@ -119,9 +118,8 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections::Con
 		if( fidReg.poses.count( now ) == 0 )
 		{
 			PoseSE3 cameraPose = camReg.extrinsics->value().pose;
-			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-		                                         nullptr,
-		                                         MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
+			PoseSE3 relPose = EstimateArrayPose( detection,
+			                                     IsamToFiducial( fidReg.intrinsics->value() ) );
 			PoseSE3 fiducialPose = cameraPose * relPose;
 			ROS_INFO_STREAM( "Initializing fiducial at pose: " << fiducialPose );
 			isam::PoseSE3_Node::Ptr fidNode = std::make_shared<isam::PoseSE3_Node>();
@@ -179,9 +177,8 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections::Con
 			if( fidReg.poses.count( now ) == 0 ) { continue; } 
 			
 			PoseSE3 fiducialPose = fidReg.poses[now]->value().pose;
-			PoseSE3 relPose = EstimateArrayPose( MsgToPoints( detection.points ),
-			                                     nullptr,
-			                                     MatrixToPoints( fidReg.intrinsics->value().matrix() ) );
+			PoseSE3 relPose = EstimateArrayPose( detection,
+			                                     IsamToFiducial( fidReg.intrinsics->value() ) );
 			PoseSE3 cameraPose = fiducialPose * relPose.Inverse();
 			RegisterCamera( cameraName, cameraPose, false );
 			break;
