@@ -13,36 +13,43 @@ void ScanMatcher::Initialize( ros::NodeHandle& ph )
 	GetParamRequired( ph, "max_iters", maxIters );
 	_maxIters.Initialize( ph, maxIters, "max_iters", 
 	                      "Maximum number of matching iterations." );
+	_maxIters.AddCheck<GreaterThan>( 0 );
 
 	unsigned int ransacIters;
 	GetParamRequired( ph, "ransac_iters", ransacIters );
 	_ransacIters.Initialize( ph, ransacIters, "ransac_iters",
 	                         "Maximum number of RANSAC iterations." );
+	_ransacIters.AddCheck<GreaterThan>( 0 );
 
 	double ransacThreshold;
 	GetParamRequired( ph, "ransac_threshold", ransacThreshold );
 	_ransacThreshold.Initialize( ph, ransacThreshold, "ransac_threshold", 
 	                             "RANSAC outlier rejection distance." );
+	_ransacThreshold.AddCheck<GreaterThan>( 0.0 );
 
 	double maxCorrespondDist;
 	GetParamRequired( ph, "max_correspond_dist", maxCorrespondDist );
 	_maxCorrespondDist.Initialize( ph, maxCorrespondDist, "max_correspond_dist",
 	                               "Max correspondence distance" );
+	_maxCorrespondDist.AddCheck<GreaterThan>( 0.0 );
 
 	double minTransformEps;
 	GetParamRequired( ph, "min_transform_eps", minTransformEps );
 	_minTransformEps.Initialize( ph, minTransformEps, "min_transform_eps",
 	                             "Min transformation change" );
+	_minTransformEps.AddCheck<GreaterThan>( 0.0 );
 
 	double minObjectiveEps;
 	GetParamRequired( ph, "min_objective_eps", minObjectiveEps );
 	_minObjectiveEps.Initialize( ph, minObjectiveEps, "min_objective_eps",
 	                             "Min objective change" );
+	_minObjectiveEps.AddCheck<GreaterThan>( 0.0 );
 
 	double maxError;
 	GetParamRequired( ph, "max_error", maxError );
 	_maxError.Initialize( ph, maxError, "max_error",
 	                      "Maximum alignment mean sum of squared errors." );
+	_maxError.AddCheck<GreaterThan>( 0.0 );
 
 	InitializeDerived( ph );
 }

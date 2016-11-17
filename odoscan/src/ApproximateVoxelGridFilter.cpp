@@ -12,6 +12,7 @@ void ApproximateVoxelGridFilter::InitializeDerived( ros::NodeHandle& ph )
 	GetParamRequired( ph, "voxel_size", leafSize );
 	_leafSize.Initialize( ph, leafSize, "voxel_size", 
 	                      "Voxel grid size" );
+	_leafSize.AddCheck<GreaterThan>( 0.0 );
 
 	// unsigned int minPointsPerVox;
 	// GetParamRequired( ph, "min_voxel_points", minPointsPerVox );
@@ -25,7 +26,8 @@ ScanFilter::FilterType::Ptr ApproximateVoxelGridFilter::CreateFilter()
 	
 	double ls = _leafSize;
 	filter->setLeafSize( ls, ls, ls );
-	// filter->setMinimumPointsNumberPerVoxel( _minPointsPerVox ); Needs > PCL 1.7
+	// NOTE Needs > PCL 1.7
+	// filter->setMinimumPointsNumberPerVoxel( _minPointsPerVox ); 
 	return filter;
 }
 
