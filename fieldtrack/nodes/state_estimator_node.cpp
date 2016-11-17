@@ -6,7 +6,6 @@
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/geometry/GeometryUtils.h"
 
-#include "argus_msgs/FilterUpdate.h"
 #include <nav_msgs/Odometry.h>
 #include "fieldtrack/ResetFilter.h"
 #include "fieldtrack/TargetState.h"

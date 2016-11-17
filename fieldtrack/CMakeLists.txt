@@ -72,7 +72,7 @@ add_library( fieldtrack
 	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp
 	src/TargetInfoManager.cpp
-	src/VelocityIntegrator.cpp
+	#src/VelocityIntegrator.cpp
 )
 target_link_libraries( fieldtrack
 	${Boost_LIBRARIES}
@@ -94,12 +94,12 @@ add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} )
 # 	fieldtrack
 # 	${catkin_LIBRARIES} )
 
-add_executable( velocity_integrator_node
-	nodes/velocity_integrator_node.cpp )
-add_dependencies( velocity_integrator_node ${PROJECT_NAME}_gencfg )
-target_link_libraries( velocity_integrator_node
-	fieldtrack
-	${catkin_LIBRARIES} )
+# add_executable( velocity_integrator_node
+# 	nodes/velocity_integrator_node.cpp )
+# add_dependencies( velocity_integrator_node ${PROJECT_NAME}_gencfg )
+# target_link_libraries( velocity_integrator_node
+# 	fieldtrack
+# 	${catkin_LIBRARIES} )
 
 add_executable( state_estimator_node
 	nodes/state_estimator_node.cpp )
@@ -123,8 +123,7 @@ target_link_libraries( odometry_differentiator_node
 	${catkin_LIBRARIES} )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS velocity_integrator_node
-                state_estimator_node
+install(TARGETS state_estimator_node
                 odometry_converter_node
                 odometry_differentiator_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
