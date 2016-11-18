@@ -179,18 +179,18 @@ private:
 		PoseSE3 laserDisplacement;
 		bool success = _matcher->Match( reg.lastCloud, currCloud, laserDisplacement, aligned );
 
+		if( reg.showOutput )
+		{
+			reg.debugAlignedPub.publish( aligned );
+			reg.debugKeyPub.publish( reg.lastCloud );
+		}
+
 		if( !success )
 		{
 			ROS_WARN_STREAM( "Scan matching failed!" );
 			reg.lastCloud = currCloud;
 			reg.lastCloudTime = currTime;
 			return;
-		}
-
-		if( reg.showOutput )
-		{
-			reg.debugAlignedPub.publish( aligned );
-			reg.debugKeyPub.publish( reg.lastCloud );
 		}
 
 		PoseSE3::TangentVector laserVelocity = PoseSE3::Log( laserDisplacement ) / dt;

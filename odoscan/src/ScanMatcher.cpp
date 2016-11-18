@@ -82,10 +82,19 @@ bool ScanMatcher::Match( const LaserCloudType::ConstPtr& key,
 	}
 	matcher->align( *aligned, pose.ToTransform().matrix().cast<float>() );
 
-	if( !matcher->hasConverged() ) { return false; }
+	if( !matcher->hasConverged() ) 
+	  { 
+	    ROS_WARN_STREAM( "Scan match failed to converge." );
+	    return false; 
+	  }
 
 	double fitness = matcher->getFitnessScore( _maxCorrespondDist );
-	if( fitness > _maxError ) { return false; }
+	if( fitness > _maxError ) 
+	  { 
+	    ROS_WARN_STREAM( "Scan match result has error " << fitness << 
+                             " greater than threshold " << _maxError );
+	    return false; 
+	  }
 
 	FixedMatrixType<4,4> H = matcher->getFinalTransformation().cast<double>();
 	pose = PoseSE3( H );
