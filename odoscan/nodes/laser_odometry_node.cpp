@@ -130,14 +130,17 @@ private:
 		std::string inputTopic;
 		GetParam<unsigned int>( info, "buffer_size", buffSize, 0 );
 		GetParamRequired( info, "cloud_topic", inputTopic );
-		reg.cloudSub = _nodeHandle.subscribe( inputTopic, buffSize, &LaserOdometryNode::CloudCallback, this );
+		reg.cloudSub = _nodeHandle.subscribe<LaserCloudType>( inputTopic, 
+		                                                      buffSize, 
+		                                      boost::bind( &LaserOdometryNode::CloudCallback, 
+		                                                   this,
+		                                                   boost::ref( reg ), 
+		                                                   _1 ) );
 	}
 
-	void CloudCallback( const LaserCloudType::ConstPtr& msg )
+	void CloudCallback( CloudRegistration& reg,
+	                    const LaserCloudType::ConstPtr& msg )
 	{
-		const std::string& laserName = msg->header.frame_id;
-		if( _cloudRegistry.count( laserName ) == 0 ) { return; }
-
 		// Parse message fields
 		LaserCloudType::Ptr currCloud;
 		if( _filter )
@@ -154,7 +157,6 @@ private:
 		pcl_conversions::fromPCL( msg->header.stamp, currTime );
 
 		// Synchronize registration access
-		CloudRegistration& reg = _cloudRegistry[ laserName ];
 		WriteLock lock( reg.mutex );
 
 		if( !reg.lastCloud )
@@ -198,7 +200,7 @@ private:
 
 		geometry_msgs::TwistStamped out;
 		out.header.stamp = currTime;
-		out.header.frame_id = laserName;
+		out.header.frame_id = msg->header.frame_id;
 		out.twist = TangentToMsg( laserVelocity );
 		reg.velPub.publish( out );
 

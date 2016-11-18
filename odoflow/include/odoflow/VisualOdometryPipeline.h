@@ -96,8 +96,9 @@ private:
 
 	void VisualizeFrame( const CameraRegistration& registration );
 	
-	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
-						const sensor_msgs::CameraInfoConstPtr& info_msg );
+	void ImageCallback( CameraRegistration& reg,
+	                    const sensor_msgs::ImageConstPtr& msg,
+	                    const sensor_msgs::CameraInfoConstPtr& info_msg );
 	void SetKeyframe( CameraRegistration& registration,
 	                  const FrameInterestPoints& key );
 	

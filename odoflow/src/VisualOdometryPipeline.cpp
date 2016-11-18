@@ -113,7 +113,8 @@ _imagePort( _nodeHandle )
 
 VisualOdometryPipeline::~VisualOdometryPipeline() {}
 
-void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML::Node& info )
+void VisualOdometryPipeline::RegisterCamera( const std::string& name, 
+                                             const YAML::Node& info )
 {
 	ROS_INFO_STREAM( "Registering camera " << name );
 
@@ -135,8 +136,11 @@ void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML
 	{
 		reg.imageSub = _imagePort.subscribeCamera( imageTopic, 
 		                                           buffSize, 
-		                                           &VisualOdometryPipeline::ImageCallback, 
-		                                           this );
+		               boost::bind( &VisualOdometryPipeline::ImageCallback, 
+		                            this,
+		                            boost::ref( reg ),
+		                            _1,
+		                            _2 ) );
 		_imageTopics.insert( imageTopic );
 	}
 
@@ -153,24 +157,10 @@ void VisualOdometryPipeline::RegisterCamera( const std::string& name, const YAML
 	reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistStamped>( velTopic, 0 );
 }
 
-void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& msg,
+void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
+                                            const sensor_msgs::ImageConstPtr& msg,
                                             const sensor_msgs::CameraInfoConstPtr& info_msg )
 {
-	
-	// NOTE Hack needed to sanitize some old tf conventions
-	std::string cameraName = msg->header.frame_id;
-	if( cameraName[0] == '/' )
-	{
-		cameraName.erase(0, 1);
-	}
-
-	if( _cameraRegistry.count( cameraName ) == 0 )
-	{
-		ROS_WARN_STREAM("Camera " << cameraName << " not registered.");
-		return;
-	}
-
-	CameraRegistration& reg = _cameraRegistry[ cameraName ];
 	WriteLock lock( reg.mutex );
 
 	FrameInterestPoints current;
@@ -179,7 +169,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	// TODO A more complete check of intrinsics validity
 	if( cc.GetFx() == 0.0 or std::isnan( cc.GetFx() ) )
 	{
-		ROS_WARN_STREAM( "Camera " << cameraName << " has invalid intrinsics." );
+		ROS_WARN_STREAM( "Camera " << reg.name << " has invalid intrinsics." );
 		return;
 	}
 	
@@ -276,8 +266,7 @@ void VisualOdometryPipeline::ImageCallback( const sensor_msgs::ImageConstPtr& ms
 	PoseSE3::TangentVector cameraVelocity = PoseSE3::Log( cameraDisplacement ) / dt;
 
 	geometry_msgs::TwistStamped tmsg;
-	tmsg.header.stamp = current.time;
-	tmsg.header.frame_id = cameraName; // NOTE This is the sanitized msg->header.frame_id
+	tmsg.header = msg->header;
 	tmsg.twist= TangentToMsg( cameraVelocity );
 	reg.velPub.publish( tmsg );
 	
