@@ -6,7 +6,7 @@ namespace argus
 {
 
 FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
-                                             const std::string& family )
+                                 const std::string& family )
 {
 	FiducialDetection det;
 	det.name = "apriltag_" + family + "_id" + std::to_string( tag.id );
@@ -18,24 +18,6 @@ FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
 		det.points.emplace_back( tag.p[i].first, tag.p[i].second );
 	}
 	return det;
-}
-
-PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
-                        double fx, double fy, double px, double py )
-{
-	PoseSE3 pose;
-	FixedVectorType<3> translation;
-	FixedMatrixType<3,3> rotation;
-	
-	det.getRelativeTranslationRotation( tagSize, fx, fy, px, py,
-	                                          translation, rotation );
-	static PoseSE3 postrotation( Translation3Type( 0, 0, 0 ), 
-	                             EulerToQuaternion( EulerAngles( -M_PI/2, -M_PI/2, 0 ) ) );
-	
-	Translation3Type t( translation );
-	QuaternionType q( rotation );
-	PoseSE3 H_tag_cam( t, q );
-	return H_tag_cam * postrotation;
 }
 
 Eigen::Matrix2d ComputeCovariance( const AprilTags::TagDetection& det )

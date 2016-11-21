@@ -15,11 +15,6 @@ namespace argus
 FiducialDetection TagToFiducial( const AprilTags::TagDetection& tag,
                                  const std::string& family );
 
-/*! \brief Returns transform from tag to camera assuming x-forward for both frames. */
-// TODO Clean up this interface to use the msg.normalized member somehow
-PoseSE3 ComputeTagPose( const AprilTags::TagDetection& det, double tagSize,
-                        double fx, double fy, double px, double py );
-
 /*! \brief Calculates the covariance of the corners to estimate skew. */
 Eigen::Matrix2d ComputeCovariance( const AprilTags::TagDetection& det );
 
