@@ -14,13 +14,17 @@ ExtrinsicsInterface::ExtrinsicsInterface( ros::NodeHandle& nh,
 	_tfListener = std::make_shared<tf2_ros::TransformListener>( *_tfBuffer, nh );
 }
 
-PoseSE3 ExtrinsicsInterface::Convert( const std::string& fromIn,
-                                      const std::string& toIn,
+PoseSE3 ExtrinsicsInterface::Convert( std::string fromIn,
+                                      std::string toIn,
                                       const ros::Time& timeIn,
                                       const PoseSE3& poseIn,
-                                      const std::string& fromOut, 
-                                      const std::string& toOut )
+                                      std::string fromOut, 
+                                      std::string toOut )
 {
+	fromIn = Sanitize( fromIn );
+	toIn = Sanitize( toIn );
+	fromOut = Sanitize( fromOut );
+	toOut = Sanitize( toOut );
 	try
 	{
 		PoseSE3 fromExt, parentExt;
@@ -45,25 +49,27 @@ PoseSE3 ExtrinsicsInterface::Convert( const std::string& fromIn,
 	}
 }
 
-PoseSE3 ExtrinsicsInterface::GetExtrinsics( const std::string& from,
-                                            const std::string& to,
+PoseSE3 ExtrinsicsInterface::GetExtrinsics( std::string from,
+                                            std::string to,
                                             const ros::Time& time )
 {
 	return GetExtrinsics( from, time, to, time );
 }
 
-PoseSE3 ExtrinsicsInterface::GetDisplacement( const std::string& from,
+PoseSE3 ExtrinsicsInterface::GetDisplacement( std::string from,
                                               const ros::Time& start,
                                               const ros::Time& stop )
 {
 	return GetExtrinsics( from, start, from, stop );
 }
 
-PoseSE3 ExtrinsicsInterface::GetExtrinsics( const std::string& from,
+PoseSE3 ExtrinsicsInterface::GetExtrinsics( std::string from,
                                             const ros::Time& fromTime,
-                                            const std::string& to,
+                                            std::string to,
                                             const ros::Time& toTime )
 {
+	from = Sanitize( from );
+	to = Sanitize( to );
 	std::string err;
 	// NOTE Assuming the transform should be static in the to frame
 	if( !_tfBuffer->canTransform( from, fromTime, 
@@ -81,6 +87,15 @@ PoseSE3 ExtrinsicsInterface::GetExtrinsics( const std::string& from,
 	                                                                  to,
 	                                                                  ros::Duration(0) );
 	return TransformToPose( msg.transform );
+}
+
+std::string ExtrinsicsInterface::Sanitize( std::string in )
+{
+	if( in.front() == '/' )
+	{
+		in.erase( 0 );
+	}
+	return in;
 }
 
 }
