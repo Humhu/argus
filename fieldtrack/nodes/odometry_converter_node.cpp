@@ -18,6 +18,8 @@ public:
 	OdometryTranslator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: _extrinsicsManager( nh, ph )
 	{
+		GetParamRequired( ph, "reference_frame", _targetRefFrame );
+		GetParamRequired( ph, "body_frame", _targetBodyFrame );
 		_odomSub = nh.subscribe( "odometry", 10,
 		                         &OdometryTranslator::OdomCallback,
 		                         this );
