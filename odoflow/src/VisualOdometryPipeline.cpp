@@ -56,6 +56,7 @@ _imagePort( _nodeHandle )
 	GetParamRequired( ph, "min_num_keypoints", initMinKeypoints );
 	_minNumKeypoints.Initialize( ph, initMinKeypoints, "min_num_keypoints",
 	                             "Minimum number of keyframe points." );
+	_minNumKeypoints.AddCheck<IntegerValued>( ROUND_CLOSEST );
 		
 	std::string detectorType, trackerType, estimatorType;
 	GetParamRequired( ph, "detector/type", detectorType );
