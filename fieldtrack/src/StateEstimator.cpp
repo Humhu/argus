@@ -123,7 +123,11 @@ void StateEstimator::Process( const ros::Time& until )
 		// Check likelihood after predict
 		ObservationLikelihoodVisitor likelihoodCheck( _filter );
 		double likelihood = boost::apply_visitor( likelihoodCheck, obs );
-		if( likelihood < _likelihoodThreshold )
+		if( std::isnan(likelihood) )
+		{
+		  ROS_WARN_STREAM( "Likelihood is nan!" );
+		}  
+		else if( likelihood < _likelihoodThreshold )
 		{
 			ROS_WARN_STREAM( "Rejecting observation from " << sourceName << " with likelihood "
 			                 << likelihood << " less than threshold " << _likelihoodThreshold );
