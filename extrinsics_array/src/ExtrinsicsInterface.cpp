@@ -93,7 +93,7 @@ std::string ExtrinsicsInterface::Sanitize( std::string in )
 {
 	if( in.front() == '/' )
 	{
-		in.erase( 0 );
+	  in.erase( 0, 1 );
 	}
 	return in;
 }

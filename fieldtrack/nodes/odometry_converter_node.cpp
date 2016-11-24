@@ -18,6 +18,9 @@ public:
 	OdometryTranslator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: _extrinsicsManager( nh, ph )
 	{
+	  GetParam( ph, "override_reference_frame", _overrideFrameId );
+	  GetParam( ph, "override_child_frame", _overrideChildId );
+
 		GetParamRequired( ph, "reference_frame", _targetRefFrame );
 		GetParamRequired( ph, "body_frame", _targetBodyFrame );
 		_odomSub = nh.subscribe( "odometry", 10,
@@ -33,13 +36,16 @@ private:
 	ros::Publisher _posePub;
 	ros::Subscriber _odomSub;
 
+  std::string _overrideFrameId;
+  std::string _overrideChildId;
+
 	std::string _targetRefFrame;
 	std::string _targetBodyFrame;
 	
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
-		const std::string& refFrame = msg->header.frame_id;
-		const std::string& bodyFrame = msg->child_frame_id;
+	  std::string bodyFrame = _overrideFrameId.empty() ? msg->header.frame_id : _overrideFrameId;
+	  std::string refFrame = _overrideChildId.empty() ? msg->child_frame_id : _overrideChildId;
 
 		nav_msgs::Odometry output( *msg );
 
@@ -59,8 +65,8 @@ private:
 		PoseSE3::CovarianceMatrix origVelCov;
 		ParseMatrix( msg->twist.covariance, origVelCov );
 
-		PoseSE3 extrinsics = _extrinsicsManager.GetExtrinsics( _targetBodyFrame,
-		                                                       bodyFrame,
+		PoseSE3 extrinsics = _extrinsicsManager.GetExtrinsics( bodyFrame,
+		                                                       _targetBodyFrame,
 		                                                       msg->header.stamp );
 		PoseSE3::TangentVector convVel = TransformTangent( origVel, 
 		                                                   extrinsics );
