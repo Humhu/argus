@@ -1,32 +1,16 @@
 #include "fieldtrack/PoseDerivativeFilter.h"
 #include "argus_utils/utils/MatrixUtils.h"
+#include "argus_utils/utils/MathUtils.h"
 
 namespace argus
 {
-
-MatrixType IntegralMatrix( double dt, unsigned int order )
-{
-	unsigned int N = PoseSE3::TangentDimension * (order + 1);
-	MatrixType mat = MatrixType::Identity( N, N );
-
-	double intTerm = 1.0;
-	for( unsigned int o = 1; o <= order; ++o )
-	{
-		intTerm = intTerm * dt / o;
-		for( int i = 0; i < PoseSE3::TangentDimension*(order-o+1); ++i )
-		{
-			mat( i, i + PoseSE3::TangentDimension*o ) = intTerm;
-		}
-	}
-	return mat;
-}
 
 PoseDerivativeFilter::PoseDerivativeFilter( unsigned int order )
 : _order( order )
 {
 	_derivs = VectorType::Zero( DerivsDim() );
 	_cov = MatrixType::Identity( CovDim(), CovDim() );
-	_tfunc = boost::bind( &IntegralMatrix, _1, order );
+	_tfunc = boost::bind( &IntegralMatrix<double>, _1, order );
 }
 
 unsigned int PoseDerivativeFilter::PoseDim() const

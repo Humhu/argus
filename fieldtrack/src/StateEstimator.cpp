@@ -31,7 +31,7 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 
 	_initialCovariance = MatrixType( _filter.CovDim(), 
 		                             _filter.CovDim() );
-	GetParamRequired<double>( ph, "initial_covariance", _initialCovariance );
+	GetParamRequired( ph, "initial_covariance", _initialCovariance );
 
 	std::string mode;
 	ros::NodeHandle th( ph.resolveName("transition") );	
@@ -45,13 +45,13 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 	{
 		_fixedTransCov = MatrixType( _filter.CovDim(), 
 		                             _filter.CovDim() );
-		GetParamRequired<double>( th, "covariance", _fixedTransCov );
+		GetParamRequired( th, "covariance", _fixedTransCov );
 	}
 	else if( _transitionMode == COV_ADAPTIVE )
 	{		
 		_fixedTransCov = MatrixType( _filter.CovDim(), 
 		                             _filter.CovDim() );
-		GetParamRequired<double>( th, "initial_covariance", _fixedTransCov );
+		GetParamRequired( th, "initial_covariance", _fixedTransCov );
 		_adaptiveTransCov.Initialize( th );
 	}
 

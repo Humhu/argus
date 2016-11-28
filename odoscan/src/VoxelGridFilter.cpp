@@ -8,12 +8,11 @@ VoxelGridFilter::VoxelGridFilter() {}
 
 void VoxelGridFilter::InitializeDerived( ros::NodeHandle& ph )
 {
-	FullNumericRange leafSize;
+	unsigned int leafSize;
 	GetParamRequired( ph, "voxel_size", leafSize );
-	_leafSize.Initialize( ph, leafSize.init, "voxel_size", 
+	_leafSize.Initialize( ph, leafSize, "voxel_size", 
 	                      "Voxel grid size" );
-	_leafSize.AddCheck<GreaterThanOrEqual>( leafSize.min );
-	_leafSize.AddCheck<LessThanOrEqual>( leafSize.max );
+	_leafSize.AddCheck<GreaterThanOrEqual>( 0 );
 
 	// FullNumericRange minPointsPerVox;
 	// GetParamRequired( ph, "min_voxel_points", minPointsPerVox );

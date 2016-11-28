@@ -31,7 +31,7 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 		unsigned int dim;
 		GetParamRequired( ph, "dim", dim );
 		_fixedCov = MatrixType( dim, dim );
-		GetParamRequired<double>( ph, "fixed_covariance", _fixedCov );
+		GetParamRequired( ph, "fixed_covariance", _fixedCov );
 	}
 	else if( _mode == COV_ADAPTIVE )
 	{
@@ -40,7 +40,7 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 			unsigned int dim;
 			GetParam( ph, "dim", dim );
 			_fixedCov = MatrixType( dim, dim );
-			GetParam<double>( ph, "initial_covariance", _fixedCov );
+			GetParam( ph, "initial_covariance", _fixedCov );
 		}
 
 		_adaptiveCov.Initialize( ph );

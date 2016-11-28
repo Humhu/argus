@@ -34,8 +34,8 @@ public:
 
 private:
 
-	std::string _refFrame;
 	std::string _targetFrame;
+	std::string _refFrame;
 	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	CovarianceMode _mode;
 	MatrixType _fixedCov;
