@@ -88,7 +88,7 @@ private:
 	void Enforce2D();
 	void SquashPose();
 
-	MatrixType GetTransitionCov( double dt ) const;
+	MatrixType GetTransitionCov( const ros::Time& time, double dt );
 };
 
 }

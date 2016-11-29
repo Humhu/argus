@@ -21,7 +21,7 @@ public:
 	                          const std::string& refFrame,
 	                          ExtrinsicsInterface::Ptr extrinsics );
 
-	void Update( const UpdateInfo& info );
+	void Update( const ros::Time& time, const UpdateInfo& info );
 	void Reset();
 
 	// NOTE We assume for Pose messages that their effective child_frame_id is _refFrame
