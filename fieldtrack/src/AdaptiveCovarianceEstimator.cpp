@@ -46,8 +46,8 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	MatrixType Qacc = std::exp( 0 ) * _innoProds[0].second;
 	for( unsigned int i = 1; i < _innoProds.size(); ++i )
 	{
-		double dt = ( _innoProds[i].first - startTime ).toSec();
-		double w = std::exp( -_decayRate * dt );
+		double dt = ( startTime - _innoProds[i].first ).toSec();
+		double w = std::exp( _decayRate * dt );
 		Qacc += _innoProds[i].second * w;
 		wAcc += w;
 	}
@@ -116,8 +116,8 @@ void AdaptiveObservationCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	GetParamRequired( ph, "initial_covariance", _initialCov );
 
 	GetParam( ph, "use_diag", _useDiag, true );
-	double decayRate;
-	GetParam( ph, "decay_rate", decayRate, 1.0 );
+	GetParam( ph, "decay_rate", _decayRate, 1.0 );
+	_decayRate = std::log( _decayRate );
 }
 
 unsigned int AdaptiveObservationCovarianceEstimator::NumSamples() const
@@ -135,13 +135,13 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 	MatrixType Racc = std::exp( 0 ) * _innoProds[0].second;
 	for( unsigned int i = 1; i < _innoProds.size(); ++i )
 	{
-		double dt = ( _innoProds[i].first - startTime ).toSec();
-		double w = std::exp( -_decayRate * dt );
+		double dt = ( startTime - _innoProds[i].first ).toSec();
+		double w = std::exp( _decayRate * dt );
 		Racc += _innoProds[i].second * w;
 		wAcc += w;
 	}
 	MatrixType adaptR = Racc / wAcc + _lastHPHT;
-	
+
 	// Check for diagonal
 	if( _useDiag )
 	{
