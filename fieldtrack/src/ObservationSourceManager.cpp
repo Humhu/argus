@@ -31,7 +31,7 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 		unsigned int dim;
 		GetParamRequired( ph, "dim", dim );
 		_fixedCov = MatrixType( dim, dim );
-		GetParamRequired<double>( ph, "fixed_covariance", _fixedCov );
+		GetParamRequired( ph, "fixed_covariance", _fixedCov );
 	}
 	else if( _mode == COV_ADAPTIVE )
 	{
@@ -40,18 +40,19 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 			unsigned int dim;
 			GetParam( ph, "dim", dim );
 			_fixedCov = MatrixType( dim, dim );
-			GetParam<double>( ph, "initial_covariance", _fixedCov );
+			GetParam( ph, "initial_covariance", _fixedCov );
 		}
 
 		_adaptiveCov.Initialize( ph );
 	}
 }
 
-void ObservationSourceManager::Update( const UpdateInfo& info )
+void ObservationSourceManager::Update( const ros::Time& time,
+                                       const UpdateInfo& info )
 {
 	if( _mode == COV_ADAPTIVE )
 	{
-		_adaptiveCov.Update( info );
+		_adaptiveCov.Update( time, info );
 	}
 }
 
@@ -176,7 +177,7 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::PoseStamp
 		}
 		CheckMatrixSize( _fixedCov, POSE_DIM );
 		valid = ParseCovarianceMask( _fixedCov );
-		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : _fixedCov;
+		cov = _adaptiveCov.GetR( msg.header.stamp );
 	}
 	else
 	{
@@ -213,7 +214,7 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::PoseWithC
 		MatrixType init = _fixedCov.size() == 0 ? cov : _fixedCov;
 		CheckMatrixSize( init, POSE_DIM );
 		valid = ParseCovarianceMask( init );
-		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : init;
+		cov = _adaptiveCov.GetR( msg.header.stamp );
 	}
 	else
 	{
@@ -252,7 +253,7 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::TwistStam
 		}
 		CheckMatrixSize( _fixedCov, POSE_DIM );
 		valid = ParseCovarianceMask( _fixedCov );
-		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : _fixedCov;
+		cov = _adaptiveCov.GetR( msg.header.stamp );
 	}
 	else
 	{
@@ -290,7 +291,7 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::TwistWith
 		MatrixType init = _fixedCov.size() == 0 ? cov : _fixedCov;
 		CheckMatrixSize( init, POSE_DIM );
 		valid = ParseCovarianceMask( init );
-		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : init;
+		cov = _adaptiveCov.GetR( msg.header.stamp );
 	}
 	else
 	{
@@ -329,7 +330,7 @@ Observation ObservationSourceManager::operator()( const geometry_msgs::Transform
 		}
 		CheckMatrixSize( _fixedCov, POSE_DIM );
 		valid = ParseCovarianceMask( _fixedCov );
-		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : _fixedCov;
+		cov = _adaptiveCov.GetR( msg.header.stamp );
 	}
 	else
 	{
@@ -379,7 +380,7 @@ Observation ObservationSourceManager::operator()( const sensor_msgs::Imu& msg )
 		MatrixType init = (_fixedCov.size() == 0) ? cov : _fixedCov;
 		CheckMatrixSize( init, POSE_DIM );
 		valid = ParseCovarianceMask( init );
-		cov = _adaptiveCov.IsReady() ? _adaptiveCov.GetR() : init;
+		cov = _adaptiveCov.GetR( msg.header.stamp );
 	}
 	else
 	{

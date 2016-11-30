@@ -23,25 +23,32 @@ public:
 	// Read parameters for the estimator
 	void Initialize( ros::NodeHandle& ph );
 
-	bool IsReady() const;
-	MatrixType GetQ() const;
+	unsigned int NumSamples() const;
+	MatrixType GetQ( const ros::Time& time );
 
-	void Update( const PredictInfo& predict, 
+	void Update( const ros::Time& time,
+	             const PredictInfo& predict, 
 	             const UpdateInfo& update );
 
 	void Reset();
 
 private:
 
-	unsigned int _windowLength;
-	unsigned int _minLength;
+	typedef std::pair<ros::Time,MatrixType> InnoStamped;
+
+	unsigned int _maxSamples;
+	unsigned int _minSamples;
+	ros::Duration _maxAge;
+
+	MatrixType _initialCov;
 	bool _useDiag;
+	double _decayRate;
 
-	VectorType _prodWeights;
-
-	std::deque<MatrixType> _delXOuterProds;
+	std::deque<InnoStamped> _innoProds; // Ordered so head is newest
 	MatrixType _lastFSpostFT;
 	MatrixType _currSpost;
+
+	void CheckBuffer( const ros::Time& now );
 };
 
 class AdaptiveObservationCovarianceEstimator
@@ -52,23 +59,29 @@ public:
 
 	void Initialize( ros::NodeHandle& ph );
 
-	bool IsReady() const;
-	MatrixType GetR() const;
+	unsigned int NumSamples() const;
+	MatrixType GetR( const ros::Time& time );
 
-	void Update( const UpdateInfo& update );
+	void Update( const ros::Time& time, const UpdateInfo& update );
 
 	void Reset();
 
 private:
 
-	unsigned int _windowLength;
-	unsigned int _minLength;
+	typedef std::pair<ros::Time,MatrixType> InnoStamped;
+
+	unsigned int _maxSamples;
+	unsigned int _minSamples;
+	ros::Duration _maxAge;
+
+	MatrixType _initialCov;
 	bool _useDiag;
+	double _decayRate;
 
-	VectorType _prodWeights;
-
-	std::deque<MatrixType> _innoOuterProds;
+	std::deque<InnoStamped> _innoProds; // Ordered so head is newest
 	MatrixType _lastHPHT;
+
+	void CheckBuffer( const ros::Time& now );
 };
 
 }

@@ -31,7 +31,7 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 
 	_initialCovariance = MatrixType( _filter.CovDim(), 
 		                             _filter.CovDim() );
-	GetParamRequired<double>( ph, "initial_covariance", _initialCovariance );
+	GetParamRequired( ph, "initial_covariance", _initialCovariance );
 
 	std::string mode;
 	ros::NodeHandle th( ph.resolveName("transition") );	
@@ -45,13 +45,13 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 	{
 		_fixedTransCov = MatrixType( _filter.CovDim(), 
 		                             _filter.CovDim() );
-		GetParamRequired<double>( th, "covariance", _fixedTransCov );
+		GetParamRequired( th, "covariance", _fixedTransCov );
 	}
 	else if( _transitionMode == COV_ADAPTIVE )
 	{		
 		_fixedTransCov = MatrixType( _filter.CovDim(), 
 		                             _filter.CovDim() );
-		GetParamRequired<double>( th, "initial_covariance", _fixedTransCov );
+		GetParamRequired( th, "initial_covariance", _fixedTransCov );
 		_adaptiveTransCov.Initialize( th );
 	}
 
@@ -125,8 +125,8 @@ void StateEstimator::Process( const ros::Time& until )
 		double likelihood = boost::apply_visitor( likelihoodCheck, obs );
 		if( std::isnan(likelihood) )
 		{
-		  ROS_WARN_STREAM( "Likelihood is nan!" );
-		}  
+			ROS_WARN_STREAM( "Likelihood is nan!" );
+		}
 		else if( likelihood < _likelihoodThreshold )
 		{
 			ROS_WARN_STREAM( "Rejecting observation from " << sourceName << " with likelihood "
@@ -140,9 +140,9 @@ void StateEstimator::Process( const ros::Time& until )
 			// Update adaptive estimators if needed
 			if( _transitionMode == COV_ADAPTIVE )
 			{
-				_adaptiveTransCov.Update( predInfo, upInfo );
+				_adaptiveTransCov.Update( timestamp, predInfo, upInfo );
 			}
-			_sourceRegistry.at( sourceName ).Update( upInfo );
+			_sourceRegistry.at( sourceName ).Update( timestamp, upInfo );
 		}
 
 		_updateBuffer.erase( oldest );
@@ -169,7 +169,8 @@ TargetState StateEstimator::GetState() const
 	return state;
 }
 
-MatrixType StateEstimator::GetTransitionCov( double dt ) const
+MatrixType StateEstimator::GetTransitionCov( const ros::Time& time,
+                                             double dt )
 {
 	if( _transitionMode == COV_FIXED )
 	{
@@ -177,8 +178,7 @@ MatrixType StateEstimator::GetTransitionCov( double dt ) const
 	}
 	if( _transitionMode == COV_ADAPTIVE )
 	{
-		return _adaptiveTransCov.IsReady() ? _adaptiveTransCov.GetQ() * dt
-		                                   : _fixedTransCov * dt;
+		return _adaptiveTransCov.GetQ( time ) * dt;
 	}
 	throw std::runtime_error( "Unknown transition mode!" );
 }
@@ -193,7 +193,7 @@ PredictInfo StateEstimator::PredictUntil( const ros::Time& until )
 		throw std::runtime_error( ss.str() );
 	}
 	_filterTime = until;
-	return _filter.Predict( GetTransitionCov( dt ), dt );
+	return _filter.Predict( GetTransitionCov( until, dt ), dt );
 }
 
 void StateEstimator::CheckFilter()

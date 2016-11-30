@@ -107,39 +107,4 @@ public:
 bool operator==( const RuntimeParam& lhs, const RuntimeParam& rhs );
 bool operator !=( const RuntimeParam& lhs, const RuntimeParam& rhs );
 
-// Convenience data type for parsing min/max and initial values for numeric params
-struct FullNumericRange
-{
-	double min;
-	double init;
-	double max;
-};
-
-struct MinNumericRange
-{
-	double min;
-	double init;
-};
-
-struct MaxNumericRange
-{
-	double init;
-	double max;
-};
-
-template <>
-bool GetParam<FullNumericRange, ros::NodeHandle>( const ros::NodeHandle& src,
-                                                  const std::string& name,
-                                                  FullNumericRange& t );
-
-template <>
-bool GetParam<MinNumericRange, ros::NodeHandle>( const ros::NodeHandle& src,
-                                                 const std::string& name,
-                                                 MinNumericRange& t );
-
-template <>
-bool GetParam<MaxNumericRange, ros::NodeHandle>( const ros::NodeHandle& src,
-                                                 const std::string& name,
-                                                 MaxNumericRange& t );
-
 }

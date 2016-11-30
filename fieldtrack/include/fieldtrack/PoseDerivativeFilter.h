@@ -15,10 +15,6 @@
 namespace argus
 {
 
-/*! \brief Construct a discrete-time integrator matrix with the
- * specified number of derivatives*/
-MatrixType IntegralMatrix( double dt, unsigned int order );
-
 /*! \brief A Kalman filter that tracks pose and N derivatives. */
 class PoseDerivativeFilter
 : public boost::static_visitor<UpdateInfo>
