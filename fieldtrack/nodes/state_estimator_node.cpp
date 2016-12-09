@@ -10,6 +10,8 @@
 #include "fieldtrack/ResetFilter.h"
 #include "fieldtrack/TargetState.h"
 
+#include <boost/foreach.hpp>
+
 using namespace argus;
 
 class StateEstimatorNode
@@ -93,6 +95,15 @@ public:
 			_statePub = nh.advertise<fieldtrack::TargetState>( "state", stateBuffLen );
 		}
 
+		GetParam( ph, "publish_info", _publishInfo, false );
+		if( _publishInfo )
+		{
+			ROS_INFO_STREAM( "Publishing info output" );
+			unsigned int infoBuffLen;
+			GetParam( ph, "info_buff_len", infoBuffLen, (unsigned int) 100 );
+			_infoPub = nh.advertise<argus_msgs::FilterStepInfo>( "info", infoBuffLen );
+		}
+
 		// NOTE We have to reset the filter to compensate for the lag, otherwise the
 		// first timer call will request it predict to the past
 		_estimator.Reset( ros::Time::now() - _headLag );
@@ -130,7 +141,7 @@ public:
 		_estimator.Process( lagged );
 		
 		StateEstimator rollOutEstimator( _estimator );
-		rollOutEstimator.Process( event.current_real );
+		std::vector<FilterInfo> info = rollOutEstimator.Process( event.current_real );
 
 		TargetState state = rollOutEstimator.GetState();
 
@@ -141,6 +152,14 @@ public:
 		if( _publishState )
 		{
 			_statePub.publish( state.ToStateMsg() );
+		}
+		if( _publishInfo )
+		{
+			FilterInfoMessageVisitor vis;
+			BOOST_FOREACH( const FilterInfo& fi, info )
+			{
+				_infoPub.publish( boost::apply_visitor( vis, fi ) );
+			}
 		}
 	}
 
@@ -162,6 +181,9 @@ public:
 
 	bool _publishState;
 	ros::Publisher _statePub;
+
+	bool _publishInfo;
+	ros::Publisher _infoPub;
 
 	ros::ServiceServer _resetServer;
 	ros::Timer _updateTimer;

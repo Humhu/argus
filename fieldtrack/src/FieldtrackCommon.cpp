@@ -100,4 +100,30 @@ fieldtrack::TargetState TargetState::ToStateMsg() const
 	return msg;
 }
 
+ObservationTimestampVisitor::ObservationTimestampVisitor() {}
+
+ros::Time 
+ObservationTimestampVisitor::operator()( const ObservationBase& obs ) const
+{
+	return obs.timestamp;
+}
+
+ObservationFrameVisitor::ObservationFrameVisitor() {}
+
+std::string 
+ObservationFrameVisitor::operator()( const ObservationBase& obs ) const
+{
+	return obs.referenceFrame;
+}
+
+ros::Time get_observation_timestamp( const Observation& obs )
+{
+	return boost::apply_visitor( ObservationTimestampVisitor(), obs );
+}
+
+std::string get_observation_frame( const Observation& obs )
+{
+	return boost::apply_visitor( ObservationFrameVisitor(), obs );
+}
+
 }

@@ -48,7 +48,7 @@ public:
 
 	// TODO Return all Predict/Update info pairs
 	// Perform predicts and updates to the specified time
-	void Process( const ros::Time& until );
+	std::vector<FilterInfo> Process( const ros::Time& until );
 
 	// Get the current filter state
 	TargetState GetState() const;
@@ -58,6 +58,7 @@ private:
 	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	PoseDerivativeFilter _filter;
 	ros::Time _filterTime;
+	unsigned int _stepCounter;
 
 	bool _noPose;
 	bool _twoDimensional;
@@ -67,7 +68,6 @@ private:
 
 	std::string _referenceFrame;
 	std::string _bodyFrame;
-	unsigned int _updateCounter;
 
 	CovarianceMode _transitionMode;
 	MatrixType _fixedTransCov;
@@ -79,6 +79,11 @@ private:
 	typedef std::pair<std::string, ObservationMessage> SourceMsg;
 	typedef std::map<ros::Time, SourceMsg> UpdateBuffer;
 	UpdateBuffer _updateBuffer;
+
+	// Converts a Predict/Update info to a FilterInfo
+	// NOTE Must be called immediately after the predict/update
+	argus_msgs::FilterStepInfo NotarizeStep( const std::string& frame, 
+	                                         const FilterInfo& obs );
 
 	// Forward predicts the filter to the specified time
 	PredictInfo PredictUntil( const ros::Time& until );

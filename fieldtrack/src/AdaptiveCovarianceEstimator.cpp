@@ -70,16 +70,17 @@ void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
 	// Initialization catch
 	if( _lastFSpostFT.size() == 0 )
 	{
-		unsigned int dim = update.delta_x.size();
+		unsigned int dim = update.state_delta.size();
 		_currSpost = MatrixType::Zero( dim, dim );
 		_lastFSpostFT = MatrixType::Zero( dim, dim );
 	}
 
-	MatrixType op = update.delta_x * update.delta_x.transpose();
+	MatrixType op = update.state_delta * update.state_delta.transpose();
 	_innoProds.emplace_front( time, op );
 
-	_lastFSpostFT = predict.F * _currSpost * predict.F.transpose();
-	_currSpost = update.Spost;
+	_lastFSpostFT = predict.trans_jacobian * _currSpost * 
+	                predict.trans_jacobian.transpose();
+	_currSpost = update.post_state_cov;
 }
 
 void AdaptiveTransitionCovarianceEstimator::Reset()
@@ -155,13 +156,14 @@ void AdaptiveObservationCovarianceEstimator::Update( const ros::Time& time,
 {
 	if( _lastHPHT.size() == 0 )
 	{
-		unsigned int dim = update.post_innovation.size();
+		unsigned int dim = update.post_obs_error.size();
 		_lastHPHT = MatrixType::Zero( dim, dim );
 	}
 
 	// Update is R = Cv+ + H * P+ * H^
-	_lastHPHT = update.H * update.Spost * update.H.transpose();
-	MatrixType op = update.post_innovation * update.post_innovation.transpose();
+	_lastHPHT = update.obs_jacobian * update.post_state_cov * 
+	            update.obs_jacobian.transpose();
+	MatrixType op = update.post_obs_error * update.post_obs_error.transpose();
 	_innoProds.emplace_front( time, op );
 }
 

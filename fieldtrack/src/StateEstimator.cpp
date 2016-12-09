@@ -13,6 +13,7 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
                                  ExtrinsicsInterface::Ptr extrinsics )
 {
 	_extrinsicsManager = extrinsics;
+	_stepCounter = 0;
 	
 	GetParamRequired( ph, "reference_frame", _referenceFrame );
 	GetParamRequired( ph, "body_frame", _bodyFrame );
@@ -96,13 +97,14 @@ void StateEstimator::Reset( const ros::Time& time )
 	}
 }
 
-void StateEstimator::Process( const ros::Time& until )
+std::vector<FilterInfo> StateEstimator::Process( const ros::Time& until )
 {
+	std::vector<FilterInfo> infos;
 	if( until < _filterTime )
 	{
 		ROS_WARN_STREAM( "Cannot process to time " << until << " as it precedes filter time "
 		                 << _filterTime );
-		return;
+		return infos;
 	}
 
 	while( !_updateBuffer.empty() )
@@ -117,8 +119,13 @@ void StateEstimator::Process( const ros::Time& until )
 
 		// Perform the predict and update
 		Observation obs = boost::apply_visitor( _sourceRegistry.at( sourceName ), msg );
-		ros::Time timestamp = boost::apply_visitor( ObservationTimestampVisitor(), obs );
+		ros::Time timestamp = get_observation_timestamp( obs );
+		std::string frame = get_observation_frame( obs );
 		PredictInfo predInfo = PredictUntil( timestamp );
+		predInfo.time = _filterTime;
+		predInfo.frameId = "predict";
+		predInfo.stepNum = _stepCounter;
+		infos.emplace_back( predInfo );
 
 		// Check likelihood after predict
 		ObservationLikelihoodVisitor likelihoodCheck( _filter );
@@ -136,6 +143,10 @@ void StateEstimator::Process( const ros::Time& until )
 		{
 			// Perform filter update
 			UpdateInfo upInfo = boost::apply_visitor( _filter, obs );
+			upInfo.time = _filterTime;
+			upInfo.frameId = frame;
+			upInfo.stepNum = _stepCounter;
+			infos.emplace_back( upInfo );
 
 			// Update adaptive estimators if needed
 			if( _transitionMode == COV_ADAPTIVE )
@@ -146,15 +157,23 @@ void StateEstimator::Process( const ros::Time& until )
 		}
 
 		_updateBuffer.erase( oldest );
+
+		// Check filter while processing
 		if( _noPose ) { SquashPose(); }
 		if( _twoDimensional ) { Enforce2D(); }
 		CheckFilter();
 	}
 
-	PredictUntil( until );
+	// Predict the remainder of requested time
+	PredictInfo predInfo = PredictUntil( until );
+	infos.emplace_back( predInfo );
+
+	// Have to check after final predict
 	if( _noPose ) { SquashPose(); }
 	if( _twoDimensional ) { Enforce2D(); }
 	CheckFilter();
+
+	return infos;
 }
 
 TargetState StateEstimator::GetState() const

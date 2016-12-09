@@ -2,7 +2,7 @@
 
 #include <ros/ros.h>
 #include "fieldtrack/utils/FilterInfo.h"
-#include "fieldtrack/utils/FilterUtils.h"
+#include <deque>
 
 namespace argus
 {

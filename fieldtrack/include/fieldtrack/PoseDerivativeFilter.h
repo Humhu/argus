@@ -51,7 +51,8 @@ public:
 	 * to integrate the forward pose. */
 	PredictInfo Predict( const MatrixType& Q, double dt );
 
-	MatrixType ComputeKalmanGain( const MatrixType& C, const MatrixType& R );
+	MatrixType ComputeKalmanGain( const MatrixType& C, const MatrixType& R,
+	                              MatrixType& V );
 	void UpdateCovariance( const MatrixType& K, const MatrixType& C, const MatrixType& R );
 
 	UpdateInfo operator()( const PoseObservation& obs );

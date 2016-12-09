@@ -91,10 +91,9 @@ PredictInfo PoseDerivativeFilter::Predict( const MatrixType& Q, double dt )
 	x.tail( DerivsDim() ) = _derivs;
 	
 	PredictInfo info;
-	info.xpre = x;
-	info.Spre = _cov;
-	info.dt = dt;
-	info.Q = Q;
+	info.step_dt = dt;
+	info.prior_state_cov = _cov;
+	info.trans_noise_cov = Q;
 
 	// We use A first without the adjoint in the upper left block, but that 
 	// block does not affect the derivatives anyways
@@ -106,15 +105,17 @@ PredictInfo PoseDerivativeFilter::Predict( const MatrixType& Q, double dt )
 	_pose = _pose * displacement;
 	_cov = A * _cov * A.transpose() + Q;
 
-	info.F = A;
+	info.trans_jacobian = A;
+	info.post_state_cov = _cov;
 	return info;
 }
 
 MatrixType PoseDerivativeFilter::ComputeKalmanGain( const MatrixType& C,
-                                                    const MatrixType& R )
+                                                    const MatrixType& R,
+                                                    MatrixType& V )
 {
 	// Compute Kalman gain
-	MatrixType V = C * _cov * C.transpose() + R;
+	V = C * _cov * C.transpose() + R;
 	Eigen::LDLT<MatrixType> Vinv( V ); // TODO Make sure this succeeds!
 	if( Vinv.info() != Eigen::Success )
 	{
@@ -138,31 +139,27 @@ PoseDerivativeFilter::operator()( const PoseObservation& obs )
 {
 	// Record pre-update filter information
 	UpdateInfo info;
-	info.xpre = VectorType( CovDim() );
-	info.xpre.head( PoseDim() ) = PoseSE3::Log( _pose );
-	info.xpre.tail( DerivsDim() ) = _derivs;
-	info.Spre = _cov;
+	info.prior_state_cov = _cov;
 
 	MatrixType C = MatrixType::Zero( PoseDim(), CovDim() );
 	C.block( 0, 0, PoseDim(), PoseDim() ) = MatrixType::Identity( PoseDim(), PoseDim() );
 	VectorType v = PoseSE3::Log( _pose.Inverse() * obs.pose );
 
+	info.prior_obs_error = v;
+
 	// Update the estimate mean
-	MatrixType K = ComputeKalmanGain( C, obs.covariance );
+	MatrixType K = ComputeKalmanGain( C, obs.covariance, info.obs_error_cov );
 	VectorType correction = K * v;
 	_pose = _pose * PoseSE3::Exp( correction.head( PoseDim() ) );
 	_derivs = _derivs + correction.tail( DerivsDim() );
 	UpdateCovariance( K, C, obs.covariance );
 
-	// TODO
 	// Record post-update filter information
-	// info.observation = obs;
-	info.innovation = v;
-	info.post_innovation = PoseSE3::Log( _pose.Inverse() * obs.pose );
-	info.delta_x = correction;
-	info.Spost = _cov;
-	info.H = C;
-	info.R = obs.covariance;
+	info.post_state_cov = _cov;
+	info.state_delta = correction;
+	info.post_obs_error = PoseSE3::Log( _pose.Inverse() * obs.pose );
+	info.obs_jacobian = C;
+	info.obs_noise_cov = obs.covariance;
 	return info;
 }
 
@@ -185,10 +182,7 @@ PoseDerivativeFilter::operator()( const DerivObservation& obs )
 {
 	// Record pre-update filter information
 	UpdateInfo info;
-	info.xpre = VectorType( CovDim() );
-	info.xpre.head( PoseDim() ) = PoseSE3::Log( _pose );
-	info.xpre.tail( DerivsDim() ) = _derivs;
-	info.Spre = _cov;
+	info.prior_state_cov = _cov;
 
 	unsigned int zDim = obs.indices.size();
 	MatrixType C = MatrixType::Zero( zDim, CovDim() );
@@ -200,24 +194,22 @@ PoseDerivativeFilter::operator()( const DerivObservation& obs )
 	VectorType derivsObsed( zDim );
 	GetSubmatrix( _derivs, derivsObsed, obs.indices );
 	VectorType v = obs.derivatives - derivsObsed;
+	info.prior_obs_error = v;
 
 	// Update the estimate mean
-	MatrixType K = ComputeKalmanGain( C, obs.covariance );
+	MatrixType K = ComputeKalmanGain( C, obs.covariance, info.obs_error_cov );
 	VectorType correction = K * v;
 	_pose = _pose * PoseSE3::Exp( correction.head( PoseDim() ) );
 	_derivs = _derivs + correction.tail( DerivsDim() );
 	UpdateCovariance( K, C, obs.covariance );
 
-	// TODO
 	// Record post-update filter information
-	// info.observation = obs;
-	info.innovation = v;
+	info.post_state_cov = _cov;
+	info.state_delta = correction;
 	GetSubmatrix( _derivs, derivsObsed, obs.indices );
-	info.post_innovation = derivsObsed - obs.derivatives;
-	info.delta_x = correction;
-	info.Spost = _cov;
-	info.H = C;
-	info.R = obs.covariance;
+	info.post_obs_error = derivsObsed - obs.derivatives;
+	info.obs_jacobian = C;
+	info.obs_noise_cov = obs.covariance;
 	return info;
 }
 

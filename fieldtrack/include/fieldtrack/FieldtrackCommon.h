@@ -102,11 +102,20 @@ typedef boost::variant< PoseObservation,
 struct ObservationTimestampVisitor
 : public boost::static_visitor<ros::Time>
 {
-	ObservationTimestampVisitor() {}
+	ObservationTimestampVisitor();
 
-	ros::Time operator()( const ObservationBase& obs ) const { return obs.timestamp; }
+	ros::Time operator()( const ObservationBase& obs ) const ;
 };
 
+struct ObservationFrameVisitor
+: public boost::static_visitor<std::string>
+{
+	ObservationFrameVisitor();
 
+	std::string operator()( const ObservationBase& obs ) const ;
+};
+
+ros::Time get_observation_timestamp( const Observation& obs );
+std::string get_observation_frame( const Observation& obs );
 
 }

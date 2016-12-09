@@ -66,7 +66,7 @@ add_library( fieldtrack
     src/AdaptiveCovarianceEstimator.cpp
 	#src/BodyFrameTracker.cpp
 	src/FieldtrackCommon.cpp
-	src/FilterUtils.cpp
+	src/FilterInfo.cpp
 	#src/FixedFrameTracker.cpp
 	src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
