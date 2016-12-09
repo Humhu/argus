@@ -52,6 +52,18 @@ struct FiducialDetection
 	argus_msgs::FiducialDetection ToMsg() const;
 };
 
+// C++ counterpart of argus_msgs::ImageFiducialDetections
+struct ImageFiducialDetections
+{
+	std::string sourceName;
+	ros::Time timestamp;
+	std::vector<FiducialDetection> detections;
+
+	ImageFiducialDetections();
+	ImageFiducialDetections( const argus_msgs::ImageFiducialDetections& msg );
+	argus_msgs::ImageFiducialDetections ToMsg() const;
+};
+
 std::vector<cv::Point2f> PointsToCv( const std::vector<Translation2Type>& points );
 std::vector<Translation2Type> CvToPoints( const std::vector<cv::Point2f>& cv );
 

@@ -119,6 +119,33 @@ argus_msgs::FiducialDetection FiducialDetection::ToMsg() const
 	return msg;
 }
 
+ImageFiducialDetections::ImageFiducialDetections() {}
+
+ImageFiducialDetections::ImageFiducialDetections( const argus_msgs::ImageFiducialDetections& msg )
+{
+	sourceName = msg.header.frame_id;
+	timestamp = msg.header.stamp;
+	detections.reserve( msg.detections.size() );
+	BOOST_FOREACH( const argus_msgs::FiducialDetection& det, msg.detections )
+	{
+		detections.emplace_back( det );
+	}
+}
+
+argus_msgs::ImageFiducialDetections
+ImageFiducialDetections::ToMsg() const
+{
+	argus_msgs::ImageFiducialDetections msg;
+	msg.header.frame_id = sourceName;
+	msg.header.stamp = timestamp;
+	msg.detections.reserve( detections.size() );
+	BOOST_FOREACH( const FiducialDetection& det, detections )
+	{
+		msg.detections.emplace_back( det.ToMsg() );
+	}
+	return msg;
+}
+
 std::vector<cv::Point2f> PointsToCv( const std::vector<Translation2Type>& points )
 {
 	std::vector<cv::Point2f> cv;
