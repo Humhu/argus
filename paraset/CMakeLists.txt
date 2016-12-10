@@ -21,7 +21,6 @@ add_message_files( FILES
 add_service_files( FILES
                    SetRuntimeParameter.srv
                    GetParameterInfo.srv
-                   StartEvaluation.srv
 )
 
 generate_messages( DEPENDENCIES
