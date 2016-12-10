@@ -4,6 +4,8 @@
 #include <boost/foreach.hpp>
 #include <sstream>
 
+#define POSE_DIM (PoseSE3::TangentDimension)
+
 namespace argus
 {
 
@@ -23,6 +25,7 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 	          -std::numeric_limits<double>::infinity() );
 	GetParam( ph, "two_dimensional", _twoDimensional, false );
 	GetParam( ph, "no_pose", _noPose, false );
+	GetParam( ph, "no_derivs", _noDerivs, false );
 	GetParam( ph, "max_entropy_threshold", _maxEntropyThreshold, 
 	          std::numeric_limits<double>::infinity() );
 
@@ -160,6 +163,7 @@ std::vector<FilterInfo> StateEstimator::Process( const ros::Time& until )
 
 		// Check filter while processing
 		if( _noPose ) { SquashPose(); }
+		if( _noDerivs ) { SquashDerivs(); }
 		if( _twoDimensional ) { Enforce2D(); }
 		CheckFilter();
 	}
@@ -170,6 +174,7 @@ std::vector<FilterInfo> StateEstimator::Process( const ros::Time& until )
 
 	// Have to check after final predict
 	if( _noPose ) { SquashPose(); }
+	if( _noDerivs ) { SquashDerivs(); }
 	if( _twoDimensional ) { Enforce2D(); }
 	CheckFilter();
 
@@ -229,7 +234,11 @@ void StateEstimator::CheckFilter()
 	VectorType Dvec = ldlt.transpositionsP().transpose() * ldlt.vectorD();
 	if( _noPose )
 	{
-		Dvec.head<6>() = FixedVectorType<6>::Constant( 1.0 );
+		Dvec.head<POSE_DIM>() = FixedVectorType<6>::Constant( 1.0 );
+	}
+	if( _noDerivs )
+	{
+	  Dvec.tail( Dvec.size() - POSE_DIM ) = VectorType::Constant( Dvec.size() - POSE_DIM, 1, 1.0 );
 	}
 	if( _twoDimensional )
 	{
@@ -271,8 +280,17 @@ void StateEstimator::Enforce2D()
 void StateEstimator::SquashPose()
 {
 	_filter.Pose() = PoseSE3();
-	_filter.FullCov().block( 0, 0, PoseSE3::TangentDimension, _filter.CovDim() ).setZero();
-	_filter.FullCov().block( 0, 0, _filter.CovDim(), PoseSE3::TangentDimension ).setZero();
+	_filter.PoseCov().setZero();
+	_filter.FullCov().block( 0, POSE_DIM, POSE_DIM, _filter.CovDim() - POSE_DIM ).setZero();
+	_filter.FullCov().block( POSE_DIM, 0, _filter.CovDim() - POSE_DIM, POSE_DIM ).setZero();
 }
+
+  void StateEstimator::SquashDerivs()
+  {
+    _filter.Derivs().setZero();
+    _filter.DerivsCov().setZero();
+    _filter.FullCov().block( 0, POSE_DIM, POSE_DIM, _filter.CovDim() - POSE_DIM ).setZero();
+    _filter.FullCov().block( POSE_DIM, 0, _filter.CovDim() - POSE_DIM, POSE_DIM ).setZero();
+  }
 
 }

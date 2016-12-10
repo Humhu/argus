@@ -61,6 +61,7 @@ private:
 	unsigned int _stepCounter;
 
 	bool _noPose;
+	bool _noDerivs;
 	bool _twoDimensional;
 	double _likelihoodThreshold; // Min likelihood before rejecting observations
 	double _maxEntropyThreshold; // Maximum state entropy before reset
@@ -92,6 +93,7 @@ private:
 	void CheckFilter();
 	void Enforce2D();
 	void SquashPose();
+	void SquashDerivs();
 
 	MatrixType GetTransitionCov( const ros::Time& time, double dt );
 };
