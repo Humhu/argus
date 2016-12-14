@@ -213,6 +213,7 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 	// ROS_INFO_STREAM( "Prev points: " << reg.lastFrame.points << std::endl <<
 	                 // "Guess points: " << current.points );
 
+	size_t numCurrentPoints = current.points.size();
 	if( !_tracker->TrackInterestPoints( reg.keyFrame, 
 	                                    current) )
 	{
@@ -224,11 +225,12 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 
 	// Failure if not enough inliers in tracking
 	size_t numTrackingInliers = current.points.size();
-	double trackingInlierRatio = numTrackingInliers / (double) reg.originalNumKeypoints;
-	if( trackingInlierRatio <= _minInlierRatio )
+	size_t minTrackingInliers = std::max( std::round( numCurrentPoints * _minInlierRatio ),
+	                                      (double) _minNumKeypoints );
+	if( numTrackingInliers < minTrackingInliers )
 	{
 		ROS_INFO_STREAM( numTrackingInliers << " inliers after tracking less than min " <<
-		                 reg.originalNumKeypoints * _minInlierRatio << ". Resetting keyframe." );
+		                 minTrackingInliers << ". Resetting keyframe." );
 		SetKeyframe( reg, current );
 		if( reg.showOutput ) { VisualizeFrame( reg ); }
 		return;
@@ -249,12 +251,12 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 
 	// Check number of inliers
 	size_t numMotionInliers = current.points.size();
-	double motionInlierRatio = numMotionInliers / (double) numTrackingInliers;
-	if( motionInlierRatio <= _minInlierRatio )
+	size_t minMotionInliers = std::max( std::round( numTrackingInliers * _minInlierRatio ),
+	                                                (double) _minNumKeypoints );
+	if( numMotionInliers <= minMotionInliers )
 	{
 		ROS_INFO_STREAM( numMotionInliers << " inliers after motion estimation less than "
-		                 << _minInlierRatio * numTrackingInliers
-		                 << ". Resetting keyframe." );
+		                 << minMotionInliers << ". Resetting keyframe." );
 		SetKeyframe( reg, current );
 		if( reg.showOutput ) { VisualizeFrame( reg ); }
 		return;
@@ -278,7 +280,8 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 	if( reg.showOutput ) { VisualizeFrame( reg ); }
 
 	// Check if we need to redetect
-	if( motionInlierRatio <= _redetectionThreshold )
+	double inlierRatio = numMotionInliers / (double) reg.originalNumKeypoints;
+	if( inlierRatio <= _redetectionThreshold )
 	{
 		// ROS_INFO_STREAM( reg.keyFrame.points.size() << " inliers less than "
 		//                  << _redetectionThreshold * reg.originalNumKeypoints 
@@ -287,7 +290,7 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 		return;
 	}
 }
-	
+
 void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg )
 {
 	unsigned int width = reg.keyFrame.frame.cols;
