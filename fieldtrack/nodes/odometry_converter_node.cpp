@@ -9,8 +9,6 @@
 
 using namespace argus;
 
-/*! \brief Translates nav_msgs::Odometry messages from an absolute frame
- * to a RelativePoseMessage. */
 class OdometryTranslator 
 {
 public:
@@ -36,8 +34,8 @@ private:
 	ros::Publisher _posePub;
 	ros::Subscriber _odomSub;
 
-  std::string _overrideFrameId;
-  std::string _overrideChildId;
+	std::string _overrideFrameId;
+	std::string _overrideChildId;
 
 	std::string _targetRefFrame;
 	std::string _targetBodyFrame;
