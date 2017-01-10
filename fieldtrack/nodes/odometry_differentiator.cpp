@@ -3,6 +3,7 @@
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TransformStamped.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/geometry/GeometryUtils.h"
@@ -52,6 +53,13 @@ public:
 			                          &OdometryDifferentiator::PoseStampedCallback,
 			                          this );
 		}
+		else if( inputMode == "transform_stamped" )
+		{
+			_inputSub = nh.subscribe( "input",
+			                          buffLen,
+			                          &OdometryDifferentiator::TransformStampedCallback,
+			                          this );
+		}
 		else
 		{
 			throw std::invalid_argument( "Unknown input mode: " + inputMode );
@@ -73,16 +81,24 @@ private:
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
 		PoseSE3 pose = MsgToPose( msg->pose.pose );
-		ProcessPose( pose, msg->header );
+		ProcessPose( pose, msg->child_frame_id, msg->header );
 	}
 
 	void PoseStampedCallback( const geometry_msgs::PoseStamped::ConstPtr& msg )
 	{
 		PoseSE3 pose = MsgToPose( msg->pose );
-		ProcessPose( pose, msg->header );
+		// TODO: Logic for checking static child_frame_id as parameter?
+		ProcessPose( pose, "", msg->header );
+	}
+
+	void TransformStampedCallback( const geometry_msgs::TransformStamped::ConstPtr& msg )
+	{
+		PoseSE3 pose = TransformToPose( msg->transform );
+		ProcessPose( pose, msg->child_frame_id, msg->header );
 	}
 
 	void ProcessPose( const PoseSE3& pose, 
+	                  const std::string& childFrame,
 	                  const std_msgs::Header& header )
 	{
 		if( !initialized )
@@ -109,6 +125,7 @@ private:
 		{
 			nav_msgs::Odometry out;
 			out.header = header;
+			out.child_frame_id = childFrame;
 			out.pose.pose = PoseToMsg( pose );
 			out.twist.twist = TangentToMsg( twist );
 			_outputPub.publish( out );
