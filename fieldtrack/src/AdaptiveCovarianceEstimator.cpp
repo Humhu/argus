@@ -16,6 +16,10 @@ void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
 	GetParam( ph, "min_window_samples", _minSamples, _maxSamples );
+	if( _minSamples < 2 )
+	{
+		throw std::invalid_argument( "Min samples must be at least 2" );
+	}
 
 	double dur;
 	GetParamRequired( ph, "max_sample_age", dur );
@@ -25,6 +29,9 @@ void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	GetParamRequired( ph, "dim", dim );
 	_initialCov = MatrixType( dim, dim );
 	GetParamRequired( ph, "initial_covariance", _initialCov );
+
+	_offset = MatrixType( dim, dim );
+	GetParam( ph, "offset", _offset, 1E-3 * MatrixType::Identity( dim, dim ) );
 
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
@@ -46,21 +53,21 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	MatrixType Qacc = std::exp( 0 ) * _innoProds[0].second;
 	for( unsigned int i = 1; i < _innoProds.size(); ++i )
 	{
-		double dt = ( startTime - _innoProds[i].first ).toSec();
-		double w = std::exp( _decayRate * dt );
+		double t = ( startTime - _innoProds[i].first ).toSec();
+		double w = std::exp( _decayRate * t );
 		Qacc += _innoProds[i].second * w;
 		wAcc += w;
 	}
 	double timeSpan = ( _innoProds.front().first - _innoProds.back().first ).toSec();
-	double avgDt = timeSpan / NumSamples();
-	MatrixType adaptQ = Qacc / ( wAcc * avgDt ) + _currSpost + _lastFSpostFT;
+	MatrixType adaptQ = Qacc / ( NumSamples() * wAcc ) + _currSpost + _lastFSpostFT + _offset;
+	MatrixType adaptQRate = adaptQ / timeSpan;
 
 	// Check for diagonal
 	if( _useDiag )
 	{
-		adaptQ = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( adaptQ.diagonal() );
+		adaptQRate = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( adaptQRate.diagonal() );
 	}
-	return adaptQ;
+	return adaptQRate;
 }
 
 void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
@@ -111,10 +118,14 @@ void AdaptiveObservationCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	GetParamRequired( ph, "max_sample_age", dur );
 	_maxAge = ros::Duration( dur );
 
+	// TODO HACK!!
+	_initialCov = MatrixType( 6, 6 );
+	GetParamRequired( ph, "initial_covariance", _initialCov );
+
 	unsigned int dim;
 	GetParamRequired( ph, "dim", dim );
-	_initialCov = MatrixType( dim, dim );
-	GetParamRequired( ph, "initial_covariance", _initialCov );
+	_offset = MatrixType( dim, dim );
+	GetParam( ph, "offset", _offset, 1E-3 * MatrixType::Identity( dim, dim ) );
 
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
@@ -141,7 +152,7 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 		Racc += _innoProds[i].second * w;
 		wAcc += w;
 	}
-	MatrixType adaptR = Racc / wAcc + _lastHPHT;
+	MatrixType adaptR = Racc / wAcc + _lastHPHT + _offset;
 
 	// Check for diagonal
 	if( _useDiag )

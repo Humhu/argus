@@ -40,6 +40,7 @@ private:
 	unsigned int _minSamples;
 	ros::Duration _maxAge;
 
+	MatrixType _offset;
 	MatrixType _initialCov;
 	bool _useDiag;
 	double _decayRate;
@@ -74,6 +75,7 @@ private:
 	unsigned int _minSamples;
 	ros::Duration _maxAge;
 
+	MatrixType _offset;
 	MatrixType _initialCov;
 	bool _useDiag;
 	double _decayRate;

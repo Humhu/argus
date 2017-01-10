@@ -35,11 +35,10 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 	}
 	else if( _mode == COV_ADAPTIVE )
 	{
-		if( HasParam( ph, "dim" ) )
+		if( HasParam( ph, "initial_covariance" ) )
 		{
-			unsigned int dim;
-			GetParam( ph, "dim", dim );
-			_fixedCov = MatrixType( dim, dim );
+			// TODO HACK!!
+			_fixedCov = MatrixType( 6, 6 );
 			GetParam( ph, "initial_covariance", _fixedCov );
 		}
 
