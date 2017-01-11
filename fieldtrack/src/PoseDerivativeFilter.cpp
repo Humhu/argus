@@ -159,6 +159,7 @@ PoseDerivativeFilter::operator()( const PoseObservation& obs )
 	info.state_delta = correction;
 	info.post_obs_error = PoseSE3::Log( _pose.Inverse() * obs.pose );
 	info.obs_jacobian = C;
+	info.kalman_gain = K;
 	info.obs_noise_cov = obs.covariance;
 	return info;
 }
@@ -208,6 +209,7 @@ PoseDerivativeFilter::operator()( const DerivObservation& obs )
 	info.state_delta = correction;
 	GetSubmatrix( _derivs, derivsObsed, obs.indices );
 	info.post_obs_error = derivsObsed - obs.derivatives;
+	info.kalman_gain = K;
 	info.obs_jacobian = C;
 	info.obs_noise_cov = obs.covariance;
 	return info;

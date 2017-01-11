@@ -19,6 +19,7 @@ find_package( catkin REQUIRED
                          argus_utils
                          extrinsics_array
                          lookup
+                         broadcast
 )
 
 # Use Boost for most utilities, threading
@@ -51,6 +52,7 @@ catkin_package( INCLUDE_DIRS   include
                                argus_utils
                                extrinsics_array
                                lookup
+                               broadcast
 
                 DEPENDS        Boost
                                system_lib

@@ -53,6 +53,7 @@ struct UpdateInfo
 	VectorType state_delta; // Change applied to state
 	VectorType post_obs_error; // Post-update observation prediction error
 	
+	MatrixType kalman_gain; // Kalman gain matrix
 	MatrixType obs_jacobian; // Matrix used to map state covariance to observation
 	MatrixType obs_noise_cov; // The R matrix used in this step
 

@@ -36,6 +36,8 @@ void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
 	_decayRate = std::log( _decayRate );
+
+	_tx.InitializePushStream( "adaptive_Q", ph, 3, {"x", "y", "w"} );
 }
 
 unsigned int AdaptiveTransitionCovarianceEstimator::NumSamples() const
@@ -48,19 +50,28 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	CheckBuffer( time );
 	if( NumSamples() < _minSamples ) { return _initialCov; }
 
-	ros::Time startTime = _innoProds[0].first;
-	double wAcc = std::exp( 0 );
-	MatrixType Qacc = std::exp( 0 ) * _innoProds[0].second;
-	for( unsigned int i = 1; i < _innoProds.size(); ++i )
+	double wAcc = 0;
+	MatrixType Qacc = MatrixType::Zero( _offset.rows(), _offset.cols() );
+	for( unsigned int i = 0; i < _innoProds.size(); ++i )
 	{
-		double t = ( startTime - _innoProds[i].first ).toSec();
+		double t = ( time - _innoProds[i].first ).toSec();
 		double w = std::exp( _decayRate * t );
 		Qacc += _innoProds[i].second * w;
 		wAcc += w;
 	}
+	// TODO This keeps giving Negative-definite matrices!
+	// MatrixType adaptQ = Qacc / ( NumSamples() * wAcc ) + _currSpost - _lastFSpostFT + _offset;
+	// NOTE Results in horrible aliasing bugs if we don't make a copy of K transpose...!!
+	MatrixType KT = _lastK.transpose();
+	// MatrixType adaptQ = _lastK * (Qacc / wAcc) * KT + _offset;
+	MatrixType adaptQ = Qacc/wAcc + _offset;
 	double timeSpan = ( _innoProds.front().first - _innoProds.back().first ).toSec();
-	MatrixType adaptQ = Qacc / ( NumSamples() * wAcc ) + _currSpost + _lastFSpostFT + _offset;
-	MatrixType adaptQRate = adaptQ / timeSpan;
+	double averageDt = timeSpan / NumSamples();
+	MatrixType adaptQRate = adaptQ / averageDt;
+
+	VectorType feats(3);
+	feats << adaptQRate(6,6), adaptQRate(7,7), adaptQRate(11,11);
+	_tx.Publish( time, feats );
 
 	// Check for diagonal
 	if( _useDiag )
@@ -79,7 +90,6 @@ void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
 	{
 		unsigned int dim = update.state_delta.size();
 		_currSpost = MatrixType::Zero( dim, dim );
-		_lastFSpostFT = MatrixType::Zero( dim, dim );
 	}
 
 	MatrixType op = update.state_delta * update.state_delta.transpose();
@@ -88,6 +98,7 @@ void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
 	_lastFSpostFT = predict.trans_jacobian * _currSpost * 
 	                predict.trans_jacobian.transpose();
 	_currSpost = update.post_state_cov;
+	_lastK = update.kalman_gain;
 }
 
 void AdaptiveTransitionCovarianceEstimator::Reset()
@@ -142,12 +153,11 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 	CheckBuffer( time );
 	if( NumSamples() < _minSamples ) { return _initialCov; }
 
-	ros::Time startTime = _innoProds[0].first;
-	double wAcc = std::exp( 0 );
-	MatrixType Racc = std::exp( 0 ) * _innoProds[0].second;
-	for( unsigned int i = 1; i < _innoProds.size(); ++i )
+	double wAcc = 0;
+	MatrixType Racc = MatrixType::Zero( _offset.rows(), _offset.cols() );
+	for( unsigned int i = 0; i < _innoProds.size(); ++i )
 	{
-		double dt = ( startTime - _innoProds[i].first ).toSec();
+		double dt = ( time - _innoProds[i].first ).toSec();
 		double w = std::exp( _decayRate * dt );
 		Racc += _innoProds[i].second * w;
 		wAcc += w;
