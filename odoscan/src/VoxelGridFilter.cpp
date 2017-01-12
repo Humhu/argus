@@ -8,7 +8,7 @@ VoxelGridFilter::VoxelGridFilter() {}
 
 void VoxelGridFilter::InitializeDerived( ros::NodeHandle& ph )
 {
-	unsigned int leafSize;
+	double leafSize;
 	GetParamRequired( ph, "voxel_size", leafSize );
 	_leafSize.Initialize( ph, leafSize, "voxel_size", 
 	                      "Voxel grid size" );
