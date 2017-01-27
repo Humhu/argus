@@ -2,6 +2,7 @@
 
 #include "argus_utils/geometry/PoseSE3.h"
 #include "nav_msgs/Odometry.h"
+#include "fieldtrack/TargetState.h"
 
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"

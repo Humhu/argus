@@ -80,7 +80,7 @@ target_link_libraries( fieldtrack
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
-add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} )
+add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} fieldtrack_gencfg )
 
 # add_executable( fixed_frame_tracker
 # 	nodes/fixed_frame_tracker.cpp )
