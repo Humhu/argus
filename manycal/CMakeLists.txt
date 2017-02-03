@@ -3,158 +3,129 @@ project(manycal)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 
-set(CMAKE_BUILD_TYPE Release)
+if( NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "" )
+    message( STATUS "No build type selected, default to Release" )
+    set( CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE )
+endif()
+message( STATUS "Build configuration: ${CMAKE_BUILD_TYPE}" )
 
-find_package(catkin REQUIRED 
-	COMPONENTS		camera_info_manager
-					message_generation
-					roscpp
-					std_msgs
-					sensor_msgs
-					visualization_msgs
-					argus_utils
-					argus_msgs
-					image_transport
-					cv_bridge
- 					graphopt
-					extrinsics_array
-					fiducials
-					lookup
-					fieldtrack
+find_package( catkin REQUIRED 
+              COMPONENTS message_generation
+                         roscpp
+                         std_msgs
+                         sensor_msgs
+                         argus_utils
+                         argus_msgs
+                         graphopt
+                         extrinsics_array
+                         fiducials
 )
-include_directories( ${catkin_INCLUDE_DIRS} )
 
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
-include_directories( ${Boost_INCLUDE_DIRS} )
-
 find_package(Eigen3 REQUIRED)
 
-# find_package(isam REQUIRED)
-# include_directories( ${isam_INCLUDE_DIRS} )
-# message( STATUS ${isam_LIBRARIES} )
-
-add_service_files(
-	FILES           CaptureArray.srv
-	                WriteCalibration.srv
+add_service_files( FILES CaptureArray.srv
+                         WriteCalibration.srv
 )
 
-generate_messages(
-	DEPENDENCIES	std_msgs
+generate_messages( DEPENDENCIES std_msgs
 )
 
-catkin_package(
-	INCLUDE_DIRS 	include
-	
-	LIBRARIES 		manycal
-					
-	CATKIN_DEPENDS 	message_runtime 
-					roscpp 
-					std_msgs
-					sensor_msgs
-					visualization_msgs
-					argus_utils
-					argus_msgs
-					image_transport
-					cv_bridge
- 					graphopt
-					extrinsics_array
-					fiducials
-					lookup
-					fieldtrack
-					
-	DEPENDS 		Boost 
-					OpenCV
-					# isam
-					system_lib
+catkin_package( INCLUDE_DIRS    include
+
+                LIBRARIES       manycal
+
+                CATKIN_DEPENDS  message_runtime 
+                                roscpp 
+                                std_msgs
+                                sensor_msgs
+                                argus_utils
+                                argus_msgs
+                                graphopt
+                                extrinsics_array
+                                fiducials
+
+               DEPENDS          Boost 
+                                OpenCV
+                                system_lib
 )
 
 include_directories( include 
-                     ${EIGEN3_INCLUDE_DIR} )
+                    ${EIGEN3_INCLUDE_DIR}
+                    ${Boost_INCLUDE_DIRS}
+                    ${catkin_INCLUDE_DIRS}
+)
 
 add_library( manycal
- 	src/ArrayCalibrator.cpp
-	src/ArraySynchronizer.cpp
-	src/CameraArrayCalibrator.cpp
-	src/FiducialArrayCalibrator.cpp
-	src/ManycalCommon.cpp
-	src/sclam_fiducial.cpp
-	src/slamse3.cpp
+             #src/ArrayCalibrator.cpp
+             src/CameraArrayCalibrator.cpp
+             src/FiducialArrayCalibrator.cpp
+             src/ManycalCommon.cpp
+             src/sclam_fiducial.cpp
+             src/slamse3.cpp
 )
 add_dependencies( manycal ${manycal_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 target_link_libraries( manycal
-	${Boost_LIBRARIES}
-	${OpenCV_LIBS}
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES}
+                       ${Boost_LIBRARIES}
+                       ${OpenCV_LIBS}
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
 )
 
-add_executable( array_calibrator_node nodes/array_calibrator.cpp )
-add_dependencies( array_calibrator_node ${PROJECT_NAME}_gencfg )
-target_link_libraries( array_calibrator_node 
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES} 	
-	manycal )
-	
+# add_executable( array_calibrator_node nodes/array_calibrator.cpp )
+# add_dependencies( array_calibrator_node ${PROJECT_NAME}_gencfg )
+# target_link_libraries( array_calibrator_node 
+#                        ${isam_LIBRARIES}
+#                        ${catkin_LIBRARIES}
+#                        manycal 
+# )
+
 add_executable( fiducial_array_calibrator_node nodes/fiducial_array_calibrator.cpp )
 add_dependencies( fiducial_array_calibrator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( fiducial_array_calibrator_node 
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES} 	
-	manycal )
-	
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       manycal
+)
+
 add_executable( camera_array_calibrator_node nodes/camera_array_calibrator.cpp )
 add_dependencies( camera_array_calibrator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( camera_array_calibrator_node 
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES} 	
-	manycal )
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       manycal 
+)
 
 add_executable( isam_test tests/IsamTest.cpp )
 add_dependencies( isam_test ${PROJECT_NAME}_gencfg )
 target_link_libraries( isam_test
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES}
-	manycal )
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       manycal
+)
 
 add_executable( odometry_test tests/OdometryTest.cpp )
 add_dependencies( odometry_test ${PROJECT_NAME}_gencfg )
 target_link_libraries( odometry_test
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES}
-	manycal )
-	
-add_executable( array_synchronizer_node nodes/array_synchronizer_node.cpp )
-add_dependencies( array_synchronizer_node ${PROJECT_NAME}_gencfg )
-target_link_libraries( array_synchronizer_node
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES}
-	manycal )
-	
-add_executable( dummy_odometry nodes/dummy_odometry.cpp )
-add_dependencies( dummy_odometry ${PROJECT_NAME}_gencfg )
-target_link_libraries( dummy_odometry
-	${isam_LIBRARIES}
-	${catkin_LIBRARIES}
-	manycal )
-	
-add_executable( extrinsics_visualizer nodes/extrinsics_visualizer.cpp )
-add_dependencies( extrinsics_visualizer ${PROJECT_NAME}_gencfg )
-target_link_libraries( extrinsics_visualizer 
-	${catkin_LIBRARIES}
-	manycal )
-	
+                      ${isam_LIBRARIES}
+                      ${catkin_LIBRARIES}
+                      manycal
+)
+
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
-	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+                fiducial_array_calibrator_node
+                camera_array_calibrator_node
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 file(GLOB manycal_HEADERS
-	"include/${PROJECT_NAME}/*.h"
-	"include/${PROJECT_NAME}/*.hpp"
+     "include/${PROJECT_NAME}/*.h"
+     "include/${PROJECT_NAME}/*.hpp"
 )
 install(FILES ${manycal_HEADERS}
-	DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )

@@ -15,8 +15,6 @@
 #include "manycal/JumpPoseGraph.hpp"
 #include "manycal/WriteCalibration.h"
 
-#include "fieldtrack/TargetInfoManager.h"
-
 #include "lookup/LookupInterface.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 #include "argus_utils/geometry/PoseSE3.h"
@@ -52,7 +50,6 @@ private:
 	LookupInterface lookup;
 	FiducialInfoManager fiducialManager;
 	ExtrinsicsInfoManager extrinsicsManager;
-	TargetInfoManager targetManager;
 
 	/*! \brief Stores subscriptions to odometry and detection inputs. */
 	struct TargetRegistration

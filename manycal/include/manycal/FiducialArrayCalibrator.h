@@ -4,11 +4,16 @@
 #include <isam/sclam_monocular.h>
 
 #include "lookup/LookupInterface.h"
+
+#include "fiducials/FiducialCommon.h"
 #include "fiducials/FiducialInfoManager.h"
-#include "extrinsics_array/ExtrinsicsInfoManager.h"
+
+#include "extrinsics_array/ExtrinsicsInterface.h"
 #include "graphopt/GraphOptimizer.h"
+
 #include "manycal/ManycalCommon.h"
 #include "manycal/sclam_fiducial.h"
+
 #include "argus_msgs/ImageFiducialDetections.h"
 
 namespace argus
@@ -41,10 +46,11 @@ class FiducialArrayCalibrator
 {
 public:
 	
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
 	FiducialArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
-	~FiducialArrayCalibrator();
 	
-	void WriteResults( const ros::TimerEvent& event );
+	void WriteResults();
 	
 private:
 	
@@ -52,13 +58,21 @@ private:
 
 	LookupInterface _lookupInterface;
 	FiducialInfoManager _fiducialManager;
-	ExtrinsicsInfoManager _extrinsicsManager;
+	ExtrinsicsInterface _extrinsicsManager;
 
 	std::string _referenceFrame;
-	isam::MonocularIntrinsics_Node::Ptr _cameraIntrinsics;
 
+	unsigned int _minDetectionsPerImage;
 	unsigned int _detCounter;
 	unsigned int _batchPeriod;
+	
+	PoseSE3::CovarianceMatrix _priorCovariance;
+
+	GraphOptimizer _optimizer;
+	isam::MonocularIntrinsics_Node::Ptr _cameraIntrinsics; // Unoptimized cam intrinsics factor
+	isam::PoseSE3_Node::Ptr _fiducialReference; // Unoptimized pose of fiducial reference frame
+	std::vector <isam::PoseSE3_Node::Ptr> _cameraPoses;
+	std::vector <isam::FiducialFactor::Ptr> _observations;
 	
 	struct FiducialRegistration
 	{
@@ -66,24 +80,21 @@ private:
 		isam::FiducialIntrinsics_Node::Ptr intrinsics;
 		isam::PoseSE3_Prior::Ptr extrinsicsPrior;
 	};
-	
-	GraphOptimizer _optimizer;
-	isam::PoseSE3_Node::Ptr _fiducialReference;
-	std::vector <isam::PoseSE3_Node::Ptr> _cameraPoses;
-	std::vector <isam::FiducialFactor::Ptr> _observations;
-	
 	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
 	FiducialRegistry _fiducialRegistry;
 	
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 	
-	/*! \brief Checks if the specified fiducial has a pose guess. */
-	bool HasExtrinsicsPrior( const std::string& name );
-	bool HasIntrinsicsPrior( const std::string& name );
-	
+	// Attempt to initialize the camera pose from detections. Returns a nullptr
+	// if fails. Does not add the node to the slam instance on success.
+	isam::PoseSE3_Node::Ptr InitializeCameraPose( const std::vector<FiducialDetection>& dets );
+
+	// Attempt to initialize a fiducial from prior info. Returns success.
+	bool InitializeFiducialFromPrior( const std::string& name );
+
 	/*! \brief Creates the fiducial and reads its intrinsics via lookup. */
-	bool RegisterFiducial( const std::string& name, const argus::PoseSE3& pose,
-	                       bool addPrior = false );
+	void RegisterFiducial( const std::string& name, const argus::PoseSE3& pose,
+	                       bool addPrior );
 	
 };
 	

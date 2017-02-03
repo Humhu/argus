@@ -17,7 +17,7 @@ namespace argus
 
 ArrayCalibrator::ArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph )
 : nodeHandle( nh ), privHandle( ph ), 
-fiducialManager( lookup ), extrinsicsManager( lookup ), targetManager( lookup ),
+fiducialManager( lookup ), extrinsicsManager( lookup )
 slam( std::make_shared<isam::Slam>() )
 {
 	std::string lookupNamespace;
@@ -115,12 +115,6 @@ void ArrayCalibrator::RegisterTarget( const std::string& targetName,
                                       const YAML::Node& yaml )
 {
 	if( targetRegistry.count( targetName ) > 0 ) { return; }
-
-	if( !targetManager.CheckMemberInfo( targetName, true, ros::Duration( 5.0 ) ) )
-	{
-		ROS_ERROR_STREAM( "Could not retrieve target info for " << targetName );
-		exit( -1 );
-	}
 
 	ROS_INFO_STREAM( "Registering target " << targetName );
 	TargetRegistration registration;

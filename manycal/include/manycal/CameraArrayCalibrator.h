@@ -2,11 +2,13 @@
 
 #include <ros/ros.h>
 #include <isam/sclam_monocular.h>
-#include <isam/Slam.h>
+
+#include "graphopt/GraphOptimizer.h"
 
 #include "lookup/LookupInterface.h"
+#include "fiducials/FiducialCommon.h"
 #include "fiducials/FiducialInfoManager.h"
-#include "extrinsics_array/ExtrinsicsInfoManager.h"
+#include "extrinsics_array/ExtrinsicsInterface.h"
 
 #include "manycal/ManycalCommon.h"
 #include "manycal/WriteCalibration.h"
@@ -21,23 +23,27 @@ namespace argus
 class CameraArrayCalibrator
 {
 public:
+
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 	
-	CameraArrayCalibrator( const ros::NodeHandle& nh, const ros::NodeHandle& ph );
+	CameraArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	
 	bool WriteResults( manycal::WriteCalibration::Request& req, 
 	                   manycal::WriteCalibration::Response& res );
 	
 private:
 	
-	ros::NodeHandle nodeHandle;
-	ros::NodeHandle privHandle;
-	ros::Subscriber detSub;
-	ros::ServiceServer writeServer;
+	ros::Subscriber _detSub;
+	ros::ServiceServer _writeServer;
 
-	LookupInterface lookupInterface;
-	FiducialInfoManager fiducialManager;
-	ExtrinsicsInfoManager extrinsicsManager;
-	std::string referenceFrame;
+	LookupInterface _lookupInterface;
+	FiducialInfoManager _fiducialManager;
+	ExtrinsicsInterface _extrinsicsManager;
+
+	unsigned int _optCounter;
+	unsigned int _batchPeriod;
+	std::string _referenceFrame;
+	PoseSE3::CovarianceMatrix _priorCovariance;
 	
 	struct CameraRegistration
 	{
@@ -49,22 +55,23 @@ private:
 	struct FiducialRegistration
 	{
 		isam::FiducialIntrinsics_Node::Ptr intrinsics;
-		std::map <ros::Time, isam::PoseSE3_Node::Ptr> poses;
+		std::map<ros::Time, isam::PoseSE3_Node::Ptr> poses;
 	};
 	
-	isam::Slam::Ptr slam;
-	std::vector <isam::FiducialFactor::Ptr> observations;
-	std::vector <argus_msgs::ImageFiducialDetections::ConstPtr> cachedObservations;
+	GraphOptimizer _optimizer;
+	std::vector <isam::FiducialFactor::Ptr> _observations;
+
+	std::vector <ImageFiducialDetections> _cachedObservations;
 	
 	typedef std::unordered_map <std::string, CameraRegistration> CameraRegistry;
-	CameraRegistry cameraRegistry;
+	CameraRegistry _cameraRegistry;
 	
 	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
-	FiducialRegistry fiducialRegistry;
+	FiducialRegistry _fiducialRegistry;
 
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
-	bool ProcessDetection( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
-	bool InitializeCamera( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
+	bool ProcessDetection( const ImageFiducialDetections& dets );
+	bool InitializeCamera( const ImageFiducialDetections& dets );
 	void ProcessCache();
 	
 	void RegisterCamera( const std::string& name, const argus::PoseSE3& pose,

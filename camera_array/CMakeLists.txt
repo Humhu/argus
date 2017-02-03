@@ -92,8 +92,18 @@ add_dependencies( array_visualizer camera_array_gencfg )
 target_link_libraries( array_visualizer camera_array
 										${catkin_LIBRARIES} )
 
+add_executable( array_synchronizer_node nodes/array_synchronizer_node.cpp )
+add_dependencies( array_synchronizer_node ${PROJECT_NAME}_gencfg )
+target_link_libraries( array_synchronizer_node
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       camera_array
+)
+
 ## Mark executables and/or libraries for installation
-install(TARGETS 
+install(TARGETS camera_array_manager
+                array_visualizer
+                array_synchronizer_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
