@@ -19,7 +19,7 @@ namespace argus
 struct Fiducial 
 {
 	/*! \brief This fiducials ordered points. */
-	std::vector <Translation3Type> points;
+	std::vector<Translation3Type> points;
 	
 	/*! \brief Constructs an empty fiducial. */
 	Fiducial();
