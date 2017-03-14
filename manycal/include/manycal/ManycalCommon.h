@@ -16,6 +16,23 @@
 namespace argus
 {
 
+struct ObjectCalibration
+{
+    std::string name;
+    PoseSE3 extrinsics;
+};
+
+struct FiducialCalibration : public ObjectCalibration
+{
+	Fiducial intrinsics;
+};
+
+struct CameraCalibration : public ObjectCalibration
+{
+	// camplex::CameraCalibration intrinsics;
+};
+// TODO Message representations?
+
 /*! \brief Convert to and from the ISAM pose representation. */
 isam::Pose3d PoseToIsam( const PoseSE3& pose );
 PoseSE3 IsamToPose( const isam::Pose3d& is );

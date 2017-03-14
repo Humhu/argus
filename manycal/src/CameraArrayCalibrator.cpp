@@ -11,11 +11,20 @@ namespace argus
 CameraArrayCalibrator::CameraArrayCalibrator( ros::NodeHandle& nh,
                                               ros::NodeHandle& ph )
 : _fiducialManager( _lookupInterface ),
-  _extrinsicsManager( nh, ph ),
-  _optCounter( 0 )
+  _extrinsicsManager( nh, ph )
 {
+	GetParamRequired( ph, "use_synchronization", _useSynchronization );
+	if( _useSynchronization )
+	{
+		double dt;
+		unsigned int buffLen;
+		GetParamRequired( ph, "sync_max_dt", dt );
+		GetParamRequired( ph, "sync_buff_len", buffLen );
+		_sync.SetMaxDt( dt );
+		_sync.SetBufferLength( buffLen );
+	}
+
 	GetParamRequired( ph, "reference_frame", _referenceFrame );
-	GetParam( ph, "batch_period", _batchPeriod, (unsigned int) 10 );
 	GetParam( ph, "prior_covariance", _priorCovariance, PoseSE3::CovarianceMatrix::Identity() );
 
 	std::string lookupNamespace;
@@ -69,6 +78,52 @@ bool CameraArrayCalibrator::WriteResults( manycal::WriteCalibration::Request& re
 	return true;
 }
 
+std::vector<FiducialCalibration> CameraArrayCalibrator::GetFiducials() const
+{
+	std::vector<FiducialCalibration> fids;
+	FiducialCalibration cal;
+
+	typedef FiducialRegistry::value_type Item;
+	BOOST_FOREACH( const Item& item, _fiducialRegistry )
+	{
+		const std::string& name = item.first;
+		const FiducialRegistration& reg = item.second;
+		
+		cal.intrinsics = IsamToFiducial( reg.intrinsics->value() );
+
+		typedef std::map<ros::Time, isam::PoseSE3_Node::Ptr>::value_type Subitem;
+		BOOST_FOREACH( const Subitem& sub, reg.poses )
+		{
+			const ros::Time& t = sub.first;
+			const isam::PoseSE3_Node::Ptr& pose = sub.second;
+			std::stringstream ss;
+			ss << name << "_" << t;
+			cal.name = ss.str();
+			cal.extrinsics = pose->value().pose;
+			fids.push_back( cal );
+		}
+	}
+	return fids;
+}
+
+std::vector<CameraCalibration> CameraArrayCalibrator::GetCameras() const
+{
+	std::vector<CameraCalibration> cams;
+	CameraCalibration cal;
+
+	typedef CameraRegistry::value_type Item;
+	BOOST_FOREACH( const Item& item, _cameraRegistry )
+	{
+		const std::string& name = item.first;
+		const CameraRegistration& reg = item.second;;
+		cal.name = name;
+		cal.extrinsics = reg.extrinsics->value().pose;
+		// cal.intrinsics = IsamToMonocular( reg.intrinsics->value() );
+		cams.push_back( cal );
+	}
+	return cams;
+}
+
 void CameraArrayCalibrator::ProcessCache()
 {
 	std::vector <ImageFiducialDetections> recache;
@@ -83,21 +138,48 @@ void CameraArrayCalibrator::ProcessCache()
 
 	// Don't optimize when we don't have any observations!
 	if( _observations.size() == 0 ) { return; }
-	else if( _optCounter % _batchPeriod == 0 )
-	{
-		_optimizer.GetOptimizer().batch_optimization();
-		_optimizer.GetOptimizer().print_graph();
-	}
-	else
-	{
-		_optimizer.GetOptimizer().update();
-	}
-	_optCounter++;
+	_optimizer.GetOptimizer().update();
 }
 
 void CameraArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
 {
-	_cachedObservations.emplace_back( *msg );
+
+	if( _useSynchronization )
+	{
+		ImageFiducialDetections det( *msg );
+		try
+		{
+			_sync.BufferData( det.sourceName, msg->header.stamp.toSec(), det );
+		}
+		catch( std::invalid_argument& e )
+		{
+			_sync.RegisterSource( det.sourceName );
+			_sync.BufferData( det.sourceName, msg->header.stamp.toSec(), det );		
+		}
+
+		while( _sync.HasOutput() )
+		{
+			DetectionSynchronizer::DataMap output = _sync.GetOutput();
+
+			ros::Time latestTime( 0 );
+			typedef DetectionSynchronizer::DataMap::value_type Item;
+			BOOST_FOREACH( Item& item, output )
+			{
+				ros::Time time = item.second.second.timestamp;
+				if( time > latestTime ) { latestTime = time; }
+			}
+			BOOST_FOREACH( Item& item, output )
+			{
+				ImageFiducialDetections& det = item.second.second;
+				det.timestamp = latestTime;
+				_cachedObservations.emplace_back( det );
+			}
+		}
+	}
+	else 
+	{
+		 _cachedObservations.emplace_back( *msg );
+	}
 	ProcessCache();
 }
 
@@ -106,7 +188,8 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections& det
 	// Attempt to register all new fiducials
 	BOOST_FOREACH( const FiducialDetection& det, dets.detections )
 	{
-		if( _fiducialRegistry.count( det.name ) == 0 )
+		if( _fiducialRegistry.count( det.name ) == 0 && 
+		    _fiducialManager.CheckMemberInfo( det.name, false ) )
 		{
 			RegisterFiducial( det.name );
 		}
@@ -125,6 +208,8 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections& det
 	// Process detections
 	BOOST_FOREACH( const FiducialDetection& det, dets.detections )
 	{
+		if( _fiducialRegistry.count( det.name ) == 0 ) { continue; }
+
 		FiducialRegistration& fidReg = _fiducialRegistry[ det.name ];
 		// Initialize fiducial if first detection at this time
 		if( fidReg.poses.count( dets.timestamp ) == 0 )
@@ -185,10 +270,11 @@ bool CameraArrayCalibrator::InitializeCamera( const ImageFiducialDetections& det
 		return true;
 	}
 	catch( ExtrinsicsException& e ) {}
+
 	// If not, see if there if any observed fiducial have poses
 	BOOST_FOREACH( const FiducialDetection& det, dets.detections )
 	{
-		// If no fiducial intrinsics 
+		// If fiducial not registered
 		if( _fiducialRegistry.count( det.name ) == 0 ) { continue; }
 		FiducialRegistration& fidReg = _fiducialRegistry[ det.name ];
 
@@ -241,7 +327,7 @@ void CameraArrayCalibrator::RegisterFiducial( const std::string& name )
 	if( _fiducialRegistry.count( name ) > 0 ) { return; }
 	
 	ROS_INFO_STREAM( "Registering fiducial " << name );
-	
+
 	FiducialRegistration registration;
 	isam::FiducialIntrinsics intrinsics = FiducialToIsam( _fiducialManager.GetInfo( name ) );
 	registration.intrinsics = std::make_shared<isam::FiducialIntrinsics_Node>

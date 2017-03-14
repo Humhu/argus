@@ -13,7 +13,9 @@ find_package( catkin REQUIRED
               COMPONENTS message_generation
                          roscpp
                          std_msgs
+                         geometry_msgs
                          sensor_msgs
+                         visualization_msgs
                          argus_utils
                          argus_msgs
                          graphopt
@@ -30,6 +32,7 @@ add_service_files( FILES CaptureArray.srv
 )
 
 generate_messages( DEPENDENCIES std_msgs
+                                geometry_msgs
 )
 
 catkin_package( INCLUDE_DIRS    include
@@ -39,7 +42,9 @@ catkin_package( INCLUDE_DIRS    include
                 CATKIN_DEPENDS  message_runtime 
                                 roscpp 
                                 std_msgs
+                                geometry_msgs
                                 sensor_msgs
+                                visualization_msgs                                
                                 argus_utils
                                 argus_msgs
                                 graphopt
@@ -61,6 +66,7 @@ add_library( manycal
              #src/ArrayCalibrator.cpp
              src/CameraArrayCalibrator.cpp
              src/FiducialArrayCalibrator.cpp
+             src/ManycalVisualization.cpp
              src/ManycalCommon.cpp
              src/sclam_fiducial.cpp
              src/slamse3.cpp
@@ -111,6 +117,14 @@ target_link_libraries( odometry_test
                       ${isam_LIBRARIES}
                       ${catkin_LIBRARIES}
                       manycal
+)
+
+add_executable( cam_sync nodes/camera_synchronizer.cpp )
+add_dependencies( cam_sync ${PROJECT_NAME}_gencfg )
+target_link_libraries( cam_sync
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       manycal
 )
 
 ## Mark executables and/or libraries for installation

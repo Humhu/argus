@@ -11,6 +11,7 @@
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
 #include "manycal/ManycalCommon.h"
+#include "manycal/MessageSynchronizer.hpp"
 #include "manycal/WriteCalibration.h"
 #include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
@@ -30,18 +31,24 @@ public:
 	
 	bool WriteResults( manycal::WriteCalibration::Request& req, 
 	                   manycal::WriteCalibration::Response& res );
+
+	std::vector<FiducialCalibration> GetFiducials() const;
+	// TODO Return priors also?
+	std::vector<CameraCalibration> GetCameras() const;
 	
 private:
 	
 	ros::Subscriber _detSub;
 	ros::ServiceServer _writeServer;
 
+	typedef MessageSynchronizer<ImageFiducialDetections> DetectionSynchronizer;
+	DetectionSynchronizer _sync;
+	bool _useSynchronization;
+
 	LookupInterface _lookupInterface;
 	FiducialInfoManager _fiducialManager;
 	ExtrinsicsInterface _extrinsicsManager;
 
-	unsigned int _optCounter;
-	unsigned int _batchPeriod;
 	std::string _referenceFrame;
 	PoseSE3::CovarianceMatrix _priorCovariance;
 	
