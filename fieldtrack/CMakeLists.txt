@@ -105,14 +105,14 @@ add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} fieldtrack_gencfg )
 
 add_executable( state_estimator_node
 	nodes/state_estimator_node.cpp )
-add_dependencies( state_estimator_node ${ROJECT_NAME}_gencfg )
+add_dependencies( state_estimator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( state_estimator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
 add_executable( odometry_converter_node
 	nodes/odometry_converter_node.cpp )
-add_dependencies( odometry_converter_node ${ROJECT_NAME}_gencfg )
+add_dependencies( odometry_converter_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( odometry_converter_node
 	fieldtrack
 	${catkin_LIBRARIES} )
