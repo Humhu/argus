@@ -13,19 +13,24 @@ namespace argus
 /*! \brief Synchronizes buffers of timestamped data within some amount of tolerance.
  * NOTE: Assumes that data arrives in temporal order.
  */
-template <typename M>
+template <typename Msg, typename Key = std::string>
 class MessageSynchronizer
 {
 public:
 
-    typedef std::pair<double, M> StampedData;
-    typedef std::map<std::string, StampedData> DataMap;
+    typedef std::pair<double, Msg> StampedData;
+    typedef std::map<Key, StampedData> DataMap;
 
     MessageSynchronizer( unsigned int buffLen = 10, double maxDt = 0.1 ) 
     : _bufferLen( buffLen ), _maxDt( maxDt ) {}
 
+    // NOTE Does not change buffer length of existing buffers!
     void SetBufferLength( unsigned int buffLen )
     {
+        if( buffLen != _bufferLen && _registry.size() > 0 )
+        {
+            std::cerr << "Warning: Changing buffer length does not modify existing buffers." << std::endl;
+        }
         _bufferLen = buffLen;
     }
 
@@ -34,29 +39,33 @@ public:
         _maxDt = dt;
     }
 
-    void RegisterSource( const std::string& name )
+    void RegisterSource( const Key& key )
     {
-        if( _registry.count(name) > 0 )
+        if( _registry.count( key ) > 0 )
         {
-            throw std::invalid_argument( "Source: " + name + " already registered!" );
+            std::stringstream ss;
+            ss << "Source: " << key << " already registered!";
+            throw std::invalid_argument( ss.str() );
         }
 
-        _registry[name] = Buffer( _bufferLen );
+        _registry[ key ] = Buffer( _bufferLen );
     }
     
-    void BufferData( const std::string& name,
+    void BufferData( const Key& key,
                      double t,
-                     const M& m )
+                     const Msg& m )
     {
-        if( _registry.count(name) == 0 )
+        if( _registry.count( key ) == 0 )
         {
-            throw std::invalid_argument( "Source: " + name + " not registered!" );
+            std::stringstream ss;
+            ss << "Source: " << key << " not registered!";
+            throw std::invalid_argument( ss.str() );
         }
 
-        Buffer& buff = _registry[name];
+        Buffer& buff = _registry[ key ];
         if( !buff.empty() )
         {
-            double lastTime = _registry[name].back().first;
+            double lastTime = _registry[ key ].back().first;
             if( t < lastTime )
             {
                 std::stringstream ss;
@@ -65,7 +74,7 @@ public:
             }
         }
 
-        _registry[name].push_back( StampedData(t, m ) );
+        _registry[ key ].push_back( StampedData(t, m ) );
         CheckBuffers();
     }
 
@@ -126,9 +135,9 @@ private:
         typedef typename SourceRegistry::value_type Item;
         BOOST_FOREACH( const Item& item, _registry )
         {
-            const std::string& name = item.first;
+            const Key& key = item.first;
             const Buffer& buff = item.second;
-            out[name] = buff.front();
+            out[ key ] = buff.front();
         }
         return out;
     }
@@ -170,7 +179,7 @@ private:
     }
 
     typedef boost::circular_buffer<StampedData> Buffer;
-    typedef std::map<std::string, Buffer> SourceRegistry;
+    typedef std::map<Key, Buffer> SourceRegistry;
     SourceRegistry _registry;
 
     std::deque<DataMap> _outputBuff;
