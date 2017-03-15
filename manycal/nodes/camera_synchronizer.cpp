@@ -84,9 +84,15 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
+    unsigned int numThreads;
+    GetParam<unsigned int>( ph, "num_threads", numThreads, 1 );
+
 	CameraSynchronizer calibrator( nh, ph );
 	
-	ros::spin();
-	
+	//ros::spin();
+    ros::AsyncSpinner spinner( numThreads );
+    spinner.start();
+    ros::watiForShutdown();
+
 	return 0;
 }

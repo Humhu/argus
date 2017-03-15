@@ -7,11 +7,15 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "argus_utils/synchronization/SynchronizationTypes.h"
+
 namespace argus
 {
 
 /*! \brief Synchronizes buffers of timestamped data within some amount of tolerance.
  * NOTE: Assumes that data arrives in temporal order.
+ * NOTE: Accesses to the output buffer are synchronized, but parameter setting and registration
+ * is not
  */
 template <typename Msg, typename Key = std::string>
 class MessageSynchronizer
@@ -78,13 +82,28 @@ public:
         CheckBuffers();
     }
 
+    DataMap WaitForOutput()
+    {
+        WriteLock lock( _mutex );
+        while( _outputBuff.empty() )
+        {
+            _hasOutput.wait( lock );
+        }
+
+        DataMap out = _outputBuff.front();
+        _outputBuff.pop_front();
+        return out;
+    }
+
     bool HasOutput() const
     {
+        WriteLock lock( _mutex );                
         return !_outputBuff.empty();
     }
 
     DataMap GetOutput()
     {
+        WriteLock lock( _mutex );                
         if( _outputBuff.empty() )
         {
             throw std::runtime_error("Cannot get output from empty buffer!");
@@ -96,7 +115,6 @@ public:
     }
 
 private:
-
 
     void CheckBuffers()
     {
@@ -123,7 +141,11 @@ private:
             }
             else
             {
+                WriteLock lock( _mutex );                        
                 _outputBuff.emplace_back(oldest);
+                _hasOutput.notify_one();
+                lock.release();
+
                 RemoveOldest();
             }
         }
@@ -177,6 +199,9 @@ private:
             }
         }
     }
+
+    mutable Mutex _mutex;
+    ConditionVariable _hasOutput;
 
     typedef boost::circular_buffer<StampedData> Buffer;
     typedef std::map<Key, Buffer> SourceRegistry;

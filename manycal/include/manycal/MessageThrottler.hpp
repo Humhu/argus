@@ -4,12 +4,14 @@
 #include <cmath>
 #include <boost/foreach.hpp>
 #include <boost/circular_buffer.hpp>
+#include "argus_utils/synchronization/SynchronizationTypes.h"
 
 namespace argus
 {
 
 /*! \brief Weighted subsampling and delaying of message streams to 
  * achieve a target message rate. 
+ * // NOTE Accessing outputs is synchronized, but setting parameters is not!
  */
  template <typename Msg, typename Key = std::string>
  class MessageThrottler
@@ -45,7 +47,9 @@ public:
     void RegisterSource( const Key& key )
     {
         CheckStatus( key, false );
-        _registry.emplace( std::make_pair( key, _bufferLen ) );
+        _registry.emplace( std::piecewise_construct,
+                           std::forward_as_tuple( key ), 
+                           std::forward_as_tuple( _bufferLen ) );
         ComputeBufferRates();
     }
 
@@ -64,12 +68,15 @@ public:
                      const Msg& m )
     {
         CheckStatus( key, true );
-        _registry.at( key ).buffer.push_back( m );
+        WriteLock lock( _mutex );
+        _registry.at( key ).Buffer( m );
     }
 
     bool GetOutput( double now, KeyedData& out )
     {
         typedef typename SourceRegistry::value_type Item;
+
+        WriteLock outlock( _mutex );
 
         Key highestKey;
         double highestScore = 0;
@@ -125,19 +132,23 @@ private:
         }
     }
 
+    // TODO Clean up public/private here
     struct SourceRegistration
     {
+        mutable Mutex mutex;
         boost::circular_buffer<Msg> buffer;
         double weight;
         double rate;
         double lastOutputTime;
 
         SourceRegistration( unsigned int len )
-        : buffer( len ), weight( 0 ), rate( 0 ),
+        : mutex(), buffer( len ), weight( 0 ), rate( 0 ),
           lastOutputTime( -std::numeric_limits<double>::infinity() ) {}
 
         double ComputeNumToOutput( double now ) const
         {
+            ReadLock lock( mutex );
+            
             double elapsed = now - lastOutputTime;
             if( elapsed < 0 )
             {
@@ -148,14 +159,24 @@ private:
             return std::floor( std::min( maxOutput, numBuffered ) );
         }
 
+        void Buffer( const Msg& m )
+        {
+            WriteLock lock( mutex );
+            buffer.push_back( m );
+        }
+
         Msg PopAndMark( double now )
         {
+            WriteLock lock( mutex );
+
             lastOutputTime = now;
             Msg m = buffer.front();
             buffer.pop_front();
             return m;
         }
     };
+
+    mutable Mutex _mutex;
 
     typedef std::map<Key, SourceRegistration> SourceRegistry;
     SourceRegistry _registry;
