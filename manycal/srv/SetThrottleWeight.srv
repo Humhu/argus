@@ -1,0 +1,14 @@
+# SetThrottleWeight
+#
+# Description
+# -----------
+# Specifies a throttle weight for a source
+#
+# Fields
+# ------
+# name   : the name of the source
+# weight : the weight to set, with higher weights allocating more bandwidth
+
+string name
+float64 weight
+---

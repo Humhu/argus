@@ -28,6 +28,7 @@ find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_service_files( FILES CaptureArray.srv
+                         SetThrottleWeight.srv
                          WriteCalibration.srv
 )
 
@@ -119,9 +120,17 @@ target_link_libraries( odometry_test
                       manycal
 )
 
-add_executable( cam_sync nodes/camera_synchronizer.cpp )
-add_dependencies( cam_sync ${PROJECT_NAME}_gencfg )
-target_link_libraries( cam_sync
+add_executable( cam_synchronizer nodes/camera_synchronizer.cpp )
+add_dependencies( cam_synchronizer ${PROJECT_NAME}_gencfg )
+target_link_libraries( cam_synchronizer
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       manycal
+)
+
+add_executable( cam_throttler nodes/camera_throttler.cpp )
+add_dependencies( cam_throttler ${PROJECT_NAME}_gencfg )
+target_link_libraries( cam_throttler
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
                        manycal
