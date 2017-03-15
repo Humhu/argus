@@ -4,7 +4,7 @@
 
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
-#include "manycal/MessageThrottler.hpp"
+#include "argus_utils/synchronization/MessageThrottler.hpp"
 #include "manycal/SetThrottleWeight.h"
 
 #include "argus_utils/utils/ParamUtils.h"
@@ -118,6 +118,6 @@ int main( int argc, char** argv )
     ros::AsyncSpinner spinner( numThreads );
     spinner.start();
 	ros::waitForShutdown();
-    
+
 	return 0;
 }

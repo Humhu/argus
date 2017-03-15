@@ -4,7 +4,7 @@
 
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
-#include "manycal/MessageSynchronizer.hpp"
+#include "argus_utils/synchronization/MessageSynchronizer.hpp"
 
 #include "argus_utils/utils/ParamUtils.h"
 
@@ -92,7 +92,7 @@ int main( int argc, char** argv )
 	//ros::spin();
     ros::AsyncSpinner spinner( numThreads );
     spinner.start();
-    ros::watiForShutdown();
+    ros::waitForShutdown();
 
 	return 0;
 }

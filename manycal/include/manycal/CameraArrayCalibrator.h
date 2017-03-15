@@ -10,8 +10,8 @@
 #include "fiducials/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
+#include "argus_utils/synchronization/MessageSynchronizer.hpp"
 #include "manycal/ManycalCommon.h"
-#include "manycal/MessageSynchronizer.hpp"
 #include "manycal/WriteCalibration.h"
 #include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
