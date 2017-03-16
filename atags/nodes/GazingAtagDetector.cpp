@@ -23,18 +23,20 @@ public:
 	{
 		double s;
 		GetParamRequired( ph, "poll_rate", s );
-		_sleepTime = ros::Duration( 1.0 / s );
+		_pollTimer = nh.createTimer( ros::Duration( 1.0 / s ),
+		                             &GazingAtagNode::TimerCallback, this );
 
-		GetParamRequired( ph, "min_framerate", _minFramerate );
-        GetParamRequired( ph, "decay_rate", _decayRate );
+		GetParamRequired( ph, "decay_rate", _decayRate );
 
 		ros::NodeHandle th( ph.resolveName( "throttle" ) );
+		double maxRate, minRate;
 		unsigned int buffLen;
 		GetParamRequired( th, "buffer_length", buffLen );
-		double r;
-		GetParamRequired( th, "max_rate", r );
+		GetParamRequired( th, "max_rate", maxRate );
+		GetParamRequired( th, "min_rate", minRate );
 		_throttle.SetBufferLength( buffLen );
-		_throttle.SetTargetRate( r );
+		_throttle.SetTargetRate( maxRate );
+		_throttle.SetMinRate( minRate );
 
 		ros::NodeHandle dh( ph.resolveName( "detector" ) );
 		_detector.ReadParams( dh );
@@ -45,55 +47,12 @@ public:
 		_cameraSub = _imagePort.subscribeCamera( "image", buffLen, &GazingAtagNode::ImageCallback, this );
 	}
 
-	void Spin()
-	{
-		DataThrottler::KeyedData data;
-		while( ros::ok() )
-		{
-            ros::Time now = ros::Time::now();
-            UpdateThrottles( now );
-			if( !_throttle.GetOutput( now.toSec(), data ) )
-			{
-				_sleepTime.sleep();
-				continue;
-			}
-
-			const std::string& sourceName = data.first;
-			const sensor_msgs::Image::ConstPtr& img = data.second.first;
-			const sensor_msgs::CameraInfo::ConstPtr& info = data.second.second;
-
-			camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
-
-			// Detection occurs in grayscale
-			cv::Mat msgFrame = cv_bridge::toCvShare( img )->image;
-			cv::Mat frame;
-			if( msgFrame.channels() > 1 )
-			{
-				cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
-			}
-			else
-			{
-				frame = msgFrame;
-			}
-
-			ImageFiducialDetections detections;
-			detections.sourceName = img->header.frame_id;
-			detections.timestamp = img->header.stamp;
-			detections.detections = _detector.ProcessImage( frame, cameraModel );
-
-			if( detections.detections.size() == 0 ) { continue; }
-
-            _lastDetectTimes[ detections.sourceName ] = now;
-
-			_detPub.publish( detections.ToMsg() );
-		}
-	}
-
 private:
 
 	AtagDetector _detector;
 
 	ros::Publisher _detPub;
+	ros::Timer _pollTimer;
 
 	image_transport::ImageTransport _imagePort;
 	image_transport::CameraSubscriber _cameraSub;
@@ -103,23 +62,61 @@ private:
 	DataThrottler _throttle;
 	ros::Duration _sleepTime;
 
-    double _decayRate;
-	double _minFramerate;
+	double _decayRate;
 	std::map<std::string, ros::Time> _lastDetectTimes;
 
-    void UpdateThrottles( const ros::Time& now )
-    {
-        typedef std::map<std::string, ros::Time>::value_type Item;
-        BOOST_FOREACH( const Item& item, _lastDetectTimes )
-        {
-            const std::string& sourceName = item.first;
-            const ros::Time& lastDetectTime = item.second;
-            double dt = (now - lastDetectTime).toSec();
-            // TODO Incorporate min rate into throttler logic
-            double weight = std::exp( -_decayRate * dt ) + _minFramerate;
-            _throttle.SetSourceWeight( sourceName, weight );
-        }
-    }
+	void TimerCallback( const ros::TimerEvent& event )
+	{
+		DataThrottler::KeyedData data;
+		UpdateThrottles( event.current_real );
+		if( !_throttle.GetOutput( event.current_real.toSec(), data ) )
+		{
+			return;
+		}
+
+		const std::string& sourceName = data.first;
+		const sensor_msgs::Image::ConstPtr& img = data.second.first;
+		const sensor_msgs::CameraInfo::ConstPtr& info = data.second.second;
+
+		camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
+
+		// Detection occurs in grayscale
+		cv::Mat msgFrame = cv_bridge::toCvShare( img )->image;
+		cv::Mat frame;
+		if( msgFrame.channels() > 1 )
+		{
+			cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
+		}
+		else
+		{
+			frame = msgFrame;
+		}
+
+		ImageFiducialDetections detections;
+		detections.sourceName = img->header.frame_id;
+		detections.timestamp = img->header.stamp;
+		detections.detections = _detector.ProcessImage( frame, cameraModel );
+
+		if( detections.detections.size() == 0 ) { return; }
+
+		_lastDetectTimes[detections.sourceName] = event.current_real;
+
+		_detPub.publish( detections.ToMsg() );
+	}
+
+	void UpdateThrottles( const ros::Time& now )
+	{
+		typedef std::map<std::string, ros::Time>::value_type Item;
+		BOOST_FOREACH( const Item &item, _lastDetectTimes )
+		{
+			const std::string& sourceName = item.first;
+			const ros::Time& lastDetectTime = item.second;
+			double dt = ( now - lastDetectTime ).toSec();
+			// TODO Incorporate min rate into throttler logic
+			double weight = std::exp( -_decayRate * dt );
+			_throttle.SetSourceWeight( sourceName, weight );
+		}
+	}
 
 	void ImageCallback( const sensor_msgs::Image::ConstPtr& img,
 	                    const sensor_msgs::CameraInfo::ConstPtr& info )
@@ -138,7 +135,6 @@ private:
 			_throttle.BufferData( sourceName, CameraData( img, info ) );
 		}
 	}
-
 };
 
 int main( int argc, char**argv )
@@ -151,9 +147,11 @@ int main( int argc, char**argv )
 
 	GazingAtagNode node( nh, ph );
 
-	ros::AsyncSpinner spinner( 1 );
+	unsigned int numThreads;
+	GetParam<unsigned int>( ph, "num_threads", numThreads, 1 );
+	ros::AsyncSpinner spinner( numThreads );
 	spinner.start();
-	node.Spin();
+	ros::waitForShutdown();
 
 	return 0;
 
