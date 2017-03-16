@@ -65,6 +65,7 @@ include_directories( include
 
 add_library( atags
             src/AtagCommon.cpp
+            src/AtagDetector.cpp
 )
 target_link_libraries( atags
                       ${apriltags_LIBRARIES}
@@ -78,6 +79,14 @@ add_dependencies( detector_node atags_gencfg
                                 apriltags_external 
 )
 target_link_libraries( detector_node atags
+                                     ${catkin_LIBRARIES}
+)
+
+add_executable( gazing_detector_node nodes/GazingAtagDetector.cpp )
+add_dependencies( gazing_detector_node atags_gencfg
+                                apriltags_external 
+)
+target_link_libraries( gazing_detector_node atags
                                      ${catkin_LIBRARIES}
 )
 
