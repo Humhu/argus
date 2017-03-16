@@ -1,0 +1,39 @@
+<launch>
+
+    <node pkg="camplex" type="camera_node" name="camera0">
+        <rosparam>
+            camera_name: pseye_047_wide
+            device_path: /dev/video1
+            frame_resolution: [320,240]
+            frame_rate: 30
+            stream_on_start: true
+        </rosparam>
+    </node>
+
+    <node pkg="camplex" type="camera_node" name="camera1">
+        <rosparam>
+            camera_name: pseye_049_wide
+            device_path: /dev/video2
+            frame_resolution: [320,240]
+            frame_rate: 30
+            stream_on_start: true
+        </rosparam>
+    </node>
+
+    <node pkg="manycal" type="cam_throttler" name="throttler" output="screen">
+        <rosparam>
+            num_threads: 2
+            update_rate: 20
+            buffer_length: 5
+            max_rate: 10
+            sources:
+                cam0:
+                    input: camera0/image_raw
+                    output: camera0/throttled/image_raw
+                cam1:
+                    input: camera1/image_raw
+                    output: camera1/throttled/image_raw
+        </rosparam>
+    </node>
+
+</launch>

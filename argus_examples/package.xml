@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+  <name>argus_examples</name>
+  <version>0.0.1</version>
+  <description>Example launch files demonstrating argus capabilities.</description>
+
+  <author>Humphrey Hu</author>
+  <maintainer email="humhu@cmu.edu">Humphrey Hu</maintainer>
+
+  <!-- One license tag required, multiple allowed, one license per tag -->
+  <!-- Commonly used license strings: -->
+  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
+  <license>AFLv3</license>
+
+  <build_depend>argus</build_depend>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <run_depend>argus</run_depend>
+  
+</package>

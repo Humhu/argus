@@ -1,0 +1,61 @@
+<launch>
+  
+<node pkg="camplex" type="camera_node" name="camera0" output="screen">
+  <remap from="~image_raw" to="image_raw"/>  
+  <rosparam>
+    camera_name: pseye_049_wide
+    device_path: /dev/video2
+    frame_resolution: [640, 480]
+    frame_rate: 30
+    stream_on_start: true
+  </rosparam>
+</node>
+
+<node pkg="camplex" type="camera_node" name="camera1" output="screen">
+  <remap from="~image_raw" to="image_raw"/>
+  <rosparam>
+    camera_name: pseye_047_wide
+    device_path: /dev/video1
+    frame_resolution: [640, 480]
+    frame_rate: 30
+    stream_on_start: true
+  </rosparam>
+</node>
+
+<node pkg="camplex" type="viewer_node" name="viewer0" output="screen">
+  <remap from="image" to="image_raw"/>
+  <rosparam>
+    source_name: pseye_049_wide
+  </rosparam>
+</node>
+
+<node pkg="camplex" type="viewer_node" name="viewer1" output="screen">
+  <remap from="image" to="image_raw"/>
+  <rosparam>
+    source_name: pseye_047_wide
+  </rosparam>
+</node>
+
+<node pkg="atags" type="gazing_detector_node" name="detector" output="screen">
+  <remap from="image" to="image_raw"/>
+  <rosparam>
+    num_threads: 3
+    poll_rate: 100
+    decay_rate: 1.0
+
+    throttle:
+      max_rate: 15
+      min_rate: 1
+      buffer_length: 3
+    detector:
+      enable_undistortion: true
+      enable_normalization: true
+      tag_family: 36h11
+      max_skewness_ratio: 3.0
+      min_area_product: 4000
+    buffer_size: 10
+  </rosparam>
+</node>
+
+</launch>
+  

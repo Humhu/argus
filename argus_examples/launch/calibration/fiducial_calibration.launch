@@ -1,0 +1,85 @@
+<launch>
+
+<node pkg="lookup" type="lookup_registrar" name="tag_registrar">
+    <rosparam>
+        apriltag_36h11_id0: tag0
+        apriltag_36h11_id1: tag1
+        apriltag_36h11_id2: tag2
+        apriltag_36h11_id3: tag3
+    </rosparam>
+</node>
+
+<node pkg="extrinsics_array" type="extrinsics_publisher_node" name="tag_prior">
+  <rosparam>
+    apriltag_36_h11_id0:
+      parent_id: tag_constellation
+  </rosparam>
+</node>
+
+<rosparam>
+tag0:
+  frame_id: tag_constellation
+  extrinsics:
+    x: 0
+    y: 0
+    z: 0
+    yaw: 0
+    pitch: 0
+    roll: 0
+  intrinsics:
+    points_x: [0, 0, 0, 0]
+    points_y: [-0.0479, 0.0479, 0.0479, -0.0479]
+    points_z: [-0.0479, -0.0479, 0.0479, 0.0479]
+
+tag1:
+  intrinsics:
+    points_x: [0, 0, 0, 0]
+    points_y: [-0.0479, 0.0479, 0.0479, -0.0479]
+    points_z: [-0.0479, -0.0479, 0.0479, 0.0479]
+
+tag2:
+  intrinsics:
+    points_x: [0, 0, 0, 0]
+    points_y: [-0.0479, 0.0479, 0.0479, -0.0479]
+    points_z: [-0.0479, -0.0479, 0.0479, 0.0479]
+
+tag3:
+  intrinsics:
+    points_x: [0, 0, 0, 0]
+    points_y: [-0.0479, 0.0479, 0.0479, -0.0479]
+    points_z: [-0.0479, -0.0479, 0.0479, 0.0479]
+</rosparam>
+
+<node pkg="camplex" type="camera_node" name="camera0">
+    <rosparam>
+        camera_name: pseye_005_wide
+        device_path: /dev/video1
+        frame_resolution: [640,480]
+        frame_rate: 30
+        stream_on_start: true
+    </rosparam>
+</node>
+
+<node pkg="atags" type="detector_node" name="detector">
+  <remap from="image" to="camera0/image_raw"/>
+  <remap from="~/detections_raw" to="detections_raw"/>
+  <remap from="~/detections_processed" to="detections_processed"/>
+  <rosparam>
+    enable_undistortion: true
+    enable_normalization: true
+    tag_family: 36h11
+  </rosparam>
+</node>
+
+<node pkg="manycal" type="fiducial_array_calibrator_node" name="calibrator" output="screen" launch-prefix="xterm -e">
+    <remap from="detections" to="detections_processed"/>
+    <rosparam>
+        source_camera: pseye_005_wide
+        reference_frame: calibration_frame
+        batch_period: 10
+        optimizer:
+            quiet: true
+    </rosparam>
+</node>
+
+</launch>

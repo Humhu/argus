@@ -1,0 +1,35 @@
+<launch>
+  
+<node pkg="camplex" type="camera_node" name="camera" output="screen">
+  <rosparam>
+    camera_name: pseye_049_wide
+    device_path: /dev/video1
+    frame_resolution: [640, 480]
+    frame_rate: 30
+    stream_on_start: true
+  </rosparam>
+</node>
+
+<!--<node pkg="camplex" type="undistortion_node" name="camera" output="screen">
+  <remap from="image_raw" to="camera/image_raw"/>
+  <rosparam>
+    cache_undistortion: true
+  </rosparam>
+</node>-->
+
+<node pkg="atags" type="detector_node" name="detector" output="screen">
+  <remap from="image" to="camera/image_raw"/>
+  <rosparam>
+    detector:
+      enable_undistortion: true
+      enable_normalization: true
+      tag_family: 36h11
+      max_skewness_ratio: 3.0
+      min_area_product: 4000
+    buffer_size: 10
+    num_threads: 2
+  </rosparam>
+</node>
+
+</launch>
+  
