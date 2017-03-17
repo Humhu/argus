@@ -17,7 +17,12 @@ public:
 
 	typedef std::shared_ptr<ExtrinsicsInterface> Ptr;
 
-	ExtrinsicsInterface( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	ExtrinsicsInterface( ros::NodeHandle& nh );
+	ExtrinsicsInterface( ros::NodeHandle& nh, const ros::NodeHandle& ph );
+
+	void ReadParams( const ros::NodeHandle& ph );
+
+	void SetMaxCacheTime( double t );
 
 	/*! \brief Attempt to convert a relative pose into the specified from/to
 	 * frames. */

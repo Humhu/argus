@@ -5,13 +5,29 @@
 namespace argus
 {
 
-ExtrinsicsInterface::ExtrinsicsInterface( ros::NodeHandle& nh,
-                                          ros::NodeHandle& ph )
+ExtrinsicsInterface::ExtrinsicsInterface( ros::NodeHandle& nh )
 {
-	double maxCacheTime;
-	GetParam( ph, "max_cache_time", maxCacheTime, 10.0 );
-	_tfBuffer = std::make_shared<tf2_ros::Buffer>( ros::Duration( maxCacheTime ) );
+	SetMaxCacheTime( 10.0 );
 	_tfListener = std::make_shared<tf2_ros::TransformListener>( *_tfBuffer, nh );
+}
+
+ExtrinsicsInterface::ExtrinsicsInterface( ros::NodeHandle& nh,
+                                          const ros::NodeHandle& ph )
+{
+	ReadParams( ph );
+	_tfListener = std::make_shared<tf2_ros::TransformListener>( *_tfBuffer, nh );
+}
+
+void ExtrinsicsInterface::ReadParams( const ros::NodeHandle& ph )
+{
+	double t;
+	GetParam( ph, "max_cache_time", t, 10.0 );
+	SetMaxCacheTime( t );
+}
+
+void ExtrinsicsInterface::SetMaxCacheTime( double t )
+{
+	_tfBuffer = std::make_shared<tf2_ros::Buffer>( ros::Duration( t ) );
 }
 
 PoseSE3 ExtrinsicsInterface::Convert( std::string fromIn,
