@@ -5,13 +5,13 @@
 namespace argus
 {
 
-ExtrinsicsInterface::ExtrinsicsInterface( ros::NodeHandle& nh )
+ExtrinsicsInterface::ExtrinsicsInterface( const ros::NodeHandle& nh )
 {
 	SetMaxCacheTime( 10.0 );
 	_tfListener = std::make_shared<tf2_ros::TransformListener>( *_tfBuffer, nh );
 }
 
-ExtrinsicsInterface::ExtrinsicsInterface( ros::NodeHandle& nh,
+ExtrinsicsInterface::ExtrinsicsInterface( const ros::NodeHandle& nh,
                                           const ros::NodeHandle& ph )
 {
 	ReadParams( ph );
