@@ -84,10 +84,18 @@ target_link_libraries( detector_node atags
 
 add_executable( gazing_detector_node nodes/GazingAtagDetector.cpp )
 add_dependencies( gazing_detector_node atags_gencfg
-                                apriltags_external 
+                                       apriltags_external 
 )
 target_link_libraries( gazing_detector_node atags
-                                     ${catkin_LIBRARIES}
+                                            ${catkin_LIBRARIES}
+)
+
+add_executable( syncing_detector_node nodes/SyncingAtagDetector.cpp )
+add_dependencies( syncing_detector_node atags_gencfg
+                                        apriltags_external 
+)
+target_link_libraries( syncing_detector_node atags
+                                             ${catkin_LIBRARIES}
 )
 
 ## Mark executables and/or libraries for installation

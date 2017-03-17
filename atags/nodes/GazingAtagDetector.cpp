@@ -60,7 +60,6 @@ private:
 	typedef std::pair<sensor_msgs::Image::ConstPtr, sensor_msgs::CameraInfo::ConstPtr> CameraData;
 	typedef MessageThrottler<CameraData> DataThrottler;
 	DataThrottler _throttle;
-	ros::Duration _sleepTime;
 
 	double _decayRate;
 	std::map<std::string, ros::Time> _lastDetectTimes;
