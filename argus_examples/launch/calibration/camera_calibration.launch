@@ -6,17 +6,17 @@
     </rosparam>
   </node>-->
 
-  <node pkg="lookup" type="lookup_registrar" name="tray_registrar">
+  <node pkg="lookup" type="lookup_registrar" name="lookup_registrar">
     <rosparam>
         apriltag_36h11_id0: tag_0
-        hump_cam: camera1
-        wei_cam: camera2
+        pseye047_wide: camera0
+        pseye049_wide: camera1
     </rosparam>
   </node>
 
   <node pkg="extrinsics_array" type="extrinsics_publisher_node" name="extpub">
   <rosparam>
-     hump_cam:
+     pseye_047_wide:
         parent_id: base_link 
         pose:
             x: 0
@@ -33,94 +33,96 @@
         frame_id: base_link
         intrinsics:
             points_x: [0, 0, 0, 0]
-            points_y: [-0.01, 0.01, 0.01, -0.01]
-            points_z: [-0.01, -0.01, 0.01, 0.01]
+            points_y: [-0.0479, 0.0479, 0.0479, -0.0479]
+            points_z: [-0.0479, -0.0479, 0.0479, 0.0479]
   </rosparam>
 
-  <node pkg="usb_cam" type="usb_cam_node" name="camera1">
+  <node pkg="camplex" type="camera_node" name="camera0" output="screen">
     <remap from="~image_raw" to="image_raw"/>
     <rosparam>
-        video_device: /dev/video1
-        image_width: 640
-        image_height: 360
-        framerate: 5
-        pixel_format: mjpeg
-        camera_frame_id: hump_cam
-        io_method: mmap
-        camera_info_url: file:///home/humphreh/Software/argus_devel/test_camera_calibration.yaml
+        camera_name: pseye_047_wide
+        device_path: /dev/video2
+        frame_resolution: [640,480]
+        frame_rate: 30
+        stream_on_start: true
     </rosparam>
   </node>
 
-  <node pkg="usb_cam" type="usb_cam_node" name="camera2">
+  <node pkg="camplex" type="camera_node" name="camera1" output="screen">
     <remap from="~image_raw" to="image_raw"/>    
     <rosparam>
-        video_device: /dev/video2
-        image_width: 640
-        image_height: 360
-        framerate: 5
-        pixel_format: mjpeg
-        camera_frame_id: wei_cam
-        io_method: mmap
-        camera_info_url: file:///home/humphreh/Software/argus_devel/test_camera_calibration.yaml
+        camera_name: pseye_049_wide
+        device_path: /dev/video1
+        frame_resolution: [640,480]
+        frame_rate: 30
+        stream_on_start: true
     </rosparam>
-  </node>
+</node>
 
-  <node pkg="atags" type="detector_node" name="calibration_detector" output="screen">
+  <node pkg="atags" type="syncing_detector_node" name="calibration_detector" output="screen">
     <remap from="image" to="image_raw"/>
-    <remap from="~/detections_raw" to="detections_raw"/>
-    <remap from="~/detections_processed" to="detections_processed"/>
+    <remap from="~detections" to="detections"/>
     <rosparam>
-      max_skewness_ratio: 2.0
-      min_area_product: 2000
-      enable_undistortion: true
-      enable_normalization: true
-      tag_family: 36h11
+      poll_rate: 10
+      sync:
+        buffer_length: 10
+        max_dt: 0.1
+        min_sync_num: 2
+      detector:
+        max_skewness_ratio: 2.0
+        min_area_product: 2000
+        enable_undistortion: true
+        enable_normalization: true
+        tag_family: 36h11
       buffer_size: 20
+      num_threads: 2
     </rosparam>
   </node>
 
-  <node pkg="manycal" type="camera_array_calibrator_node" name="calibrator" output="screen" launch-prefix="xterm -e">
-    <remap from="detections" to="detections_processed"/>
+  <node pkg="manycal" type="camera_array_calibrator_node" name="calibrator" output="screen">
     <rosparam>
-      use_synchronization: true
-      sync_max_dt: 0.1
-      sync_buff_len: 10
+      calibration:
+        reference_frame: base_link
+        prior_covariance: [ 1, 0, 0, 0, 0, 0, 
+                            0, 1, 0, 0, 0, 0,
+                            0, 0, 1, 0, 0, 0,
+                            0, 0, 0, 1, 0, 0,
+                            0, 0, 0, 0, 1, 0,
+                            0, 0, 0, 0, 0, 1 ]
+        sync:
+          max_dt: 0.1
+          buff_len: 10
+          min_sync_num: 2
+        optimizer:
+          verbose: false
+          quiet: true
+          method: gauss_newton
+          batch_period: 10
 
+      update_rate: 1.0
       visualization:
-        rate: 1.0
+        reference_frame: base_link      
         camera:
           marker_name: cameras
           linewidth: 0.005
           axes_length: 0.02
           show_name: true
-          text_size: 0.01
+          text_size: 0.0479
           text_offset:
             x: 0
             y: 0
-            z: -0.01
+            z: -0.0479
             roll: 0
             pitch: 0
             yaw: 0
         fiducial:
           marker_name: fiducials
-          linewidth: 0.01
+          linewidth: 0.0479
           point_size: 0.005
           show_axes: false
           axes_length: 0.02         
           show_name: false
 
-      reference_frame: base_link
-      prior_covariance: [ 1, 0, 0, 0, 0, 0, 
-                          0, 1, 0, 0, 0, 0,
-                          0, 0, 1, 0, 0, 0,
-                          0, 0, 0, 1, 0, 0,
-                          0, 0, 0, 0, 1, 0,
-                          0, 0, 0, 0, 0, 1 ]
-      optimizer:
-        verbose: false
-        quiet: true
-        method: gauss_newton
-        batch_period: 10
     </rosparam>
   </node>
 

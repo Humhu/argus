@@ -11,6 +11,8 @@
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
 #include "argus_utils/synchronization/MessageSynchronizer.hpp"
+#include "argus_utils/synchronization/SynchronizationTypes.h"
+
 #include "manycal/ManycalCommon.h"
 #include "manycal/WriteCalibration.h"
 #include "manycal/sclam_fiducial.h"
@@ -26,20 +28,32 @@ class CameraArrayCalibrator
 public:
 
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-	
-	CameraArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
-	
-	bool WriteResults( manycal::WriteCalibration::Request& req, 
-	                   manycal::WriteCalibration::Response& res );
+
+	CameraArrayCalibrator( const ros::NodeHandle& nh );
+
+	void ReadParams( const ros::NodeHandle& ph );
+
+	void SetEnableSynchronization( bool e );
+	void SetReferenceFrame( const std::string& f );
+	void SetPriorCovariance( const PoseSE3::CovarianceMatrix& mat );
+
+	void RegisterCamera( const std::string& name );
+	void RegisterFiducial( const std::string& name );
+	void BufferDetection( const ImageFiducialDetections& det );
+
+	/*! \brief Process the queue and optimize. */
+	void Spin();
+
+	// TODO
+	void WriteResults( const std::string& path );
 
 	std::vector<FiducialCalibration> GetFiducials() const;
 	// TODO Return priors also?
 	std::vector<CameraCalibration> GetCameras() const;
-	
+
 private:
-	
-	ros::Subscriber _detSub;
-	ros::ServiceServer _writeServer;
+
+	mutable Mutex _mutex;
 
 	typedef MessageSynchronizer<ImageFiducialDetections> DetectionSynchronizer;
 	DetectionSynchronizer _sync;
@@ -51,40 +65,40 @@ private:
 
 	std::string _referenceFrame;
 	PoseSE3::CovarianceMatrix _priorCovariance;
-	
+
 	struct CameraRegistration
 	{
 		isam::PoseSE3_Node::Ptr extrinsics;
 		isam::MonocularIntrinsics_Node::Ptr intrinsics;
 		isam::PoseSE3_Prior::Ptr extrinsicsPrior;
 	};
-	
+
 	struct FiducialRegistration
 	{
 		isam::FiducialIntrinsics_Node::Ptr intrinsics;
 		std::map<ros::Time, isam::PoseSE3_Node::Ptr> poses;
 	};
-	
-	GraphOptimizer _optimizer;
-	std::vector <isam::FiducialFactor::Ptr> _observations;
 
-	std::vector <ImageFiducialDetections> _cachedObservations;
-	
-	typedef std::unordered_map <std::string, CameraRegistration> CameraRegistry;
+	GraphOptimizer _optimizer;
+	std::vector<isam::FiducialFactor::Ptr> _observations;
+	std::vector<ImageFiducialDetections> _detBuffer;
+
+	typedef std::unordered_map<std::string, CameraRegistration> CameraRegistry;
 	CameraRegistry _cameraRegistry;
-	
-	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
+
+	typedef std::unordered_map<std::string, FiducialRegistration> FiducialRegistry;
 	FiducialRegistry _fiducialRegistry;
 
-	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
-	bool ProcessDetection( const ImageFiducialDetections& dets );
-	bool InitializeCamera( const ImageFiducialDetections& dets );
-	void ProcessCache();
-	
-	void RegisterCamera( const std::string& name, const argus::PoseSE3& pose,
-						 bool addPrior = false );
-	void RegisterFiducial( const std::string& name );
-	
+	bool ProcessDetection( const ImageFiducialDetections& dets,
+	                       const WriteLock& lock );
+
+	bool BootstrapInitializeCamera( const ImageFiducialDetections& dets,
+	                                const WriteLock& lock );
+
+	void FillCameraRegistration( const std::string& name,
+	                             const argus::PoseSE3& pose,
+	                             bool addPrior,
+	                             const WriteLock& lock );
 };
-	
+
 }

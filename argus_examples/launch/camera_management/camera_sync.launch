@@ -22,8 +22,11 @@
 
   <node pkg="manycal" type="cam_sync" name="sync" output="screen">
       <rosparam>
-          buffer_length: 10
-          max_dt: 0.1
+          poll_rate: 10
+          sync:
+            buffer_length: 10
+            max_dt: 0.1
+            min_sync: 2
           sources:
             cam0:
               input: camera0/image_raw
