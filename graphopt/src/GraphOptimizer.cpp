@@ -21,7 +21,10 @@ isam::Method StringToMethod( const std::string& method )
 	throw std::invalid_argument( "Invalid method: " + method );
 }
 
-GraphOptimizer::GraphOptimizer() {}
+GraphOptimizer::GraphOptimizer() 
+{
+	_optimizer = std::make_shared<isam::Slam>();
+}
 
 GraphOptimizer::GraphOptimizer( ros::NodeHandle& ph )
 {
