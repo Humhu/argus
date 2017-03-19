@@ -11,6 +11,7 @@
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/synchronization/MessageThrottler.hpp"
+#include "argus_utils/synchronization/WorkerPool.h"
 
 using namespace argus;
 
@@ -21,10 +22,10 @@ public:
 	GazingAtagNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		: _imagePort( nh )
 	{
-		double s;
-		GetParamRequired( ph, "poll_rate", s );
-		_pollTimer = nh.createTimer( ros::Duration( 1.0 / s ),
-		                             &GazingAtagNode::TimerCallback, this );
+		// double s;
+		// GetParamRequired( ph, "poll_rate", s );
+		// _pollTimer = nh.createTimer( ros::Duration( 1.0 / s ),
+		//                              &GazingAtagNode::TimerCallback, this );
 
 		GetParamRequired( ph, "decay_rate", _decayRate );
 
@@ -45,11 +46,27 @@ public:
 
 		GetParam<unsigned int>( ph, "buffer_size", buffLen, 10 );
 		_cameraSub = _imagePort.subscribeCamera( "image", buffLen, &GazingAtagNode::ImageCallback, this );
+
+		double detRate;
+		GetParam( ph, "detector_poll_rate", detRate, 1.0 );
+		_detectorRest = ros::Duration( 1.0 / detRate );
+
+		unsigned int numDetectorThreads;
+		GetParam<unsigned int>( ph, "num_detector_threads", numDetectorThreads, 1 );
+		_detectorWorkers.SetNumWorkers( numDetectorThreads );
+		for( unsigned int i = 0; i < numDetectorThreads; ++i )
+		{
+			WorkerPool::Job job = boost::bind( &GazingAtagNode::DetectionSpin, this );
+			_detectorWorkers.EnqueueJob( job );
+		}
+		_detectorWorkers.StartWorkers();
 	}
 
 private:
 
 	AtagDetector _detector;
+	WorkerPool _detectorWorkers;
+	ros::Duration _detectorRest;
 
 	ros::Publisher _detPub;
 	ros::Timer _pollTimer;
@@ -61,56 +78,75 @@ private:
 	typedef MessageThrottler<CameraData> DataThrottler;
 	DataThrottler _throttle;
 
+	Mutex _decayMutex;
 	double _decayRate;
 	std::map<std::string, ros::Time> _lastDetectTimes;
 
-	void TimerCallback( const ros::TimerEvent& event )
+	// void TimerCallback( const ros::TimerEvent& event )
+	void DetectionSpin()
 	{
 		DataThrottler::KeyedData data;
-		UpdateThrottles( event.current_real );
-		if( !_throttle.GetOutput( event.current_real.toSec(), data ) )
+		while( !ros::isShuttingDown() )
 		{
-			return;
+			ros::Time now = ros::Time::now();
+			UpdateThrottles( now );
+			if( !_throttle.GetOutput( now.toSec(), data ) )
+			{
+				_detectorRest.sleep();
+				continue;
+			}
+
+			const std::string& sourceName = data.first;
+			const sensor_msgs::Image::ConstPtr& img = data.second.first;
+			const sensor_msgs::CameraInfo::ConstPtr& info = data.second.second;
+
+			camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
+
+			// Detection occurs in grayscale
+			cv::Mat msgFrame = cv_bridge::toCvShare( img )->image;
+			cv::Mat frame;
+			if( msgFrame.channels() > 1 )
+			{
+				cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
+			}
+			else
+			{
+				frame = msgFrame;
+			}
+
+			ImageFiducialDetections detections;
+			detections.sourceName = img->header.frame_id;
+			detections.timestamp = img->header.stamp;
+			detections.detections = _detector.ProcessImage( frame, cameraModel );
+
+			if( detections.detections.size() == 0 )
+			{
+				_detectorRest.sleep();
+				continue;
+			}
+
+			WriteLock lock( _decayMutex );
+			_lastDetectTimes[detections.sourceName] = now;
+			lock.release();
+
+			_detPub.publish( detections.ToMsg() );
 		}
-
-		const std::string& sourceName = data.first;
-		const sensor_msgs::Image::ConstPtr& img = data.second.first;
-		const sensor_msgs::CameraInfo::ConstPtr& info = data.second.second;
-
-		camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
-
-		// Detection occurs in grayscale
-		cv::Mat msgFrame = cv_bridge::toCvShare( img )->image;
-		cv::Mat frame;
-		if( msgFrame.channels() > 1 )
-		{
-			cv::cvtColor( msgFrame, frame, CV_BGR2GRAY );
-		}
-		else
-		{
-			frame = msgFrame;
-		}
-
-		ImageFiducialDetections detections;
-		detections.sourceName = img->header.frame_id;
-		detections.timestamp = img->header.stamp;
-		detections.detections = _detector.ProcessImage( frame, cameraModel );
-
-		if( detections.detections.size() == 0 ) { return; }
-
-		_lastDetectTimes[detections.sourceName] = event.current_real;
-
-		_detPub.publish( detections.ToMsg() );
 	}
 
 	void UpdateThrottles( const ros::Time& now )
 	{
+		WriteLock lock( _decayMutex );
 		typedef std::map<std::string, ros::Time>::value_type Item;
 		BOOST_FOREACH( const Item &item, _lastDetectTimes )
 		{
 			const std::string& sourceName = item.first;
 			const ros::Time& lastDetectTime = item.second;
 			double dt = ( now - lastDetectTime ).toSec();
+			if( dt < 0 )
+			{
+				ROS_WARN_STREAM( "Throttle update with negative dt: " << dt );
+				return;
+			}
 			// TODO Incorporate min rate into throttler logic
 			double weight = std::exp( -_decayRate * dt );
 			_throttle.SetSourceWeight( sourceName, weight );

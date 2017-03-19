@@ -39,8 +39,9 @@
 <node pkg="atags" type="gazing_detector_node" name="detector" output="screen">
   <remap from="image" to="image_raw"/>
   <rosparam>
-    num_threads: 3
-    poll_rate: 100
+    num_threads: 2
+    num_detector_threads: 4
+    detector_poll_rate: 100
     decay_rate: 1.0
 
     throttle:
