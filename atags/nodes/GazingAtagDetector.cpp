@@ -119,15 +119,11 @@ private:
 			detections.timestamp = img->header.stamp;
 			detections.detections = _detector.ProcessImage( frame, cameraModel );
 
-			if( detections.detections.size() == 0 )
-			{
-				_detectorRest.sleep();
-				continue;
-			}
+			if( detections.detections.size() == 0 ) { continue; }
 
 			WriteLock lock( _decayMutex );
 			_lastDetectTimes[detections.sourceName] = now;
-			lock.release();
+			lock.unlock();
 
 			_detPub.publish( detections.ToMsg() );
 		}
@@ -135,7 +131,7 @@ private:
 
 	void UpdateThrottles( const ros::Time& now )
 	{
-		WriteLock lock( _decayMutex );
+		ReadLock lock( _decayMutex );
 		typedef std::map<std::string, ros::Time>::value_type Item;
 		BOOST_FOREACH( const Item &item, _lastDetectTimes )
 		{
