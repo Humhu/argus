@@ -17,12 +17,13 @@ fi
 
 # For each video device, we assign it the symlink argus/cameraN
 devices=$(ls /dev/video*)
-counter=0
+#counter=0
 for device in $devices ; do
 	path=$(udevadm info -a -p $(udevadm info -q path -n $device) | grep -m1 KERNELS== | sed -e 's/[ ]*KERNELS==//')
-	echo "Found device $device with USB path $path. Assigning to ID $counter"
-	echo KERNELS==$path, SUBSYSTEM==\"video4linux\", SYMLINK+=\"argus/camera$counter\", MODE="0666" >> $output_file
-	((counter++))
+	printf -v padded "%02d" ${device//[!0-9]/}
+	echo "Found device $device with USB path $path. Assigning to ID $padded"
+	echo KERNELS==$path, SUBSYSTEM==\"video4linux\", SYMLINK+=\"argus/camera$padded\", MODE="0666" >> $output_file
+	#((counter++))
 done
 
 echo "Created udev rules file $output_file"
