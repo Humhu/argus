@@ -99,7 +99,6 @@ private:
 			const sensor_msgs::Image::ConstPtr& img = data.second.first;
 			const sensor_msgs::CameraInfo::ConstPtr& info = data.second.second;
 
-			camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
 
 			// Detection occurs in grayscale
 			cv::Mat msgFrame = cv_bridge::toCvShare( img )->image;
@@ -112,6 +111,9 @@ private:
 			{
 				frame = msgFrame;
 			}
+
+			camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
+			cameraModel.SetScale( frame.size() );
 
 			ImageFiducialDetections detections;
 			detections.sourceName = img->header.frame_id;
