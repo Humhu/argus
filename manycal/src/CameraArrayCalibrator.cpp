@@ -297,9 +297,11 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections& det
 	}
 
 	// Process detections
+	std::string fidNames = "";
 	BOOST_FOREACH( const FiducialDetection &det, dets.detections )
 	{
 		if( _fiducialRegistry.count( det.name ) == 0 ) { continue; }
+		fidNames += det.name + " ";
 
 		FiducialRegistration& fidReg = _fiducialRegistry[det.name];
 		// Initialize fiducial if first detection at this time
@@ -339,7 +341,7 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections& det
 		                                       DetectionToIsam( det ),
 		                                       cov,
 		                                       props );
-		ROS_INFO_STREAM( "Adding detection" );
+		ROS_INFO_STREAM( "Adding detection from " << dets.sourceName << " of " << fidNames );
 		_optimizer.GetOptimizer().add_factor( factor.get() );
 		_observations.push_back( factor );
 	}
