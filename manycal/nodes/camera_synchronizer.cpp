@@ -67,7 +67,7 @@ private:
 	void TimerCallback( const ros::TimerEvent& event )
 	{
 		std::vector<DataSynchronizer::KeyedStampedData> data;
-		if( !_sync.GetOutput( data ) ) { return; }
+		if( !_sync.GetOutput( event.current_real.toSec(), data ) ) { return; }
 
 		BOOST_FOREACH( const DataSynchronizer::KeyedStampedData & datum, data )
 		{

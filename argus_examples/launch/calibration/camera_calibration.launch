@@ -48,7 +48,7 @@
     </rosparam>
   </node>
 
-  <node pkg="camplex" type="camera_node" name="camera1" output="screen">
+  <!--<node pkg="camplex" type="camera_node" name="camera1" output="screen">
     <remap from="~image_raw" to="image_raw"/>    
     <rosparam>
         camera_name: pseye_049_wide
@@ -57,7 +57,7 @@
         frame_rate: 30
         stream_on_start: true
     </rosparam>
-</node>
+</node>-->
 
   <node pkg="atags" type="syncing_detector_node" name="calibration_detector" output="screen">
     <remap from="image" to="image_raw"/>
@@ -67,7 +67,7 @@
       sync:
         buffer_length: 10
         max_dt: 0.1
-        min_sync_num: 2
+        min_sync_num: 1
       detector:
         max_skewness_ratio: 2.0
         min_area_product: 2000

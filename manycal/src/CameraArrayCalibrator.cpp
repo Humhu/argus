@@ -252,7 +252,7 @@ void CameraArrayCalibrator::Spin()
 	if( _useSynchronization )
 	{
 		std::vector<DetectionSynchronizer::KeyedStampedData> output;
-		while( _sync.GetOutput( output ) )
+		while( _sync.GetOutput( ros::Time::now().toSec(), output ) )
 		{
 			// Randomly pick the first timestamp TODO?
 			ros::Time timestamp( std::get<1>( output[0] ) );

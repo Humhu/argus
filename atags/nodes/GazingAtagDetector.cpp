@@ -96,7 +96,6 @@ private:
 				continue;
 			}
 
-			const std::string& sourceName = data.first;
 			const sensor_msgs::Image::ConstPtr& img = data.second.first;
 			const sensor_msgs::CameraInfo::ConstPtr& info = data.second.second;
 
@@ -127,6 +126,11 @@ private:
 
 			_detPub.publish( detections.ToMsg() );
 		}
+	}
+
+	void ProcessData( const CameraData& data )
+	{
+		
 	}
 
 	void UpdateThrottles( const ros::Time& now )
@@ -179,7 +183,7 @@ int main( int argc, char**argv )
 	GazingAtagNode node( nh, ph );
 
 	unsigned int numThreads;
-	GetParam<unsigned int>( ph, "num_threads", numThreads, 1 );
+	GetParam<unsigned int>( ph, "num_rx_threads", numThreads, 1 );
 	ros::AsyncSpinner spinner( numThreads );
 	spinner.start();
 	ros::waitForShutdown();
