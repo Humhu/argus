@@ -1,8 +1,0 @@
-# Service to get info about a runtime parameter
-
----
-
-# Human-readable description
-# Should describe the type (int, float, string) and all valid values
-# ie. the range of inputs or a list of string inputs and descriptions
-string description
