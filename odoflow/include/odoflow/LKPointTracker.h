@@ -33,7 +33,7 @@ private:
 	NumericParam _flowWindowDim;
 	NumericParam _flowEigenThreshold;
 	NumericParam _solverMaxIters;
-	NumericParam _solverMinEpsilon;
+	NumericParam _solverMinLogEpsilon;
 	NumericParam _maxFlowError;
 
 	cv::TermCriteria _flowTermCriteria;

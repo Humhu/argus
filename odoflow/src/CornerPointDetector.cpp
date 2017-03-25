@@ -62,9 +62,9 @@ CornerPointDetector::CornerPointDetector( ros::NodeHandle& nh, ros::NodeHandle& 
 	_refineMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	double initRefineEps;
-	GetParamRequired<double>( ph, "refine_min_eps", initRefineEps );
-	_refineMinEps.Initialize( ph, initRefineEps, "refine_min_eps", "Minimum refinement iteration improvement" );
-	_refineMinEps.AddCheck<GreaterThanOrEqual>( 0 );
+	GetParamRequired<double>( ph, "refine_min_log_eps", initRefineEps );
+	_refineMinLogEps.Initialize( ph, initRefineEps, "refine_min_log_eps", "Minimum refinement iteration log improvement" );
+	_refineMinLogEps.AddCheck<GreaterThanOrEqual>( 0 );
 
 }
 
@@ -93,7 +93,7 @@ InterestPoints CornerPointDetector::FindInterestPoints( const cv::Mat& image )
 		cv::Size refineWindowSize( _refineWindowDim, _refineWindowDim );
 		cv::Size refineZeroSize( _refineZeroDim, _refineZeroDim );
 		cv::TermCriteria refineCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
-										 _refineMaxIters, _refineMinEps );
+										 _refineMaxIters, std::exp(_refineMinLogEps) );
 		cv::cornerSubPix( image, points, refineWindowSize, refineZeroSize, refineCriteria );
 	}
 	

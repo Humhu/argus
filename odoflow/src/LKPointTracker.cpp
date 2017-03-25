@@ -6,59 +6,59 @@
 
 namespace argus
 {
-	
+
 LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: InterestPointTracker( nh, ph )
+	: InterestPointTracker( nh, ph )
 {
 	unsigned int maxIters;
 	GetParamRequired( ph, "max_iters", maxIters );
-	_solverMaxIters.Initialize( ph, maxIters, "max_iters", 
+	_solverMaxIters.Initialize( ph, maxIters, "max_iters",
 	                            "Lucas-Kanade solver max iterations." );
 	_solverMaxIters.AddCheck<GreaterThan>( 0 );
 	_solverMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	double minEps;
-	GetParamRequired( ph, "min_eps", minEps );
-	_solverMinEpsilon.Initialize( ph, minEps, "min_eps", 
-	                              "Lucas-Kande solver min epsilon." );
-	_solverMinEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
-	
+	GetParamRequired( ph, "min_log_eps", minEps );
+	_solverMinLogEpsilon.Initialize( ph, minEps, "min_log_eps",
+	                                 "Lucas-Kande solver min log epsilon." );
+	_solverMinLogEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
+
 	unsigned int pyramidLevel;
 	GetParamRequired( ph, "pyramid_level", pyramidLevel );
-	_pyramidLevel.Initialize( ph, pyramidLevel, "pyramid_level", 
+	_pyramidLevel.Initialize( ph, pyramidLevel, "pyramid_level",
 	                          "Lucas-Kanade max pyramid level." );
 	_pyramidLevel.AddCheck<GreaterThanOrEqual>( 0 );
 	_pyramidLevel.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	unsigned int windowDim;
 	GetParamRequired( ph, "window_dim", windowDim );
-	_flowWindowDim.Initialize( ph, windowDim, "window_dim", 
+	_flowWindowDim.Initialize( ph, windowDim, "window_dim",
 	                           "Lucas-Kanade search window dim." );
 	_flowWindowDim.AddCheck<GreaterThanOrEqual>( 3 ); // OpenCV requirements
 	_flowWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	double flowThreshold;
 	GetParamRequired( ph, "flow_eigenvalue_threshold", flowThreshold );
-	_flowEigenThreshold.Initialize( ph, flowThreshold, "flow_eigenvalue_threshold", 
+	_flowEigenThreshold.Initialize( ph, flowThreshold, "flow_eigenvalue_threshold",
 	                                "Lucas-Kanade spatial gradient eigenvalue threshold." );
 	_flowEigenThreshold.AddCheck<GreaterThan>( 0 );
 
 	double flowErrThreshold;
 	GetParamRequired( ph, "flow_error_threshold", flowErrThreshold );
-	_maxFlowError.Initialize( ph, flowErrThreshold, "flow_error_threshold", 
-	                                "Lucas-Kanade max solution error threshold." );
+	_maxFlowError.Initialize( ph, flowErrThreshold, "flow_error_threshold",
+	                          "Lucas-Kanade max solution error threshold." );
 	_maxFlowError.AddCheck<GreaterThan>( 0 );
 }
 
 bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
-	                                      FrameInterestPoints& tar )
+                                          FrameInterestPoints& tar )
 {
 	// Make sure we have points to track
 	if( key.frame.empty() || tar.frame.empty() || key.points.empty() )
 	{
 		return false;
 	}
-	
+
 	// OpenCV's Lucas-Kanade requires single-precision floating point
 	InterestPointsf keyPoints = DowncastInterestPoints( key.points );
 	InterestPointsf targetPoints = DowncastInterestPoints( tar.points );
@@ -66,22 +66,23 @@ bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
 	{
 		targetPoints = keyPoints;
 	}
-	
-	cv::TermCriteria termCriteria = cv::TermCriteria( cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 
-	                                                  _solverMaxIters, 
-	                                                  _solverMinEpsilon );
+
+	cv::TermCriteria termCriteria = cv::TermCriteria( cv::TermCriteria::COUNT |
+	                                                  cv::TermCriteria::EPS,
+	                                                  _solverMaxIters,
+	                                                  std::exp( _solverMinLogEpsilon ) );
 	std::vector<uchar> status;
 	std::vector<float> errors;
-	cv::calcOpticalFlowPyrLK( key.frame, 
-	                          tar.frame, 
-	                          keyPoints, 
-	                          targetPoints, 
-	                          status, 
-	                          errors, 
+	cv::calcOpticalFlowPyrLK( key.frame,
+	                          tar.frame,
+	                          keyPoints,
+	                          targetPoints,
+	                          status,
+	                          errors,
 	                          cv::Size( _flowWindowDim, _flowWindowDim ),
 	                          _pyramidLevel,
-	                          termCriteria, 
-	                          cv::OPTFLOW_USE_INITIAL_FLOW, 
+	                          termCriteria,
+	                          cv::OPTFLOW_USE_INITIAL_FLOW,
 	                          _flowEigenThreshold );
 
 	InterestPointsf keyInliers, targetInliers;
@@ -100,5 +101,5 @@ bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
 
 	return !key.points.empty();
 }
-	
+
 }

@@ -37,7 +37,7 @@ private:
 	NumericParam _refineWindowDim;
 	NumericParam _refineZeroDim;
 	NumericParam _refineMaxIters;
-	NumericParam _refineMinEps;
+	NumericParam _refineMinLogEps;
 	
 };
 	
