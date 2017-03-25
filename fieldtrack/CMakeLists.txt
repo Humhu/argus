@@ -80,27 +80,6 @@ target_link_libraries( fieldtrack
 )
 add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} fieldtrack_gencfg )
 
-# add_executable( fixed_frame_tracker
-# 	nodes/fixed_frame_tracker.cpp )
-# add_dependencies( fixed_frame_tracker ${PROJECT_NAME}_gencfg )
-# target_link_libraries( fixed_frame_tracker
-# 	fieldtrack
-# 	${catkin_LIBRARIES} )
-
-# add_executable( body_frame_tracker
-# 	nodes/body_frame_tracker.cpp )
-# add_dependencies( body_frame_tracker ${PROJECT_NAME}_gencfg )
-# target_link_libraries( body_frame_tracker
-# 	fieldtrack
-# 	${catkin_LIBRARIES} )
-
-# add_executable( velocity_integrator_node
-# 	nodes/velocity_integrator_node.cpp )
-# add_dependencies( velocity_integrator_node ${PROJECT_NAME}_gencfg )
-# target_link_libraries( velocity_integrator_node
-# 	fieldtrack
-# 	${catkin_LIBRARIES} )
-
 add_executable( state_estimator_node
 	nodes/state_estimator_node.cpp )
 add_dependencies( state_estimator_node ${PROJECT_NAME}_gencfg )
@@ -114,6 +93,13 @@ add_dependencies( odometry_converter_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( odometry_converter_node
 	fieldtrack
 	${catkin_LIBRARIES} )
+
+add_executable( velocity_converter_node
+  nodes/velocity_converter_node.cpp )
+add_dependencies( velocity_converter_node ${ROJECT_NAME}_gencfg )
+target_link_libraries( velocity_converter_node
+  fieldtrack
+  ${catkin_LIBRARIES} )
 
 add_executable( odometry_differentiator_node
 	nodes/odometry_differentiator.cpp )
