@@ -4,8 +4,6 @@
 #include "fieldtrack/utils/FilterInfo.h"
 #include <deque>
 
-#include "broadcast/BroadcastTransmitter.h"
-
 namespace argus
 {
 
@@ -51,8 +49,6 @@ private:
 	MatrixType _lastFSpostFT;
 	MatrixType _currSpost;
 	MatrixType _lastK;
-
-	BroadcastTransmitter _tx;
 
 	void CheckBuffer( const ros::Time& now );
 };
