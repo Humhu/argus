@@ -36,8 +36,6 @@ void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
 	_decayRate = std::log( _decayRate );
-
-	_tx.InitializePushStream( "adaptive_Q", ph, 3, {"x", "y", "w"} );
 }
 
 unsigned int AdaptiveTransitionCovarianceEstimator::NumSamples() const
@@ -68,10 +66,6 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	double timeSpan = ( _innoProds.front().first - _innoProds.back().first ).toSec();
 	double averageDt = timeSpan / NumSamples();
 	MatrixType adaptQRate = adaptQ / averageDt;
-
-	VectorType feats(3);
-	feats << adaptQRate(6,6), adaptQRate(7,7), adaptQRate(11,11);
-	_tx.Publish( time, feats );
 
 	// Check for diagonal
 	if( _useDiag )
