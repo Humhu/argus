@@ -1,5 +1,5 @@
-#include "fiducials/FiducialArray.h"
-#include "fiducials/FiducialCommon.h"
+#include "camplex/FiducialArray.h"
+#include "camplex/FiducialCommon.h"
 #include "argus_utils/geometry/GeometryUtils.h"
 
 namespace argus

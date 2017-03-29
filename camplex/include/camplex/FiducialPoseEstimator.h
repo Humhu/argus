@@ -3,8 +3,8 @@
 #include "argus_utils/geometry/PoseSE3.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
-#include "fiducials/FiducialCommon.h"
-#include "fiducials/FiducialInfoManager.h"
+#include "camplex/FiducialCommon.h"
+#include "camplex/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
 namespace argus
@@ -30,7 +30,7 @@ private:
 	FiducialInfoManager _fiducialManager;
 	ExtrinsicsInterface _extrinsicsInterface;
 	
-	std::unordered_map<std::string, Fiducial> _transformedFiducials;
+	std::unordered_map<std::string, Fiducial> _transformedcamplex;
 	
 	// Gets the specified fiducial transformed into _refFrame at the specified time
 	bool GetFiducial( const std::string& name, const ros::Time& time, Fiducial& fid );

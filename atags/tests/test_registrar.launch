@@ -1,0 +1,20 @@
+<launch>
+
+    <node pkg="atags" type="atag_registrar_node" name="registrar" output="screen">
+        <rosparam>
+            tag0:
+                family: 36h11
+                id: 0
+                width: 0.1
+                parent_id: world
+                pose:
+                    x: 0
+                    y: 0
+                    z: 0
+                    yaw: 0
+                    pitch: 0
+                    roll: 0
+        </rosparam>
+    </node>
+
+</launch>

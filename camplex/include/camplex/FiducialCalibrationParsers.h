@@ -2,7 +2,7 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "fiducials/FiducialInfo.h"
+#include "camplex/FiducialInfo.h"
 
 namespace argus
 {
@@ -18,15 +18,15 @@ namespace argus
  */
 
 /*! \brief Parses a calibration from a YAML object. Returns success. */
-bool ParseFiducialCalibration( const YAML::Node& yaml, fiducials::FiducialInfo& info );
+bool ParseFiducialCalibration( const YAML::Node& yaml, camplex::FiducialInfo& info );
 
 /*! \brief Reads a fiducial calibration from a YAML file. Returns success. */
-bool ReadFiducialCalibration( const std::string& path, fiducials::FiducialInfo& info );
+bool ReadFiducialCalibration( const std::string& path, camplex::FiducialInfo& info );
 
 /*! \brief Populates a YAML node from a fiducial calibration. */
-void PopulateFiducialCalibration( const fiducials::FiducialInfo& info, YAML::Node& yaml );
+void PopulateFiducialCalibration( const camplex::FiducialInfo& info, YAML::Node& yaml );
 
 /*! \brief Writes a fiducial calibration to a YAML file. Returns success. */
-bool WriteFiducialCalibration( const std::string& path, const fiducials::FiducialInfo& info );
+bool WriteFiducialCalibration( const std::string& path, const camplex::FiducialInfo& info );
 
 } // end namespace argus

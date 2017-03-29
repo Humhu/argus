@@ -1,0 +1,6 @@
+# SetStreaming.srv
+# Command the camera to enable or disable streaming
+
+# Set to true to start streaming, false to stop streaming.
+bool enableStreaming
+---

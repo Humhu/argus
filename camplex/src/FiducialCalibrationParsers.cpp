@@ -1,6 +1,6 @@
 #include "argus_utils/utils/YamlUtils.h"
 #include "argus_utils/geometry/GeometryUtils.h"
-#include "fiducials/FiducialCalibrationParsers.h"
+#include "camplex/FiducialCalibrationParsers.h"
 
 #include <fstream>
 #include <boost/foreach.hpp>
@@ -8,7 +8,7 @@
 namespace argus
 {
 
-bool ParseFiducialCalibration( const YAML::Node& yaml, fiducials::FiducialInfo& info )
+bool ParseFiducialCalibration( const YAML::Node& yaml, camplex::FiducialInfo& info )
 {
 	// Only the point are required
 	if( !yaml["points_x"] ||
@@ -40,7 +40,7 @@ bool ParseFiducialCalibration( const YAML::Node& yaml, fiducials::FiducialInfo& 
 	return true;
 }
 
-bool ReadFiducialCalibration( const std::string& path, fiducials::FiducialInfo& info )
+bool ReadFiducialCalibration( const std::string& path, camplex::FiducialInfo& info )
 {
 	YAML::Node yaml;
 	try 
@@ -55,7 +55,7 @@ bool ReadFiducialCalibration( const std::string& path, fiducials::FiducialInfo& 
 	return ParseFiducialCalibration( yaml, info );
 }
 
-void PopulateFiducialCalibration( const fiducials::FiducialInfo& info, YAML::Node& yaml )
+void PopulateFiducialCalibration( const camplex::FiducialInfo& info, YAML::Node& yaml )
 {
 	std::vector<double> pointsX, pointsY, pointsZ;
 	for( unsigned int i = 0; i < info.points.size(); i++ )
@@ -69,7 +69,7 @@ void PopulateFiducialCalibration( const fiducials::FiducialInfo& info, YAML::Nod
 	yaml[ "intrinsics" ][ "points_z" ] = pointsZ;
 }
 
-bool WriteFiducialCalibration( const std::string& path, const fiducials::FiducialInfo& info )
+bool WriteFiducialCalibration( const std::string& path, const camplex::FiducialInfo& info )
 {
 	std::ofstream output( path );
 	if( !output.is_open() )
@@ -83,4 +83,4 @@ bool WriteFiducialCalibration( const std::string& path, const fiducials::Fiducia
 	return true;
 }
 
-} // end namespace fiducials
+} // end namespace camplex

@@ -10,28 +10,28 @@
 #include "argus_utils/geometry/PoseSE3.h"
 #include "geometry_msgs/Point.h"
 
-#include "fiducials/FiducialInfo.h"
+#include "camplex/FiducialInfo.h"
 
 namespace argus
 {
 
-// C++ counterpart of fiducials::FiducialInfo
+// C++ counterpart of camplex::FiducialInfo
 struct Fiducial 
 {
-	/*! \brief This fiducials ordered points. */
+	/*! \brief This camplex ordered points. */
 	std::vector<Translation3Type> points;
 	
 	/*! \brief Constructs an empty fiducial. */
 	Fiducial();
 	
 	/*! \brief Constructs from a fiducial info message. */
-	Fiducial( const fiducials::FiducialInfo& info );
+	Fiducial( const camplex::FiducialInfo& info );
 	
 	/*! \brief Returns a fiducial with transformation applied to the points. */
 	Fiducial Transform( const PoseSE3& pose ) const;
 		
 	/*! \brief Returns a corresponding info message. */
-	fiducials::FiducialInfo ToMsg() const;
+	camplex::FiducialInfo ToMsg() const;
 };
 
 // C++ counterpart of argus_msgs::FiducialDetection
@@ -94,7 +94,7 @@ PoseSE3 EstimateArrayPose( const FiducialDetection& detection,
  * imagePoints and object convention (x-forward) for input and returned poses. */
 // NOTE Currently the guess functionality is broken?
 PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
-                           const std::vector<Fiducial>& fiducials,
+                           const std::vector<Fiducial>& camplex,
                            const PoseSE3& guess = PoseSE3() );
 
 }

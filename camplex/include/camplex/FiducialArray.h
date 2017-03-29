@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fiducials/FiducialCommon.h"
-#include "fiducials/FiducialInfo.h"
+#include "camplex/FiducialCommon.h"
+#include "camplex/FiducialInfo.h"
 
 #include <opencv2/core.hpp>
 

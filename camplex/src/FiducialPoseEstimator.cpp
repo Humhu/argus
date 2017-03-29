@@ -1,4 +1,4 @@
-#include "fiducials/FiducialPoseEstimator.h"
+#include "camplex/FiducialPoseEstimator.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/utils/YamlUtils.h"
@@ -6,7 +6,7 @@
 
 #include "geometry_msgs/TransformStamped.h"
 
-#include "fiducials/FiducialArray.h"
+#include "camplex/FiducialArray.h"
 
 #include <boost/foreach.hpp>
 
@@ -38,8 +38,8 @@ bool FiducialPoseEstimator::GetFiducial( const std::string& name,
                                          const ros::Time& time,
                                          Fiducial& fid )
 {
-	// Force lookup of fiducials in case initialization is slow
-	// NOTE This means "rogue" undocumented fiducials will slow the system down
+	// Force lookup of camplex in case initialization is slow
+	// NOTE This means "rogue" undocumented camplex will slow the system down
 	Fiducial raw;
 	if( !_fiducialManager.HasMember( name ) )
 	{
@@ -72,7 +72,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 	
 	std::vector<Fiducial> fids;
 	std::vector<FiducialDetection> detections;
-	// 1. Process all fiducials
+	// 1. Process all camplex
 	BOOST_FOREACH( const argus_msgs::FiducialDetection& det, msg->detections )
 	{
 		Fiducial fid;

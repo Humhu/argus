@@ -1,4 +1,4 @@
-#include "fiducials/FiducialCommon.h"
+#include "camplex/FiducialCommon.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
@@ -9,7 +9,7 @@ namespace argus
 
 Fiducial::Fiducial() {}
 
-Fiducial::Fiducial( const fiducials::FiducialInfo& info )
+Fiducial::Fiducial( const camplex::FiducialInfo& info )
 {
 	points.reserve( info.points.size() );
 	for( unsigned int i = 0; i < info.points.size(); ++i )
@@ -35,9 +35,9 @@ Fiducial Fiducial::Transform( const PoseSE3& pose ) const
 	return transformed;
 }
 
-fiducials::FiducialInfo Fiducial::ToMsg() const
+camplex::FiducialInfo Fiducial::ToMsg() const
 {
-	fiducials::FiducialInfo info;
+	camplex::FiducialInfo info;
 	info.points.resize( points.size() );
 	for( unsigned int i = 0; i < info.points.size(); ++i )
 	{
@@ -276,14 +276,14 @@ PoseSE3 EstimateArrayPose( const FiducialDetection& detection,
 {
 	std::vector<FiducialDetection> detections;
 	detections.push_back( detection );
-	std::vector<Fiducial> fiducials;
-	fiducials.push_back( fiducial );
-	return EstimateArrayPose( detections, fiducials, guess );
+	std::vector<Fiducial> camplex;
+	camplex.push_back( fiducial );
+	return EstimateArrayPose( detections, camplex, guess );
 }
 
 // TODO if info is null, assume normalized and undistorted detections
 PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
-                           const std::vector<Fiducial>& fiducials,
+                           const std::vector<Fiducial>& camplex,
                            const PoseSE3& guess )
 {
 	if( detections.empty() )
@@ -303,7 +303,7 @@ PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
 	}
 
 	std::vector<cv::Point3f> points3d;
-	BOOST_FOREACH( const Fiducial& fid, fiducials )
+	BOOST_FOREACH( const Fiducial& fid, camplex )
 	{
 		std::vector<cv::Point3f> pts = PointsToCv( fid.points );
 		points3d.insert( points3d.end(), pts.begin(), pts.end() );
@@ -339,4 +339,4 @@ PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
 	return zToX * PoseSE3( H );
 }
 
-} // end namespace fiducials
+} // end namespace camplex

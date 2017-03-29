@@ -1,0 +1,26 @@
+<launch>
+
+    <node pkg="camplex" type="camera_node" name="camera0">
+        <rosparam>
+            camera_name: pseye_047_wide
+            device_path: /dev/video1
+            frame_resolution: [320,240]
+            frame_rate: 30
+            stream_on_start: true
+        </rosparam>
+    </node>
+
+    <node pkg="camplex" type="checkerboard_detector_node" name="detector" output="screen">
+        <remap from="image" to="camera0/image_raw"/>
+        <rosparam>
+            board_width: 7
+            board_height: 6
+            enable_refinement: true
+            refinement_max_iters: 30
+            refinement_epsilon: 1E-3
+            buffer_length: 10
+            num_detector_threads: 1
+        </rosparam>
+    </node>
+
+</launch>

@@ -1,5 +1,5 @@
-#include "fiducials/FiducialInfoManager.h"
-#include "fiducials/FiducialCalibrationParsers.h"
+#include "camplex/FiducialInfoManager.h"
+#include "camplex/FiducialCalibrationParsers.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/utils/YamlUtils.h"
@@ -22,7 +22,7 @@ bool FiducialInfoManager::ParseMemberInfo( const std::string& memberNamespace,
 		ROS_WARN_STREAM( "Could not find intrinsics information at path: " << intrinsicsKey );
 		return false;
 	}
-	fiducials::FiducialInfo info;
+	camplex::FiducialInfo info;
 	if( !ParseFiducialCalibration( intrinsics, info ) )
 	{
 		ROS_WARN_STREAM( "Could not parse intrinsics information at path: " << intrinsicsKey );
@@ -46,4 +46,4 @@ std::string FiducialInfoManager::GenerateIntrinsicsKey( const std::string& ns )
 	return ns + "intrinsics";
 }
 
-} // end namespace fiducials
+} // end namespace camplex

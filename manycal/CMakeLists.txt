@@ -20,7 +20,7 @@ find_package( catkin REQUIRED
                          argus_msgs
                          graphopt
                          extrinsics_array
-                         fiducials
+                         camplex
 )
 
 # Use Boost for most utilities, threading
@@ -50,7 +50,7 @@ catkin_package( INCLUDE_DIRS    include
                                 argus_msgs
                                 graphopt
                                 extrinsics_array
-                                fiducials
+                                camplex
 
                DEPENDS          Boost 
                                 OpenCV
