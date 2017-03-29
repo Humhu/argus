@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include "extrinsics_array/ExtrinsicsInterface.h"
-#include "fiducials/FiducialInfoManager.h"
+#include "camplex/FiducialInfoManager.h"
 #include "argus_utils/utils/ParamUtils.h"
 
 using namespace argus;

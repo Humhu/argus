@@ -63,7 +63,7 @@ FiducialDetection::FiducialDetection( const argus_msgs::FiducialDetection& msg )
 }
 
 FiducialDetection 
-FiducialDetection::Undistort( const camplex::CameraCalibration& cameraModel,
+FiducialDetection::Undistort( const CameraCalibration& cameraModel,
                               bool undistort, 
                               bool normalize )
 {
@@ -191,7 +191,7 @@ std::vector<Translation3Type> CvToPoints( const std::vector<cv::Point3f>& cv )
 }
 
 bool ProjectDetection( const Fiducial& fiducial,
-                       const camplex::CameraCalibration& cameraModel,
+                       const CameraCalibration& cameraModel,
                        const PoseSE3& fiducialToCam,
                        FiducialDetection& detection )
 {

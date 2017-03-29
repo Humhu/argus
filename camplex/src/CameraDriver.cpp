@@ -14,7 +14,7 @@
 #include <sys/mman.h>
 #include <linux/videodev2.h>
 
-namespace camplex
+namespace argus
 {
 
   CameraDriver::Mutex CameraDriver::classMutex;

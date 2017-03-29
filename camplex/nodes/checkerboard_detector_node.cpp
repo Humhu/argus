@@ -3,7 +3,6 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include <opencv2/calib3d/calib3d.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 #include "camplex/FiducialCommon.h"
 

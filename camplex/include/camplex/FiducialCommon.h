@@ -45,7 +45,7 @@ struct FiducialDetection
 	FiducialDetection();
 	FiducialDetection( const argus_msgs::FiducialDetection& msg );
 
-	FiducialDetection Undistort( const camplex::CameraCalibration& cameraModel,
+	FiducialDetection Undistort( const CameraCalibration& cameraModel,
 	                             bool undistort = true, 
 	                             bool normalize = true );
 
@@ -73,7 +73,7 @@ std::vector<Translation3Type> CvToPoints( const std::vector<cv::Point3f>& cv );
 /*! \brief Simulates a fiducial detection. Ignores ROI constraints. Does not
  populate name field of detection. Returns success. */
 bool ProjectDetection( const Fiducial& fiducial,
-                       const camplex::CameraCalibration& cameraModel,
+                       const CameraCalibration& cameraModel,
                        const PoseSE3& fiducialToCam,
                        FiducialDetection& detection );
 

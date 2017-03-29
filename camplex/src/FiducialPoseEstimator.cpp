@@ -38,8 +38,8 @@ bool FiducialPoseEstimator::GetFiducial( const std::string& name,
                                          const ros::Time& time,
                                          Fiducial& fid )
 {
-	// Force lookup of camplex in case initialization is slow
-	// NOTE This means "rogue" undocumented camplex will slow the system down
+	// Force lookup of fiducials in case initialization is slow
+	// NOTE This means "rogue" undocumented fiducials will slow the system down
 	Fiducial raw;
 	if( !_fiducialManager.HasMember( name ) )
 	{
@@ -72,7 +72,7 @@ void FiducialPoseEstimator::DetectionsCallback( const argus_msgs::ImageFiducialD
 	
 	std::vector<Fiducial> fids;
 	std::vector<FiducialDetection> detections;
-	// 1. Process all camplex
+	// 1. Process all fiducials
 	BOOST_FOREACH( const argus_msgs::FiducialDetection& det, msg->detections )
 	{
 		Fiducial fid;

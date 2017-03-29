@@ -11,7 +11,7 @@
 #include "camplex/DriverNode.h"
 #include "camplex/CameraCalibration.h"
 
-namespace camplex
+namespace argus
 {
 
 	// TODO Dump the crap CameraInfoManager?
@@ -191,16 +191,16 @@ namespace camplex
 		mode = STREAM_OFF;
 	}
 	
-	bool DriverNode::GetCameraInfoService( GetCameraInfo::Request& req,
-										   GetCameraInfo::Response& res )
+	bool DriverNode::GetCameraInfoService( camplex::GetCameraInfo::Request& req,
+										   camplex::GetCameraInfo::Response& res )
 	{
 		Lock lock( mutex );
 		res.info = *cameraInfo;
 		return true;
 	}
 	
-	bool DriverNode::CaptureFramesService( CaptureFrames::Request& req,
-										   CaptureFrames::Response& res )
+	bool DriverNode::CaptureFramesService( camplex::CaptureFrames::Request& req,
+										   camplex::CaptureFrames::Response& res )
 	{
 		Lock lock( mutex );
 		
@@ -208,8 +208,8 @@ namespace camplex
 		return true;
 	}
 	
-	bool DriverNode::SetStreamingService( SetStreaming::Request& req,
-										  SetStreaming::Response& res )
+	bool DriverNode::SetStreamingService( camplex::SetStreaming::Request& req,
+										  camplex::SetStreaming::Response& res )
 	{
 		Lock lock( mutex );
 
@@ -219,8 +219,8 @@ namespace camplex
 	}
 	
 	// TODO Return capabilities in a string instead?
-	bool DriverNode::PrintCapabilitiesService( PrintCapabilities::Request& req,
-											   PrintCapabilities::Response& res )
+	bool DriverNode::PrintCapabilitiesService( camplex::PrintCapabilities::Request& req,
+											   camplex::PrintCapabilities::Response& res )
 	{
 	  std::stringstream ss;
 		try 

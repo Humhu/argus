@@ -9,11 +9,11 @@
 
 using namespace argus;
 
-class CameraCalibrationNode
+class CameraObjectCalibrationNode
 {
 public:
 
-	CameraCalibrationNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	CameraObjectCalibrationNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		: _calibrator( nh )
 	{
 		ros::NodeHandle ch( ph.resolveName( "calibration" ) );
@@ -21,7 +21,7 @@ public:
 
 		double rate;
 		GetParamRequired( ph, "update_rate", rate );
-		_updateTimer = nh.createTimer( ros::Duration( 1.0 / rate ), &CameraCalibrationNode::TimerCallback, this );
+		_updateTimer = nh.createTimer( ros::Duration( 1.0 / rate ), &CameraObjectCalibrationNode::TimerCallback, this );
 
 		_enableVis = ph.hasParam( "visualization" );
 		if( _enableVis )
@@ -42,7 +42,7 @@ public:
 		GetParam<unsigned int>( ph, "detections_buffer_len", detBuffLen, 10 );
 		_detSub = nh.subscribe( "detections",
 		                        detBuffLen,
-		                        &CameraCalibrationNode::DetectionCallback,
+		                        &CameraObjectCalibrationNode::DetectionCallback,
 		                        this );
 	}
 
@@ -86,13 +86,13 @@ private:
 	{
 		if( _enableVis )
 		{
-			std::vector<FiducialCalibration> fids = _calibrator.GetFiducials();
-			std::vector<CameraCalibration> cams = _calibrator.GetCameras();
+			std::vector<FiducialObjectCalibration> fids = _calibrator.GetFiducials();
+			std::vector<CameraObjectCalibration> cams = _calibrator.GetCameras();
 
 			std::vector<PoseSE3> fidPoses;
 			std::vector<Fiducial> fidInts;
 			std::vector<std::string> fidNames;
-			BOOST_FOREACH( const FiducialCalibration &fid, fids )
+			BOOST_FOREACH( const FiducialObjectCalibration &fid, fids )
 			{
 				fidPoses.push_back( fid.extrinsics );
 				fidInts.push_back( fid.intrinsics );
@@ -101,7 +101,7 @@ private:
 
 			std::vector<PoseSE3> camPoses;
 			std::vector<std::string> camNames;
-			BOOST_FOREACH( const CameraCalibration &cam, cams )
+			BOOST_FOREACH( const CameraObjectCalibration &cam, cams )
 			{
 				camPoses.push_back( cam.extrinsics );
 				camNames.push_back( cam.name );
@@ -130,7 +130,7 @@ int main( int argc, char**argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 
-	CameraCalibrationNode node( nh, ph );
+	CameraObjectCalibrationNode node( nh, ph );
 	ros::spin();
 
 	return 0;

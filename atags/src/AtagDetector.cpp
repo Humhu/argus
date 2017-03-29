@@ -97,7 +97,7 @@ void AtagDetector::SetMinArea( double a )
 }
 
 std::vector<FiducialDetection> AtagDetector::ProcessImage( const cv::Mat& image,
-                                                           const camplex::CameraCalibration& cal ) const
+                                                           const CameraCalibration& cal ) const
 {
 	std::vector<April::TagDetection> rawDetections = _detector->extractTags( image );
 

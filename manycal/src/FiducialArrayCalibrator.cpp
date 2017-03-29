@@ -3,8 +3,6 @@
 
 #include <boost/foreach.hpp>
 
-using namespace fiducials;
-
 namespace argus
 {
 	

@@ -83,6 +83,7 @@ include_directories( include
 
 add_library( camplex
 	src/CameraCalibration.cpp
+	# src/CameraCalibrator.cpp
 	src/CameraDriver.cpp
 	src/CameraTypes.cpp
 	src/DriverNode.cpp

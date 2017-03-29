@@ -15,11 +15,6 @@ AdaptiveTransitionCovarianceEstimator::AdaptiveTransitionCovarianceEstimator() {
 void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
-	GetParam( ph, "min_window_samples", _minSamples, _maxSamples );
-	if( _minSamples < 2 )
-	{
-		throw std::invalid_argument( "Min samples must be at least 2" );
-	}
 
 	double dur;
 	GetParamRequired( ph, "max_sample_age", dur );
@@ -27,11 +22,10 @@ void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 
 	unsigned int dim;
 	GetParamRequired( ph, "dim", dim );
-	_initialCov = MatrixType( dim, dim );
-	GetParamRequired( ph, "initial_covariance", _initialCov );
-
-	_offset = MatrixType( dim, dim );
-	GetParam( ph, "offset", _offset, 1E-3 * MatrixType::Identity( dim, dim ) );
+	_priorCov = MatrixType( dim, dim );
+	GetParam( ph, "prior_cov", _priorCov, 1E-3 * MatrixType::Identity( dim, dim ) );
+	GetParam( ph, "prior_age", _priorAge, 1.0 );
+	GetParam( ph, "prior_dt", _priorDt, 1.0 );
 
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
@@ -46,10 +40,9 @@ unsigned int AdaptiveTransitionCovarianceEstimator::NumSamples() const
 MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 {
 	CheckBuffer( time );
-	if( NumSamples() < _minSamples ) { return _initialCov; }
 
-	double wAcc = 0;
-	MatrixType Qacc = MatrixType::Zero( _offset.rows(), _offset.cols() );
+	double wAcc = std::exp( _decayRate * _priorAge );
+	MatrixType Qacc = _priorCov * wAcc;
 	for( unsigned int i = 0; i < _innoProds.size(); ++i )
 	{
 		double t = ( time - _innoProds[i].first ).toSec();
@@ -57,14 +50,24 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 		Qacc += _innoProds[i].second * w;
 		wAcc += w;
 	}
-	// TODO This keeps giving Negative-definite matrices!
-	// MatrixType adaptQ = Qacc / ( NumSamples() * wAcc ) + _currSpost - _lastFSpostFT + _offset;
-	// NOTE Results in horrible aliasing bugs if we don't make a copy of K transpose...!!
-	MatrixType KT = _lastK.transpose();
-	// MatrixType adaptQ = _lastK * (Qacc / wAcc) * KT + _offset;
-	MatrixType adaptQ = Qacc/wAcc + _offset;
-	double timeSpan = ( _innoProds.front().first - _innoProds.back().first ).toSec();
-	double averageDt = timeSpan / NumSamples();
+
+	// Version using single adjusted state deltas
+	// MatrixType adaptQ = Qacc / wAcc + _currSpost - _lastFSpostFT;
+
+	// Version using innovations or pre-adjusted state deltas
+	MatrixType adaptQ = Qacc/wAcc;
+
+	double timeSpan; 
+	if( _innoProds.size() < 2 )
+	{
+		timeSpan = 0;
+	}
+	else
+	{	
+		timeSpan = ( _innoProds.front().first - _innoProds.back().first ).toSec();
+	}
+	timeSpan += _priorDt;
+	double averageDt = timeSpan / ( NumSamples() + 1 );
 	MatrixType adaptQRate = adaptQ / averageDt;
 
 	// Check for diagonal
@@ -86,13 +89,20 @@ void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
 		_currSpost = MatrixType::Zero( dim, dim );
 	}
 
-	MatrixType op = update.state_delta * update.state_delta.transpose();
-	_innoProds.emplace_front( time, op );
+	// Version using state deltas
+	// MatrixType op = update.state_delta * update.state_delta.transpose();
 
+	// Version incorporating estimate covariance adjustment
+	// MatrixType op = update.state_delta * update.state_delta.transpose() + _currSpost - _lastFSpostFT;
+
+	// Version using innovations
+	VectorType Kv = update.kalman_gain * update.prior_obs_error;
+	MatrixType op = Kv * Kv.transpose();
+
+	_innoProds.emplace_front( time, op );
 	_lastFSpostFT = predict.trans_jacobian * _currSpost * 
 	                predict.trans_jacobian.transpose();
 	_currSpost = update.post_state_cov;
-	_lastK = update.kalman_gain;
 }
 
 void AdaptiveTransitionCovarianceEstimator::Reset()
@@ -117,21 +127,16 @@ AdaptiveObservationCovarianceEstimator::AdaptiveObservationCovarianceEstimator()
 void AdaptiveObservationCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
-	GetParam( ph, "min_window_samples", _minSamples, _maxSamples );
 
 	double dur;
 	GetParamRequired( ph, "max_sample_age", dur );
 	_maxAge = ros::Duration( dur );
 
-	// TODO HACK!!
-	_initialCov = MatrixType( 6, 6 );
-	GetParamRequired( ph, "initial_covariance", _initialCov );
-
 	unsigned int dim;
 	GetParamRequired( ph, "dim", dim );
-	_offset = MatrixType( dim, dim );
-	GetParam( ph, "offset", _offset, 1E-3 * MatrixType::Identity( dim, dim ) );
-
+	_priorCov = MatrixType( dim, dim );
+	GetParam( ph, "prior_cov", _priorCov, 1E-3 * MatrixType::Identity( dim, dim ) );
+	GetParam( ph, "prior_age", _priorAge, 1.0 );
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
 	_decayRate = std::log( _decayRate );
@@ -145,10 +150,9 @@ unsigned int AdaptiveObservationCovarianceEstimator::NumSamples() const
 MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 {
 	CheckBuffer( time );
-	if( NumSamples() < _minSamples ) { return _initialCov; }
 
-	double wAcc = 0;
-	MatrixType Racc = MatrixType::Zero( _offset.rows(), _offset.cols() );
+	double wAcc = std::exp( _decayRate * _priorAge );
+	MatrixType Racc = _priorCov * wAcc;
 	for( unsigned int i = 0; i < _innoProds.size(); ++i )
 	{
 		double dt = ( time - _innoProds[i].first ).toSec();
@@ -156,7 +160,8 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 		Racc += _innoProds[i].second * w;
 		wAcc += w;
 	}
-	MatrixType adaptR = Racc / wAcc + _lastHPHT + _offset;
+	// MatrixType adaptR = Racc / wAcc + _lastHPHT;
+	MatrixType adaptR = Racc / wAcc;
 
 	// Check for diagonal
 	if( _useDiag )
@@ -178,7 +183,7 @@ void AdaptiveObservationCovarianceEstimator::Update( const ros::Time& time,
 	// Update is R = Cv+ + H * P+ * H^
 	_lastHPHT = update.obs_jacobian * update.post_state_cov * 
 	            update.obs_jacobian.transpose();
-	MatrixType op = update.post_obs_error * update.post_obs_error.transpose();
+	MatrixType op = update.post_obs_error * update.post_obs_error.transpose() + _lastHPHT;
 	_innoProds.emplace_front( time, op );
 }
 

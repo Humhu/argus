@@ -9,7 +9,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-namespace camplex 
+namespace argus
 {
 
 	FourCC::FourCC( unsigned int cc ) 

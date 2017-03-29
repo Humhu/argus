@@ -5,8 +5,6 @@
 
 #include <boost/foreach.hpp>
 
-using namespace fiducials;
-
 namespace argus
 {
 
@@ -119,10 +117,10 @@ void CameraArrayCalibrator::SetPriorCovariance( const PoseSE3::CovarianceMatrix&
 // 	return true;
 // }
 
-std::vector<FiducialCalibration> CameraArrayCalibrator::GetFiducials() const
+std::vector<FiducialObjectCalibration> CameraArrayCalibrator::GetFiducials() const
 {
-	std::vector<FiducialCalibration> fids;
-	FiducialCalibration cal;
+	std::vector<FiducialObjectCalibration> fids;
+	FiducialObjectCalibration cal;
 
 	typedef FiducialRegistry::value_type Item;
 	BOOST_FOREACH( const Item &item, _fiducialRegistry )
@@ -147,10 +145,10 @@ std::vector<FiducialCalibration> CameraArrayCalibrator::GetFiducials() const
 	return fids;
 }
 
-std::vector<CameraCalibration> CameraArrayCalibrator::GetCameras() const
+std::vector<CameraObjectCalibration> CameraArrayCalibrator::GetCameras() const
 {
-	std::vector<CameraCalibration> cams;
-	CameraCalibration cal;
+	std::vector<CameraObjectCalibration> cams;
+	CameraObjectCalibration cal;
 
 	typedef CameraRegistry::value_type Item;
 	BOOST_FOREACH( const Item &item, _cameraRegistry )

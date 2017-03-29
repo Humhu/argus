@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 
-#include "fiducials/FiducialPoseEstimator.h"
+#include "camplex/FiducialPoseEstimator.h"
 
 int main( int argc, char** argv )
 {

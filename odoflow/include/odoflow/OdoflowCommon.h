@@ -21,7 +21,7 @@ InterestPoints UpcastInterestPoints( const InterestPointsf& in );
 
 // TODO Move into a utils package for open cv? Shared functionality with fiducials package
 InterestPoints UndistortPoints( const InterestPoints& points, 
-                                const camplex::CameraCalibration& model,
+                                const CameraCalibration& model,
                                 bool undistort, 
                                 bool normalize );
 
@@ -33,7 +33,7 @@ struct FrameInterestPoints
 	ros::Time time;
 	cv::Mat frame;
 	InterestPoints points;
-	camplex::CameraCalibration cameraModel;
+	CameraCalibration cameraModel;
 
 	FrameInterestPoints Undistort() const;
 	FrameInterestPoints Normalize() const;

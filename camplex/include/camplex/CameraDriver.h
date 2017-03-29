@@ -14,7 +14,7 @@
 #include "camplex/CameraTypes.h"
 
 // TODO Enable setting controls
-namespace camplex
+namespace argus
 {
 	
 	/*! \class CameraDriver CameraDriver.h

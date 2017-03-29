@@ -6,8 +6,8 @@
 #include "graphopt/GraphOptimizer.h"
 
 #include "lookup/LookupInterface.h"
-#include "fiducials/FiducialCommon.h"
-#include "fiducials/FiducialInfoManager.h"
+#include "camplex/FiducialCommon.h"
+#include "camplex/FiducialInfoManager.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
 #include "argus_utils/synchronization/MessageSynchronizer.hpp"
@@ -47,9 +47,9 @@ public:
 	// TODO
 	void WriteResults( const std::string& path );
 
-	std::vector<FiducialCalibration> GetFiducials() const;
+	std::vector<FiducialObjectCalibration> GetFiducials() const;
 	// TODO Return priors also?
-	std::vector<CameraCalibration> GetCameras() const;
+	std::vector<CameraObjectCalibration> GetCameras() const;
 
 private:
 

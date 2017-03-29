@@ -166,7 +166,7 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 
 	FrameInterestPoints current;
 	current.time = msg->header.stamp;
-	camplex::CameraCalibration cc( "calib", *info_msg );
+	CameraCalibration cc( "calib", *info_msg );
 	// TODO A more complete check of intrinsics validity
 	if( cc.GetFx() == 0.0 or std::isnan( cc.GetFx() ) )
 	{

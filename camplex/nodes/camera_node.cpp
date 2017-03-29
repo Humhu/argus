@@ -9,7 +9,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	
-	camplex::DriverNode node( nh, ph );
+	argus::DriverNode node( nh, ph );
 	
 	ros::spin();
 	return 0;

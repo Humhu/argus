@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include "extrinsics_array/ExtrinsicsInterface.h"
-#include "fiducials/FiducialInfoManager.h"
+#include "camplex/FiducialInfoManager.h"
 #include "argus_utils/utils/ParamUtils.h"
 
 using namespace argus;
@@ -27,12 +27,12 @@ int main( int argc, char**argv )
 
 		unsigned int width, height;
         double dim;
-		unsigned int id;
 		GetParamRequired<unsigned int>( info, "width", width );
         GetParamRequired<unsigned int>( info, "height", height );
         GetParamRequired( info, "dim", dim );
-		std::stringstream boardName;
-        boardName << "checkerboard_" << width << "_" << height;
+		std::stringstream ss;
+        ss << "checkerboard_" << width << "_" << height;
+		std::string boardName = ss.str();
 
 		lookup.WriteNamespace( boardName, targetNamespace );
 
@@ -46,9 +46,9 @@ int main( int argc, char**argv )
 
 
 		Fiducial intrinsics;
-        for( unsigned int i = 0; i < rows; i++ )
+        for( unsigned int i = 0; i < height; i++ )
         {
-            for( unsigned int j = 0; j < cols; j++ )
+            for( unsigned int j = 0; j < width; j++ )
             {
                 intrinsics.points.emplace_back( 0, i*dim, j*dim );
             }

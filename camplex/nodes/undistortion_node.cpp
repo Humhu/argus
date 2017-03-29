@@ -38,7 +38,7 @@ public:
 			return;
 		}
 		
-		camplex::CameraCalibration calib( "", *info );
+		argus::CameraCalibration calib( "", *info );
 		
 		if( _useMaps && !_mapsInited )
 		{

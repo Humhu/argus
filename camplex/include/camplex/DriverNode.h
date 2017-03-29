@@ -16,7 +16,7 @@
 #include <memory>
 #include <boost/thread/locks.hpp>
 
-namespace camplex
+namespace argus
 {
 
 	class DriverNode
@@ -82,7 +82,7 @@ namespace camplex
 		
 		unsigned int frameCounter;
 		StreamingMode mode;
-		camplex::CameraDriver driver;
+		CameraDriver driver;
 		unsigned int remainingToCapture;
 		
 		void Process();

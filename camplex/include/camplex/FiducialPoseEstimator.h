@@ -30,7 +30,7 @@ private:
 	FiducialInfoManager _fiducialManager;
 	ExtrinsicsInterface _extrinsicsInterface;
 	
-	std::unordered_map<std::string, Fiducial> _transformedcamplex;
+	std::unordered_map<std::string, Fiducial> _transformedFiducials;
 	
 	// Gets the specified fiducial transformed into _refFrame at the specified time
 	bool GetFiducial( const std::string& name, const ros::Time& time, Fiducial& fid );

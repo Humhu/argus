@@ -36,7 +36,7 @@ InterestPoints UpcastInterestPoints( const InterestPointsf& in )
 
 
 InterestPoints UndistortPoints( const InterestPoints& points, 
-                                const camplex::CameraCalibration& model,
+                                const CameraCalibration& model,
                                 bool undistort, 
                                 bool normalize )
 {

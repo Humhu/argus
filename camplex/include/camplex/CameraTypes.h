@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-namespace camplex 
+namespace argus
 {
 
 	/*! \struct FourCC Camera.h
