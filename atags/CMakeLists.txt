@@ -96,11 +96,11 @@ target_link_libraries( syncing_detector_node atags
                                              ${catkin_LIBRARIES}
 )
 
-# add_executable( atag_registrar_node nodes/AtagRegistrar.cpp )
-# target_link_libraries( atag_registrar_node 
-#         atags 
-#         ${catkin_LIBRARIES}
-# )
+add_executable( atag_registrar_node nodes/AtagRegistrar.cpp )
+target_link_libraries( atag_registrar_node 
+        atags 
+        ${catkin_LIBRARIES}
+)
 
 ## Mark executables and/or libraries for installation
 install(TARGETS atags
