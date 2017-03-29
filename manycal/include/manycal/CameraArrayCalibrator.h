@@ -65,6 +65,7 @@ private:
 
 	std::string _referenceFrame;
 	PoseSE3::CovarianceMatrix _priorCovariance;
+	double _imgErrStdDev;
 
 	struct CameraRegistration
 	{

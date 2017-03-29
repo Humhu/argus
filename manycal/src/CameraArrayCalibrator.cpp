@@ -48,6 +48,8 @@ void CameraArrayCalibrator::ReadParams( const ros::NodeHandle& ph )
 		SetPriorCovariance( cov );
 	}
 
+	GetParamRequired( ph, "detection_err_sd", _imgErrStdDev );
+
 	if( ph.hasParam( "lookup" ) )
 	{
 		ros::NodeHandle lh( ph.resolveName( "lookup" ) );
@@ -318,7 +320,7 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections& det
 
 		isam::PoseSE3_Node::Ptr fidNode = fidReg.poses[dets.timestamp];
 
-		double imageCoordinateErr = std::pow( 0.03, 2 );
+		double imageCoordinateErr = _imgErrStdDev * _imgErrStdDev;
 		isam::Noise cov = isam::Covariance( imageCoordinateErr * isam::eye( 2 * det.points.size() ) );
 
 		isam::FiducialFactor::Properties props;
