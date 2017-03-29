@@ -52,14 +52,17 @@ bool FiducialPoseEstimator::GetFiducial( const std::string& name,
 	raw = _fiducialManager.GetInfo( name );
 	
 	PoseSE3 extrinsics;
-	try
+	if( !_refFrame.empty() )
 	{
-		extrinsics = _extrinsicsInterface.GetExtrinsics( name, _refFrame, time );
-	}
-	catch( ExtrinsicsException& ex )
-	{
-		ROS_INFO_STREAM( "Could not get extrinsics for " << name << std::endl << ex.what() );
-		return false;
+		try
+		{
+			PoseSE3 extrinsics = _extrinsicsInterface.GetExtrinsics( name, _refFrame, time );
+		}
+		catch( ExtrinsicsException& ex )
+		{
+			ROS_INFO_STREAM( "Could not get extrinsics for " << name << std::endl << ex.what() );
+			return false;
+		}
 	}
 	fid = raw.Transform( extrinsics );
 	return true;

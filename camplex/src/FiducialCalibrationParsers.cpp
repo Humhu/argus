@@ -64,9 +64,9 @@ void PopulateFiducialCalibration( const camplex::FiducialInfo& info, YAML::Node&
 		pointsY.push_back( info.points[i].y );
 		pointsZ.push_back( info.points[i].z );
 	}
-	yaml[ "intrinsics" ][ "points_x" ] = pointsX;
-	yaml[ "intrinsics" ][ "points_y" ] = pointsY;
-	yaml[ "intrinsics" ][ "points_z" ] = pointsZ;
+	yaml[ "points_x" ] = pointsX;
+	yaml[ "points_y" ] = pointsY;
+	yaml[ "points_z" ] = pointsZ;
 }
 
 bool WriteFiducialCalibration( const std::string& path, const camplex::FiducialInfo& info )
