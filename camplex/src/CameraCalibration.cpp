@@ -80,11 +80,13 @@ void CameraCalibration::SetScale( const cv::Size& scale )
 void CameraCalibration::ParseInfo( const sensor_msgs::CameraInfo& info )
 {
 	// Read intrinsics matrix row-major
-	for( unsigned int j = 0; j < 3; ++j )
+	unsigned int ind = 0;
+	for( unsigned int i = 0; i < 3; ++i )
 	{
-		for( unsigned int i = 0; i < 3; ++i )
+		for( unsigned int j = 0; j < 3; ++j )
 		{
-			_origCameraMatrix( i, j ) = info.K[i];
+			_origCameraMatrix( i, j ) = info.K[ind];
+			++ind;
 		}
 	}
 
@@ -114,11 +116,12 @@ sensor_msgs::CameraInfo CameraCalibration::GetInfo() const
 		msg.D.push_back( _distortionCoeffs.at<double>( i ) );
 	}
 	unsigned int ind = 0;
-	for( unsigned int j = 0; j < 3; ++j )
+	for( unsigned int i = 0; i < 3; ++i )
 	{
-		for( unsigned int i = 0; i < 3; ++i )
+		for( unsigned int j = 0; j < 3; ++j )
 		{
 			msg.K[ind] = _currentCameraMatrix( i, j );
+			++ind;
 		}
 	}
 	// TODO Populate R, T, and P
