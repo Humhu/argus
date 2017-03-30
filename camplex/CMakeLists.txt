@@ -19,6 +19,7 @@ find_package(catkin REQUIRED
 					argus_utils
 					lookup
 					extrinsics_array
+					vizard
 )
 
 # Use Boost for most utilities, threading
@@ -65,9 +66,9 @@ catkin_package(
 					sensor_msgs 
 					geometry_msgs
 					argus_utils
-					argus_utils
 					lookup
 					extrinsics_array
+					vizard
 					
 	DEPENDS 		Boost 
 					OpenCV 
@@ -91,7 +92,7 @@ add_library( camplex
 	src/FiducialCalibrationParsers.cpp
 	src/FiducialInfoManager.cpp
 	src/FiducialCommon.cpp
-	src/FiducialPoseEstimator.cpp
+	src/FiducialVisualizer.cpp
 )
 add_dependencies( camplex 
 	camplex_gencfg ${camplex_EXPORTED_TARGETS})
