@@ -57,5 +57,5 @@ int main( int argc, char**argv )
 		manager.WriteMemberInfo( tagName, intrinsics );
 	}
 
-	exit( 0 );
+	ros::spin();
 }
