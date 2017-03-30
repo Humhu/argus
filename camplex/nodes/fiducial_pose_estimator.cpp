@@ -139,35 +139,39 @@ private:
 
 		if( _enableVis && _visPub.getNumSubscribers() > 0 )
 		{
-			_camVis.SetFrameID( cameraName );
-			_fidVis.SetFrameID( cameraName );
 
+			_fidVis.SetFrameID( cameraName );
 			std::vector<PoseSE3> camRelFidPoses;
 			std::vector<std::string> fidNames;
 			for( unsigned int i = 0; i < detections.size(); ++i )
 			{
-				camRelFidPoses.push_back( relPose * fidExts[i] );
-				fidNames.push_back( detections[i].name );
+				const std::string& fidName = detections[i].name;
+				const Fiducial& fid = fids[i];
+				std::string uid = cameraName + "-" + fidName;
+				_fidVis.SetMarkerName( uid );
+				PoseSE3 camRelFidPose = relPose * fidExts[i];
+				std::vector<MarkerMsg> fidMarkers = _fidVis.ToMarkers( camRelFidPose, fid, fidName );
+				PublishMarkers( fidMarkers );
 			}
 
+			_camVis.SetFrameID( cameraName );
+			_camVis.SetMarkerName( cameraName );
 			std::vector<PoseSE3> posesToVis;
 			std::vector<std::string> namesToVis;
 			posesToVis.push_back( PoseSE3() ); // Camera pose
 			namesToVis.push_back( cameraName );
 			posesToVis.push_back( relPose ); // Ref frame pose
 			namesToVis.push_back( _refFrame );
-
-			std::vector<MarkerMsg> fidMarkers = _fidVis.ToMarkers( camRelFidPoses, fids, fidNames );
 			std::vector<MarkerMsg> camMarkers = _camVis.ToMarkers( posesToVis, namesToVis );
+			PublishMarkers( camMarkers );
+		}
+	}
 
-			BOOST_FOREACH( const MarkerMsg& msg, fidMarkers )
-			{
-				_visPub.publish( msg );
-			}
-			BOOST_FOREACH( const MarkerMsg& msg, camMarkers )
-			{
-				_visPub.publish( msg );
-			}
+	void PublishMarkers( const std::vector<MarkerMsg> m )
+	{
+		BOOST_FOREACH( const MarkerMsg& msg, m )
+		{
+			_visPub.publish( msg );
 		}
 	}
 
