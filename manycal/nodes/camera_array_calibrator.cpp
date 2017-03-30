@@ -1,8 +1,10 @@
 #include <ros/ros.h>
 
 #include "manycal/CameraArrayCalibrator.h"
-#include "manycal/ManycalVisualization.h"
 #include "argus_utils/utils/ParamUtils.h"
+
+#include "vizard/PoseVisualizer.h"
+#include "camplex/FiducialVisualizer.h"
 
 #include <boost/foreach.hpp>
 #include <set>
