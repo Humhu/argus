@@ -27,7 +27,7 @@ FiducialVisualizer::FiducialVisualizer()
 
 void FiducialVisualizer::ReadParams( const ros::NodeHandle& nh )
 {
-    Visualizer::ReadParams( nh );
+    PoseVisualizer::ReadParams( nh );
     double a;
     bool b;
     if( GetParam( nh, "point_size", a ) ) { SetPointSize( a ); }

@@ -88,17 +88,18 @@ private:
 		}
 		fid = _fiducialManager.GetInfo( name );
 		extrinsics = PoseSE3();
+		if( _refFrame.empty() ) { return true; }
 
 		try
 		{
 			extrinsics = _extrinsicsInterface.GetExtrinsics( name, _refFrame, time );
+			return true;
 		}
 		catch( ExtrinsicsException& ex )
 		{
 			ROS_INFO_STREAM( "Could not get extrinsics for " << name << std::endl << ex.what() );
 			return false;
 		}
-		return true;
 	}
 
 	void DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )

@@ -55,7 +55,6 @@
 
 <node pkg="camplex" type="fiducial_pose_estimator" name="pose_estimator" output="screen">
   <rosparam>
-    reference_frame: tag_array
     visualization:
       reference_frame: base_link      
       camera:
