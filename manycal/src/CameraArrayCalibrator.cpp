@@ -87,37 +87,11 @@ void CameraArrayCalibrator::SetPriorCovariance( const PoseSE3::CovarianceMatrix&
 	_priorCovariance = mat;
 }
 
-// bool CameraArrayCalibrator::WriteResults( manycal::WriteCalibration::Request& req,
-//                                           manycal::WriteCalibration::Response& res )
-// {
-// 	YAML::Node yaml;
-// 	BOOST_FOREACH( const CameraRegistry::value_type & item, _cameraRegistry )
-// 	{
-// 		const std::string& name = item.first;
-// 		const CameraRegistration& registration = item.second;
-// 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
-// 		// ROS_INFO_STREAM( "Camera " << name << " pose " << extrinsics );
+const std::string& CameraArrayCalibrator::GetReferenceFrame() const
+{
+	return _referenceFrame;
+}
 
-// 		// ExtrinsicsInfo info;
-// 		// info.extrinsics = extrinsics;
-// 		// info._referenceFrame = _referenceFrame;
-// 		// extrinsicsManager.WriteMemberInfo( name, info, true );
-
-// 		// YAML::Node node;
-// 		// PopulateExtrinsicsCalibration( extrinsicsManager.GetInfo( name ), node );
-// 		// yaml[name] = node;
-// 	}
-
-// 	// std::ofstream resultsFile( req.calibrationPath );
-// 	// if( !resultsFile.is_open() )
-// 	// {
-// 	//  ROS_ERROR_STREAM( "Could not open results file at: " << req.calibrationPath );
-// 	//  return false;
-// 	// }
-// 	// ROS_INFO_STREAM( "Writing results to " << req.calibrationPath );
-// 	// resultsFile << yaml;
-// 	return true;
-// }
 
 std::vector<FiducialObjectCalibration> CameraArrayCalibrator::GetFiducials() const
 {

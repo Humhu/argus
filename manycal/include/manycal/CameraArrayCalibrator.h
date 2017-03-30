@@ -44,8 +44,7 @@ public:
 	/*! \brief Process the queue and optimize. */
 	void Spin();
 
-	// TODO
-	void WriteResults( const std::string& path );
+	const std::string& GetReferenceFrame() const;
 
 	std::vector<FiducialObjectCalibration> GetFiducials() const;
 	// TODO Return priors also?

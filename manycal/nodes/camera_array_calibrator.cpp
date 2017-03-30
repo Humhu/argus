@@ -3,6 +3,8 @@
 #include "manycal/CameraArrayCalibrator.h"
 #include "argus_utils/utils/ParamUtils.h"
 
+#include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
+
 #include "vizard/PoseVisualizer.h"
 #include "camplex/FiducialVisualizer.h"
 
@@ -46,6 +48,27 @@ public:
 		                        detBuffLen,
 		                        &CameraObjectCalibrationNode::DetectionCallback,
 		                        this );
+	}
+
+	void WriteResults( const std::string& path )
+	{
+		std::vector<CameraObjectCalibration> cams = _calibrator.GetCameras();
+		std::string refFrame = _calibrator.GetReferenceFrame();
+		std::vector<RelativePose> poses;
+		BOOST_FOREACH( const CameraObjectCalibration& cam, cams )
+		{
+			RelativePose p;
+			p.childID = cam.name;
+			p.parentID = refFrame;
+			p.pose = cam.extrinsics;
+			poses.push_back( p );
+		}
+
+		ROS_INFO_STREAM( "Saving extrinsics to " << path );
+		if( !WriteExtrinsicsCalibration( path, poses ) )
+		{
+			ROS_ERROR_STREAM( "Could not save extrinsics to " << path );
+		}
 	}
 
 private:
@@ -132,8 +155,14 @@ int main( int argc, char**argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 
+	std::string outputPath;
+	GetParam<std::string>( ph, "output_path", outputPath, "out.yaml" );
+
 	CameraObjectCalibrationNode node( nh, ph );
 	ros::spin();
+
+	node.WriteResults( outputPath );
+
 
 	return 0;
 }
