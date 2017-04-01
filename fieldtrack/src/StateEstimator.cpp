@@ -53,9 +53,6 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 	}
 	else if( _transitionMode == COV_ADAPTIVE )
 	{		
-		_fixedTransCov = MatrixType( _filter.CovDim(), 
-		                             _filter.CovDim() );
-		GetParamRequired( th, "initial_covariance", _fixedTransCov );
 		_adaptiveTransCov.Initialize( th );
 	}
 

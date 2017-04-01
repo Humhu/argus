@@ -1,13 +1,34 @@
 <launch>
   
+<node pkg="atags" type="atag_registrar_node" name="atag_registrar" output="screen">
+  <rosparam>
+    tag0:
+      family: 36h11
+      id: 0
+      width: 0.0858
+      parent_id: tag_array
+      pose:
+        x: 0.1
+        y: 0
+        z: 0
+        yaw: 0
+        pitch: 0
+        roll: 0
+  </rosparam>
+</node>
+
 <node pkg="camplex" type="camera_node" name="camera" output="screen">
   <rosparam>
-    camera_name: pseye_049_wide
+    camera_name: pseye_047_wide
     device_path: /dev/video1
     frame_resolution: [640, 480]
     frame_rate: 30
     stream_on_start: true
   </rosparam>
+</node>
+
+<node pkg="camplex" type="viewer_node" name="viewer" output="screen">
+  <remap from="image" to="camera/image_raw"/>
 </node>
 
 <!--<node pkg="camplex" type="undistortion_node" name="camera" output="screen">
@@ -19,6 +40,7 @@
 
 <node pkg="atags" type="detector_node" name="detector" output="screen">
   <remap from="image" to="camera/image_raw"/>
+  <remap from="~detections" to="detections"/>
   <rosparam>
     detector:
       enable_undistortion: true
@@ -26,8 +48,35 @@
       tag_family: 36h11
       max_skewness_ratio: 3.0
       min_area_product: 4000
-    buffer_size: 10
+    buffer_size: 2
     num_threads: 2
+  </rosparam>
+</node>
+
+<node pkg="camplex" type="fiducial_pose_estimator" name="pose_estimator" output="screen">
+  <rosparam>
+    visualization:
+      reference_frame: base_link      
+      camera:
+        marker_name: cameras
+        linewidth: 0.005
+        axes_length: 0.02
+        show_name: true
+        text_size: 0.0479
+        text_offset:
+          x: 0
+          y: 0
+          z: -0.0479
+          roll: 0
+          pitch: 0
+          yaw: 0
+      fiducial:
+        marker_name: fiducials
+        linewidth: 0.0479
+        point_size: 0.005
+        show_axes: false
+        axes_length: 0.02         
+        show_name: false
   </rosparam>
 </node>
 

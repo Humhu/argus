@@ -1,19 +1,23 @@
 #include <ros/ros.h>
 
 #include "manycal/CameraArrayCalibrator.h"
-#include "manycal/ManycalVisualization.h"
 #include "argus_utils/utils/ParamUtils.h"
+
+#include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
+
+#include "vizard/PoseVisualizer.h"
+#include "camplex/FiducialVisualizer.h"
 
 #include <boost/foreach.hpp>
 #include <set>
 
 using namespace argus;
 
-class CameraCalibrationNode
+class CameraObjectCalibrationNode
 {
 public:
 
-	CameraCalibrationNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	CameraObjectCalibrationNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		: _calibrator( nh )
 	{
 		ros::NodeHandle ch( ph.resolveName( "calibration" ) );
@@ -21,7 +25,7 @@ public:
 
 		double rate;
 		GetParamRequired( ph, "update_rate", rate );
-		_updateTimer = nh.createTimer( ros::Duration( 1.0 / rate ), &CameraCalibrationNode::TimerCallback, this );
+		_updateTimer = nh.createTimer( ros::Duration( 1.0 / rate ), &CameraObjectCalibrationNode::TimerCallback, this );
 
 		_enableVis = ph.hasParam( "visualization" );
 		if( _enableVis )
@@ -42,8 +46,29 @@ public:
 		GetParam<unsigned int>( ph, "detections_buffer_len", detBuffLen, 10 );
 		_detSub = nh.subscribe( "detections",
 		                        detBuffLen,
-		                        &CameraCalibrationNode::DetectionCallback,
+		                        &CameraObjectCalibrationNode::DetectionCallback,
 		                        this );
+	}
+
+	void WriteResults( const std::string& path )
+	{
+		std::vector<CameraObjectCalibration> cams = _calibrator.GetCameras();
+		std::string refFrame = _calibrator.GetReferenceFrame();
+		std::vector<RelativePose> poses;
+		BOOST_FOREACH( const CameraObjectCalibration& cam, cams )
+		{
+			RelativePose p;
+			p.childID = cam.name;
+			p.parentID = refFrame;
+			p.pose = cam.extrinsics;
+			poses.push_back( p );
+		}
+
+		ROS_INFO_STREAM( "Saving extrinsics to " << path );
+		if( !WriteExtrinsicsCalibration( path, poses ) )
+		{
+			ROS_ERROR_STREAM( "Could not save extrinsics to " << path );
+		}
 	}
 
 private:
@@ -86,13 +111,13 @@ private:
 	{
 		if( _enableVis )
 		{
-			std::vector<FiducialCalibration> fids = _calibrator.GetFiducials();
-			std::vector<CameraCalibration> cams = _calibrator.GetCameras();
+			std::vector<FiducialObjectCalibration> fids = _calibrator.GetFiducials();
+			std::vector<CameraObjectCalibration> cams = _calibrator.GetCameras();
 
 			std::vector<PoseSE3> fidPoses;
 			std::vector<Fiducial> fidInts;
 			std::vector<std::string> fidNames;
-			BOOST_FOREACH( const FiducialCalibration &fid, fids )
+			BOOST_FOREACH( const FiducialObjectCalibration &fid, fids )
 			{
 				fidPoses.push_back( fid.extrinsics );
 				fidInts.push_back( fid.intrinsics );
@@ -101,7 +126,7 @@ private:
 
 			std::vector<PoseSE3> camPoses;
 			std::vector<std::string> camNames;
-			BOOST_FOREACH( const CameraCalibration &cam, cams )
+			BOOST_FOREACH( const CameraObjectCalibration &cam, cams )
 			{
 				camPoses.push_back( cam.extrinsics );
 				camNames.push_back( cam.name );
@@ -130,8 +155,14 @@ int main( int argc, char**argv )
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 
-	CameraCalibrationNode node( nh, ph );
+	std::string outputPath;
+	GetParam<std::string>( ph, "output_path", outputPath, "out.yaml" );
+
+	CameraObjectCalibrationNode node( nh, ph );
 	ros::spin();
+
+	node.WriteResults( outputPath );
+
 
 	return 0;
 }

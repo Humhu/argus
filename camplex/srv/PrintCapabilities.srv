@@ -1,0 +1,5 @@
+bool printCapabilities
+bool printOutputs
+bool printControls
+---
+string capabilities

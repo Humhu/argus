@@ -17,7 +17,6 @@ find_package( catkin REQUIRED
                          std_msgs
                          argus_utils
                          argus_msgs
-                         fiducials
                          camplex
 )
 
@@ -48,7 +47,6 @@ catkin_package( INCLUDE_DIRS    include
                                 std_msgs
                                 argus_utils
                                 argus_msgs
-                                fiducials
                                 camplex
 
                DEPENDS          Boost 
@@ -96,6 +94,12 @@ add_dependencies( syncing_detector_node atags_gencfg
 )
 target_link_libraries( syncing_detector_node atags
                                              ${catkin_LIBRARIES}
+)
+
+add_executable( atag_registrar_node nodes/AtagRegistrar.cpp )
+target_link_libraries( atag_registrar_node 
+        atags 
+        ${catkin_LIBRARIES}
 )
 
 ## Mark executables and/or libraries for installation

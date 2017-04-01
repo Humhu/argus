@@ -40,7 +40,7 @@ private:
 	void ImageCallback( const sensor_msgs::Image::ConstPtr& img,
 	                    const sensor_msgs::CameraInfo::ConstPtr& info )
 	{
-		camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
+		CameraCalibration cameraModel( img->header.frame_id, *info );
 		
 		// Detection occurs in grayscale
 		cv::Mat msgFrame = cv_bridge::toCvShare( img )->image;

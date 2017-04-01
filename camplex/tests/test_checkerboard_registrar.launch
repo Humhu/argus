@@ -1,0 +1,12 @@
+<launch>
+
+    <node pkg="camplex" type="checkerboard_registrar_node" name="registrar" output="screen">
+        <rosparam>
+            board0:
+                width: 7
+                height: 6
+                dim: 0.036
+        </rosparam>
+    </node>
+
+</launch>

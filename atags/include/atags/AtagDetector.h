@@ -3,7 +3,7 @@
 #include <ros/ros.h>
 #include <apriltags/TagDetector.h>
 
-#include "fiducials/FiducialCommon.h"
+#include "camplex/FiducialCommon.h"
 #include "camplex/CameraCalibration.h"
 
 namespace argus
@@ -24,7 +24,7 @@ public:
 	void SetMinArea( double a );
 
 	std::vector<FiducialDetection> ProcessImage( const cv::Mat& image,
-	                                             const camplex::CameraCalibration& cal ) const;
+	                                             const CameraCalibration& cal ) const;
 
 private:
 

@@ -100,7 +100,7 @@ private:
 					frame = msgFrame;
 				}
 
-				camplex::CameraCalibration cameraModel( img->header.frame_id, *info );
+				CameraCalibration cameraModel( img->header.frame_id, *info );
 				cameraModel.SetScale( frame.size() );
 				
 				ImageFiducialDetections detections;

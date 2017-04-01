@@ -5,8 +5,6 @@
 
 #include <boost/foreach.hpp>
 
-using namespace fiducials;
-
 namespace argus
 {
 
@@ -50,6 +48,8 @@ void CameraArrayCalibrator::ReadParams( const ros::NodeHandle& ph )
 		SetPriorCovariance( cov );
 	}
 
+	GetParamRequired( ph, "detection_err_sd", _imgErrStdDev );
+
 	if( ph.hasParam( "lookup" ) )
 	{
 		ros::NodeHandle lh( ph.resolveName( "lookup" ) );
@@ -87,42 +87,16 @@ void CameraArrayCalibrator::SetPriorCovariance( const PoseSE3::CovarianceMatrix&
 	_priorCovariance = mat;
 }
 
-// bool CameraArrayCalibrator::WriteResults( manycal::WriteCalibration::Request& req,
-//                                           manycal::WriteCalibration::Response& res )
-// {
-// 	YAML::Node yaml;
-// 	BOOST_FOREACH( const CameraRegistry::value_type & item, _cameraRegistry )
-// 	{
-// 		const std::string& name = item.first;
-// 		const CameraRegistration& registration = item.second;
-// 		PoseSE3 extrinsics = registration.extrinsics->value().pose;
-// 		// ROS_INFO_STREAM( "Camera " << name << " pose " << extrinsics );
-
-// 		// ExtrinsicsInfo info;
-// 		// info.extrinsics = extrinsics;
-// 		// info._referenceFrame = _referenceFrame;
-// 		// extrinsicsManager.WriteMemberInfo( name, info, true );
-
-// 		// YAML::Node node;
-// 		// PopulateExtrinsicsCalibration( extrinsicsManager.GetInfo( name ), node );
-// 		// yaml[name] = node;
-// 	}
-
-// 	// std::ofstream resultsFile( req.calibrationPath );
-// 	// if( !resultsFile.is_open() )
-// 	// {
-// 	//  ROS_ERROR_STREAM( "Could not open results file at: " << req.calibrationPath );
-// 	//  return false;
-// 	// }
-// 	// ROS_INFO_STREAM( "Writing results to " << req.calibrationPath );
-// 	// resultsFile << yaml;
-// 	return true;
-// }
-
-std::vector<FiducialCalibration> CameraArrayCalibrator::GetFiducials() const
+const std::string& CameraArrayCalibrator::GetReferenceFrame() const
 {
-	std::vector<FiducialCalibration> fids;
-	FiducialCalibration cal;
+	return _referenceFrame;
+}
+
+
+std::vector<FiducialObjectCalibration> CameraArrayCalibrator::GetFiducials() const
+{
+	std::vector<FiducialObjectCalibration> fids;
+	FiducialObjectCalibration cal;
 
 	typedef FiducialRegistry::value_type Item;
 	BOOST_FOREACH( const Item &item, _fiducialRegistry )
@@ -147,10 +121,10 @@ std::vector<FiducialCalibration> CameraArrayCalibrator::GetFiducials() const
 	return fids;
 }
 
-std::vector<CameraCalibration> CameraArrayCalibrator::GetCameras() const
+std::vector<CameraObjectCalibration> CameraArrayCalibrator::GetCameras() const
 {
-	std::vector<CameraCalibration> cams;
-	CameraCalibration cal;
+	std::vector<CameraObjectCalibration> cams;
+	CameraObjectCalibration cal;
 
 	typedef CameraRegistry::value_type Item;
 	BOOST_FOREACH( const Item &item, _cameraRegistry )
@@ -320,7 +294,7 @@ bool CameraArrayCalibrator::ProcessDetection( const ImageFiducialDetections& det
 
 		isam::PoseSE3_Node::Ptr fidNode = fidReg.poses[dets.timestamp];
 
-		double imageCoordinateErr = std::pow( 0.03, 2 );
+		double imageCoordinateErr = _imgErrStdDev * _imgErrStdDev;
 		isam::Noise cov = isam::Covariance( imageCoordinateErr * isam::eye( 2 * det.points.size() ) );
 
 		isam::FiducialFactor::Properties props;

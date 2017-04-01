@@ -34,11 +34,11 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 	}
 	else if( _mode == COV_ADAPTIVE )
 	{
-		if( HasParam( ph, "initial_covariance" ) )
+		if( HasParam( ph, "obs_mask" ) )
 		{
 			// TODO HACK!!
 			_fixedCov = MatrixType( 6, 6 );
-			GetParam( ph, "initial_covariance", _fixedCov );
+			GetParam( ph, "obs_mask", _fixedCov );
 		}
 
 		_adaptiveCov.Initialize( ph );

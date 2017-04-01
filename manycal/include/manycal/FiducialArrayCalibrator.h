@@ -5,8 +5,8 @@
 
 #include "lookup/LookupInterface.h"
 
-#include "fiducials/FiducialCommon.h"
-#include "fiducials/FiducialInfoManager.h"
+#include "camplex/FiducialCommon.h"
+#include "camplex/FiducialInfoManager.h"
 
 #include "extrinsics_array/ExtrinsicsInterface.h"
 #include "graphopt/GraphOptimizer.h"

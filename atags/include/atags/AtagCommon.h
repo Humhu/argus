@@ -2,7 +2,7 @@
 
 #include <image_geometry/pinhole_camera_model.h>
 
-#include "fiducials/FiducialCommon.h"
+#include "camplex/FiducialCommon.h"
 #include "apriltags/TagDetection.h"
 #include "argus_utils/geometry/PoseSE3.h"
 

@@ -6,7 +6,7 @@
 #include <ros/time.h>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 
-#include "fiducials/FiducialCommon.h"
+#include "camplex/FiducialCommon.h"
 
 #include "manycal/sclam_fiducial.h"
 #include "argus_utils/geometry/PoseSE3.h"
@@ -22,14 +22,14 @@ struct ObjectCalibration
     PoseSE3 extrinsics;
 };
 
-struct FiducialCalibration : public ObjectCalibration
+struct FiducialObjectCalibration : public ObjectCalibration
 {
 	Fiducial intrinsics;
 };
 
-struct CameraCalibration : public ObjectCalibration
+struct CameraObjectCalibration : public ObjectCalibration
 {
-	// camplex::CameraCalibration intrinsics;
+	// CameraCalibration intrinsics;
 };
 // TODO Message representations?
 

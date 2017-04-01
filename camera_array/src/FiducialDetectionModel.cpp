@@ -29,7 +29,7 @@ FiducialDetectionModel::GenerateDetections( const std::string& cameraName,
 	PoseSE3 targetToCam = cameraExtrinsics.Inverse() * targetToCameraRef;
 	
 	// TODO 
-	camplex::CameraCalibration cameraModel( "fake", 550, 550, 320, 240, 640, 480 );
+	CameraCalibration cameraModel( "fake", 550, 550, 320, 240, 640, 480 );
 	
 	const TargetInfo& info = targetManager.GetInfo( targetName );
 	BOOST_FOREACH( const TargetInfo::FiducialGroupRegistry::value_type& group, 

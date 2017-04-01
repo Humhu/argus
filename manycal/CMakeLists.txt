@@ -15,12 +15,12 @@ find_package( catkin REQUIRED
                          std_msgs
                          geometry_msgs
                          sensor_msgs
-                         visualization_msgs
                          argus_utils
                          argus_msgs
                          graphopt
                          extrinsics_array
-                         fiducials
+                         camplex
+                         vizard
 )
 
 # Use Boost for most utilities, threading
@@ -45,12 +45,12 @@ catkin_package( INCLUDE_DIRS    include
                                 std_msgs
                                 geometry_msgs
                                 sensor_msgs
-                                visualization_msgs                                
                                 argus_utils
                                 argus_msgs
                                 graphopt
                                 extrinsics_array
-                                fiducials
+                                camplex
+                                vizard                                
 
                DEPENDS          Boost 
                                 OpenCV
@@ -67,7 +67,6 @@ add_library( manycal
              #src/ArrayCalibrator.cpp
              src/CameraArrayCalibrator.cpp
              src/FiducialArrayCalibrator.cpp
-             src/ManycalVisualization.cpp
              src/ManycalCommon.cpp
              src/sclam_fiducial.cpp
              src/slamse3.cpp

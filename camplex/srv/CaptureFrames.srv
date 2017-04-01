@@ -1,0 +1,6 @@
+# CaptureFrames.srv
+# Command the camera to capture a number of frames and then stop
+
+# The number of frames to stream before stopping.
+uint32 numToCapture
+---
