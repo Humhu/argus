@@ -12,12 +12,13 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 {
 	GetParam( ph, "scale", _scale );
 
-	double reprojThreshold;
-	GetParam( ph, "reprojection_threshold", reprojThreshold);
-	_reprojThreshold.Initialize( ph, reprojThreshold, "reprojection_threshold", 
-	                             "RANSAC reprojection inlier threshold" );
-	_reprojThreshold.AddCheck<GreaterThan>( 0 );
-	_reprojThreshold.AddCheck<LessThan>( 1.0 );
+	double logReprojThreshold;
+	GetParam( ph, "log_reprojection_threshold", logReprojThreshold);
+	_logReprojThreshold.Initialize( ph, logReprojThreshold, 
+	                                "log_reprojection_threshold", 
+	                                "RANSAC reprojection inlier threshold" );
+	_logReprojThreshold.AddCheck<GreaterThan>( 0 );
+	_logReprojThreshold.AddCheck<LessThan>( 1.0 );
 
 	unsigned int maxIters;
 	GetParam( ph, "max_iters", maxIters );
@@ -46,7 +47,7 @@ bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
 	cv::Mat Hxest = cv::findHomography( tarNormalized.points, 
 	                                    keyNormalized.points, 
 	                                    cv::RANSAC, 
-	                                    _reprojThreshold, 
+	                                    exp10(_logReprojThreshold),
 	                                    inliers, 
 	                                    _maxIters );
 	if( Hxest.empty() )

@@ -18,9 +18,9 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_solverMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	double minEps;
-	GetParamRequired( ph, "min_log_eps", minEps );
-	_solverMinLogEpsilon.Initialize( ph, minEps, "min_log_eps",
-	                                 "Lucas-Kande solver min log epsilon." );
+	GetParamRequired( ph, "log_min_eps", minEps );
+	_solverMinLogEpsilon.Initialize( ph, minEps, "log_min_eps",
+	                                 "Lucas-Kande solver log min epsilon." );
 	_solverMinLogEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
 
 	unsigned int pyramidLevel;
@@ -70,7 +70,7 @@ bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
 	cv::TermCriteria termCriteria = cv::TermCriteria( cv::TermCriteria::COUNT |
 	                                                  cv::TermCriteria::EPS,
 	                                                  _solverMaxIters,
-	                                                  std::exp( _solverMinLogEpsilon ) );
+	                                                  exp10( _solverMinLogEpsilon ) );
 	std::vector<uchar> status;
 	std::vector<float> errors;
 	cv::calcOpticalFlowPyrLK( key.frame,

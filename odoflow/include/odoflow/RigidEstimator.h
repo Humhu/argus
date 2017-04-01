@@ -23,7 +23,7 @@ public:
 private:
 	
 	double _scale;
-	NumericParam _reprojThreshold;
+	NumericParam _logReprojThreshold;
 	NumericParam _maxIters;
 	
 };
