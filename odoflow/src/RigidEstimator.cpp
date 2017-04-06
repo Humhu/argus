@@ -47,7 +47,7 @@ bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
 	cv::Mat Hxest = cv::findHomography( tarNormalized.points, 
 	                                    keyNormalized.points, 
 	                                    cv::RANSAC, 
-	                                    exp10(_logReprojThreshold),
+	                                    std::pow( 10, _logReprojThreshold ),
 	                                    inliers, 
 	                                    _maxIters );
 	if( Hxest.empty() )

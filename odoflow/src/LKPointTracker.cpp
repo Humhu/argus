@@ -70,7 +70,7 @@ bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
 	cv::TermCriteria termCriteria = cv::TermCriteria( cv::TermCriteria::COUNT |
 	                                                  cv::TermCriteria::EPS,
 	                                                  _solverMaxIters,
-	                                                  exp10( _solverMinLogEpsilon ) );
+	                                                  std::pow( 10, _solverMinLogEpsilon ) );
 	std::vector<uchar> status;
 	std::vector<float> errors;
 	cv::calcOpticalFlowPyrLK( key.frame,
