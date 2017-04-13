@@ -167,6 +167,7 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 	FrameInterestPoints current;
 	current.time = msg->header.stamp;
 	CameraCalibration cc( "calib", *info_msg );
+	
 	// TODO A more complete check of intrinsics validity
 	if( cc.GetFx() == 0.0 or std::isnan( cc.GetFx() ) )
 	{
@@ -174,8 +175,9 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 		return;
 	}
 	
-	current.cameraModel = cc;
 	cv::cvtColor( cv_bridge::toCvShare( msg )->image, current.frame, CV_BGR2GRAY );
+	cc.SetScale( current.frame.size() );
+	current.cameraModel = cc;
 	
 	// Initialization catch
 	double timeSinceLastFrame = ( current.time - reg.lastFrame.time ).toSec();
@@ -239,6 +241,7 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 	
 	// Estimate motion between frames
 	PoseSE3 currentPose;
+	current.Undistort();
 	if( !_estimator->EstimateMotion( reg.keyFrame,
 	                                 current,
 	                                 currentPose ) )
@@ -302,7 +305,7 @@ void VisualOdometryPipeline::VisualizeFrame( const CameraRegistration& reg )
 	}
 
 	// Create image side-by-side
-	cv::Mat visImage( height, width*2, reg.keyFrame.frame.type() );
+	cv::Mat visImage( height, 2*width, reg.keyFrame.frame.type() );
 	cv::Mat visLeft( visImage, cv::Rect( 0, 0, width, height ) );
 	cv::Mat visRight( visImage, cv::Rect( width, 0, width, height ) );
 	reg.keyFrame.frame.copyTo( visLeft );
