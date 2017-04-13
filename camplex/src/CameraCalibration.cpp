@@ -74,6 +74,7 @@ void CameraCalibration::SetScale( const cv::Size& scale )
 	double ratio = ( xRatio + yRatio ) / 2;
 
 	_currentCameraMatrix = ratio * _origCameraMatrix;
+	_currentCameraMatrix( 2, 2 ) = 1.0;
 	_currentScale = scale;
 }
 
