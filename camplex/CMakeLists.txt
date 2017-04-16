@@ -20,6 +20,7 @@ find_package(catkin REQUIRED
 					lookup
 					extrinsics_array
 					vizard
+					paraset
 )
 
 # Use Boost for most utilities, threading
@@ -69,6 +70,7 @@ catkin_package(
 					lookup
 					extrinsics_array
 					vizard
+					paraset
 					
 	DEPENDS 		Boost 
 					OpenCV 
@@ -86,7 +88,7 @@ add_library( camplex
 	src/CameraCalibration.cpp
 	# src/CameraCalibrator.cpp
 	src/CameraDriver.cpp
-	src/CameraTypes.cpp
+	src/CamplexCommon.cpp
 	src/DriverNode.cpp
 	src/FiducialArray.cpp
 	src/FiducialCalibrationParsers.cpp

@@ -13,85 +13,79 @@
 #include "camplex/PrintCapabilities.h"
 #include "camplex/SetStreaming.h"
 
+#include "paraset/ParameterManager.hpp"
+
+#include "argus_utils/synchronization/SynchronizationTypes.h"
+
 #include <memory>
 #include <boost/thread/locks.hpp>
+#include <deque>
 
 namespace argus
 {
 
-	class DriverNode
+/*! \brief Provides a ROS interface to a CameraDriver object.
+ */
+class DriverNode
+{
+public:
+
+	typedef std::shared_ptr<DriverNode> Ptr;
+
+	DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph );
+
+private:
+
+	typedef camera_info_manager::CameraInfoManager InfoManager;
+
+	ros::Timer _timer;
+
+	// Service handlers
+	ros::ServiceServer _getInfoServer;
+	ros::ServiceServer _capabilitiesServer;
+	ros::ServiceServer _setStreamingServer;
+
+	image_transport::ImageTransport _it;
+	image_transport::CameraPublisher _itPub;
+
+	std::shared_ptr<InfoManager> _cameraInfoManager;
+	sensor_msgs::CameraInfo::Ptr _cameraInfo;
+
+	/*! \brief Denotes the camera's mode of operation. */
+	enum StreamingMode
 	{
-	public:
-		
-		typedef std::shared_ptr<DriverNode> Ptr;
-		
-		DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph );
-		~DriverNode();
-		
-		bool CaptureFramesService( camplex::CaptureFrames::Request& req,
-								   camplex::CaptureFrames::Response& res );
-		
-		bool GetCameraInfoService( camplex::GetCameraInfo::Request& req,
-								   camplex::GetCameraInfo::Response& res );
-		
-		/*! \brief Service call that sets the camera's streaming state. */
-		bool SetStreamingService( camplex::SetStreaming::Request& req,
-								  camplex::SetStreaming::Response& res );
-		
-		/*! \brief Service call that requests the camera to print its capabilities
-		 * to the terminal. */
-		bool PrintCapabilitiesService( camplex::PrintCapabilities::Request& req,
-									   camplex::PrintCapabilities::Response& res );
-		
-	private:
-
-		typedef camera_info_manager::CameraInfoManager InfoManager;
-		typedef boost::mutex Mutex;
-		typedef boost::unique_lock<Mutex> Lock;
-		typedef boost::condition_variable ConditionVariable;
-
-		ros::NodeHandle nodeHandle;
-		ros::NodeHandle privHandle;
-		
-		// Service handlers
-		ros::ServiceServer captureFramesServer;
-		ros::ServiceServer getInfoServer;
-		ros::ServiceServer capabilitiesServer;
-		ros::ServiceServer setStreamingServer;
-		
-		image_transport::ImageTransport it;
-		image_transport::CameraPublisher it_pub;
-		
-		std::shared_ptr<InfoManager> cameraInfoManager;
-		sensor_msgs::CameraInfo::Ptr cameraInfo;
-		
-		boost::thread processWorker;
-		
-		/*! \brief Denotes the camera's mode of operation. */
-		enum StreamingMode
-		{
-			STREAM_OFF,
-			STREAM_CONTINUOUS,
-			STREAM_CAPTURE
-		};
-		
-		Mutex mutex;
-		ConditionVariable blocked;
-		
-		std::string cameraName;
-		
-		unsigned int frameCounter;
-		StreamingMode mode;
-		CameraDriver driver;
-		unsigned int remainingToCapture;
-		
-		void Process();
-		
-		// Externally-locked functions to set the streaming state
-		void StartStreaming( Lock& lock );
-		void StartCapture( Lock& lock, unsigned int num );
-		void StopStreaming( Lock& lock );
-		
+		STREAM_OFF,
+		STREAM_CONTINUOUS,
 	};
-	
+
+	mutable Mutex _mutex;
+	ConditionVariable _blocked;
+	StreamingMode _mode;
+
+	std::string _cameraName;
+	CameraDriver _driver;
+
+	std::deque<NumericParam> _numericParams;
+	std::deque<BooleanParam> _booleanParams;
+
+	// Externally-locked functions to set the streaming state
+	void StartStreaming( WriteLock& lock );
+	void StopStreaming( WriteLock& lock );
+
+	void IntControlCallback( int id, double value );
+	void BoolControlCallback( int id, bool value );
+
+	bool GetCameraInfoService( camplex::GetCameraInfo::Request& req,
+	                           camplex::GetCameraInfo::Response& res );
+
+	bool SetStreamingService( camplex::SetStreaming::Request& req,
+	                          camplex::SetStreaming::Response& res );
+
+	bool PrintCapabilitiesService( camplex::PrintCapabilities::Request& req,
+	                               camplex::PrintCapabilities::Response& res );
+
+	void Spin( const ros::TimerEvent& event );
+
+};
+
 }
