@@ -135,7 +135,7 @@ FrameInterestPoints::UndistortAndNormalize() const
 	                     cameraModel.GetIntrinsicMatrix(),
 	                     cameraModel.GetDistortionCoeffs(), 
 	                     cv::noArray(), 
-	                     cameraModel.GetIntrinsicMatrix() );
+	                     cv::Matx33d::eye() );
 	return ret;
 }
 
