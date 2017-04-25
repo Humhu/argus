@@ -55,7 +55,7 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	// MatrixType adaptQ = Qacc / wAcc + _currSpost - _lastFSpostFT;
 
 	// Version using innovations or pre-adjusted state deltas
-	MatrixType adaptQ = Qacc/wAcc;
+	MatrixType adaptQ = Qacc / wAcc;
 
 	double timeSpan; 
 	if( _innoProds.size() < 2 )

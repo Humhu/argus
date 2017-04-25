@@ -182,7 +182,7 @@ void DriverNode::IntControlCallback( int id, double value )
 
 void DriverNode::BoolControlCallback( int id, bool value )
 {
-	int valInt = (int) value;
+	int valInt = value ? 1 : 0;
 	WriteLock lock( _mutex );
 	_driver.SetControl( id, valInt );
 }
