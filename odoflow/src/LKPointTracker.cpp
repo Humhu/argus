@@ -32,7 +32,6 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 	_logFlowEigenThreshold.InitializeAndRead( ph, -4, "log_flow_eigenvalue_threshold",
 	                                "Lucas-Kanade spatial gradient log eigenvalue threshold." );
-	_logFlowEigenThreshold.AddCheck<GreaterThan>( 0 );
 
 	_maxFlowError.InitializeAndRead( ph, 10, "flow_error_threshold",
 	                          "Lucas-Kanade max solution error threshold." );

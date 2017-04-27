@@ -17,8 +17,6 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_logReprojThreshold.Initialize( ph, logReprojThreshold, 
 	                                "log_reprojection_threshold", 
 	                                "RANSAC reprojection inlier threshold" );
-	_logReprojThreshold.AddCheck<GreaterThan>( 0 );
-	_logReprojThreshold.AddCheck<LessThan>( 1.0 );
 
 	unsigned int maxIters;
 	GetParam( ph, "max_iters", maxIters );
