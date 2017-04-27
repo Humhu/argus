@@ -9,45 +9,29 @@ ScanMatcher::~ScanMatcher() {}
 
 void ScanMatcher::Initialize( ros::NodeHandle& ph )
 {
-	unsigned int maxIters;
-	GetParamRequired( ph, "max_iters", maxIters );
-	_maxIters.Initialize( ph, maxIters, "max_iters", 
+	_maxIters.InitializeAndRead( ph, 100, "max_iters", 
 	                      "Maximum number of matching iterations." );
 	_maxIters.AddCheck<GreaterThan>( 0 );
 
-	unsigned int ransacIters;
-	GetParamRequired( ph, "ransac_iters", ransacIters );
-	_ransacIters.Initialize( ph, ransacIters, "ransac_iters",
+	_ransacIters.InitializeAndRead( ph, 10, "ransac_iters",
 	                         "Maximum number of RANSAC iterations." );
 	_ransacIters.AddCheck<GreaterThan>( 0 );
 
-	double ransacThreshold;
-	GetParamRequired( ph, "ransac_threshold", ransacThreshold );
-	_ransacThreshold.Initialize( ph, ransacThreshold, "ransac_threshold", 
+	_ransacThreshold.InitializeAndRead( ph, 0.1, "ransac_threshold", 
 	                             "RANSAC outlier rejection distance." );
 	_ransacThreshold.AddCheck<GreaterThan>( 0.0 );
 
-	double maxCorrespondDist;
-	GetParamRequired( ph, "max_correspond_dist", maxCorrespondDist );
-	_maxCorrespondDist.Initialize( ph, maxCorrespondDist, "max_correspond_dist",
+	_maxCorrespondDist.InitializeAndRead( ph, 0.1, "max_correspond_dist",
 	                               "Max correspondence distance" );
 	_maxCorrespondDist.AddCheck<GreaterThan>( 0.0 );
 
-	double minTransformEps;
-	GetParamRequired( ph, "min_transform_eps", minTransformEps );
-	_minTransformEps.Initialize( ph, minTransformEps, "min_transform_eps",
-	                             "Min transformation change" );
-	_minTransformEps.AddCheck<GreaterThan>( 0.0 );
+	_logMinTransformEps.InitializeAndRead( ph, -1, "log_min_transform_eps",
+	                             "Min log transformation change" );
 
-	double minObjectiveEps;
-	GetParamRequired( ph, "min_objective_eps", minObjectiveEps );
-	_minObjectiveEps.Initialize( ph, minObjectiveEps, "min_objective_eps",
-	                             "Min objective change" );
-	_minObjectiveEps.AddCheck<GreaterThan>( 0.0 );
+	_logMinObjectiveEps.InitializeAndRead( ph, -1, "log_min_objective_eps",
+	                             "Min log objective change" );
 
-	double maxError;
-	GetParamRequired( ph, "max_error", maxError );
-	_maxError.Initialize( ph, maxError, "max_error",
+	_maxError.InitializeAndRead( ph, 0.25, "max_error",
 	                      "Maximum alignment mean sum of squared errors." );
 	_maxError.AddCheck<GreaterThan>( 0.0 );
 
@@ -70,8 +54,8 @@ bool ScanMatcher::Match( const LaserCloudType::ConstPtr& key,
 	matcher->setRANSACIterations( _ransacIters );
 	matcher->setRANSACOutlierRejectionThreshold( _ransacThreshold );
 	matcher->setMaxCorrespondenceDistance( _maxCorrespondDist );
-	matcher->setTransformationEpsilon( _minTransformEps );
-	matcher->setEuclideanFitnessEpsilon( _minObjectiveEps );
+	matcher->setTransformationEpsilon( std::pow( 10, _logMinTransformEps ) );
+	matcher->setEuclideanFitnessEpsilon( std::pow( 10, _logMinObjectiveEps ) );
 
 	matcher->setInputTarget( key );
 	matcher->setInputSource( tar );

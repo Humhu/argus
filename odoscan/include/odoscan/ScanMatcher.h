@@ -46,8 +46,8 @@ private:
 	NumericParam _ransacIters;
 	NumericParam _ransacThreshold;
 	NumericParam _maxCorrespondDist;
-	NumericParam _minTransformEps;
-	NumericParam _minObjectiveEps;
+	NumericParam _logMinTransformEps;
+	NumericParam _logMinObjectiveEps;
 	NumericParam _maxError;
 
 };
