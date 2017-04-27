@@ -34,12 +34,12 @@ private:
 	void ScanCallback( const sensor_msgs::LaserScan::ConstPtr& msg )
 	{
 		LaserCloudType::Ptr cloud = boost::make_shared<LaserCloudType>();
+		const sensor_msgs::LaserScan& scan = *msg;
 		cloud->header.frame_id = msg->header.frame_id;
 		pcl_conversions::toPCL( msg->header.stamp, cloud->header.stamp );
 		cloud->height = 1;
-		cloud->width = 1;
+		cloud->width = scan.ranges.size();
 
-		const sensor_msgs::LaserScan& scan = *msg;
 		float minRange = std::max( scan.range_min, _minRange );
 		float maxRange = std::min( scan.range_max, _maxRange );
 		float ang = scan.angle_min;
