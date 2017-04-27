@@ -17,7 +17,6 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 	_solverMinLogEpsilon.InitializeAndRead( ph, -3, "log_min_eps",
 	                                 "Lucas-Kande solver log min epsilon." );
-	_solverMinLogEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
 
 	_pyramidLevel.InitializeAndRead( ph, 0, "pyramid_level",
 	                          "Lucas-Kanade max pyramid level." );
