@@ -134,7 +134,8 @@ private:
 
 		if( GetParam( info, "cloud_topic", inputTopic ) )
 		{
-			reg.cloudSub = _nodeHandle.subscribe<LaserCloudType>
+		  ROS_INFO_STREAM( "Subscribing to cloud at " << inputTopic );
+		  reg.cloudSub = _nodeHandle.subscribe<LaserCloudType>
 			                   ( inputTopic,
 			                   buffSize,
 			                   boost::bind( &LaserOdometryNode::CloudCallback,
@@ -144,6 +145,7 @@ private:
 		}
 		else if( GetParam( info, "scan_topic", inputTopic ) )
 		{
+		  ROS_INFO_STREAM( "Subscribing to scan at " << inputTopic );
 			reg.cloudSub = _nodeHandle.subscribe<sensor_msgs::LaserScan>
 			                   ( inputTopic,
 			                   buffSize,
@@ -152,6 +154,10 @@ private:
 			                                boost::ref( reg ),
 			                                _1 ) );
 		}
+		else
+		  {
+		    throw std::runtime_error("No input topic specified for " + name );
+		  }
 	}
 
 	void ScanCallback( CloudRegistration& reg,
