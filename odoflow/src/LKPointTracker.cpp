@@ -10,42 +10,31 @@ namespace argus
 LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: InterestPointTracker( nh, ph )
 {
-	unsigned int maxIters;
-	GetParamRequired( ph, "max_iters", maxIters );
-	_solverMaxIters.Initialize( ph, maxIters, "max_iters",
+	_solverMaxIters.InitializeAndRead( ph, 30, "max_iters",
 	                            "Lucas-Kanade solver max iterations." );
 	_solverMaxIters.AddCheck<GreaterThan>( 0 );
 	_solverMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
-	double minEps;
-	GetParamRequired( ph, "log_min_eps", minEps );
-	_solverMinLogEpsilon.Initialize( ph, minEps, "log_min_eps",
+	_solverMinLogEpsilon.InitializeAndRead( ph, -3, "log_min_eps",
 	                                 "Lucas-Kande solver log min epsilon." );
 	_solverMinLogEpsilon.AddCheck<GreaterThanOrEqual>( 0 );
 
-	unsigned int pyramidLevel;
-	GetParamRequired( ph, "pyramid_level", pyramidLevel );
-	_pyramidLevel.Initialize( ph, pyramidLevel, "pyramid_level",
+	_pyramidLevel.InitializeAndRead( ph, 0, "pyramid_level",
 	                          "Lucas-Kanade max pyramid level." );
 	_pyramidLevel.AddCheck<GreaterThanOrEqual>( 0 );
 	_pyramidLevel.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	unsigned int windowDim;
-	GetParamRequired( ph, "window_dim", windowDim );
-	_flowWindowDim.Initialize( ph, windowDim, "window_dim",
+	// TODO Normalize to images size
+	_flowWindowDim.InitializeAndRead( ph, 30, "window_dim",
 	                           "Lucas-Kanade search window dim." );
 	_flowWindowDim.AddCheck<GreaterThanOrEqual>( 3 ); // OpenCV requirements
 	_flowWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	double flowThreshold;
-	GetParamRequired( ph, "flow_eigenvalue_threshold", flowThreshold );
-	_flowEigenThreshold.Initialize( ph, flowThreshold, "flow_eigenvalue_threshold",
-	                                "Lucas-Kanade spatial gradient eigenvalue threshold." );
-	_flowEigenThreshold.AddCheck<GreaterThan>( 0 );
+	_logFlowEigenThreshold.InitializeAndRead( ph, -4, "log_flow_eigenvalue_threshold",
+	                                "Lucas-Kanade spatial gradient log eigenvalue threshold." );
+	_logFlowEigenThreshold.AddCheck<GreaterThan>( 0 );
 
-	double flowErrThreshold;
-	GetParamRequired( ph, "flow_error_threshold", flowErrThreshold );
-	_maxFlowError.Initialize( ph, flowErrThreshold, "flow_error_threshold",
+	_maxFlowError.InitializeAndRead( ph, 10, "flow_error_threshold",
 	                          "Lucas-Kanade max solution error threshold." );
 	_maxFlowError.AddCheck<GreaterThan>( 0 );
 }
@@ -83,7 +72,7 @@ bool LKPointTracker::TrackInterestPoints( FrameInterestPoints& key,
 	                          _pyramidLevel,
 	                          termCriteria,
 	                          cv::OPTFLOW_USE_INITIAL_FLOW,
-	                          _flowEigenThreshold );
+	                          std::pow( 10, _logFlowEigenThreshold ) );
 
 	InterestPointsf keyInliers, targetInliers;
 	for( unsigned int i = 0; i < status.size(); ++i )

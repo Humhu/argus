@@ -31,7 +31,7 @@ private:
 	// Flow calculation parameters
 	NumericParam _pyramidLevel;
 	NumericParam _flowWindowDim;
-	NumericParam _flowEigenThreshold;
+	NumericParam _logFlowEigenThreshold;
 	NumericParam _solverMaxIters;
 	NumericParam _solverMinLogEpsilon;
 	NumericParam _maxFlowError;
