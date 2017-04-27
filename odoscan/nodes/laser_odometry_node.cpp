@@ -8,6 +8,9 @@
 #include "odoscan/ICPMatcher.h"
 
 #include "geometry_msgs/TwistStamped.h"
+#include "sensor_msgs/LaserScan.h"
+
+#include <laser_geometry/laser_geometry.h>
 
 #include "lookup/LookupInterface.h"
 #include "argus_utils/synchronization/SynchronizationTypes.h"
@@ -22,10 +25,9 @@ using namespace argus;
 class LaserOdometryNode
 {
 public:
-
 	LaserOdometryNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-	: _nodeHandle( nh ), _privHandle( ph )
-	  
+		: _nodeHandle( nh ), _privHandle( ph )
+
 	{
 		ros::NodeHandle mh( _privHandle.resolveName( "matcher" ) );
 		std::string type;
@@ -77,7 +79,6 @@ public:
 	}
 
 private:
-
 	ros::NodeHandle _nodeHandle;
 	ros::NodeHandle _privHandle;
 
@@ -91,6 +92,7 @@ private:
 	{
 		Mutex mutex;
 
+		laser_geometry::LaserProjection projector;
 		ros::Subscriber cloudSub;
 		ros::Publisher velPub;
 
@@ -108,7 +110,7 @@ private:
 	{
 		ROS_INFO_STREAM( "LaserOdometryNode: Registering cloud source: " << name );
 
-		CloudRegistration& reg = _cloudRegistry[ name ];
+		CloudRegistration& reg = _cloudRegistry[name];
 
 		GetParam( info, "show_output", reg.showOutput, false );
 		if( reg.showOutput )
@@ -129,32 +131,64 @@ private:
 		unsigned int buffSize;
 		std::string inputTopic;
 		GetParam<unsigned int>( info, "buffer_size", buffSize, 0 );
-		GetParamRequired( info, "cloud_topic", inputTopic );
-		reg.cloudSub = _nodeHandle.subscribe<LaserCloudType>( inputTopic, 
-		                                                      buffSize, 
-		                                      boost::bind( &LaserOdometryNode::CloudCallback, 
-		                                                   this,
-		                                                   boost::ref( reg ), 
-		                                                   _1 ) );
+
+		if( GetParam( info, "cloud_topic", inputTopic ) )
+		{
+			reg.cloudSub = _nodeHandle.subscribe<LaserCloudType>
+			                   ( inputTopic,
+			                   buffSize,
+			                   boost::bind( &LaserOdometryNode::CloudCallback,
+			                                this,
+			                                boost::ref( reg ),
+			                                _1 ) );
+		}
+		else if( GetParam( info, "scan_topic", inputTopic ) )
+		{
+			reg.cloudSub = _nodeHandle.subscribe<sensor_msgs::LaserScan>
+			                   ( inputTopic,
+			                   buffSize,
+			                   boost::bind( &LaserOdometryNode::ScanCallback,
+			                                this,
+			                                boost::ref( reg ),
+			                                _1 ) );
+		}
+	}
+
+	void ScanCallback( CloudRegistration& reg,
+	                   const sensor_msgs::LaserScan::ConstPtr& msg )
+	{
+		sensor_msgs::PointCloud2 cloudMsg;
+		reg.projector.projectLaser( *msg, cloudMsg );
+		pcl::PCLPointCloud2 pclMsg;
+		pcl_conversions::toPCL( cloudMsg, pclMsg );
+		LaserCloudType::Ptr cloud = boost::make_shared<LaserCloudType>();
+		pcl::fromPCLPointCloud2( pclMsg, *cloud );
+		ProcessCloud( reg, cloud );
 	}
 
 	void CloudCallback( CloudRegistration& reg,
 	                    const LaserCloudType::ConstPtr& msg )
+	{
+		ProcessCloud( reg, msg );
+	}
+
+	void ProcessCloud( CloudRegistration& reg,
+	                   const LaserCloudType::ConstPtr& cloud )
 	{
 		// Parse message fields
 		LaserCloudType::Ptr currCloud;
 		if( _filter )
 		{
 			currCloud = boost::make_shared<LaserCloudType>();
-			_filter->Filter( msg, *currCloud );
+			_filter->Filter( cloud, *currCloud );
 		}
 		else
 		{
-			currCloud  = boost::make_shared<LaserCloudType>( *msg );
+			currCloud = boost::make_shared<LaserCloudType>( *cloud );
 		}
 
 		ros::Time currTime;
-		pcl_conversions::fromPCL( msg->header.stamp, currTime );
+		pcl_conversions::fromPCL( cloud->header.stamp, currTime );
 
 		// Synchronize registration access
 		WriteLock lock( reg.mutex );
@@ -200,7 +234,7 @@ private:
 
 		geometry_msgs::TwistStamped out;
 		out.header.stamp = currTime;
-		out.header.frame_id = msg->header.frame_id;
+		out.header.frame_id = cloud->header.frame_id;
 		out.twist = TangentToMsg( laserVelocity );
 		reg.velPub.publish( out );
 
@@ -208,10 +242,9 @@ private:
 		reg.lastCloud = currCloud;
 		reg.lastCloudTime = currTime;
 	}
-
 };
 
-int main( int argc, char** argv )
+int main( int argc, char**argv )
 {
 	ros::init( argc, argv, "laser_odometry_node" );
 

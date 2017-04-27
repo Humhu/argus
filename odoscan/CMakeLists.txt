@@ -13,6 +13,7 @@ find_package(catkin REQUIRED
 					lookup
 					paraset
 					pcl_ros
+					laser_geometry
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -38,6 +39,7 @@ catkin_package(
 					lookup
 					paraset
 					pcl_ros
+					laser_geometry
 					
 	DEPENDS 		Boost 
 					PCL 
