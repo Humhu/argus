@@ -24,7 +24,7 @@ class DenseVONode
         _twistPub = ph.advertise<geometry_msgs::TwistStamped>("velocity_raw", 10);
 
         _prevImgVel = PoseSE3::TangentVector::Zero();
-        GetParam( ph, "scale", _scale );
+        GetParamRequired( ph, "scale", _scale );
     }
 
     void ImageCallback(const sensor_msgs::ImageConstPtr &msg)
@@ -58,7 +58,7 @@ class DenseVONode
 
                 _prevMat = frame->image;
 
-                PoseSE3::TangentVector vel = PoseSE3::Log( pose ) / dt;
+                PoseSE3::TangentVector vel = _scale * PoseSE3::Log( pose ) / dt;
                 geometry_msgs::TwistStamped tmsg;
                 tmsg.header = msg->header;
                 tmsg.twist = TangentToMsg( vel );

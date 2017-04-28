@@ -12,8 +12,11 @@ ECCDenseTracker::ECCDenseTracker(ros::NodeHandle &nh, ros::NodeHandle &ph)
                                  "Log minimum solver tolerance");
     _maxIters.InitializeAndRead(ph, 50, "max_iters",
                                 "Maximum solver iterations");
+    _maxIters.AddCheck<GreaterThan>( 0 );
     _minCorrelation.InitializeAndRead(ph, 0.8, "min_correlation",
                                       "Minimum solution correlation");
+    _minCorrelation.AddCheck<GreaterThan>( 0 );
+    _minCorrelation.AddCheck<LessThan>( 1.0 );
 }
 
 bool ECCDenseTracker::TrackImages(const cv::Mat &from,
