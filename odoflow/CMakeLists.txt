@@ -62,6 +62,7 @@ set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
 
 add_library( odoflow
 	src/CornerPointDetector.cpp
+	src/ECCDenseTracker.cpp
 	src/FASTPointDetector.cpp
 	src/FixedPointDetector.cpp
 	src/LKPointTracker.cpp
@@ -77,6 +78,12 @@ target_link_libraries( odoflow
 add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )
 add_dependencies( visual_odometry_node odoflow_gencfg )
 target_link_libraries( visual_odometry_node
+					   odoflow 
+					   ${catkin_LIBRARIES} )
+
+add_executable( dense_vo_node nodes/dense_vo_node.cpp )
+add_dependencies( dense_vo_node odoflow_gencfg )
+target_link_libraries( dense_vo_node
 					   odoflow 
 					   ${catkin_LIBRARIES} )
 
