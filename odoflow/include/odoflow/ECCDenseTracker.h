@@ -20,7 +20,7 @@ public:
     ECCDenseTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
     bool TrackImages( const cv::Mat& from, const cv::Mat& to,
-                         PoseSE3& pose );
+                      PoseSE3& pose, PoseSE3& rawPose );
 
 private:
 

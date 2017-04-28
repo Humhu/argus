@@ -23,7 +23,7 @@ class DenseVONode
                                           boost::bind(&DenseVONode::ImageCallback, this, _1));
         _twistPub = ph.advertise<geometry_msgs::TwistStamped>("velocity_raw", 10);
 
-        _prevVel = PoseSE3::TangentVector::Zero();
+        _prevImgVel = PoseSE3::TangentVector::Zero();
         GetParam( ph, "scale", _scale );
     }
 
@@ -44,11 +44,13 @@ class DenseVONode
         {
             ros::Time start = ros::Time::now();
             double dt = ( msg->header.stamp - _prevTime ).toSec();
-            PoseSE3 pose = PoseSE3::Exp( _prevVel * dt );
-            if( !_tracker.TrackImages(_prevMat, frame->image, pose) )
+            
+            PoseSE3 pose = PoseSE3::Exp( _prevImgVel * dt );
+            PoseSE3 imgPose;
+            if( !_tracker.TrackImages(_prevMat, frame->image, pose, imgPose) )
             {
                 ROS_INFO_STREAM( "Tracking failed!" );
-                _prevVel = PoseSE3::TangentVector::Zero();
+                _prevImgVel = PoseSE3::TangentVector::Zero();
             }
             else
             {
@@ -61,7 +63,8 @@ class DenseVONode
                 tmsg.header = msg->header;
                 tmsg.twist = TangentToMsg( vel );
                 _twistPub.publish( tmsg );
-                _prevVel = vel;
+                
+                _prevImgVel = PoseSE3::Log( imgPose ) / dt;
             }
         }
 
@@ -76,7 +79,7 @@ class DenseVONode
 
     cv::Mat _prevMat;
     ros::Time _prevTime;
-    PoseSE3::TangentVector _prevVel;
+    PoseSE3::TangentVector _prevImgVel;
     double _scale;
 
     ECCDenseTracker _tracker;

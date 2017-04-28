@@ -18,7 +18,8 @@ ECCDenseTracker::ECCDenseTracker(ros::NodeHandle &nh, ros::NodeHandle &ph)
 
 bool ECCDenseTracker::TrackImages(const cv::Mat &from,
                                   const cv::Mat &to,
-                                  PoseSE3 &pose)
+                                  PoseSE3 &pose,
+                                  PoseSE3& rawPose)
 {
     FixedMatrixType<4, 4> Hinit = pose.ToMatrix();
     FixedMatrixType<3,2> HinitR;
@@ -50,9 +51,13 @@ bool ECCDenseTracker::TrackImages(const cv::Mat &from,
     Eigen::MatrixXd Wd = MatToEigen<float>(warp).cast<double>();
 
     FixedMatrixType<4, 4> H = FixedMatrixType<4, 4>::Identity();
-    H.block<2, 2>(0, 0) = Wd.block<2, 2>(0, 0);
+    H.block<2, 2>(1, 1) = Wd.block<2, 2>(0, 0);
+    H(1,3) = -Wd(0,2);
+    H(2,3) = -Wd(1,2);
+    pose = PoseSE3(H).Inverse();
+    
     H.block<2, 1>(0, 3) = Wd.block<2, 1>(0, 2);
-    pose = PoseSE3(H);
+    rawPose = PoseSE3(H);
 
     return true;
 }
