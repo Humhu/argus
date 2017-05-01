@@ -25,6 +25,7 @@ class DenseVONode
 
         _prevImgVel = PoseSE3::TangentVector::Zero();
         GetParamRequired( ph, "scale", _scale );
+	GetParam( ph, "min_dt", _minDt, 1E-3 );
     }
 
     void ImageCallback(const sensor_msgs::ImageConstPtr &msg)
@@ -44,7 +45,12 @@ class DenseVONode
         {
             ros::Time start = ros::Time::now();
             double dt = ( msg->header.stamp - _prevTime ).toSec();
-            
+	    if( dt < _minDt )
+	    { 
+	      ROS_WARN_STREAM("Got dt " << dt << " less than min " << _minDt );  
+	      return; 
+	    }
+
             PoseSE3 pose = PoseSE3::Exp( _prevImgVel * dt );
             PoseSE3 imgPose;
             if( !_tracker.TrackImages(_prevMat, frame->image, pose, imgPose) )
@@ -55,9 +61,7 @@ class DenseVONode
             else
             {
                 ros::Time stop = ros::Time::now();
-
                 _prevMat = frame->image;
-
                 PoseSE3::TangentVector vel = _scale * PoseSE3::Log( pose ) / dt;
                 geometry_msgs::TwistStamped tmsg;
                 tmsg.header = msg->header;
@@ -81,6 +85,7 @@ class DenseVONode
     ros::Time _prevTime;
     PoseSE3::TangentVector _prevImgVel;
     double _scale;
+    double _minDt;
 
     ECCDenseTracker _tracker;
 };
