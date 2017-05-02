@@ -23,6 +23,8 @@ public:
 		GetParam<double>( ph, "min_dt", dt, 0.1 );
 		_minDt = ros::Duration( dt );
 
+		GetParam<std::string>( ph, "fixed_child_frame", _fixedChildFrame, "" );
+
 		GetParamRequired( ph, "output_mode", _outputMode );
 		if( _outputMode == "twist_stamped" )
 		{
@@ -74,6 +76,7 @@ private:
 	bool initialized;
 	ros::Duration _minDt;
 	std::string _outputMode;
+	std::string _fixedChildFrame;
 
 	PoseSE3 _lastPose;
 	ros::Time _lastPoseTime;
@@ -88,7 +91,7 @@ private:
 	{
 		PoseSE3 pose = MsgToPose( msg->pose );
 		// TODO: Logic for checking static child_frame_id as parameter?
-		ProcessPose( pose, "", msg->header );
+		ProcessPose( pose, _fixedChildFrame, msg->header );
 	}
 
 	void TransformStampedCallback( const geometry_msgs::TransformStamped::ConstPtr& msg )
@@ -118,6 +121,10 @@ private:
 		{
 			geometry_msgs::TwistStamped out;
 			out.header = header;
+			if( !childFrame.empty() )
+			{
+				out.header.frame_id = childFrame;
+			}
 			out.twist = TangentToMsg( twist );
 			_outputPub.publish( out );
 		}
