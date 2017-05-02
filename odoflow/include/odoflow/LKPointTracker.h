@@ -4,8 +4,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "paraset/ParameterManager.hpp"
-
 #include "odoflow/InterestPointTracker.h"
+#include "broadcast/BroadcastTransmitter.h"
 
 namespace argus
 {
@@ -35,6 +35,8 @@ private:
 	NumericParam _solverMaxIters;
 	NumericParam _solverMinLogEpsilon;
 	NumericParam _maxFlowError;
+
+	BroadcastTransmitter _instrumentsTx;
 
 	cv::TermCriteria _flowTermCriteria;
 

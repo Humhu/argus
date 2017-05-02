@@ -15,6 +15,7 @@ find_package(catkin REQUIRED
 					argus_utils
 					camplex
 					paraset
+					broadcast
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -43,6 +44,7 @@ catkin_package(
 					argus_utils
 					camplex
 					paraset
+					broadcast
 					
 	DEPENDS 		Boost 
 					OpenCV 
@@ -75,9 +77,9 @@ target_link_libraries( odoflow
 	${catkin_LIBRARIES}
 )
 
-add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )
-add_dependencies( visual_odometry_node odoflow_gencfg )
-target_link_libraries( visual_odometry_node
+add_executable( sparse_vo_node nodes/sparse_vo_node.cpp )
+add_dependencies( sparse_vo_node odoflow_gencfg )
+target_link_libraries( sparse_vo_node
 					   odoflow 
 					   ${catkin_LIBRARIES} )
 
@@ -92,7 +94,7 @@ target_link_libraries( dense_vo_node
 #############
 
 ## Mark executables and/or libraries for installation
-install(TARGETS odoflow visual_odometry_node
+install(TARGETS odoflow sparse_vo_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

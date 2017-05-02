@@ -9,6 +9,7 @@
 #include "argus_utils/geometry/GeometryUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
 #include "paraset/ParameterManager.hpp"
+#include "broadcast/BroadcastTransmitter.h"
 
 using namespace argus;
 
@@ -18,22 +19,34 @@ class DenseVONode
 
 public:
 	DenseVONode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-		: _imageTrans( nh ), _tracker( nh, ph )
+		: _imageTrans( nh )
 	{
-		_imageSub = _imageTrans.subscribe( "image",
-		                                   2,
-		                                   boost::bind( &DenseVONode::ImageCallback, this, _1 ) );
-		_twistPub = ph.advertise<geometry_msgs::TwistStamped>( "velocity_raw", 10 );
+		// Initialize tracker
+		ros::NodeHandle trackerH( ph.resolveName( "tracker" ) );
+		_tracker.Initialize( nh, trackerH );
 
-		_pyramidDepth.InitializeAndRead( ph, 0, "pyramid_depth", "Number of image pyramids");
+		// Initialize pipeline parameters
+		_pyramidDepth.InitializeAndRead( ph, 0, "pyramid_depth", "Number of image pyramids" );
 		_pyramidDepth.AddCheck<IntegerValued>();
-		_pyramidDepth.AddCheck<GreaterThanOrEqual>(0);
+		_pyramidDepth.AddCheck<GreaterThanOrEqual>( 0 );
 
 		_prevImgVel = PoseSE3::TangentVector::Zero();
 		GetParamRequired( ph, "scale", _scale );
 		GetParam( ph, "min_dt", _minDt, 1E-3 );
 
+		std::string instStreamName;
+		GetParam<std::string>( ph, "instruments_name", instStreamName, "dense_vo_instruments" );
+		_instrumentsTx.InitializePushStream( instStreamName, ph, 1,
+		                                     {"runtime"},
+		                                     10, "instruments" );
+
 		ResetTracking();
+
+		// Initialize pub/subs
+		_imageSub = _imageTrans.subscribe( "image",
+		                                   2,
+		                                   boost::bind( &DenseVONode::ImageCallback, this, _1 ) );
+		_twistPub = ph.advertise<geometry_msgs::TwistStamped>( "velocity_raw", 10 );
 	}
 
 	void ImageCallback( const sensor_msgs::ImageConstPtr& msg )
@@ -59,7 +72,7 @@ public:
 		pyr[0] = img;
 		for( unsigned int i = 0; i < _pyramidDepth; ++i )
 		{
-			cv::pyrDown( pyr[i], pyr[i+1] );
+			cv::pyrDown( pyr[i], pyr[i + 1] );
 		}
 	}
 
@@ -71,6 +84,8 @@ public:
 
 	void ProcessImage( const cv::Mat& img, const std_msgs::Header& header )
 	{
+		ros::WallTime startTime = ros::WallTime::now();
+
 		std::vector<cv::Mat> pyramid;
 		CreatePyramid( img, pyramid );
 
@@ -92,8 +107,9 @@ public:
 
 		// Have to prescale the last velocity by timestep and lowest level size
 		PoseSE3::TangentVector prevLogDisp = _prevImgVel * dt;
-		prevLogDisp.head<3>() = prevLogDisp.head<3>() / std::pow(2, _pyramidDepth);
+		prevLogDisp.head<3>() = prevLogDisp.head<3>() / std::pow( 2, _pyramidDepth );
 		PoseSE3 disp, imgDisp;
+		bool succ = true;
 		for( int i = _pyramidDepth; i >= 0; --i )
 		{
 			disp = PoseSE3::Exp( prevLogDisp );
@@ -105,9 +121,8 @@ public:
 			// ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << disp );
 			if( !_tracker.TrackImages( prevImg, currImg, disp, imgDisp ) )
 			{
-				ROS_INFO_STREAM( "Tracking failed!" );
-				ResetTracking();
-				return;
+				succ = false;
+				break;
 			}
 			// ROS_INFO_STREAM( "Got disp: " << imgDisp );
 
@@ -115,17 +130,32 @@ public:
 			prevLogDisp = PoseSE3::Log( imgDisp );
 			prevLogDisp.head<3>() *= 2;
 		}
-		
-		// Last iteration doubles prevLogDisp so we halve it again and normalize by time
-		_prevImgVel = prevLogDisp / (2 * dt);
-		_prevPyramid = pyramid;
-		_prevTime = header.stamp;
 
-		geometry_msgs::TwistStamped tmsg;
-		tmsg.header = header;
-		PoseSE3::TangentVector dvel = _scale * PoseSE3::Log( disp ) / dt;
-		tmsg.twist = TangentToMsg( dvel );
-		_twistPub.publish( tmsg );
+		ros::WallTime endTime = ros::WallTime::now();
+		double runtime = ( endTime - startTime ).toSec();
+
+		VectorType instruments( 1 );
+		instruments << runtime;
+		_instrumentsTx.Publish( header.stamp, instruments );
+
+		if( succ )
+		{
+			// Last iteration doubles prevLogDisp so we halve it again and normalize by time
+			_prevImgVel = prevLogDisp / ( 2 * dt );
+			_prevPyramid = pyramid;
+			_prevTime = header.stamp;
+
+			geometry_msgs::TwistStamped tmsg;
+			tmsg.header = header;
+			PoseSE3::TangentVector dvel = _scale * PoseSE3::Log( disp ) / dt;
+			tmsg.twist = TangentToMsg( dvel );
+			_twistPub.publish( tmsg );
+		}
+		else
+		{
+			ROS_INFO_STREAM( "Tracking failed!" );
+			ResetTracking();
+		}
 	}
 
 private:
@@ -140,6 +170,8 @@ private:
 	double _scale;
 	double _minDt;
 	NumericParam _pyramidDepth;
+
+	BroadcastTransmitter _instrumentsTx;
 
 	ECCDenseTracker _tracker;
 };

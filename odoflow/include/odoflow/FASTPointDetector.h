@@ -2,6 +2,7 @@
 
 #include "odoflow/InterestPointDetector.h"
 #include "paraset/ParameterManager.hpp"
+#include "broadcast/BroadcastTransmitter.h"
 
 namespace argus
 {
@@ -31,6 +32,8 @@ private:
 	NumericParam _maxNumPoints;
 	StringParam _detectorType;
 	
+	BroadcastTransmitter _instrumentsTx;
+
 	static int StringToDetector( const std::string& str );
 
 };

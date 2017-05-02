@@ -13,6 +13,7 @@
 #include "argus_utils/geometry/PoseSE2.h"
 
 #include "paraset/ParameterManager.hpp"
+#include "broadcast/BroadcastTransmitter.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -79,6 +80,8 @@ private:
 
 		size_t originalNumKeypoints; // Number of keypoints on detection
 		PoseSE3 lastPointsPose;
+
+		BroadcastTransmitter instrumentsTx;
 
 	};
 	std::unordered_map<std::string, CameraRegistration> _cameraRegistry;
