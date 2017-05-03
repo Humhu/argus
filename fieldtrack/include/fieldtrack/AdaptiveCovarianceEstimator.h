@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ros/ros.h>
-#include "fieldtrack/utils/FilterInfo.h"
+#include "argus_utils/filter/FilterInfo.h"
 #include <deque>
 
 // TODO Use and generalize

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "argus_utils/utils/LinalgTypes.h"
-#include "fieldtrack/utils/FilterInfo.h"
+#include "argus_utils/filter/FilterInfo.h"
 #include "argus_utils/random/MultivariateGaussian.hpp"
 
 #include "fieldtrack/FieldtrackCommon.h"
