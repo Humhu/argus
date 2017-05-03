@@ -26,8 +26,6 @@ find_package(Boost REQUIRED)
 find_package(OpenCV 3 REQUIRED)
 add_definitions( "-DOPENCV3=1" )
 
-find_package(Eigen3 REQUIRED)
-
 find_package(GSL REQUIRED)
 
 catkin_package(
@@ -46,14 +44,12 @@ catkin_package(
 					
 	DEPENDS 		Boost 
 					OpenCV 
-					Eigen3
 )
 
 include_directories(include)
 include_directories(
 	${Boost_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
-	${EIGEN3_INCLUDE_DIR}
 	${GSL_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
 )
@@ -76,13 +72,11 @@ target_link_libraries( odoflow
 )
 
 add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )
-add_dependencies( visual_odometry_node odoflow_gencfg )
 target_link_libraries( visual_odometry_node
 					   odoflow 
 					   ${catkin_LIBRARIES} )
 
 add_executable( dense_vo_node nodes/dense_vo_node.cpp )
-add_dependencies( dense_vo_node odoflow_gencfg )
 target_link_libraries( dense_vo_node
 					   odoflow 
 					   ${catkin_LIBRARIES} )

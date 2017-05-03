@@ -24,9 +24,6 @@ find_package( catkin REQUIRED
 # Use Boost for most utilities, threading
 find_package( Boost REQUIRED )
 
-# Use Eigen for matrices, linear algebra
-find_package( Eigen3 REQUIRED )
-
 # Messages and services
 # =====================
 add_service_files( FILES ResetFilter.srv 
@@ -58,52 +55,43 @@ catkin_package( INCLUDE_DIRS   include
 
 include_directories( include
                      ${Boost_INCLUDE_DIRS}
-                     ${EIGEN3_INCLUDE_DIR}
                      ${catkin_INCLUDE_DIRS}
 )
 
 add_library( fieldtrack
     src/AdaptiveCovarianceEstimator.cpp
-	#src/BodyFrameTracker.cpp
 	src/FieldtrackCommon.cpp
-	src/FilterInfo.cpp
-	#src/FixedFrameTracker.cpp
 	src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp
 	src/TargetInfoManager.cpp
-	#src/VelocityIntegrator.cpp
 )
 target_link_libraries( fieldtrack
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 )
-add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} fieldtrack_gencfg )
+add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} )
 
 add_executable( state_estimator_node
 	nodes/state_estimator_node.cpp )
-add_dependencies( state_estimator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( state_estimator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
 add_executable( odometry_converter_node
 	nodes/odometry_converter_node.cpp )
-add_dependencies( odometry_converter_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( odometry_converter_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
 add_executable( velocity_converter_node
   nodes/velocity_converter_node.cpp )
-add_dependencies( velocity_converter_node ${ROJECT_NAME}_gencfg )
 target_link_libraries( velocity_converter_node
   fieldtrack
   ${catkin_LIBRARIES} )
 
 add_executable( odometry_differentiator_node
 	nodes/odometry_differentiator.cpp )
-add_dependencies( odometry_differentiator_node ${ROJECT_NAME}_gencfg )
 target_link_libraries( odometry_differentiator_node
 	fieldtrack
 	${catkin_LIBRARIES} )

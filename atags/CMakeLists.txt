@@ -32,7 +32,6 @@ set( apriltags_INCLUDE_DIRS ${CATKIN_DEVEL_PREFIX}/include )
 set( apriltags_LIBRARIES ${CATKIN_DEVEL_PREFIX}/lib/libapriltags.so )
 
 find_package(Boost REQUIRED)
-find_package(Eigen3 REQUIRED)
 
 catkin_package( INCLUDE_DIRS    include
                                 ${apriltags_INCLUDE_DIRS}
@@ -57,7 +56,6 @@ catkin_package( INCLUDE_DIRS    include
 include_directories( include
                     ${apriltags_INCLUDE_DIRS}
                     ${Boost_INCLUDE_DIRS}
-                    ${EIGEN3_INCLUDE_DIR}
                     ${catkin_INCLUDE_DIRS}
 )
 
@@ -73,24 +71,21 @@ target_link_libraries( atags
 add_dependencies( atags apriltags_external ${catkin_EXPORTED_TARGETS} )
 
 add_executable( detector_node nodes/AtagDetectorNode.cpp )
-add_dependencies( detector_node atags_gencfg
-                                apriltags_external 
+add_dependencies( detector_node apriltags_external 
 )
 target_link_libraries( detector_node atags
                                      ${catkin_LIBRARIES}
 )
 
 add_executable( gazing_detector_node nodes/GazingAtagDetector.cpp )
-add_dependencies( gazing_detector_node atags_gencfg
-                                       apriltags_external 
+add_dependencies( gazing_detector_node apriltags_external 
 )
 target_link_libraries( gazing_detector_node atags
                                             ${catkin_LIBRARIES}
 )
 
 add_executable( syncing_detector_node nodes/SyncingAtagDetector.cpp )
-add_dependencies( syncing_detector_node atags_gencfg
-                                        apriltags_external 
+add_dependencies( syncing_detector_node apriltags_external 
 )
 target_link_libraries( syncing_detector_node atags
                                              ${catkin_LIBRARIES}

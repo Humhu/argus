@@ -96,8 +96,7 @@ add_library( camplex
 	src/FiducialCommon.cpp
 	src/FiducialVisualizer.cpp
 )
-add_dependencies( camplex 
-	camplex_gencfg ${camplex_EXPORTED_TARGETS})
+add_dependencies( camplex ${camplex_EXPORTED_TARGETS})
 target_link_libraries( camplex
 	${Boost_LIBRARIES}
 	${OpenCV_LIBS}
@@ -107,8 +106,6 @@ target_link_libraries( camplex
 
 add_executable( camera_node
 	nodes/camera_node.cpp )
-add_dependencies( camera_node 
-	camplex_gencfg )
 target_link_libraries( camera_node
 	${catkin_LIBRARIES}
 	camplex
@@ -116,32 +113,24 @@ target_link_libraries( camera_node
 
 add_executable( viewer_node 
 	nodes/viewer_node.cpp )
-add_dependencies( viewer_node 
-	camplex_gencfg )
 target_link_libraries( viewer_node
 	${catkin_LIBRARIES}
 	${OpenCV_LIBS} )
 	
 add_executable( recorder_node 
 	nodes/recorder_node.cpp )
-add_dependencies( recorder_node 
-	camplex_gencfg )
 target_link_libraries( recorder_node
 	${catkin_LIBRARIES}
 	${OpenCV_LIBS} )
 	
 add_executable( video_recorder 
 	nodes/video_recorder.cpp )
-add_dependencies( video_recorder 
-	camplex_gencfg )
 target_link_libraries( video_recorder
 	${catkin_LIBRARIES}
 	${OpenCV_LIBS} )
 
 add_executable( undistortion_node
 	nodes/undistortion_node.cpp )
-add_dependencies( undistortion_node
-	camplex_gencfg )
 target_link_libraries( undistortion_node
     camplex
 	${catkin_LIBRARIES}
@@ -149,7 +138,6 @@ target_link_libraries( undistortion_node
 
 add_executable( fiducial_pose_estimator
 	nodes/fiducial_pose_estimator.cpp )
-add_dependencies( fiducial_pose_estimator ${PROJECT_NAME}_gencfg )
 target_link_libraries( fiducial_pose_estimator
 	camplex
 	${catkin_LIBRARIES} )

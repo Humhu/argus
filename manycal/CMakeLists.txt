@@ -25,7 +25,6 @@ find_package( catkin REQUIRED
 
 # Use Boost for most utilities, threading
 find_package(Boost REQUIRED)
-find_package(Eigen3 REQUIRED)
 
 add_service_files( FILES CaptureArray.srv
                          SetThrottleWeight.srv
@@ -58,7 +57,6 @@ catkin_package( INCLUDE_DIRS    include
 )
 
 include_directories( include 
-                    ${EIGEN3_INCLUDE_DIR}
                     ${Boost_INCLUDE_DIRS}
                     ${catkin_INCLUDE_DIRS}
 )
@@ -80,7 +78,6 @@ target_link_libraries( manycal
 )
 
 # add_executable( array_calibrator_node nodes/array_calibrator.cpp )
-# add_dependencies( array_calibrator_node ${PROJECT_NAME}_gencfg )
 # target_link_libraries( array_calibrator_node 
 #                        ${isam_LIBRARIES}
 #                        ${catkin_LIBRARIES}
@@ -88,7 +85,6 @@ target_link_libraries( manycal
 # )
 
 add_executable( fiducial_array_calibrator_node nodes/fiducial_array_calibrator.cpp )
-add_dependencies( fiducial_array_calibrator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( fiducial_array_calibrator_node 
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
@@ -96,7 +92,6 @@ target_link_libraries( fiducial_array_calibrator_node
 )
 
 add_executable( camera_array_calibrator_node nodes/camera_array_calibrator.cpp )
-add_dependencies( camera_array_calibrator_node ${PROJECT_NAME}_gencfg )
 target_link_libraries( camera_array_calibrator_node 
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
@@ -104,7 +99,6 @@ target_link_libraries( camera_array_calibrator_node
 )
 
 add_executable( isam_test tests/IsamTest.cpp )
-add_dependencies( isam_test ${PROJECT_NAME}_gencfg )
 target_link_libraries( isam_test
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
@@ -112,7 +106,6 @@ target_link_libraries( isam_test
 )
 
 add_executable( odometry_test tests/OdometryTest.cpp )
-add_dependencies( odometry_test ${PROJECT_NAME}_gencfg )
 target_link_libraries( odometry_test
                       ${isam_LIBRARIES}
                       ${catkin_LIBRARIES}
@@ -120,7 +113,6 @@ target_link_libraries( odometry_test
 )
 
 add_executable( cam_synchronizer nodes/camera_synchronizer.cpp )
-add_dependencies( cam_synchronizer ${PROJECT_NAME}_gencfg )
 target_link_libraries( cam_synchronizer
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
@@ -128,7 +120,6 @@ target_link_libraries( cam_synchronizer
 )
 
 add_executable( cam_throttler nodes/camera_throttler.cpp )
-add_dependencies( cam_throttler ${PROJECT_NAME}_gencfg )
 target_link_libraries( cam_throttler
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}

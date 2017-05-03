@@ -27,7 +27,6 @@ set( isam_INCLUDE_DIRS ${CATKIN_DEVEL_PREFIX}/include )
 set( isam_LIBRARIES ${CATKIN_DEVEL_PREFIX}/lib/libisam.so )
 
 find_package(Boost REQUIRED)
-find_package(Eigen3 REQUIRED)
 
 catkin_package(
 	INCLUDE_DIRS    include
@@ -46,7 +45,6 @@ catkin_package(
 
 include_directories( include
                      ${Boost_INCLUDE_DIRS}
-                     ${EIGEN3_INCLUDE_DIR}
                      ${catkin_INCLUDE_DIRS}
 )
 

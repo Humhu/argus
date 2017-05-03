@@ -20,9 +20,6 @@ message( STATUS ${CMAKE_SOURCE_DIR} )
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 
 find_package(Boost REQUIRED)
-
-find_package(Eigen3 REQUIRED)
-
 find_package(PCL 1.7 REQUIRED)
 
 catkin_package(
@@ -43,13 +40,11 @@ catkin_package(
 					
 	DEPENDS 		Boost 
 					PCL 
-					Eigen3
 )
 
 include_directories(include)
 include_directories(
 	${Boost_INCLUDE_DIRS}
-	${EIGEN3_INCLUDE_DIR}
 	${PCL_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
 )
@@ -63,20 +58,17 @@ add_library( odoscan
 	src/ScanMatcher.cpp
 	src/VoxelGridFilter.cpp
 )
-add_dependencies( odoscan odoscan_gencfg )
 target_link_libraries( odoscan
 	${PCL_LIBRARIES}
 	${catkin_LIBRARIES}
 )
 
 add_executable( laser_odometry_node nodes/laser_odometry_node.cpp )
-add_dependencies( laser_odometry_node odoscan_gencfg )
 target_link_libraries( laser_odometry_node
 					   odoscan 
 					   ${catkin_LIBRARIES} )
 
 add_executable( scan_to_cloud_converter nodes/scan_to_cloud_converter.cpp )
-add_dependencies( scan_to_cloud_converter odoscan_gencfg )
 target_link_libraries( scan_to_cloud_converter
 					   odoscan 
 					   ${catkin_LIBRARIES} )
