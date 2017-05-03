@@ -38,8 +38,8 @@ bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
 
 
 	std::vector<char> inliers;
-	FrameInterestPoints keyNormalized = key.Normalize();
-	FrameInterestPoints tarNormalized = tar.Normalize();
+	FrameInterestPoints keyNormalized = key.UndistortAndNormalize();
+	FrameInterestPoints tarNormalized = tar.UndistortAndNormalize();
 
 	// We want tar in frame of key, so this is the ordering
 	cv::Mat Hxest = cv::findHomography( tarNormalized.points, 

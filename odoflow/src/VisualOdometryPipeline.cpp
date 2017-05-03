@@ -200,7 +200,7 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 
 	// Track interest points into current frame
 	// TODO Move into a guess module or something?
-	// Extract 2D pose from previou 3D pose
+	// Extract 2D pose from previous 3D pose
 	MatrixType lastH = reg.lastPointsPose.ToMatrix();
 	PoseSE2::Rotation lastR( 0 );
 	lastR.fromRotationMatrix( lastH.block<2,2>( 1, 1 ) );
@@ -208,9 +208,9 @@ void VisualOdometryPipeline::ImageCallback( CameraRegistration& reg,
 	PoseSE2 guessPose( lastT, lastR );
 
 	// Since pose is in normalized coordniates, have to normalize, transform, then unnormalize again
-	FrameInterestPoints keyFrameNorm = reg.keyFrame.Normalize();
-	current.points = TransformPoints( keyFrameNorm.points, guessPose );
-	current = current.Unnormalize();
+	// FrameInterestPoints keyFrameNorm = reg.keyFrame.Normalize();
+	current.points = reg.lastFrame.points; //TransformPoints( keyFrameNorm.points, guessPose );
+	// current = current.Unnormalize();
 	
 	// ROS_INFO_STREAM( "Prev points: " << reg.lastFrame.points << std::endl <<
 	                 // "Guess points: " << current.points );
@@ -346,9 +346,10 @@ void VisualOdometryPipeline::SetKeyframe( CameraRegistration& reg,
 		reg.keyFrame.points.clear();
 		return;
 	}
+	ROS_INFO_STREAM( "Found " << reg.originalNumKeypoints << " keypoints in new keyframe" );
 
 	// NOTE We want to keep them unnormalized for tracking purposes
-	reg.keyFrame = reg.keyFrame.Undistort();
+	// reg.keyFrame = reg.keyFrame.Undistort();
 
 	reg.lastFrame = reg.keyFrame;
 
