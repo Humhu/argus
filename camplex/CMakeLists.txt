@@ -151,6 +151,9 @@ add_executable( checkerboard_detector_node
 	nodes/checkerboard_detector_node.cpp )
 target_link_libraries( checkerboard_detector_node
 	camplex ${catkin_LIBRARIES} )
+
+add_executable( resize_node nodes/resize_node.cpp )
+target_link_libraries( resize_node camplex ${catkin_LIBRARIES} )
 	
 ## Mark executables and/or libraries for installation
 install(TARGETS camplex camera_node viewer_node recorder_node video_recorder undistortion_node

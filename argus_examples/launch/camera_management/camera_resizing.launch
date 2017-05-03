@@ -1,0 +1,26 @@
+<launch>
+
+<node pkg="camplex" type="camera_node" name="camera">
+        <rosparam>
+            camera_name: pseye_047_wide
+            device_path: /dev/video1
+            frame_resolution: [320,240]
+            frame_rate: 30
+            stream_on_start: true
+        </rosparam>
+    </node>
+
+  <node pkg="camplex" type="resize_node" name="resizer" output="screen">
+      <remap from="image_raw" to="camera/image_raw"/>
+      <rosparam>
+          interpolation_mode: linear
+          output_scale: 0.5
+      </rosparam>
+  </node>
+
+  <node pkg="camplex" type="viewer_node" name="viewer" output="screen">
+    <remap from="image" to="image_resized"/>
+  </node>
+
+</launch>
+  
