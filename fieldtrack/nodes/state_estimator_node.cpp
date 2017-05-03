@@ -106,7 +106,13 @@ public:
 
 		// NOTE We have to reset the filter to compensate for the lag, otherwise the
 		// first timer call will request it predict to the past
-		_estimator.Reset( ros::Time::now() - _headLag );
+		// NOTE This conditional catches simulated time startup
+		_initialized = false;
+		if( ros::Time::now() != ros::Time(0) )
+		{
+			_estimator.Reset( ros::Time::now() - _headLag );
+			_initialized = true;
+		}
 
 		double updateRate;
 		GetParamRequired( ph, "update_rate", updateRate );
@@ -132,11 +138,24 @@ public:
 	template <typename M>
 	void ObservationCallback( const typename M::ConstPtr& msg, const std::string& sourceName )
 	{
-		_estimator.BufferObservation<M>( sourceName, *msg );
+		if( _initialized )
+		{
+			_estimator.BufferObservation<M>( sourceName, *msg );
+		}
+		else
+		{
+			ROS_WARN_STREAM( "Filter is unitialized. Dropping measurement from: " << sourceName );
+		}
 	}
 
 	void TimerCallback( const ros::TimerEvent& event )
 	{
+		if( !_initialized )
+		{
+			_estimator.Reset( event.current_real - _headLag );
+			_initialized = true;
+		}
+
 		ros::Time lagged = event.current_real - _headLag;
 		_estimator.Process( lagged );
 		
@@ -168,10 +187,12 @@ public:
 	{
 		ros::Duration( req.time_to_wait ).sleep();
 		_estimator.Reset( req.filter_time );
+		_initialized = true;
 		return true;
 	}
 
 public:
+	bool _initialized;
 
 	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	std::vector<ros::Subscriber> _updateSubs;
