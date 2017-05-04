@@ -157,10 +157,10 @@ public:
 		}
 
 		ros::Time lagged = event.current_real - _headLag;
-		_estimator.Process( lagged );
+		std::vector<FilterInfo> info = _estimator.Process( lagged );
 		
 		StateEstimator rollOutEstimator( _estimator );
-		std::vector<FilterInfo> info = rollOutEstimator.Process( event.current_real );
+		rollOutEstimator.Process( event.current_real );
 
 		TargetState state = rollOutEstimator.GetState();
 
