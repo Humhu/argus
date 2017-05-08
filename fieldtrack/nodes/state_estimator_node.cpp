@@ -108,34 +108,33 @@ public:
 		// first timer call will request it predict to the past
 		// NOTE This conditional catches simulated time startup
 		_initialized = false;
-		if( ros::Time::now() != ros::Time(0) )
+		if( ros::Time::now() != ros::Time( 0 ) )
 		{
 			_estimator.Reset( ros::Time::now() - _headLag );
 			_initialized = true;
 		}
 
-		double updateRate;
-		GetParamRequired( ph, "update_rate", updateRate );
-		_updateTimer = nh.createTimer( ros::Duration( 1.0/updateRate ),
+		GetParamRequired( ph, "update_rate", _updateRate );
+		_updateTimer = nh.createTimer( ros::Duration( 1.0 / _updateRate ),
 		                               &StateEstimatorNode::TimerCallback,
 		                               this );
 	}
 
-	template <typename M>
+	template<typename M>
 	void SubscribeToUpdates( ros::NodeHandle& nh, const std::string& topic,
 	                         unsigned int buffSize, const std::string& sourceName )
 	{
 		ROS_INFO_STREAM( "Subscribing to " << sourceName << " at " << topic );
 		_updateSubs.emplace_back();
-		_updateSubs.back() = 
+		_updateSubs.back() =
 		    nh.subscribe<M>( topic, buffSize,
-                   boost::bind( &StateEstimatorNode::ObservationCallback<M>,
-                                this,
-                                _1,
-                                sourceName ) );
+		                     boost::bind( &StateEstimatorNode::ObservationCallback<M>,
+		                                  this,
+		                                  _1,
+		                                  sourceName ) );
 	}
 
-	template <typename M>
+	template<typename M>
 	void ObservationCallback( const typename M::ConstPtr& msg, const std::string& sourceName )
 	{
 		if( _initialized )
@@ -158,7 +157,7 @@ public:
 
 		ros::Time lagged = event.current_real - _headLag;
 		std::vector<FilterInfo> info = _estimator.Process( lagged );
-		
+
 		StateEstimator rollOutEstimator( _estimator );
 		rollOutEstimator.Process( event.current_real );
 
@@ -175,7 +174,7 @@ public:
 		if( _publishInfo )
 		{
 			FilterInfoMessageVisitor vis;
-			BOOST_FOREACH( const FilterInfo& fi, info )
+			BOOST_FOREACH( const FilterInfo &fi, info )
 			{
 				_infoPub.publish( boost::apply_visitor( vis, fi ) );
 			}
@@ -185,18 +184,22 @@ public:
 	bool ResetCallback( fieldtrack::ResetFilter::Request& req,
 	                    fieldtrack::ResetFilter::Response& res )
 	{
+		// NOTE May not want to use ros sleep in sim mode?
 		ros::Duration( req.time_to_wait ).sleep();
 		_estimator.Reset( req.filter_time );
-		_initialized = true;
+		_initialized = !req.filter_time.isZero();
+		_updateTimer.stop();
+		_updateTimer.start();
 		return true;
 	}
 
 public:
+
 	bool _initialized;
 
 	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	std::vector<ros::Subscriber> _updateSubs;
-	
+
 	bool _publishOdom;
 	ros::Publisher _odomPub;
 
@@ -208,15 +211,16 @@ public:
 
 	ros::ServiceServer _resetServer;
 	ros::Timer _updateTimer;
+	double _updateRate;
 
 	ros::Duration _headLag;
 	StateEstimator _estimator;
 };
 
-int main( int argc, char** argv )
+int main( int argc, char**argv )
 {
 	ros::init( argc, argv, "state_estimator_node" );
-	
+
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	StateEstimatorNode estimator( nh, ph );
