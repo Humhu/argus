@@ -19,6 +19,7 @@ find_package( catkin REQUIRED
                          argus_utils
                          extrinsics_array
                          lookup
+						 modprop
 )
 
 # Use Boost for most utilities, threading
@@ -48,6 +49,7 @@ catkin_package( INCLUDE_DIRS   include
                                argus_utils
                                extrinsics_array
                                lookup
+							   modprop
 
                 DEPENDS        Boost
                                system_lib
@@ -60,7 +62,9 @@ include_directories( include
 
 add_library( fieldtrack
     src/AdaptiveCovarianceEstimator.cpp
+	src/CovarianceModels.cpp
 	src/FieldtrackCommon.cpp
+	src/KalmanChain.cpp
 	src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp
@@ -95,6 +99,11 @@ add_executable( odometry_differentiator_node
 target_link_libraries( odometry_differentiator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
+
+add_executable( test_buff_cov_estimator tests/test_buffer_cov_estimator.cpp )
+target_link_libraries( test_buff_cov_estimator
+	fieldtrack 
+	${catkin_LIBRARIES})
 
 ## Mark executables and/or libraries for installation
 install(TARGETS state_estimator_node
