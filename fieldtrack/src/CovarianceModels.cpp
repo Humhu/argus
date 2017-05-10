@@ -97,4 +97,50 @@ OutputPort& FixedCovariance::GetCovOut()
 {
 	return _ldlt.GetSOut();
 }
+
+AdjustedInnovationCovariance::AdjustedInnovationCovariance()
+{
+	link_ports( _HPHT.GetSOut(), _estR.GetLeftIn() );
+	link_ports( _meanU.GetOutput(), _estR.GetRightIn() );
+	link_ports( _offU.GetOutput(), _opU.GetInput() );
+	_meanU.RegisterSource( _opU.GetOutput() );
+}
+
+void AdjustedInnovationCovariance::Foreprop()
+{
+	_offU.Foreprop();
+}
+
+void AdjustedInnovationCovariance::Invalidate()
+{
+	_offU.Invalidate();
+}
+
+void AdjustedInnovationCovariance::SetC( const MatrixType& C )
+{
+	_HPHT.SetX( C.transpose() );
+}
+
+void AdjustedInnovationCovariance::SetOffset( const VectorType& u )
+{
+	_offU.SetValue( u );
+}
+
+InputPort& AdjustedInnovationCovariance::AddUIn()
+{
+	_rawUs.emplace_back();
+	_meanU.RegisterSource( _rawUs.back().GetOutput() );
+	return _rawUs.back().GetInput();
+}
+
+InputPort& AdjustedInnovationCovariance::GetPIn()
+{
+	return _HPHT.GetCIn();
+}
+
+OutputPort& AdjustedInnovationCovariance::GetCovOut()
+{
+	return _estR.GetOutput();
+}
+
 }

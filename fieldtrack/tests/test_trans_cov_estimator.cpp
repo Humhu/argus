@@ -35,11 +35,17 @@ int main( int argc, char** argv )
 	link_ports( chain.GetMeanLikelihood(), meanLL.GetInput() );
 
 
-	FixedCovariance Qmodel, Rmodel;
+	FixedCovariance Qmodel;//, Rmodel;
 	Qmodel.Initialize( Qguess );
-	Rmodel.Initialize( Rguess );
+	//Rmodel.Initialize( Rguess );
 
 	unsigned num_iters = 100;
+	std::deque<ConstantModule> Rmodels(num_iters);
+	BOOST_FOREACH( ConstantModule& r, Rmodels )
+	{
+		r.SetValue( Rguess );
+	}
+
 	VectorType x_curr = x0;
 	std::vector<VectorType> xs;
 	for( unsigned int i = 0; i < num_iters; ++i )
@@ -51,7 +57,7 @@ int main( int argc, char** argv )
 
 		// Update
 		VectorType y = C * x_curr + obsNoise.Sample();
-		chain.AddLinearUpdate( C, y, Rmodel.GetCovOut() );
+		chain.AddLinearUpdate( C, y, Rmodels[i].GetOutput()); //Rmodel.GetCovOut() );
 	}
 
 	// Optimize
@@ -62,35 +68,39 @@ int main( int argc, char** argv )
 	{
 		chain.Foreprop();
 		Qmodel.Foreprop();
-		Rmodel.Foreprop();
+		// Rmodel.Foreprop();
+		BOOST_FOREACH( ConstantModule& r, Rmodels )
+		{
+			r.Foreprop();
+		}
 		std::cout << "Iter " << i << " Mean LL " << meanLL.GetValue() << std::endl;
 		
 		meanLL.Backprop(MatrixType::Identity(1,1));
 		MatrixType dQD = Qmodel.GetLogDBackpropValue();
 		MatrixType dQL = Qmodel.GetLBackpropValue();
-		MatrixType dRD = Rmodel.GetLogDBackpropValue();
-		MatrixType dRL = Rmodel.GetLBackpropValue();
+		// MatrixType dRD = Rmodel.GetLogDBackpropValue();
+		// MatrixType dRL = Rmodel.GetLBackpropValue();
 		Eigen::Map<VectorType> dQDvec( dQD.data(), dQD.size(), 1 );
 		Eigen::Map<VectorType> dQLvec( dQL.data(), dQL.size(), 1 );		
-		Eigen::Map<VectorType> dRDvec( dRD.data(), dRD.size(), 1 );
-		Eigen::Map<VectorType> dRLvec( dRL.data(), dRL.size(), 1 );
+		// Eigen::Map<VectorType> dRDvec( dRD.data(), dRD.size(), 1 );
+		// Eigen::Map<VectorType> dRLvec( dRL.data(), dRL.size(), 1 );
 
 		std::cout << "Q:" << std::endl << Qmodel.GetCovOut().GetValue() << std::endl;
-		std::cout << "R:" << std::endl << Rmodel.GetCovOut().GetValue() << std::endl;
+		// std::cout << "R:" << std::endl << Rmodel.GetValue() << std::endl;
 
 		chain.Invalidate();
 		Qmodel.Invalidate();
-		Rmodel.Invalidate();
+		// Rmodel.Invalidate();
 
 		std::cout << "dQlogD: " << dQDvec.transpose() << std::endl;
 		std::cout << "dQL: " << dQLvec.transpose() << std::endl;
-		std::cout << "dRlogD: " << dRDvec.transpose() << std::endl;
-		std::cout << "dRL: " << dRLvec.transpose() << std::endl;
+		// std::cout << "dRlogD: " << dRDvec.transpose() << std::endl;
+		// std::cout << "dRL: " << dRLvec.transpose() << std::endl;
 
 		Qmodel.SetLogD( Qmodel.GetLogD() + alpha * dQDvec );
 		Qmodel.SetL( Qmodel.GetL() + alpha * dQLvec );		
-		Rmodel.SetLogD( Rmodel.GetLogD() + alpha * dRDvec );
-		Rmodel.SetL( Rmodel.GetL() + alpha * dRLvec );		
+		// Rmodel.SetLogD( Rmodel.GetLogD() + alpha * dRDvec );
+		// Rmodel.SetL( Rmodel.GetL() + alpha * dRLvec );		
 	}
 	time_t finish = clock();
 	std::cout << "Took " << (finish - start) / (float) CLOCKS_PER_SEC << " seconds." << std::endl;

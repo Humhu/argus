@@ -9,7 +9,6 @@ using namespace argus;
 
 namespace argus
 {
-
 AdaptiveTransitionCovarianceEstimator::AdaptiveTransitionCovarianceEstimator() {}
 
 void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
@@ -57,13 +56,13 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	// Version using innovations or pre-adjusted state deltas
 	MatrixType adaptQ = Qacc / wAcc;
 
-	double timeSpan; 
+	double timeSpan;
 	if( _innoProds.size() < 2 )
 	{
 		timeSpan = 0;
 	}
 	else
-	{	
+	{
 		timeSpan = ( _innoProds.front().first - _innoProds.back().first ).toSec();
 	}
 	timeSpan += _priorDt;
@@ -100,7 +99,7 @@ void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
 	MatrixType op = Kv * Kv.transpose();
 
 	_innoProds.emplace_front( time, op );
-	_lastFSpostFT = predict.trans_jacobian * _currSpost * 
+	_lastFSpostFT = predict.trans_jacobian * _currSpost *
 	                predict.trans_jacobian.transpose();
 	_currSpost = update.post_state_cov;
 }
@@ -115,8 +114,8 @@ void AdaptiveTransitionCovarianceEstimator::Reset()
 void AdaptiveTransitionCovarianceEstimator::CheckBuffer( const ros::Time& now )
 {
 	while( !_innoProds.empty() &&
-	       ( NumSamples() > _maxSamples || 
-	       ( now - _innoProds.back().first ) > _maxAge ) )
+	       ( NumSamples() > _maxSamples ||
+	         ( now - _innoProds.back().first ) > _maxAge ) )
 	{
 		_innoProds.pop_back();
 	}
@@ -124,7 +123,8 @@ void AdaptiveTransitionCovarianceEstimator::CheckBuffer( const ros::Time& now )
 
 AdaptiveObservationCovarianceEstimator::AdaptiveObservationCovarianceEstimator() {}
 
-void AdaptiveObservationCovarianceEstimator::Initialize( ros::NodeHandle& ph )
+void AdaptiveObservationCovarianceEstimator::Initialize( unsigned int dim,
+                                                         ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
 
@@ -132,10 +132,9 @@ void AdaptiveObservationCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	GetParamRequired( ph, "max_sample_age", dur );
 	_maxAge = ros::Duration( dur );
 
-	unsigned int dim;
-	GetParamRequired( ph, "dim", dim );
-	_priorCov = MatrixType( dim, dim );
-	GetParam( ph, "prior_cov", _priorCov, 1E-3 * MatrixType::Identity( dim, dim ) );
+	_dim = dim;
+	_priorCov = MatrixType( _dim, _dim );
+	GetParam( ph, "prior_cov", _priorCov, 1E-3 * MatrixType::Identity( _dim, _dim ) );
 	GetParam( ph, "prior_age", _priorAge, 1.0 );
 	GetParam( ph, "use_diag", _useDiag, true );
 	GetParam( ph, "decay_rate", _decayRate, 1.0 );
@@ -155,12 +154,15 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 	MatrixType Racc = _priorCov * wAcc;
 	for( unsigned int i = 0; i < _innoProds.size(); ++i )
 	{
-		double dt = ( time - _innoProds[i].first ).toSec();
+		const InnoStamped& data = _innoProds[i];
+		const ros::Time& stamp = data.first;
+		const MatrixType& Rhat = data.second;
+
+		double dt = ( time - stamp ).toSec();
 		double w = std::exp( _decayRate * dt );
-		Racc += _innoProds[i].second * w;
+		Racc += Rhat * w;
 		wAcc += w;
 	}
-	// MatrixType adaptR = Racc / wAcc + _lastHPHT;
 	MatrixType adaptR = Racc / wAcc;
 
 	// Check for diagonal
@@ -171,36 +173,65 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 	return adaptR;
 }
 
+// MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time,
+//                                                          const UpdateInfo& preview )
+// {
+//  CheckBuffer( time );
+
+//  double wAcc = std::exp( _decayRate * _priorAge );
+//  MatrixType Racc = _priorCov * wAcc;
+//  for( unsigned int i = 0; i < _innoProds.size(); ++i )
+//  {
+//      const InnoStamped& data = _innoProds[i];
+//      const ros::Time& stamp = data.first;
+//      const MatrixType& Rhat = data.second;
+
+//      double dt = ( time - stamp ).toSec();
+//      double w = std::exp( _decayRate * dt );
+//      Racc += Rhat * w;
+//      wAcc += w;
+//  }
+
+//  // Add current preview in
+//  // Update is R = Cv- + H * P- * H^T
+//  MatrixType HPHT = update.obs_jacobian * update.pre_state_cov *
+//                    update.obs_jacobian.transpose();
+//  MatrixType op = update.pre_obs_error * update.pre_obs_error.transpose();
+//  wAcc += 1.0;
+//  Racc += op - HPHT;
+
+//  MatrixType adaptR = Racc / wAcc;
+
+//  // Check for diagonal
+//  if( _useDiag )
+//  {
+//      adaptR = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( adaptR.diagonal() );
+//  }
+//  return adaptR;
+// }
+
 void AdaptiveObservationCovarianceEstimator::Update( const ros::Time& time,
                                                      const UpdateInfo& update )
 {
-	if( _lastHPHT.size() == 0 )
-	{
-		unsigned int dim = update.post_obs_error.size();
-		_lastHPHT = MatrixType::Zero( dim, dim );
-	}
-
-	// Update is R = Cv+ + H * P+ * H^
-	_lastHPHT = update.obs_jacobian * update.post_state_cov * 
-	            update.obs_jacobian.transpose();
-	MatrixType op = update.post_obs_error * update.post_obs_error.transpose() + _lastHPHT;
-	_innoProds.emplace_front( time, op );
+	// Update is R = Cv+ + H * P+ * H^T
+	MatrixType HPHT = update.obs_jacobian * update.post_state_cov *
+	                  update.obs_jacobian.transpose();
+	MatrixType op = update.post_obs_error * update.post_obs_error.transpose();
+	_innoProds.emplace_front( time, op + HPHT );
 }
 
 void AdaptiveObservationCovarianceEstimator::Reset()
 {
 	_innoProds.clear();
-	_lastHPHT = MatrixType();
 }
 
 void AdaptiveObservationCovarianceEstimator::CheckBuffer( const ros::Time& now )
 {
 	while( !_innoProds.empty() &&
-	       ( NumSamples() > _maxSamples || 
-	       ( now - _innoProds.back().first ) > _maxAge ) )
+	       ( NumSamples() > _maxSamples ||
+	         ( now - _innoProds.back().first ) > _maxAge ) )
 	{
 		_innoProds.pop_back();
 	}
 }
-
 }

@@ -20,11 +20,21 @@ public:
 	void Foreprop();
 	void Invalidate();
 
+	// NOTE Keeping the ability to marginalize out old poses is a huge pain
+	// and complicates the use of this class. Perhaps we should drop it!
 	void RemoveEarliest();
 
-	void AddLinearPredict( const MatrixType& A, OutputPort& Qsrc );
-	void AddLinearUpdate( const MatrixType& C, const VectorType& y,
-	                      OutputPort& Rsrc );
+	void AddLinearPredict( const MatrixType& A, OutputPort& Qsrc,
+	                       const std::vector<InputPort*>& xConsumers = {},
+	                       const std::vector<InputPort*>& PConsumers = {} );
+
+	void AddLinearUpdate( const MatrixType& C, const VectorType& y, OutputPort& Rsrc,
+	                      const std::vector<InputPort*>& xConsumers = {},
+	                      const std::vector<InputPort*>& PConsumers = {},
+	                      const std::vector<InputPort*>& vConsumers = {},
+	                      const std::vector<InputPort*>& SConsumers = {},
+						  const std::vector<InputPort*>& uConsumers = {} );
+
 	// TODO Add the nonlinear updates
 
 	OutputPort& GetMeanLikelihood();

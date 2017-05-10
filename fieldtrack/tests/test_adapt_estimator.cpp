@@ -1,12 +1,13 @@
 #include "fieldtrack/KalmanChain.h"
 #include "fieldtrack/CovarianceModels.h"
 #include "argus_utils/random/MultivariateGaussian.hpp"
+#include <boost/circular_buffer.hpp>
 
 using namespace argus;
 
 int main( int argc, char** argv )
 {
-	unsigned int state_dim = 6;
+	unsigned int state_dim = 4;
 	unsigned int obs_dim = 3;
 
 	MatrixType A = MatrixType::Identity( state_dim, state_dim ) +
@@ -34,12 +35,24 @@ int main( int argc, char** argv )
 	chain.Initialize( x0, P0 );
 	link_ports( chain.GetMeanLikelihood(), meanLL.GetInput() );
 
+	unsigned num_iters = 10;
 
-	FixedCovariance Qmodel, Rmodel;
+	FixedCovariance Qmodel, R0model;
 	Qmodel.Initialize( Qguess );
-	Rmodel.Initialize( Rguess );
+	R0model.Initialize( Rguess );
 
-	unsigned num_iters = 100;
+	std::vector<OutputPort*> Routs;
+	Routs.push_back( &R0model.GetCovOut() );
+	std::deque<AdjustedInnovationCovariance> Rmodels( num_iters - 1 );
+	BOOST_FOREACH( AdjustedInnovationCovariance & r, Rmodels )
+	{
+		r.SetOffset( 1E-2 * VectorType::Ones( obs_dim ) );
+		r.SetC( C );
+		Routs.push_back( &r.GetCovOut() );
+	}
+
+	unsigned int windowSize = 5;
+
 	VectorType x_curr = x0;
 	std::vector<VectorType> xs;
 	for( unsigned int i = 0; i < num_iters; ++i )
@@ -51,10 +64,26 @@ int main( int argc, char** argv )
 
 		// Update
 		VectorType y = C * x_curr + obsNoise.Sample();
-		chain.AddLinearUpdate( C, y, Rmodel.GetCovOut() );
+
+		std::vector<InputPort*> uIns;
+		unsigned int numToAdd = std::min( windowSize, num_iters - i - 1 );
+		for( unsigned int j = 0; j < numToAdd; ++j )
+		{
+			std::cout << "Adding model " << i + j << std::endl;
+			uIns.push_back( &Rmodels[i + j].AddUIn() );
+		}
+
+		std::vector<InputPort*> xIns, PIns, vIns, SIns;
+		if( i < num_iters - 1 )
+		{
+			std::cout << "Capturing Pin for " << i << std::endl;
+			PIns.push_back( &Rmodels[i].GetPIn() );
+		}
+		chain.AddLinearUpdate( C, y, *Routs[i],
+		                       xIns, PIns, vIns, SIns, uIns );
 	}
 
-	// Optimize
+	// // Optimize
 	unsigned num_opt_iters = 200;
 	double alpha = 1E-1;
 	time_t start = clock();
@@ -62,35 +91,37 @@ int main( int argc, char** argv )
 	{
 		chain.Foreprop();
 		Qmodel.Foreprop();
-		Rmodel.Foreprop();
+		R0model.Foreprop();
+		BOOST_FOREACH( AdjustedInnovationCovariance & r, Rmodels )
+		{
+			r.Foreprop();
+		}
 		std::cout << "Iter " << i << " Mean LL " << meanLL.GetValue() << std::endl;
-		
-		meanLL.Backprop(MatrixType::Identity(1,1));
+		for( unsigned int j = 0; j < Rmodels.size(); ++j )
+		{
+			std::cout << "R: " << Rmodels[j].GetCovOut().GetValue() << std::endl;
+		}
+
+		meanLL.Backprop( MatrixType::Identity( 1, 1 ) );
 		MatrixType dQD = Qmodel.GetLogDBackpropValue();
 		MatrixType dQL = Qmodel.GetLBackpropValue();
-		MatrixType dRD = Rmodel.GetLogDBackpropValue();
-		MatrixType dRL = Rmodel.GetLBackpropValue();
 		Eigen::Map<VectorType> dQDvec( dQD.data(), dQD.size(), 1 );
-		Eigen::Map<VectorType> dQLvec( dQL.data(), dQL.size(), 1 );		
-		Eigen::Map<VectorType> dRDvec( dRD.data(), dRD.size(), 1 );
-		Eigen::Map<VectorType> dRLvec( dRL.data(), dRL.size(), 1 );
+		Eigen::Map<VectorType> dQLvec( dQL.data(), dQL.size(), 1 );
 
 		std::cout << "Q:" << std::endl << Qmodel.GetCovOut().GetValue() << std::endl;
-		std::cout << "R:" << std::endl << Rmodel.GetCovOut().GetValue() << std::endl;
 
 		chain.Invalidate();
 		Qmodel.Invalidate();
-		Rmodel.Invalidate();
+		BOOST_FOREACH( AdjustedInnovationCovariance & r, Rmodels )
+		{
+			r.Invalidate();
+		}
 
 		std::cout << "dQlogD: " << dQDvec.transpose() << std::endl;
 		std::cout << "dQL: " << dQLvec.transpose() << std::endl;
-		std::cout << "dRlogD: " << dRDvec.transpose() << std::endl;
-		std::cout << "dRL: " << dRLvec.transpose() << std::endl;
 
 		Qmodel.SetLogD( Qmodel.GetLogD() + alpha * dQDvec );
-		Qmodel.SetL( Qmodel.GetL() + alpha * dQLvec );		
-		Rmodel.SetLogD( Rmodel.GetLogD() + alpha * dRDvec );
-		Rmodel.SetL( Rmodel.GetL() + alpha * dRLvec );		
+		Qmodel.SetL( Qmodel.GetL() + alpha * dQLvec );
 	}
 	time_t finish = clock();
 	std::cout << "Took " << (finish - start) / (float) CLOCKS_PER_SEC << " seconds." << std::endl;

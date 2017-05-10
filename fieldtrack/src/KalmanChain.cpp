@@ -52,7 +52,7 @@ void KalmanChain::RemoveEarliest()
 		unlink_ports( _updates[0].GetVOut(), _likelihoods[0].GetXIn() );
 		unlink_ports( _updates[0].GetSOut(), _likelihoods[0].GetSIn() );
 		_meanLikelihood.UnregisterSource( _likelihoods[0].GetLLOut() );
-		
+
 		if( _types.size() > 1 )
 		{
 			if( _types[1] == CHAIN_PREDICT )
@@ -74,7 +74,9 @@ void KalmanChain::RemoveEarliest()
 }
 
 void KalmanChain::AddLinearPredict( const MatrixType& A,
-                                    OutputPort& Qsrc )
+                                    OutputPort& Qsrc,
+                                    const std::vector<InputPort*>& xConsumers,
+                                    const std::vector<InputPort*>& PConsumers )
 {
 	_predicts.emplace_back();
 	PredictModule& pred = _predicts.back();
@@ -83,17 +85,31 @@ void KalmanChain::AddLinearPredict( const MatrixType& A,
 	link_kalman_ports( GetLastModule(), pred );
 	link_ports( Qsrc, pred.GetQIn() );
 	_types.push_back( CHAIN_PREDICT );
+
+	BOOST_FOREACH( InputPort * xCon, xConsumers )
+	{
+		link_ports( pred.GetXOut(), *xCon );
+	}
+	BOOST_FOREACH( InputPort * PCon, PConsumers )
+	{
+		link_ports( pred.GetPOut(), *PCon );
+	}
 }
 
 void KalmanChain::AddLinearUpdate( const MatrixType& C,
                                    const VectorType& y,
-                                   OutputPort& Rsrc )
+                                   OutputPort& Rsrc,
+                                   const std::vector<InputPort*>& xConsumers,
+                                   const std::vector<InputPort*>& PConsumers,
+                                   const std::vector<InputPort*>& vConsumers,
+                                   const std::vector<InputPort*>& SConsumers,
+								   const std::vector<InputPort*>& uConsumers )
 {
 	_updates.emplace_back();
 	_likelihoods.emplace_back();
 	UpdateModule& upd = _updates.back();
 	GaussianLikelihoodModule& ll = _likelihoods.back();
-	
+
 	upd.SetLinearParams( C, y );
 	link_ports( upd.GetVOut(), ll.GetXIn() );
 	link_ports( upd.GetSOut(), ll.GetSIn() );
@@ -101,6 +117,28 @@ void KalmanChain::AddLinearUpdate( const MatrixType& C,
 	link_ports( Rsrc, upd.GetRIn() );
 	_types.push_back( CHAIN_UPDATE );
 	_meanLikelihood.RegisterSource( ll.GetLLOut() );
+
+	// TODO How to manage removal of v and S consumers?
+	BOOST_FOREACH( InputPort * xCon, xConsumers )
+	{
+		link_ports( upd.GetXOut(), *xCon );
+	}
+	BOOST_FOREACH( InputPort * PCon, PConsumers )
+	{
+		link_ports( upd.GetPOut(), *PCon );
+	}
+	BOOST_FOREACH( InputPort * vCon, vConsumers )
+	{
+		link_ports( upd.GetVOut(), *vCon );
+	}
+	BOOST_FOREACH( InputPort * SCon, SConsumers )
+	{
+		link_ports( upd.GetSOut(), *SCon );
+	}
+	BOOST_FOREACH( InputPort * uCon, uConsumers )
+	{
+		link_ports( upd.GetUOut(), *uCon );
+	}
 }
 
 OutputPort& KalmanChain::GetMeanLikelihood()
@@ -112,7 +150,7 @@ KalmanIn& KalmanChain::GetFirstModule()
 {
 	if( _types.empty() )
 	{
-		throw std::runtime_error("Cannot get first module with no modules");
+		throw std::runtime_error( "Cannot get first module with no modules" );
 	}
 	else if( _types.front() == CHAIN_PREDICT )
 	{

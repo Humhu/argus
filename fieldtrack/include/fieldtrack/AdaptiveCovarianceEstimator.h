@@ -62,10 +62,11 @@ public:
 
 	AdaptiveObservationCovarianceEstimator();
 
-	void Initialize( ros::NodeHandle& ph );
+	void Initialize( unsigned int dim, ros::NodeHandle& ph );
 
 	unsigned int NumSamples() const;
 	MatrixType GetR( const ros::Time& time );
+	// MatrixType GetR( const ros::Time& time, const UpdateInfo& preview );
 
 	void Update( const ros::Time& time, const UpdateInfo& update );
 
@@ -73,8 +74,9 @@ public:
 
 private:
 
-	typedef std::pair<ros::Time,MatrixType> InnoStamped;
+	typedef std::pair<ros::Time, MatrixType> InnoStamped;
 
+	unsigned int _dim;
 	unsigned int _maxSamples;
 	ros::Duration _maxAge;
 
@@ -85,7 +87,6 @@ private:
 	double _decayRate;
 
 	std::deque<InnoStamped> _innoProds; // Ordered so head is newest
-	MatrixType _lastHPHT;
 
 	void CheckBuffer( const ros::Time& now );
 };

@@ -41,7 +41,7 @@ ObservationSourceManager::ObservationSourceManager( ros::NodeHandle& ph,
 			GetParam( ph, "obs_mask", _fixedCov );
 		}
 
-		_adaptiveCov.Initialize( ph );
+		_adaptiveCov.Initialize( 6, ph );
 	}
 }
 
