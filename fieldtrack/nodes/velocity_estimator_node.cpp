@@ -143,7 +143,7 @@ public:
 		// TODO Publish Twist, TwistStamped, TwistWithCovarianceStamped modes as well
 		if( _publishOdom )
 		{
-			_odomPub.publish( _estimator.GetOdom() );
+			_odomPub.publish( rollOutEstimator.GetOdom() );
 		}
 		if( _publishInfo )
 		{

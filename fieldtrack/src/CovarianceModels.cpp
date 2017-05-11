@@ -3,6 +3,9 @@
 
 namespace argus
 {
+CovarianceModel::CovarianceModel() {}
+CovarianceModel::~CovarianceModel() {}
+
 FixedCovariance::FixedCovariance()
 {
 	link_ports( _logD.GetOutput(), _expD.GetInput() );
@@ -11,6 +14,67 @@ FixedCovariance::FixedCovariance()
 
 	link_ports( _lVec.GetOutput(), _lReshape.GetInput() );
 	link_ports( _lReshape.GetOutput(), _ldlt.GetXIn() );
+}
+
+void FixedCovariance::Foreprop()
+{
+	_logD.Foreprop();
+	_lVec.Foreprop();
+}
+
+void FixedCovariance::Invalidate()
+{
+	_logD.Invalidate();
+	_lVec.Invalidate();
+}
+
+void FixedCovariance::UnregisterAll()
+{
+	_ldlt.UnregisterAllConsumers( false );
+}
+
+void FixedCovariance::BindPredictModule( PredictModule& pred )
+{
+	link_ports( _ldlt.GetSOut(), pred.GetQIn() );
+}
+
+void FixedCovariance::BindUpdateModule( UpdateModule& upd )
+{
+	link_ports( _ldlt.GetSOut(), upd.GetRIn() );
+}
+
+VectorType FixedCovariance::GetParameters() const
+{
+	VectorType L = GetL();
+	VectorType D = GetLogD();
+	VectorType out( L.size() + D.size() );
+	out.head( L.size() ) = L;
+	out.tail( D.size() ) = D;
+	return out;
+}
+
+void FixedCovariance::SetParameters( const VectorType& p )
+{
+	VectorType L = GetL();
+	VectorType D = GetLogD();
+	if( p.size() != (L.size() + D.size() ) )
+	{
+		throw std::invalid_argument( "Got invalid sized parameter vector" );
+	}
+	VectorType Lp = p.head( L.size() );
+	VectorType Dp = p.tail( D.size() );
+	SetL( Lp );
+	SetLogD( Dp );
+}
+
+MatrixType FixedCovariance::GetBackpropValue() const
+{
+	const MatrixType& dL = GetLBackpropValue();
+	const MatrixType& dD = GetLogDBackpropValue();
+	MatrixType out( dL.rows(), dL.cols() + dD.cols() );
+	out.leftCols( dL.cols() ) = dL;
+	out.rightCols( dD.cols() ) = dD;
+	return out;
 }
 
 void FixedCovariance::Initialize( const MatrixType& cov )
@@ -37,18 +101,6 @@ void FixedCovariance::Initialize( const MatrixType& cov )
 	VectorType dInit = ldlt.vectorD().array().log().matrix();
 	_logD.SetValue( dInit );
 	_dReshape.SetShapeParams( MatrixType::Zero( dim, dim ), diagInds );
-}
-
-void FixedCovariance::Foreprop()
-{
-	_logD.Foreprop();
-	_lVec.Foreprop();
-}
-
-void FixedCovariance::Invalidate()
-{
-	_logD.Invalidate();
-	_lVec.Invalidate();
 }
 
 void FixedCovariance::SetL( const VectorType& L )
@@ -98,47 +150,80 @@ OutputPort& FixedCovariance::GetCovOut()
 	return _ldlt.GetSOut();
 }
 
-AdjustedInnovationCovariance::AdjustedInnovationCovariance()
+AdaptiveCovariance::AdaptiveCovariance()
+	: _windowSize( 1 ) {}
+
+void AdaptiveCovariance::SetWindowSize( unsigned int s )
 {
-	link_ports( _HPHT.GetSOut(), _estR.GetLeftIn() );
-	link_ports( _meanU.GetOutput(), _estR.GetRightIn() );
-	link_ports( _offU.GetOutput(), _opU.GetInput() );
-	_meanU.RegisterSource( _opU.GetOutput() );
+	_windowSize = s;
 }
 
-void AdjustedInnovationCovariance::Foreprop()
+void AdaptiveCovariance::SetDefaultValue( const MatrixType& S )
 {
-	_offU.Foreprop();
+	_defaultCov.SetValue( S );
 }
 
-void AdjustedInnovationCovariance::Invalidate()
+void AdaptiveCovariance::Foreprop()
+{}
+
+void AdaptiveCovariance::Invalidate()
+{}
+
+void AdaptiveCovariance::UnregisterAll()
 {
-	_offU.Invalidate();
+	_defaultCov.UnregisterAllConsumers( false );
+	_pointRs.clear();
+	_estRs.clear();
 }
 
-void AdjustedInnovationCovariance::SetC( const MatrixType& C )
+void AdaptiveCovariance::BindPredictModule( PredictModule& pred )
 {
-	_HPHT.SetX( C.transpose() );
+	// TODO
+	throw std::runtime_error( "Adaptive covariance doesn't support predict yet" );
 }
 
-void AdjustedInnovationCovariance::SetOffset( const VectorType& u )
+void AdaptiveCovariance::BindUpdateModule( UpdateModule& upd )
 {
-	_offU.SetValue( u );
+	if( _estRs.empty() )
+	{
+		link_ports( _defaultCov.GetOutput(), upd.GetRIn() );
+	}
+	else
+	{
+		link_ports( _estRs.back().GetOutput(), upd.GetRIn() );
+	}
+
+	_pointRs.emplace_back( upd );
+	
+	_estRs.emplace_back();
+	MeanModule& currR = _estRs.back();
+	unsigned int minInd = std::max( _pointRs.size() - _windowSize, (size_t) 0 );
+	for( unsigned int i = minInd; i < _pointRs.size(); ++i )
+	{
+		currR.RegisterSource( _pointRs[i].GetOutput() );
+	}
 }
 
-InputPort& AdjustedInnovationCovariance::AddUIn()
+VectorType AdaptiveCovariance::GetParameters() const { return VectorType(); }
+
+void AdaptiveCovariance::SetParameters( const VectorType& p )
 {
-	_rawUs.emplace_back();
-	_meanU.RegisterSource( _rawUs.back().GetOutput() );
-	return _rawUs.back().GetInput();
+	if( p.size() > 0 )
+	{
+		throw std::invalid_argument( "Adaptive covariance has no parameters" );
+	}
 }
 
-InputPort& AdjustedInnovationCovariance::GetPIn()
+MatrixType AdaptiveCovariance::GetBackpropValue() const { return MatrixType(); }
+
+AdaptiveCovariance::PointEstimate::PointEstimate( UpdateModule& upd )
 {
-	return _HPHT.GetCIn();
+	link_ports( upd.GetUOut(), _uOp.GetInput() );
+	link_ports( _uOp.GetOutput(), _estR.GetLeftIn() );
+	link_ports( upd.GetPOut(), _estR.GetRightIn() );
 }
 
-OutputPort& AdjustedInnovationCovariance::GetCovOut()
+OutputPort& AdaptiveCovariance::PointEstimate::GetOutput()
 {
 	return _estR.GetOutput();
 }

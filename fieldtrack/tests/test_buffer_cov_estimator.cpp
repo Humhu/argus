@@ -1,96 +1,110 @@
-#include "fieldtrack/KalmanChain.h"
+#include "fieldtrack/LikelihoodChainEstimator.h"
 #include "fieldtrack/CovarianceModels.h"
+
+#include "argus_utils/filter/KalmanFilter.h"
 #include "argus_utils/random/MultivariateGaussian.hpp"
+#include "argus_utils/utils/MathUtils.h"
 
 using namespace argus;
 
 int main( int argc, char** argv )
 {
-	unsigned int state_dim = 6;
+	unsigned int state_dim = 2;
+	unsigned int system_order = 2;
 	unsigned int obs_dim = 3;
+	unsigned int full_dim = state_dim * (system_order + 1);
+	double dt = 0.1;
 
-	MatrixType A = MatrixType::Identity( state_dim, state_dim ) +
-	               1E-3 * MatrixType::Random( state_dim, state_dim );
-	MatrixType C = MatrixType::Identity( obs_dim, state_dim );
+	MatrixType A = IntegralMatrix<double>( dt, state_dim, system_order );
+	MatrixType C = MatrixType::Identity( obs_dim, full_dim );
 
-	MatrixType Q = 1E-2 * MatrixType::Identity( state_dim, state_dim );
+	MatrixType Q = 1E-2 * MatrixType::Identity( full_dim, full_dim );
 	MatrixType R = 1E-2 * MatrixType::Identity( obs_dim, obs_dim );
-	MatrixType Qguess = 1E-2 * MatrixType::Identity( state_dim, state_dim );
-	MatrixType Rguess = 1E-2 * MatrixType::Identity( obs_dim, obs_dim );
+	MatrixType Qguess = 1E-1 * MatrixType::Identity( full_dim, full_dim );
+	MatrixType Rguess = 1E-1 * MatrixType::Identity( obs_dim, obs_dim );
 
-	MultivariateGaussian<> stateNoise( state_dim );
+	MultivariateGaussian<> stateNoise( full_dim );
 	MultivariateGaussian<> obsNoise( obs_dim );
 	stateNoise.SetCovariance( Q );
 	obsNoise.SetCovariance( R );
 
-	MatrixType P0 = 1E-1 * MatrixType::Identity( state_dim, state_dim );
-	MultivariateGaussian<> initDist( state_dim );
+	MatrixType P0 = 1E-1 * MatrixType::Identity( full_dim, full_dim );
+	MultivariateGaussian<> initDist( full_dim );
 	initDist.SetCovariance( P0 );
 
 	VectorType x0 = initDist.Sample();
 	SinkModule meanLL;
 
-	KalmanChain chain;
-	chain.Initialize( x0, P0 );
-	link_ports( chain.GetMeanLikelihood(), meanLL.GetInput() );
+	FixedCovariance::Ptr Qmodel = std::make_shared<FixedCovariance>();
+	Qmodel->Initialize( Qguess );
+	FixedCovariance::Ptr Rmodel = std::make_shared<FixedCovariance>();
+	Rmodel->Initialize( Rguess );
 
+	LikelihoodChainEstimator chain;
+	chain.RegisterTransCov( Qmodel );
+	chain.RegisterObsSource( "obs", Rmodel );
 
-	FixedCovariance Qmodel, Rmodel;
-	Qmodel.Initialize( Qguess );
-	Rmodel.Initialize( Rguess );
-
-	unsigned num_iters = 100;
-	VectorType x_curr = x0;
-	std::vector<VectorType> xs;
-	for( unsigned int i = 0; i < num_iters; ++i )
-	{
-		// Predict
-		x_curr = A * x_curr + stateNoise.Sample();
-		chain.AddLinearPredict( A, Qmodel.GetCovOut() );
-		xs.push_back( x_curr );
-
-		// Update
-		VectorType y = C * x_curr + obsNoise.Sample();
-		chain.AddLinearUpdate( C, y, Rmodel.GetCovOut() );
-	}
-
-	// Optimize
-	unsigned num_opt_iters = 200;
-	double alpha = 1E-1;
+	unsigned int numOuterIters = 100;
 	time_t start = clock();
-	for( unsigned int i = 0; i < num_opt_iters; ++i )
+	for( unsigned int n = 0; n < numOuterIters; n++ )
 	{
-		chain.Foreprop();
-		Qmodel.Foreprop();
-		Rmodel.Foreprop();
-		std::cout << "Iter " << i << " Mean LL " << meanLL.GetValue() << std::endl;
-		
-		meanLL.Backprop(MatrixType::Identity(1,1));
-		MatrixType dQD = Qmodel.GetLogDBackpropValue();
-		MatrixType dQL = Qmodel.GetLBackpropValue();
-		MatrixType dRD = Rmodel.GetLogDBackpropValue();
-		MatrixType dRL = Rmodel.GetLBackpropValue();
-		Eigen::Map<VectorType> dQDvec( dQD.data(), dQD.size(), 1 );
-		Eigen::Map<VectorType> dQLvec( dQL.data(), dQL.size(), 1 );		
-		Eigen::Map<VectorType> dRDvec( dRD.data(), dRD.size(), 1 );
-		Eigen::Map<VectorType> dRLvec( dRL.data(), dRL.size(), 1 );
+		chain.ClearChain();
+		Qmodel->UnregisterAll();
+		Rmodel->UnregisterAll();
+		chain.InitializeChain( x0, P0 );
 
-		std::cout << "Q:" << std::endl << Qmodel.GetCovOut().GetValue() << std::endl;
-		std::cout << "R:" << std::endl << Rmodel.GetCovOut().GetValue() << std::endl;
+		KalmanFilter filter;
+		filter.SetTransitionMatrix( A );
+		filter.SetTransitionCovariance( Qguess );
+		filter.SetObservationMatrix( C );
+		filter.SetObservationCovariance( Rguess );
+		filter.Initialize( x0, P0 );
 
-		chain.Invalidate();
-		Qmodel.Invalidate();
-		Rmodel.Invalidate();
+		unsigned num_iters = 50;
+		VectorType x_curr = x0;
+		for( unsigned int i = 0; i < num_iters; ++i )
+		{
+			x_curr = A * x_curr + stateNoise.Sample();
+			VectorType y = C * x_curr + obsNoise.Sample();
+			
+			// Predict
+			PredictInfo predInfo = filter.Predict();
+			UpdateInfo upInfo = filter.Update( y );
+			upInfo.frameId = "obs";
 
-		std::cout << "dQlogD: " << dQDvec.transpose() << std::endl;
-		std::cout << "dQL: " << dQLvec.transpose() << std::endl;
-		std::cout << "dRlogD: " << dRDvec.transpose() << std::endl;
-		std::cout << "dRL: " << dRLvec.transpose() << std::endl;
+			// Update
+			chain.ProcessInfo( predInfo );
+			chain.ProcessInfo( upInfo );
+		}
 
-		Qmodel.SetLogD( Qmodel.GetLogD() + alpha * dQDvec );
-		Qmodel.SetL( Qmodel.GetL() + alpha * dQLvec );		
-		Rmodel.SetLogD( Rmodel.GetLogD() + alpha * dRDvec );
-		Rmodel.SetL( Rmodel.GetL() + alpha * dRLvec );		
+		std::cout << "Final x: " << x_curr.transpose() << std::endl;
+
+		// Optimize
+		unsigned num_opt_iters = 10;
+		double alpha = 1e-1;
+		for( unsigned int i = 0; i < num_opt_iters; ++i )
+		{
+			chain.Invalidate();
+			chain.Foreprop();
+			std::cout << "Mean LL: " << chain.GetMeanLL() << std::endl;
+			chain.Backprop();
+
+			MatrixType dQ = Qmodel->GetBackpropValue();
+			Eigen::Map<VectorType> dQvec( dQ.data(), dQ.size(), 1 );
+			std::cout << "dQ: " << dQvec.transpose() << std::endl;
+			VectorType pQ = Qmodel->GetParameters() + dQvec * alpha;
+			std::cout << "Q params: " << pQ.transpose() << std::endl;
+
+			MatrixType dR = Rmodel->GetBackpropValue();
+			Eigen::Map<VectorType> dRvec( dR.data(), dR.size(), 1 );
+			std::cout << "dR: " << dRvec.transpose() << std::endl;
+			VectorType pR = Rmodel->GetParameters() + dRvec * alpha;
+			std::cout << "R params: " << pR.transpose() << std::endl;
+			
+			Qmodel->SetParameters( pQ );
+			Rmodel->SetParameters( pR );
+		}
+
 	}
 	time_t finish = clock();
 	std::cout << "Took " << (finish - start) / (float) CLOCKS_PER_SEC << " seconds." << std::endl;

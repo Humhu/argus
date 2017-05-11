@@ -62,11 +62,11 @@ include_directories( include
 
 add_library( fieldtrack
     src/AdaptiveCovarianceEstimator.cpp
-	# src/BufferTransitionEstimator.cpp
 	src/CovarianceModels.cpp
 	src/DimensionParser.cpp
 	src/FieldtrackCommon.cpp
 	src/KalmanChain.cpp
+	src/LikelihoodChainEstimator.cpp
 	src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp
@@ -115,15 +115,15 @@ target_link_libraries( test_buff_cov_estimator
 	fieldtrack 
 	${catkin_LIBRARIES})
 
-add_executable( test_adapt_estimator tests/test_adapt_estimator.cpp )
-target_link_libraries( test_adapt_estimator
-	fieldtrack 
-	${catkin_LIBRARIES})
+# add_executable( test_adapt_estimator tests/test_adapt_estimator.cpp )
+# target_link_libraries( test_adapt_estimator
+# 	fieldtrack 
+# 	${catkin_LIBRARIES})
 
-add_executable( test_trans_cov_estimator tests/test_trans_cov_estimator.cpp )
-target_link_libraries( test_trans_cov_estimator
-	fieldtrack 
-	${catkin_LIBRARIES})
+# add_executable( test_trans_cov_estimator tests/test_trans_cov_estimator.cpp )
+# target_link_libraries( test_trans_cov_estimator
+# 	fieldtrack 
+# 	${catkin_LIBRARIES})
 
 ## Mark executables and/or libraries for installation
 install(TARGETS state_estimator_node

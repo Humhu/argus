@@ -28,6 +28,9 @@ public:
 
 	const MatrixType& GetObservationMatrix() const;
 
+	// TODO
+	// CovarianceModel::Ptr InitializeModel() const;
+
 	DerivObservation operator()( const geometry_msgs::PoseStamped& msg );
 	DerivObservation operator()( const geometry_msgs::PoseWithCovarianceStamped& msg );
 	DerivObservation operator()( const geometry_msgs::TwistStamped& msg );
@@ -39,6 +42,7 @@ private:
 
 	std::string _targetFrame;
 	ExtrinsicsInterface::Ptr _extrinsicsManager;
+	
 	CovarianceMode _mode;
 	MatrixType _fixedCov;
 	AdaptiveObservationCovarianceEstimator _adaptiveCov;

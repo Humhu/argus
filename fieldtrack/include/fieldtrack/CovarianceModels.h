@@ -5,19 +5,53 @@
 #include "modprop/optim/optim.hpp"
 #include <deque>
 
+#include "argus_utils/filter/FilterInfo.h"
+
 namespace argus
 {
 
-class FixedCovariance
+class CovarianceModel
 {
 public:
 
+	typedef std::shared_ptr<CovarianceModel> Ptr;
+
+	CovarianceModel();
+	~CovarianceModel();
+
+	virtual void Foreprop() = 0;
+	virtual void Invalidate() = 0;
+	virtual void UnregisterAll() = 0;
+
+	virtual void BindPredictModule( PredictModule& pred ) = 0;
+	virtual void BindUpdateModule( UpdateModule& upd ) = 0;
+
+	virtual VectorType GetParameters() const = 0;
+	virtual void SetParameters( const VectorType& p ) = 0;
+	virtual MatrixType GetBackpropValue() const = 0;
+};
+
+class FixedCovariance
+: public CovarianceModel
+{
+public:
+
+	typedef std::shared_ptr<FixedCovariance> Ptr;
+
 	FixedCovariance();
 
-	void Initialize( const MatrixType& cov );
 	void Foreprop();
 	void Invalidate();
+	void UnregisterAll();
 
+	void BindPredictModule( PredictModule& pred );
+	void BindUpdateModule( UpdateModule& upd );
+
+	VectorType GetParameters() const;
+	void SetParameters( const VectorType& p );
+	MatrixType GetBackpropValue() const;	
+
+	void Initialize( const MatrixType& cov );
 	void SetL( const VectorType& L );
 	VectorType GetL() const;
 	void SetLogD( const VectorType& D );
@@ -38,32 +72,45 @@ private:
 	XTCXModule _ldlt;
 };
 
-// NOTE This uses the raw residuals, which makes the optimization a bit
-// unstable for longer chains...
-class AdjustedInnovationCovariance
+class AdaptiveCovariance
+: public CovarianceModel
 {
 public:
 
-	AdjustedInnovationCovariance();
+	typedef std::shared_ptr<AdaptiveCovariance> Ptr;
+
+	AdaptiveCovariance();
+
+	void SetWindowSize( unsigned int s );
+	void SetDefaultValue( const MatrixType& S );
 
 	void Foreprop();
 	void Invalidate();
-	void SetC( const MatrixType& C );
+	void UnregisterAll();
 
-	void SetOffset( const VectorType& u );
+	void BindPredictModule( PredictModule& pred );
+	void BindUpdateModule( UpdateModule& upd );
 
-	InputPort& AddUIn();
-	InputPort& GetPIn();
-	OutputPort& GetCovOut();
+	VectorType GetParameters() const;
+	void SetParameters( const VectorType& p );
+	MatrixType GetBackpropValue() const;
 
 private:
 
-	ConstantModule _offU;
-	RepOuterProductModule _opU;
-	std::deque<RepOuterProductModule> _rawUs;
-	MeanModule _meanU;
-	InnerXTCXModule _HPHT;
-	AdditionModule _estR;
+	struct PointEstimate
+	{
+		RepOuterProductModule _uOp;
+		AdditionModule _estR;
+
+		PointEstimate( UpdateModule& upd );
+		OutputPort& GetOutput();
+	};
+
+	ConstantModule _defaultCov;
+
+	unsigned int _windowSize;
+	std::deque<PointEstimate> _pointRs; // Ordered oldest to newest
+	std::deque<MeanModule> _estRs;
 };
 
 }

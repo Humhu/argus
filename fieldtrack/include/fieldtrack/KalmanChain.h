@@ -1,10 +1,9 @@
 #pragma once
 
 #include "modprop/kalman/kalman.hpp"
-#include "modprop/optim/GaussianLikelihoodModule.h"
-#include "modprop/optim/MeanModule.h"
 #include "argus_utils/filter/FilterInfo.h"
 
+#include <memory>
 #include <deque>
 
 namespace argus
@@ -13,6 +12,10 @@ class KalmanChain
 {
 public:
 
+	typedef std::shared_ptr<PredictModule> PredictModulePtr;
+	typedef std::shared_ptr<UpdateModule> UpdateModulePtr;
+	typedef std::pair<PredictModulePtr, UpdateModulePtr> ModulePtrPair;
+
 	KalmanChain();
 
 	void Initialize( const VectorType& x0, const MatrixType& P0 );
@@ -20,24 +23,12 @@ public:
 	void Foreprop();
 	void Invalidate();
 
-	// NOTE Keeping the ability to marginalize out old poses is a huge pain
-	// and complicates the use of this class. Perhaps we should drop it!
-	void RemoveEarliest();
+	// NOTE The proper thing to do is return a boost::variant but I am super lazy
+	ModulePtrPair RemoveEarliest();
+	void Clear();
 
-	void AddLinearPredict( const MatrixType& A, OutputPort& Qsrc,
-	                       const std::vector<InputPort*>& xConsumers = {},
-	                       const std::vector<InputPort*>& PConsumers = {} );
-
-	void AddLinearUpdate( const MatrixType& C, const VectorType& y, OutputPort& Rsrc,
-	                      const std::vector<InputPort*>& xConsumers = {},
-	                      const std::vector<InputPort*>& PConsumers = {},
-	                      const std::vector<InputPort*>& vConsumers = {},
-	                      const std::vector<InputPort*>& SConsumers = {},
-						  const std::vector<InputPort*>& uConsumers = {} );
-
-	// TODO Add the nonlinear updates
-
-	OutputPort& GetMeanLikelihood();
+	std::shared_ptr<PredictModule> AddLinearPredict( const MatrixType& A );
+	std::shared_ptr<UpdateModule> AddLinearUpdate( const MatrixType& C, const VectorType& y );
 
 private:
 
@@ -50,11 +41,8 @@ private:
 	KalmanPrior _prior;
 
 	std::deque<ChainType> _types;
-	// NOTE Use deques because we need pointers to stay valid
-	std::deque<PredictModule> _predicts;
-	std::deque<UpdateModule> _updates;
-	std::deque<GaussianLikelihoodModule> _likelihoods;
-	MeanModule _meanLikelihood;
+	std::deque<PredictModulePtr> _predicts;
+	std::deque<UpdateModulePtr> _updates;
 
 	KalmanOut& GetLastModule();
 	KalmanIn& GetFirstModule();

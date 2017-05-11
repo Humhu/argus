@@ -21,129 +21,88 @@ void KalmanChain::Invalidate()
 	_prior.Invalidate();
 }
 
-void KalmanChain::RemoveEarliest()
+KalmanChain::ModulePtrPair KalmanChain::RemoveEarliest()
 {
-	if( _types.empty() ) { return; }
+	KalmanChain::ModulePtrPair out;
+	out.first = nullptr;
+	out.second = nullptr;
+	if( _types.empty() ) { return out; }
 
 	// NOTE All this specialized logic is sort of a nightmare... can we simplify it?
 	if( _types.front() == CHAIN_PREDICT )
 	{
-		unlink_kalman_ports( _prior, _predicts[0] );
+		unlink_kalman_ports( _prior, *_predicts[0] );
 		if( _types.size() > 1 )
 		{
 			if( _types[1] == CHAIN_PREDICT )
 			{
-				unlink_kalman_ports( _predicts[0], _predicts[1] );
-				link_kalman_ports( _prior, _predicts[1] );
+				unlink_kalman_ports( *_predicts[0], *_predicts[1] );
+				link_kalman_ports( _prior, *_predicts[1] );
 			}
 			else if( _types[1] == CHAIN_UPDATE )
 			{
-				unlink_kalman_ports( _predicts[0], _updates[0] );
-				link_kalman_ports( _prior, _updates[0] );
+				unlink_kalman_ports( *_predicts[0], *_updates[0] );
+				link_kalman_ports( _prior, *_updates[0] );
 			}
 		}
-		_prior.SetX( _predicts[0].GetX() );
-		_prior.SetP( _predicts[0].GetP() );
+		_prior.SetX( _predicts[0]->GetX() );
+		_prior.SetP( _predicts[0]->GetP() );
+
+		out.first = _predicts.front();
 		_predicts.pop_front();
 	}
 	else // _types.front() == CHAIN_UPDATE
 	{
-		unlink_kalman_ports( _prior, _updates[0] );
-		unlink_ports( _updates[0].GetVOut(), _likelihoods[0].GetXIn() );
-		unlink_ports( _updates[0].GetSOut(), _likelihoods[0].GetSIn() );
-		_meanLikelihood.UnregisterSource( _likelihoods[0].GetLLOut() );
-
+		unlink_kalman_ports( _prior, *_updates[0] );
 		if( _types.size() > 1 )
 		{
 			if( _types[1] == CHAIN_PREDICT )
 			{
-				unlink_kalman_ports( _updates[0], _predicts[0] );
-				link_kalman_ports( _prior, _predicts[0] );
+				unlink_kalman_ports( *_updates[0], *_predicts[0] );
+				link_kalman_ports( _prior, *_predicts[0] );
 			}
 			else if( _types[1] == CHAIN_UPDATE )
 			{
-				unlink_kalman_ports( _updates[0], _updates[1] );
-				link_kalman_ports( _prior, _updates[1] );
+				unlink_kalman_ports( *_updates[0], *_updates[1] );
+				link_kalman_ports( _prior, *_updates[1] );
 			}
 		}
-		_prior.SetX( _updates[0].GetX() );
-		_prior.SetP( _updates[0].GetP() );
+		_prior.SetX( _updates[0]->GetX() );
+		_prior.SetP( _updates[0]->GetP() );
+		out.second = _updates.front();
 		_updates.pop_front();
-		_likelihoods.pop_front();
 	}
+	_types.pop_front();
+	return out;
 }
 
-void KalmanChain::AddLinearPredict( const MatrixType& A,
-                                    OutputPort& Qsrc,
-                                    const std::vector<InputPort*>& xConsumers,
-                                    const std::vector<InputPort*>& PConsumers )
+void KalmanChain::Clear()
 {
-	_predicts.emplace_back();
-	PredictModule& pred = _predicts.back();
-	pred.SetLinearParams( A );
+	_types.clear();
+	_predicts.clear();
+	_updates.clear();
+	_prior.UnregisterAllConsumers( false );
+}
 
-	link_kalman_ports( GetLastModule(), pred );
-	link_ports( Qsrc, pred.GetQIn() );
+KalmanChain::PredictModulePtr KalmanChain::AddLinearPredict( const MatrixType& A )
+{
+	PredictModulePtr pred = std::make_shared<PredictModule>();
+	_predicts.emplace_back( pred );
+	pred->SetLinearParams( A );
+	link_kalman_ports( GetLastModule(), *pred );
 	_types.push_back( CHAIN_PREDICT );
-
-	BOOST_FOREACH( InputPort * xCon, xConsumers )
-	{
-		link_ports( pred.GetXOut(), *xCon );
-	}
-	BOOST_FOREACH( InputPort * PCon, PConsumers )
-	{
-		link_ports( pred.GetPOut(), *PCon );
-	}
+	return pred;
 }
 
-void KalmanChain::AddLinearUpdate( const MatrixType& C,
-                                   const VectorType& y,
-                                   OutputPort& Rsrc,
-                                   const std::vector<InputPort*>& xConsumers,
-                                   const std::vector<InputPort*>& PConsumers,
-                                   const std::vector<InputPort*>& vConsumers,
-                                   const std::vector<InputPort*>& SConsumers,
-								   const std::vector<InputPort*>& uConsumers )
+KalmanChain::UpdateModulePtr KalmanChain::AddLinearUpdate( const MatrixType& C,
+                                                           const VectorType& y )
 {
-	_updates.emplace_back();
-	_likelihoods.emplace_back();
-	UpdateModule& upd = _updates.back();
-	GaussianLikelihoodModule& ll = _likelihoods.back();
-
-	upd.SetLinearParams( C, y );
-	link_ports( upd.GetVOut(), ll.GetXIn() );
-	link_ports( upd.GetSOut(), ll.GetSIn() );
-	link_kalman_ports( GetLastModule(), upd );
-	link_ports( Rsrc, upd.GetRIn() );
+	UpdateModulePtr upd = std::make_shared<UpdateModule>();
+	_updates.emplace_back( upd );
+	upd->SetLinearParams( C, y );
+	link_kalman_ports( GetLastModule(), *upd );
 	_types.push_back( CHAIN_UPDATE );
-	_meanLikelihood.RegisterSource( ll.GetLLOut() );
-
-	// TODO How to manage removal of v and S consumers?
-	BOOST_FOREACH( InputPort * xCon, xConsumers )
-	{
-		link_ports( upd.GetXOut(), *xCon );
-	}
-	BOOST_FOREACH( InputPort * PCon, PConsumers )
-	{
-		link_ports( upd.GetPOut(), *PCon );
-	}
-	BOOST_FOREACH( InputPort * vCon, vConsumers )
-	{
-		link_ports( upd.GetVOut(), *vCon );
-	}
-	BOOST_FOREACH( InputPort * SCon, SConsumers )
-	{
-		link_ports( upd.GetSOut(), *SCon );
-	}
-	BOOST_FOREACH( InputPort * uCon, uConsumers )
-	{
-		link_ports( upd.GetUOut(), *uCon );
-	}
-}
-
-OutputPort& KalmanChain::GetMeanLikelihood()
-{
-	return _meanLikelihood.GetOutput();
+	return upd;
 }
 
 KalmanIn& KalmanChain::GetFirstModule()
@@ -154,11 +113,11 @@ KalmanIn& KalmanChain::GetFirstModule()
 	}
 	else if( _types.front() == CHAIN_PREDICT )
 	{
-		return _predicts.front();
+		return *_predicts.front();
 	}
 	else // _types.front() == CHAIN_UPDATE
 	{
-		return _updates.front();
+		return *_updates.front();
 	}
 }
 
@@ -170,11 +129,11 @@ KalmanOut& KalmanChain::GetLastModule()
 	}
 	else if( _types.back() == CHAIN_PREDICT )
 	{
-		return _predicts.back();
+		return *_predicts.back();
 	}
 	else // _types.back() == CHAIN_UPDATE
 	{
-		return _updates.back();
+		return *_updates.back();
 	}
 }
 }
