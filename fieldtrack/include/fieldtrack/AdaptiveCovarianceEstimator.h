@@ -68,6 +68,8 @@ public:
 	MatrixType GetR( const ros::Time& time );
 	// MatrixType GetR( const ros::Time& time, const UpdateInfo& preview );
 
+	const MatrixType& GetPriorCov() const;
+
 	void Update( const ros::Time& time, const UpdateInfo& update );
 
 	void Reset();

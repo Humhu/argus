@@ -1,4 +1,4 @@
-#include "fieldtrack/LikelihoodChainEstimator.h"
+#include "fieldtrack/LikelihoodChain.h"
 #include "fieldtrack/CovarianceModels.h"
 
 #include "argus_utils/filter/KalmanFilter.h"
@@ -19,13 +19,13 @@ int main( int argc, char** argv )
 	MatrixType C = MatrixType::Identity( obs_dim, full_dim );
 
 	MatrixType Q = 1E-2 * MatrixType::Identity( full_dim, full_dim );
-	MatrixType R = 1E-2 * MatrixType::Identity( obs_dim, obs_dim );
+	MatrixType R = 1E-1 * MatrixType::Identity( obs_dim, obs_dim );
 	MatrixType Qguess = 1E-1 * MatrixType::Identity( full_dim, full_dim );
-	MatrixType Rguess = 1E-1 * MatrixType::Identity( obs_dim, obs_dim );
+	MatrixType Rguess = MatrixType::Identity( obs_dim, obs_dim );
 
 	MultivariateGaussian<> stateNoise( full_dim );
 	MultivariateGaussian<> obsNoise( obs_dim );
-	stateNoise.SetCovariance( Q );
+	stateNoise.SetCovariance( Q * dt );
 	obsNoise.SetCovariance( R );
 
 	MatrixType P0 = 1E-1 * MatrixType::Identity( full_dim, full_dim );
@@ -35,12 +35,19 @@ int main( int argc, char** argv )
 	VectorType x0 = initDist.Sample();
 	SinkModule meanLL;
 
-	FixedCovariance::Ptr Qmodel = std::make_shared<FixedCovariance>();
+	TimeScaledCovariance::Ptr Qmodel = std::make_shared<TimeScaledCovariance>();
 	Qmodel->Initialize( Qguess );
-	FixedCovariance::Ptr Rmodel = std::make_shared<FixedCovariance>();
-	Rmodel->Initialize( Rguess );
+	Qmodel->EnableL( false );
+	
+	// FixedCovariance::Ptr Rmodel = std::make_shared<FixedCovariance>();
+	// Rmodel->Initialize( Rguess );
+	// AdaptiveCovariance::Ptr Rmodel = std::make_shared<AdaptiveCovariance>();
+	// Rmodel->SetWindowSize( 10 );
+	// Rmodel->SetDefaultValue( Rguess );
+	PassCovariance::Ptr Rmodel = std::make_shared<PassCovariance>();
 
-	LikelihoodChainEstimator chain;
+	LikelihoodChain chain;
+	chain.SetDiscountFactor( 1.0 );
 	chain.RegisterTransCov( Qmodel );
 	chain.RegisterObsSource( "obs", Rmodel );
 
@@ -49,9 +56,6 @@ int main( int argc, char** argv )
 	for( unsigned int n = 0; n < numOuterIters; n++ )
 	{
 		chain.ClearChain();
-		Qmodel->UnregisterAll();
-		Rmodel->UnregisterAll();
-		chain.InitializeChain( x0, P0 );
 
 		KalmanFilter filter;
 		filter.SetTransitionMatrix( A );
@@ -60,7 +64,7 @@ int main( int argc, char** argv )
 		filter.SetObservationCovariance( Rguess );
 		filter.Initialize( x0, P0 );
 
-		unsigned num_iters = 50;
+		unsigned num_iters = 100;
 		VectorType x_curr = x0;
 		for( unsigned int i = 0; i < num_iters; ++i )
 		{
@@ -69,6 +73,7 @@ int main( int argc, char** argv )
 			
 			// Predict
 			PredictInfo predInfo = filter.Predict();
+			predInfo.step_dt = dt;
 			UpdateInfo upInfo = filter.Update( y );
 			upInfo.frameId = "obs";
 
@@ -77,11 +82,10 @@ int main( int argc, char** argv )
 			chain.ProcessInfo( upInfo );
 		}
 
-		std::cout << "Final x: " << x_curr.transpose() << std::endl;
-
 		// Optimize
 		unsigned num_opt_iters = 10;
-		double alpha = 1e-1;
+		double alpha = 100;
+		double maxNorm = 0.1;
 		for( unsigned int i = 0; i < num_opt_iters; ++i )
 		{
 			chain.Invalidate();
@@ -92,17 +96,20 @@ int main( int argc, char** argv )
 			MatrixType dQ = Qmodel->GetBackpropValue();
 			Eigen::Map<VectorType> dQvec( dQ.data(), dQ.size(), 1 );
 			std::cout << "dQ: " << dQvec.transpose() << std::endl;
-			VectorType pQ = Qmodel->GetParameters() + dQvec * alpha;
+			VectorType qStep = dQvec * alpha;
+			double qStepNorm = qStep.lpNorm<1>();
+			if( qStepNorm > maxNorm ) { qStep = qStep * maxNorm / qStepNorm;  }
+			VectorType pQ = Qmodel->GetParameters() + qStep;
 			std::cout << "Q params: " << pQ.transpose() << std::endl;
 
-			MatrixType dR = Rmodel->GetBackpropValue();
-			Eigen::Map<VectorType> dRvec( dR.data(), dR.size(), 1 );
-			std::cout << "dR: " << dRvec.transpose() << std::endl;
-			VectorType pR = Rmodel->GetParameters() + dRvec * alpha;
-			std::cout << "R params: " << pR.transpose() << std::endl;
+			// MatrixType dR = Rmodel->GetBackpropValue();
+			// Eigen::Map<VectorType> dRvec( dR.data(), dR.size(), 1 );
+			// std::cout << "dR: " << dRvec.transpose() << std::endl;
+			// VectorType pR = Rmodel->GetParameters() + dRvec * alpha;
+			// std::cout << "R params: " << pR.transpose() << std::endl;
 			
 			Qmodel->SetParameters( pQ );
-			Rmodel->SetParameters( pR );
+			// Rmodel->SetParameters( pR );
 		}
 
 	}

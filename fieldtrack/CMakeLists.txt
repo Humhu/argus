@@ -66,7 +66,8 @@ add_library( fieldtrack
 	src/DimensionParser.cpp
 	src/FieldtrackCommon.cpp
 	src/KalmanChain.cpp
-	src/LikelihoodChainEstimator.cpp
+	src/LikelihoodChain.cpp
+	src/NoiseLearner.cpp
 	src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
 	src/StateEstimator.cpp

@@ -3,6 +3,7 @@
 #include "argus_utils/filter/KalmanFilter.h"
 #include "fieldtrack/FieldtrackCommon.h"
 #include "fieldtrack/VelocitySourceManager.h"
+#include "fieldtrack/CovarianceModels.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
 #include <unordered_map>
@@ -45,9 +46,13 @@ public:
 	}
 
 	std::vector<FilterInfo> Process( const ros::Time& until );
-
 	void Reset( const ros::Time& time );
 	nav_msgs::Odometry GetOdom() const;
+
+	CovarianceModel::Ptr InitTransCovModel() const;
+	std::unordered_map<std::string, CovarianceModel::Ptr> InitObsCovModels() const;
+	void SetTransCovModel( const CovarianceModel& model );
+	void SetObsCovModel( const std::string& name, const CovarianceModel& model );
 
 private:
 

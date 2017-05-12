@@ -2,15 +2,18 @@
 
 #include "fieldtrack/FieldtrackCommon.h"
 #include "fieldtrack/VelocityEstimator.h"
+#include "fieldtrack/NoiseLearner.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/geometry/GeometryUtils.h"
+#include "argus_utils/synchronization/SynchronizationTypes.h"
 
 #include <nav_msgs/Odometry.h>
 #include "fieldtrack/ResetFilter.h"
 #include "fieldtrack/TargetState.h"
 
 #include <boost/foreach.hpp>
+#include <boost/circular_buffer.hpp>
 
 using namespace argus;
 
@@ -31,6 +34,25 @@ public:
 		                                    &VelocityEstimatorNode::ResetCallback,
 		                                    this );
 
+		// Initialize covariance learner
+		ros::NodeHandle lh( ph.resolveName( "learner" ) );
+		double learnRate;
+		GetParam( lh, "rate", learnRate, 1.0 );
+		_learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
+		                              &VelocityEstimatorNode::LearnCallback,
+		                              this );
+		_learner.Initialize( lh );
+		_transModel = _estimator.InitTransCovModel();
+		_learner.RegisterTransModel( _transModel );
+		_obsModels = _estimator.InitObsCovModels();
+		typedef ModelRegistry::value_type Item;
+		BOOST_FOREACH( Item & item, _obsModels )
+		{
+			const std::string& name = item.first;
+			const CovarianceModel::Ptr& model = item.second;
+			_learner.RegisterObsModel( name, model );
+		}
+
 		// Subscribe to all update topics
 		YAML::Node updateSources;
 		GetParamRequired( ph, "update_sources", updateSources );
@@ -40,13 +62,13 @@ public:
 			const std::string& sourceName = iter->first.as<std::string>();
 			const YAML::Node& info = iter->second;
 
+
 			std::string topic, type;
 			unsigned int buffSize;
 			GetParamRequired( info, "topic", topic );
 			GetParamRequired( info, "type", type );
 			GetParam( info, "buffer_size", buffSize, (unsigned int) 0 );
 
-			_updateSubs.emplace_back();
 			if( type == "deriv_stamped" )
 			{
 				SubscribeToUpdates<geometry_msgs::TwistStamped>( nh, topic, buffSize, sourceName );
@@ -65,6 +87,7 @@ public:
 			}
 		}
 
+		// Parse output parameters
 		GetParam( ph, "publish_odom", _publishOdom, false );
 		if( _publishOdom )
 		{
@@ -135,7 +158,14 @@ public:
 		}
 
 		ros::Time lagged = event.current_real - _headLag;
+		
+		// NOTE We want to make sure we don't try and update the estimator models
+		// while they're in use
+		// NOTE Don't want to put the lock in the estimator itself since it complicates
+		// copy construction
+		WriteLock lock( _estimatorMutex );
 		std::vector<FilterInfo> info = _estimator.Process( lagged );
+		lock.unlock();
 
 		VelocityEstimator rollOutEstimator( _estimator );
 		rollOutEstimator.Process( event.current_real );
@@ -151,6 +181,7 @@ public:
 			BOOST_FOREACH( const FilterInfo &fi, info )
 			{
 				_infoPub.publish( boost::apply_visitor( vis, fi ) );
+				_learner.BufferInfo( fi );
 			}
 		}
 	}
@@ -167,7 +198,24 @@ public:
 		return true;
 	}
 
-public:
+	void LearnCallback( const ros::TimerEvent& event )
+	{
+		ROS_INFO_STREAM( "Spinning..." );
+		_learner.LearnSpin();
+
+		WriteLock lock( _estimatorMutex );
+		ROS_INFO_STREAM( "Updating models..." );
+		_estimator.SetTransCovModel( *_transModel );
+		typedef ModelRegistry::value_type Item;
+		BOOST_FOREACH( const Item &item, _obsModels )
+		{
+			const std::string& name = item.first;
+			const CovarianceModel::Ptr& model = item.second;
+			_estimator.SetObsCovModel( name, *model );
+		}
+	}
+
+private:
 
 	bool _initialized;
 
@@ -186,15 +234,32 @@ public:
 
 	ros::Duration _headLag;
 	VelocityEstimator _estimator;
+	Mutex _estimatorMutex;
+
+	ros::Timer _learnTimer;
+	NoiseLearner _learner;
+	CovarianceModel::Ptr _transModel;
+	typedef std::unordered_map<std::string, CovarianceModel::Ptr> ModelRegistry;
+	ModelRegistry _obsModels;
 };
 
-int main( int argc, char**argv )
+int main( int argc, char** argv )
 {
 	ros::init( argc, argv, "velocity_estimator_node" );
 
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
 	VelocityEstimatorNode estimator( nh, ph );
-	ros::spin();
+
+	unsigned int numThreads;
+	GetParam( ph, "num_threads", numThreads, (unsigned int) 2 );
+	if( numThreads < 2 )
+	{
+		throw std::invalid_argument( "Requires at least 2 threads" );
+	}
+	ros::AsyncSpinner spinner( numThreads );
+	spinner.start();
+	ros::waitForShutdown();
+
 	return 0;
 }

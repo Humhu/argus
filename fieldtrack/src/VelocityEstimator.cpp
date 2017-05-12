@@ -51,6 +51,53 @@ void VelocityEstimator::Initialize( ros::NodeHandle& ph,
 	}
 }
 
+CovarianceModel::Ptr VelocityEstimator::InitTransCovModel() const
+{
+	TimeScaledCovariance::Ptr cov = std::make_shared<TimeScaledCovariance>();
+	cov->Initialize( _transCovRate );
+	return cov;
+}
+
+std::unordered_map<std::string, CovarianceModel::Ptr>
+VelocityEstimator::InitObsCovModels() const
+{
+	std::unordered_map<std::string, CovarianceModel::Ptr> out;
+	typedef SourceRegistry::value_type Item;
+	BOOST_FOREACH( const Item& item, _sourceRegistry )
+	{
+		const std::string& name = item.first;
+		const VelocitySourceManager& manager = item.second;
+		out[name] = manager.InitializeModel();
+	}
+	return out;
+}
+
+
+void VelocityEstimator::SetTransCovModel( const CovarianceModel& model )
+{
+	// TODO Different transition covariance modes
+	try
+	{
+		const FixedCovariance& mod = dynamic_cast<const FixedCovariance&>( model );
+		_transCovRate = mod.GetValue();
+		ROS_INFO_STREAM( "Transition covariance rate updated to: " << std::endl << _transCovRate );
+	}
+	catch( std::bad_cast& e )
+	{
+		throw std::invalid_argument( "Transition cov type mismatch: " + std::string( e.what() ) );
+	}
+}
+
+void VelocityEstimator::SetObsCovModel( const std::string& name,
+                                        const CovarianceModel& model )
+{
+	if( _sourceRegistry.count( name ) == 0 )
+	{
+		throw std::invalid_argument( "Source " + name + " not registered!" );
+	}
+	_sourceRegistry[name].SetModel( model );
+}
+
 unsigned int VelocityEstimator::StateDim() const
 {
 	return _twoDimensional ? PoseSE2::TangentDimension :
@@ -131,7 +178,7 @@ std::vector<FilterInfo> VelocityEstimator::Process( const ros::Time& until )
 			UpdateInfo upInfo = _filter.Update( obs.derivatives, C, obs.covariance );
 
 			upInfo.time = _filterTime;
-			upInfo.frameId = obs.referenceFrame;
+			upInfo.frameId = sourceName; //obs.referenceFrame;
 			upInfo.stepNum = _stepCounter++;
 			infos.emplace_back( upInfo );
 
@@ -200,7 +247,9 @@ PredictInfo VelocityEstimator::PredictUntil( const ros::Time& until )
 	}
 	_filterTime = until;
 	MatrixType A = IntegralMatrix<double>( dt, StateDim(), _filterOrder );
-	return _filter.Predict( A, GetTransitionCov( dt ) );
+	PredictInfo info = _filter.Predict( A, GetTransitionCov( dt ) );
+	info.step_dt = dt;
+	return info;
 }
 
 void VelocityEstimator::CheckFilter()

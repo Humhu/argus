@@ -10,8 +10,9 @@
 
 namespace argus
 {
-class LikelihoodChainEstimator
-	: public boost::static_visitor<void>
+class LikelihoodChain
+	: public boost::static_visitor<void>,
+	public KalmanChain
 {
 public:
 
@@ -19,7 +20,11 @@ public:
 	typedef KalmanChain::UpdateModulePtr UpdateModulePtr;
 	typedef KalmanChain::ModulePtrPair ModulePtrPair;
 
-	LikelihoodChainEstimator();
+	LikelihoodChain();
+	
+	// TODO Don't really need/want this anymore
+	void SetDiscountFactor( double gamma );
+
 	void Foreprop();
 	void Backprop();
 	void Invalidate();
@@ -40,10 +45,17 @@ private:
 	typedef std::unordered_map<std::string, CovarianceModel::Ptr> SourceRegistry;
 	SourceRegistry _obsModels;
 
-	KalmanChain _chain;
+	double _gamma;
+	bool _initialized;
+
+	std::deque<PredictInfo> _accPreds;
+
 	CovarianceModel::Ptr _transCov;
+	std::deque<ScalingModule> _scalers;
 	std::deque<GaussianLikelihoodModule> _glls;
 	MeanModule _meanLL;
 	SinkModule _meanSink;
+
+	void ProcessPreds();
 };
 }

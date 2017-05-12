@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include "fieldtrack/FieldtrackCommon.h"
 #include "fieldtrack/AdaptiveCovarianceEstimator.h"
+#include "fieldtrack/CovarianceModels.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 
 namespace argus
@@ -28,8 +29,8 @@ public:
 
 	const MatrixType& GetObservationMatrix() const;
 
-	// TODO
-	// CovarianceModel::Ptr InitializeModel() const;
+	CovarianceModel::Ptr InitializeModel() const;
+	void SetModel( const CovarianceModel& model );
 
 	DerivObservation operator()( const geometry_msgs::PoseStamped& msg );
 	DerivObservation operator()( const geometry_msgs::PoseWithCovarianceStamped& msg );

@@ -4,6 +4,8 @@ namespace argus
 {
 KalmanChain::KalmanChain() {}
 
+KalmanChain::~KalmanChain() {}
+
 void KalmanChain::Initialize( const VectorType& x0,
                               const MatrixType& P0 )
 {
@@ -20,6 +22,10 @@ void KalmanChain::Invalidate()
 {
 	_prior.Invalidate();
 }
+
+size_t KalmanChain::NumModules() const { return _types.size(); }
+size_t KalmanChain::NumPredicts() const { return _predicts.size(); }
+size_t KalmanChain::NumUpdates() const { return _updates.size(); }
 
 KalmanChain::ModulePtrPair KalmanChain::RemoveEarliest()
 {
@@ -87,9 +93,10 @@ void KalmanChain::Clear()
 KalmanChain::PredictModulePtr KalmanChain::AddLinearPredict( const MatrixType& A )
 {
 	PredictModulePtr pred = std::make_shared<PredictModule>();
+	KalmanOut& prev = GetLastModule();
 	_predicts.emplace_back( pred );
 	pred->SetLinearParams( A );
-	link_kalman_ports( GetLastModule(), *pred );
+	link_kalman_ports( prev, *pred );
 	_types.push_back( CHAIN_PREDICT );
 	return pred;
 }
@@ -98,9 +105,10 @@ KalmanChain::UpdateModulePtr KalmanChain::AddLinearUpdate( const MatrixType& C,
                                                            const VectorType& y )
 {
 	UpdateModulePtr upd = std::make_shared<UpdateModule>();
+	KalmanOut& prev = GetLastModule();	
 	_updates.emplace_back( upd );
 	upd->SetLinearParams( C, y );
-	link_kalman_ports( GetLastModule(), *upd );
+	link_kalman_ports( prev, *upd );
 	_types.push_back( CHAIN_UPDATE );
 	return upd;
 }

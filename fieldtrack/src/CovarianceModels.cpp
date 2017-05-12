@@ -1,4 +1,5 @@
 #include "fieldtrack/CovarianceModels.h"
+#include <boost/foreach.hpp>
 #include <Eigen/Cholesky>
 
 namespace argus
@@ -6,14 +7,83 @@ namespace argus
 CovarianceModel::CovarianceModel() {}
 CovarianceModel::~CovarianceModel() {}
 
-FixedCovariance::FixedCovariance()
-{
-	link_ports( _logD.GetOutput(), _expD.GetInput() );
-	link_ports( _expD.GetOutput(), _dReshape.GetInput() );
-	link_ports( _dReshape.GetOutput(), _ldlt.GetCIn() );
+VectorType CovarianceModel::GetParameters() const { return VectorType(); }
 
-	link_ports( _lVec.GetOutput(), _lReshape.GetInput() );
-	link_ports( _lReshape.GetOutput(), _ldlt.GetXIn() );
+void CovarianceModel::SetParameters( const VectorType& p )
+{
+	if( p.size() > 0 )
+	{
+		throw std::invalid_argument( "Covariance model has no parameters" );
+	}
+}
+
+MatrixType CovarianceModel::GetBackpropValue() const { return MatrixType(); }
+
+PassCovariance::PassCovariance() {}
+
+void PassCovariance::Foreprop()
+{
+	BOOST_FOREACH( ConstantModule & mod, _covs )
+	{
+		mod.Foreprop();
+	}
+}
+
+void PassCovariance::Invalidate()
+{
+	BOOST_FOREACH( ConstantModule & mod, _covs )
+	{
+		mod.Invalidate();
+	}
+}
+
+void PassCovariance::UnregisterAll()
+{
+	// TODO Shift unregistration functionality into ModuleBase destructor
+	BOOST_FOREACH( ConstantModule & mod, _covs )
+	{
+		mod.UnregisterAllConsumers();
+	}
+	_covs.clear();
+}
+
+void PassCovariance::BindPredictModule( PredictModule& pred,
+                                        const PredictInfo& info )
+{
+	_covs.emplace_back();
+	ConstantModule& cov = _covs.back();
+	cov.SetValue( info.trans_noise_cov );
+	link_ports( cov.GetOutput(), pred.GetQIn() );
+}
+
+void PassCovariance::BindUpdateModule( UpdateModule& upd,
+                                       const UpdateInfo& info )
+{
+	_covs.emplace_back();
+	ConstantModule& cov = _covs.back();
+	cov.SetValue( info.obs_noise_cov );
+	link_ports( cov.GetOutput(), upd.GetRIn() );
+}
+
+FixedCovariance::FixedCovariance()
+	: _enableL( true ), _enableD( true )
+{
+	LinkPorts();
+}
+
+FixedCovariance::FixedCovariance( const FixedCovariance& other )
+	: _enableL( other._enableL ), _enableD( other._enableD )
+{
+	LinkPorts();
+
+	MatrixType lBase, dBase;
+	std::vector<IndPair> lInds, dInds;
+	other._lReshape.GetShapeParams( lBase, lInds );
+	other._dReshape.GetShapeParams( dBase, dInds );
+	_lReshape.SetShapeParams( lBase, lInds );
+	_dReshape.SetShapeParams( dBase, dInds );
+	_logD.SetValue( other._logD.GetValue() );
+	_lVec.SetValue( other._lVec.GetValue() );
 }
 
 void FixedCovariance::Foreprop()
@@ -33,12 +103,14 @@ void FixedCovariance::UnregisterAll()
 	_ldlt.UnregisterAllConsumers( false );
 }
 
-void FixedCovariance::BindPredictModule( PredictModule& pred )
+void FixedCovariance::BindPredictModule( PredictModule& pred,
+                                         const PredictInfo& info )
 {
 	link_ports( _ldlt.GetSOut(), pred.GetQIn() );
 }
 
-void FixedCovariance::BindUpdateModule( UpdateModule& upd )
+void FixedCovariance::BindUpdateModule( UpdateModule& upd,
+                                        const UpdateInfo& info )
 {
 	link_ports( _ldlt.GetSOut(), upd.GetRIn() );
 }
@@ -77,6 +149,9 @@ MatrixType FixedCovariance::GetBackpropValue() const
 	return out;
 }
 
+void FixedCovariance::EnableL( bool enable ) { _enableL = enable; }
+void FixedCovariance::EnableD( bool enable ) { _enableD = enable; }
+
 void FixedCovariance::Initialize( const MatrixType& cov )
 {
 	Eigen::LDLT<MatrixType> ldlt( cov );
@@ -87,20 +162,30 @@ void FixedCovariance::Initialize( const MatrixType& cov )
 
 	unsigned int dim = cov.rows();
 
-	std::vector<unsigned int> trilInds = gen_trilc_inds( dim, 1 );
+	std::vector<IndPair> trilInds = gen_trilc_inds( dim, 1 );
 	VectorType lInit( trilInds.size() );
 	MatrixType matL = ldlt.matrixL();
 	for( unsigned int i = 0; i < trilInds.size(); ++i )
 	{
-		lInit( i ) = matL( trilInds[i] );
+		lInit( trilInds[i].first ) = matL( trilInds[i].second );
 	}
 	_lVec.SetValue( lInit );
 	_lReshape.SetShapeParams( MatrixType::Identity( dim, dim ), trilInds );
 
-	std::vector<unsigned int> diagInds = gen_diag_inds( dim );
+	std::vector<IndPair> diagInds = gen_vec_to_diag_inds( dim );
 	VectorType dInit = ldlt.vectorD().array().log().matrix();
 	_logD.SetValue( dInit );
 	_dReshape.SetShapeParams( MatrixType::Zero( dim, dim ), diagInds );
+}
+
+void FixedCovariance::LinkPorts()
+{
+	link_ports( _logD.GetOutput(), _expD.GetInput() );
+	link_ports( _expD.GetOutput(), _dReshape.GetInput() );
+	link_ports( _dReshape.GetOutput(), _ldlt.GetCIn() );
+
+	link_ports( _lVec.GetOutput(), _lReshape.GetInput() );
+	link_ports( _lReshape.GetOutput(), _ldlt.GetXIn() );
 }
 
 void FixedCovariance::SetL( const VectorType& L )
@@ -135,14 +220,28 @@ VectorType FixedCovariance::GetLogD() const
 	return d;
 }
 
-const MatrixType& FixedCovariance::GetLBackpropValue() const
+MatrixType FixedCovariance::GetLBackpropValue() const
 {
-	return _lVec.GetBackpropValue();
+	MatrixType b = _lVec.GetBackpropValue();
+	if( !_enableL ) { b.setZero(); }
+	return b;
 }
 
-const MatrixType& FixedCovariance::GetLogDBackpropValue() const
+MatrixType FixedCovariance::GetLogDBackpropValue() const
 {
-	return _logD.GetBackpropValue();
+	MatrixType b = _logD.GetBackpropValue();
+	if( !_enableD ) { b.setZero(); }
+	return b;
+}
+
+MatrixType FixedCovariance::GetValue() const
+{
+	// Can you say MEGAHACK? Still, doesn't seem a much cleaner way to do this...
+	FixedCovariance copy( *this );
+	SinkModule cov;
+	link_ports( copy.GetCovOut(), cov.GetInput() );
+	copy.Foreprop();
+	return cov.GetValue();
 }
 
 OutputPort& FixedCovariance::GetCovOut()
@@ -150,8 +249,32 @@ OutputPort& FixedCovariance::GetCovOut()
 	return _ldlt.GetSOut();
 }
 
+TimeScaledCovariance::TimeScaledCovariance() {}
+
+void TimeScaledCovariance::UnregisterAll()
+{
+	_scalers.clear();
+	FixedCovariance::UnregisterAll();
+}
+
+void TimeScaledCovariance::BindPredictModule( PredictModule& pred,
+                                              const PredictInfo& info )
+{
+	_scalers.emplace_back();
+	ScaleModule& scale = _scalers.back();
+	scale.SetScale( info.step_dt );
+	link_ports( FixedCovariance::GetCovOut(), scale.GetInput() );
+	link_ports( scale.GetOutput(), pred.GetQIn() );
+}
+
+void TimeScaledCovariance::BindUpdateModule( UpdateModule& upd,
+                                             const UpdateInfo& info )
+{
+	throw std::runtime_error( "Time scaled covariance does not support update modules" );
+}
+
 AdaptiveCovariance::AdaptiveCovariance()
-	: _windowSize( 1 ) {}
+	: _lastUpdate( nullptr ), _windowSize( 1 ) {}
 
 void AdaptiveCovariance::SetWindowSize( unsigned int s )
 {
@@ -164,26 +287,50 @@ void AdaptiveCovariance::SetDefaultValue( const MatrixType& S )
 }
 
 void AdaptiveCovariance::Foreprop()
-{}
+{
+	_defaultCov.Foreprop();
+}
 
 void AdaptiveCovariance::Invalidate()
-{}
+{
+	_defaultCov.Invalidate();
+}
 
 void AdaptiveCovariance::UnregisterAll()
 {
 	_defaultCov.UnregisterAllConsumers( false );
 	_pointRs.clear();
 	_estRs.clear();
+	_lastUpdate = nullptr;
 }
 
-void AdaptiveCovariance::BindPredictModule( PredictModule& pred )
+void AdaptiveCovariance::BindPredictModule( PredictModule& pred,
+                                            const PredictInfo& info )
 {
 	// TODO
 	throw std::runtime_error( "Adaptive covariance doesn't support predict yet" );
 }
 
-void AdaptiveCovariance::BindUpdateModule( UpdateModule& upd )
+void AdaptiveCovariance::BindUpdateModule( UpdateModule& upd,
+                                           const UpdateInfo& info )
 {
+	if( _lastUpdate )
+	{
+		_pointRs.emplace_back( *_lastUpdate );
+		_estRs.emplace_back();
+
+		MeanModule& currR = _estRs.back();
+		// NOTE We have to explicitly cast to int since otherwise we will get large
+		// positive numbers instead of negative, as desired
+		int lagHead = (int) _pointRs.size() - _windowSize;
+		unsigned int minInd = std::max( lagHead, 0 );
+		for( unsigned int i = minInd; i < _pointRs.size(); ++i )
+		{
+			currR.RegisterSource( _pointRs[i].GetOutput() );
+		}
+		_lastUpdate = nullptr;
+	}
+
 	if( _estRs.empty() )
 	{
 		link_ports( _defaultCov.GetOutput(), upd.GetRIn() );
@@ -192,40 +339,26 @@ void AdaptiveCovariance::BindUpdateModule( UpdateModule& upd )
 	{
 		link_ports( _estRs.back().GetOutput(), upd.GetRIn() );
 	}
-
-	_pointRs.emplace_back( upd );
-	
-	_estRs.emplace_back();
-	MeanModule& currR = _estRs.back();
-	unsigned int minInd = std::max( _pointRs.size() - _windowSize, (size_t) 0 );
-	for( unsigned int i = minInd; i < _pointRs.size(); ++i )
-	{
-		currR.RegisterSource( _pointRs[i].GetOutput() );
-	}
+	_lastUpdate = &upd;
 }
-
-VectorType AdaptiveCovariance::GetParameters() const { return VectorType(); }
-
-void AdaptiveCovariance::SetParameters( const VectorType& p )
-{
-	if( p.size() > 0 )
-	{
-		throw std::invalid_argument( "Adaptive covariance has no parameters" );
-	}
-}
-
-MatrixType AdaptiveCovariance::GetBackpropValue() const { return MatrixType(); }
 
 AdaptiveCovariance::PointEstimate::PointEstimate( UpdateModule& upd )
 {
+	const VectorType& y = upd.GetObs();
+	unsigned int dim = y.size();
+
 	link_ports( upd.GetUOut(), _uOp.GetInput() );
-	link_ports( _uOp.GetOutput(), _estR.GetLeftIn() );
-	link_ports( upd.GetPOut(), _estR.GetRightIn() );
+	link_ports( _uOp.GetOutput(), _denseR.GetLeftIn() );
+	link_ports( upd.GetPOut(), _CPCT.GetCIn() );
+	_CPCT.SetX( upd.GetObsMatrix().transpose() );
+	link_ports( _CPCT.GetSOut(), _denseR.GetRightIn() );
+	_diagR.SetShapeParams( MatrixType::Zero( dim, dim ),
+	                       gen_dense_to_diag_inds( dim ) );
+	link_ports( _denseR.GetOutput(), _diagR.GetInput() );
 }
 
 OutputPort& AdaptiveCovariance::PointEstimate::GetOutput()
 {
-	return _estR.GetOutput();
+	return _diagR.GetOutput();
 }
-
 }

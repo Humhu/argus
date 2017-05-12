@@ -17,11 +17,16 @@ public:
 	typedef std::pair<PredictModulePtr, UpdateModulePtr> ModulePtrPair;
 
 	KalmanChain();
+	virtual ~KalmanChain();
 
 	void Initialize( const VectorType& x0, const MatrixType& P0 );
 
-	void Foreprop();
-	void Invalidate();
+	virtual void Foreprop();
+	virtual void Invalidate();
+
+	size_t NumModules() const;
+	size_t NumPredicts() const;
+	size_t NumUpdates() const;
 
 	// NOTE The proper thing to do is return a boost::variant but I am super lazy
 	ModulePtrPair RemoveEarliest();

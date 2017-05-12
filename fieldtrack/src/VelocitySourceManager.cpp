@@ -64,6 +64,56 @@ const MatrixType& VelocitySourceManager::GetObservationMatrix() const
 	return _obsMatrix;
 }
 
+CovarianceModel::Ptr VelocitySourceManager::InitializeModel() const
+{
+	if( _mode == COV_PASS )
+	{
+		return std::make_shared<PassCovariance>();
+	}
+	else if( _mode == COV_FIXED )
+	{
+		FixedCovariance::Ptr cov = std::make_shared<FixedCovariance>();
+		cov->Initialize( _fixedCov );
+		return cov;
+	}
+	else if( _mode == COV_ADAPTIVE )
+	{
+		AdaptiveCovariance::Ptr cov = std::make_shared<AdaptiveCovariance>();
+		// TODO HACK
+		cov->SetWindowSize( 10 );
+		cov->SetDefaultValue( _adaptiveCov.GetPriorCov() );
+		return cov;
+	}
+	else
+	{
+		throw std::runtime_error( "Invalid covariance mode" );
+	}
+}
+
+void VelocitySourceManager::SetModel( const CovarianceModel& model )
+{
+	try
+	{
+		if( _mode == COV_PASS )
+		{
+			// Nothing to do
+		}
+		else if( _mode == COV_FIXED )
+		{
+			const FixedCovariance& fcov = dynamic_cast<const FixedCovariance&>( model );
+			_fixedCov = fcov.GetValue();
+		}
+		else if( _mode == COV_ADAPTIVE )
+		{
+			// TODO Currently nothing to do
+		}
+	}
+	catch( std::bad_cast& e )
+	{
+		throw std::invalid_argument( "Incorrect model type: " + std::string(e.what()) );
+	}
+}
+
 void VelocitySourceManager::Update( const ros::Time& time,
                                     const UpdateInfo& info )
 {

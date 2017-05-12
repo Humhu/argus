@@ -173,6 +173,12 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 	return adaptR;
 }
 
+const MatrixType& AdaptiveObservationCovarianceEstimator::GetPriorCov() const
+{
+	return _priorCov;
+}
+
+
 // MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time,
 //                                                          const UpdateInfo& preview )
 // {
