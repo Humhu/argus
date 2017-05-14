@@ -62,15 +62,18 @@ include_directories( include
 
 add_library( fieldtrack
     src/AdaptiveCovarianceEstimator.cpp
+	src/BufferedEstimator.cpp
 	src/CovarianceModels.cpp
 	src/DimensionParser.cpp
 	src/FieldtrackCommon.cpp
 	src/KalmanChain.cpp
 	src/LikelihoodChain.cpp
 	src/NoiseLearner.cpp
-	src/ObservationSourceManager.cpp
+	# src/ObservationSourceManager.cpp
 	src/PoseDerivativeFilter.cpp
-	src/StateEstimator.cpp
+	src/PoseEstimator.cpp
+	src/PoseSourceManager.cpp
+	# src/StateEstimator.cpp
 	src/TargetInfoManager.cpp
 	src/VelocityEstimator.cpp
 	src/VelocitySourceManager.cpp
@@ -81,15 +84,21 @@ target_link_libraries( fieldtrack
 )
 add_dependencies( fieldtrack ${catkin_EXPORTED_TARGETS} )
 
-add_executable( state_estimator_node
-	nodes/state_estimator_node.cpp )
-target_link_libraries( state_estimator_node
-	fieldtrack
-	${catkin_LIBRARIES} )
+# add_executable( state_estimator_node
+# 	nodes/state_estimator_node.cpp )
+# target_link_libraries( state_estimator_node
+# 	fieldtrack
+# 	${catkin_LIBRARIES} )
 
 add_executable( velocity_estimator_node
 	nodes/velocity_estimator_node.cpp )
 target_link_libraries( velocity_estimator_node
+	fieldtrack
+	${catkin_LIBRARIES} )
+
+add_executable( pose_estimator_node
+	nodes/pose_estimator_node.cpp )
+target_link_libraries( pose_estimator_node
 	fieldtrack
 	${catkin_LIBRARIES} )
 
@@ -114,20 +123,10 @@ target_link_libraries( odometry_differentiator_node
 add_executable( test_buff_cov_estimator tests/test_buffer_cov_estimator.cpp )
 target_link_libraries( test_buff_cov_estimator
 	fieldtrack 
-	${catkin_LIBRARIES})
-
-# add_executable( test_adapt_estimator tests/test_adapt_estimator.cpp )
-# target_link_libraries( test_adapt_estimator
-# 	fieldtrack 
-# 	${catkin_LIBRARIES})
-
-# add_executable( test_trans_cov_estimator tests/test_trans_cov_estimator.cpp )
-# target_link_libraries( test_trans_cov_estimator
-# 	fieldtrack 
-# 	${catkin_LIBRARIES})
+	${catkin_LIBRARIES} )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS state_estimator_node
+install(TARGETS velocity_estimator_node
                 odometry_converter_node
                 odometry_differentiator_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

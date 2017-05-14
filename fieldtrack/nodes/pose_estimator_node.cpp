@@ -1,8 +1,7 @@
 #include <ros/ros.h>
 
 #include "fieldtrack/FieldtrackCommon.h"
-#include "fieldtrack/VelocityEstimator.h"
-#include "fieldtrack/NoiseLearner.h"
+#include "fieldtrack/PoseEstimator.h"
 
 #include "argus_utils/utils/ParamUtils.h"
 #include "argus_utils/geometry/GeometryUtils.h"
@@ -17,11 +16,11 @@
 
 using namespace argus;
 
-class VelocityEstimatorNode
+class PoseEstimatorNode
 {
 public:
 
-	VelocityEstimatorNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
+	PoseEstimatorNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	{
 		_extrinsicsManager = std::make_shared<ExtrinsicsInterface>( nh, ph );
 		_estimator.Initialize( ph, _extrinsicsManager );
@@ -31,27 +30,8 @@ public:
 		_headLag = ros::Duration( headLag );
 
 		_resetServer = ph.advertiseService( "reset",
-		                                    &VelocityEstimatorNode::ResetCallback,
+		                                    &PoseEstimatorNode::ResetCallback,
 		                                    this );
-
-		// Initialize covariance learner
-		ros::NodeHandle lh( ph.resolveName( "learner" ) );
-		double learnRate;
-		GetParam( lh, "rate", learnRate, 1.0 );
-		_learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
-		                              &VelocityEstimatorNode::LearnCallback,
-		                              this );
-		_learner.Initialize( lh );
-		_transModel = _estimator.InitTransCovModel();
-		_learner.RegisterTransModel( _transModel );
-		_obsModels = _estimator.InitObsCovModels();
-		typedef ModelRegistry::value_type Item;
-		BOOST_FOREACH( Item & item, _obsModels )
-		{
-			const std::string& name = item.first;
-			const CovarianceModel::Ptr& model = item.second;
-			_learner.RegisterObsModel( name, model );
-		}
 
 		// Subscribe to all update topics
 		YAML::Node updateSources;
@@ -62,20 +42,23 @@ public:
 			const std::string& sourceName = iter->first.as<std::string>();
 			const YAML::Node& info = iter->second;
 
-
 			std::string topic, type;
 			unsigned int buffSize;
 			GetParamRequired( info, "topic", topic );
 			GetParamRequired( info, "type", type );
 			GetParam( info, "buffer_size", buffSize, (unsigned int) 0 );
 
-			if( type == "deriv_stamped" )
+			if( type == "pose_stamped" )
 			{
-				SubscribeToUpdates<geometry_msgs::TwistStamped>( nh, topic, buffSize, sourceName );
+				SubscribeToUpdates<geometry_msgs::PoseStamped>( nh, topic, buffSize, sourceName );
 			}
-			else if( type == "deriv_cov_stamped" )
+			else if( type == "pose_cov_stamped" )
 			{
-				SubscribeToUpdates<geometry_msgs::TwistWithCovarianceStamped>( nh, topic, buffSize, sourceName );
+				SubscribeToUpdates<geometry_msgs::PoseWithCovarianceStamped>( nh, topic, buffSize, sourceName );
+			}
+			else if( type == "transform_stamped" )
+			{
+				SubscribeToUpdates<geometry_msgs::TransformStamped>( nh, topic, buffSize, sourceName );
 			}
 			else if( type == "imu" )
 			{
@@ -97,31 +80,31 @@ public:
 			_odomPub = nh.advertise<nav_msgs::Odometry>( "odom", buffLen );
 		}
 
-		GetParam( ph, "publish_twist", _publishTwist, false );
-		if( _publishTwist )
+		GetParam( ph, "publish_pose", _publishPose, false );
+		if( _publishPose )
 		{
-			ROS_INFO_STREAM( "Publishing twist output" );
+			ROS_INFO_STREAM( "Publishing pose output" );
 			unsigned int buffLen;
-			GetParam( ph, "twist_buff_len", buffLen, (unsigned int) 10 );
-			_twistPub = nh.advertise<geometry_msgs::TwistStamped>( "twist", buffLen );
+			GetParam( ph, "pose_buff_len", buffLen, (unsigned int) 10 );
+			_posePub = nh.advertise<geometry_msgs::PoseStamped>( "pose", buffLen );
 		}
 
-		GetParam( ph, "publish_twist_with_cov", _publishTwistCov, false );
-		if( _publishTwistCov )
+		GetParam( ph, "publish_pose_with_cov", _publishPoseCov, false );
+		if( _publishPoseCov )
 		{
-			ROS_INFO_STREAM( "Publishing twist covariance output" );
+			ROS_INFO_STREAM( "Publishing pose with covariance output" );
 			unsigned int buffLen;
-			GetParam( ph, "twist_cov_buff_len", buffLen, (unsigned int) 10 );
-			_twistCovPub = nh.advertise<geometry_msgs::TwistWithCovarianceStamped>( "twist_with_cov", buffLen );
+			GetParam( ph, "pose_cov_buff_len", buffLen, (unsigned int) 10 );
+			_poseCovPub = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>( "pose_with_cov", buffLen );
 		}
 
 		GetParam( ph, "publish_info", _publishInfo, false );
 		if( _publishInfo )
 		{
 			ROS_INFO_STREAM( "Publishing info output" );
-			unsigned int buffLen;
-			GetParam( ph, "info_buff_len", buffLen, (unsigned int) 100 );
-			_infoPub = nh.advertise<argus_msgs::FilterStepInfo>( "info", buffLen );
+			unsigned int infoBuffLen;
+			GetParam( ph, "info_buff_len", infoBuffLen, (unsigned int) 100 );
+			_infoPub = nh.advertise<argus_msgs::FilterStepInfo>( "info", infoBuffLen );
 		}
 
 		// NOTE We have to reset the filter to compensate for the lag, otherwise the
@@ -136,7 +119,7 @@ public:
 
 		GetParamRequired( ph, "update_rate", _updateRate );
 		_updateTimer = nh.createTimer( ros::Duration( 1.0 / _updateRate ),
-		                               &VelocityEstimatorNode::TimerCallback,
+		                               &PoseEstimatorNode::TimerCallback,
 		                               this );
 	}
 
@@ -148,7 +131,7 @@ public:
 		_updateSubs.emplace_back();
 		_updateSubs.back() =
 		    nh.subscribe<M>( topic, buffSize,
-		                     boost::bind( &VelocityEstimatorNode::ObservationCallback<M>,
+		                     boost::bind( &PoseEstimatorNode::ObservationCallback<M>,
 		                                  this,
 		                                  _1,
 		                                  sourceName ) );
@@ -185,7 +168,7 @@ public:
 		std::vector<FilterInfo> info = _estimator.Process( lagged );
 		lock.unlock();
 
-		VelocityEstimator rollOutEstimator( _estimator );
+		PoseEstimator rollOutEstimator( _estimator );
 		rollOutEstimator.Process( event.current_real );
 
 		// TODO Publish Twist, TwistStamped, TwistWithCovarianceStamped modes as well
@@ -193,13 +176,13 @@ public:
 		{
 			_odomPub.publish( rollOutEstimator.GetOdom() );
 		}
-		if( _publishTwist )
+		if( _publishPose )
 		{
-			_twistPub.publish( rollOutEstimator.GetTwist() );
+			_posePub.publish( rollOutEstimator.GetPose() );
 		}
-		if( _publishTwistCov )
+		if( _publishPoseCov )
 		{
-			_twistCovPub.publish( rollOutEstimator.GetTwistWithCovariance() );
+			_poseCovPub.publish( rollOutEstimator.GetPoseWithCovariance() );
 		}
 		if( _publishInfo )
 		{
@@ -207,7 +190,6 @@ public:
 			BOOST_FOREACH( const FilterInfo &fi, info )
 			{
 				_infoPub.publish( boost::apply_visitor( vis, fi ) );
-				_learner.BufferInfo( fi );
 			}
 		}
 	}
@@ -224,23 +206,6 @@ public:
 		return true;
 	}
 
-	void LearnCallback( const ros::TimerEvent& event )
-	{
-		ROS_INFO_STREAM( "Spinning..." );
-		_learner.LearnSpin();
-
-		WriteLock lock( _estimatorMutex );
-		ROS_INFO_STREAM( "Updating models..." );
-		_estimator.SetTransCovModel( *_transModel );
-		typedef ModelRegistry::value_type Item;
-		BOOST_FOREACH( const Item &item, _obsModels )
-		{
-			const std::string& name = item.first;
-			const CovarianceModel::Ptr& model = item.second;
-			_estimator.SetObsCovModel( name, *model );
-		}
-	}
-
 private:
 
 	bool _initialized;
@@ -250,10 +215,10 @@ private:
 
 	bool _publishOdom;
 	ros::Publisher _odomPub;
-	bool _publishTwist;
-	ros::Publisher _twistPub;
-	bool _publishTwistCov;
-	ros::Publisher _twistCovPub;
+	bool _publishPose;
+	ros::Publisher _posePub;
+	bool _publishPoseCov;
+	ros::Publisher _poseCovPub;
 	bool _publishInfo;
 	ros::Publisher _infoPub;
 
@@ -262,30 +227,20 @@ private:
 	double _updateRate;
 
 	ros::Duration _headLag;
-	VelocityEstimator _estimator;
+	PoseEstimator _estimator;
 	Mutex _estimatorMutex;
-
-	ros::Timer _learnTimer;
-	NoiseLearner _learner;
-	CovarianceModel::Ptr _transModel;
-	typedef std::unordered_map<std::string, CovarianceModel::Ptr> ModelRegistry;
-	ModelRegistry _obsModels;
 };
 
 int main( int argc, char** argv )
 {
-	ros::init( argc, argv, "velocity_estimator_node" );
+	ros::init( argc, argv, "pose_estimator_node" );
 
 	ros::NodeHandle nh;
 	ros::NodeHandle ph( "~" );
-	VelocityEstimatorNode estimator( nh, ph );
+	PoseEstimatorNode estimator( nh, ph );
 
 	unsigned int numThreads;
-	GetParam( ph, "num_threads", numThreads, (unsigned int) 2 );
-	if( numThreads < 2 )
-	{
-		throw std::invalid_argument( "Requires at least 2 threads" );
-	}
+	GetParam( ph, "num_threads", numThreads, (unsigned int) 1 );
 	ros::AsyncSpinner spinner( numThreads );
 	spinner.start();
 	ros::waitForShutdown();

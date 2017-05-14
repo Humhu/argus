@@ -1,16 +1,22 @@
 #pragma once
 
 #include "argus_utils/filter/KalmanFilter.h"
-#include "fieldtrack/FieldtrackCommon.h"
+
+#include "fieldtrack/BufferedEstimator.h"
 #include "fieldtrack/VelocitySourceManager.h"
 #include "fieldtrack/CovarianceModels.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
+
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
 
 #include <unordered_map>
 
 namespace argus
 {
 class VelocityEstimator
+	: public BufferedEstimator
 {
 public:
 
@@ -18,36 +24,9 @@ public:
 
 	void Initialize( ros::NodeHandle& ph, ExtrinsicsInterface::Ptr extrinsics );
 
-	// NOTE This is copied from StateEstimator - we should be able to generalize somehow
-	template<typename M>
-	void BufferObservation( const std::string& sourceName, M msg )
-	{
-		// Make sure message is from a registered source
-		if( _sourceRegistry.count( sourceName ) == 0 )
-		{
-			throw std::invalid_argument( "Unknown source: " + sourceName );
-		}
-
-		// Make sure message does not precede filter
-		if( msg.header.stamp < _filterTime )
-		{
-			ROS_WARN_STREAM( "Dropping measurement from " << sourceName << " since timestamp "
-			                                              << msg.header.stamp << " precedes filter time " << _filterTime );
-			return;
-		}
-
-		// For some reason the resolution on the ROS timestamp compare is limited
-		// We avoid overwriting observations by bumping up their timestamps
-		while( _updateBuffer.count( msg.header.stamp ) > 0 )
-		{
-			msg.header.stamp.nsec += 2;
-		}
-		_updateBuffer[msg.header.stamp] = SourceMsg( sourceName, msg );
-	}
-
-	std::vector<FilterInfo> Process( const ros::Time& until );
-	void Reset( const ros::Time& time );
 	nav_msgs::Odometry GetOdom() const;
+	geometry_msgs::TwistStamped GetTwist() const;
+	geometry_msgs::TwistWithCovarianceStamped GetTwistWithCovariance() const;
 
 	CovarianceModel::Ptr InitTransCovModel() const;
 	std::unordered_map<std::string, CovarianceModel::Ptr> InitObsCovModels() const;
@@ -56,10 +35,7 @@ public:
 
 private:
 
-	ExtrinsicsInterface::Ptr _extrinsicsManager;
 	KalmanFilter _filter;
-	ros::Time _filterTime;
-	unsigned int _stepCounter;
 
 	unsigned int _filterOrder;
 	bool _twoDimensional;
@@ -76,19 +52,19 @@ private:
 	typedef std::unordered_map<std::string, VelocitySourceManager> SourceRegistry;
 	SourceRegistry _sourceRegistry;
 
-	typedef std::pair<std::string, ObservationMessage> SourceMsg;
-	typedef std::map<ros::Time, SourceMsg> UpdateBuffer;
-	UpdateBuffer _updateBuffer;
-
 	unsigned int StateDim() const;
 	unsigned int FullDim() const;
 
-	// Forward predicts the filter to the specified time
-	PredictInfo PredictUntil( const ros::Time& until );
+	void GetFullVels( PoseSE3::TangentVector& vel,
+	                  PoseSE3::CovarianceMatrix& cov ) const;
 
-	// Checks the filter health
-	void CheckFilter();
-	void Enforce2D();
+
+	virtual void ResetDerived( const ros::Time& time );
+	virtual PredictInfo PredictUntil( const ros::Time& until );
+	virtual bool ProcessMessage( const std::string& source,
+	                             const ObservationMessage& msg,
+	                             UpdateInfo& info );
+	virtual void CheckFilter();
 
 	MatrixType GetTransitionCov( double dt );
 };

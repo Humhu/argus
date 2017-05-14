@@ -9,9 +9,9 @@ using namespace argus;
 
 namespace argus
 {
-AdaptiveTransitionCovarianceEstimator::AdaptiveTransitionCovarianceEstimator() {}
+AdaptiveTransCovEstimator::AdaptiveTransCovEstimator() {}
 
-void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
+void AdaptiveTransCovEstimator::Initialize( ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
 
@@ -31,12 +31,12 @@ void AdaptiveTransitionCovarianceEstimator::Initialize( ros::NodeHandle& ph )
 	_decayRate = std::log( _decayRate );
 }
 
-unsigned int AdaptiveTransitionCovarianceEstimator::NumSamples() const
+unsigned int AdaptiveTransCovEstimator::NumSamples() const
 {
 	return _innoProds.size();
 }
 
-MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
+MatrixType AdaptiveTransCovEstimator::GetQ( const ros::Time& time )
 {
 	CheckBuffer( time );
 
@@ -77,7 +77,7 @@ MatrixType AdaptiveTransitionCovarianceEstimator::GetQ( const ros::Time& time )
 	return adaptQRate;
 }
 
-void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
+void AdaptiveTransCovEstimator::Update( const ros::Time& time,
                                                     const PredictInfo& predict,
                                                     const UpdateInfo& update )
 {
@@ -104,14 +104,14 @@ void AdaptiveTransitionCovarianceEstimator::Update( const ros::Time& time,
 	_currSpost = update.post_state_cov;
 }
 
-void AdaptiveTransitionCovarianceEstimator::Reset()
+void AdaptiveTransCovEstimator::Reset()
 {
 	_lastFSpostFT = MatrixType();
 	_currSpost = MatrixType();
 	_innoProds.clear();
 }
 
-void AdaptiveTransitionCovarianceEstimator::CheckBuffer( const ros::Time& now )
+void AdaptiveTransCovEstimator::CheckBuffer( const ros::Time& now )
 {
 	while( !_innoProds.empty() &&
 	       ( NumSamples() > _maxSamples ||
@@ -121,9 +121,9 @@ void AdaptiveTransitionCovarianceEstimator::CheckBuffer( const ros::Time& now )
 	}
 }
 
-AdaptiveObservationCovarianceEstimator::AdaptiveObservationCovarianceEstimator() {}
+AdaptiveObsCovEstimator::AdaptiveObsCovEstimator() {}
 
-void AdaptiveObservationCovarianceEstimator::Initialize( unsigned int dim,
+void AdaptiveObsCovEstimator::Initialize( unsigned int dim,
                                                          ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
@@ -141,12 +141,12 @@ void AdaptiveObservationCovarianceEstimator::Initialize( unsigned int dim,
 	_decayRate = std::log( _decayRate );
 }
 
-unsigned int AdaptiveObservationCovarianceEstimator::NumSamples() const
+unsigned int AdaptiveObsCovEstimator::NumSamples() const
 {
 	return _innoProds.size();
 }
 
-MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
+MatrixType AdaptiveObsCovEstimator::GetR( const ros::Time& time )
 {
 	CheckBuffer( time );
 
@@ -173,13 +173,13 @@ MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time )
 	return adaptR;
 }
 
-const MatrixType& AdaptiveObservationCovarianceEstimator::GetPriorCov() const
+const MatrixType& AdaptiveObsCovEstimator::GetPriorCov() const
 {
 	return _priorCov;
 }
 
 
-// MatrixType AdaptiveObservationCovarianceEstimator::GetR( const ros::Time& time,
+// MatrixType AdaptiveObsCovEstimator::GetR( const ros::Time& time,
 //                                                          const UpdateInfo& preview )
 // {
 //  CheckBuffer( time );
@@ -216,22 +216,21 @@ const MatrixType& AdaptiveObservationCovarianceEstimator::GetPriorCov() const
 //  return adaptR;
 // }
 
-void AdaptiveObservationCovarianceEstimator::Update( const ros::Time& time,
-                                                     const UpdateInfo& update )
+void AdaptiveObsCovEstimator::Update( const UpdateInfo& update )
 {
 	// Update is R = Cv+ + H * P+ * H^T
 	MatrixType HPHT = update.obs_jacobian * update.post_state_cov *
 	                  update.obs_jacobian.transpose();
 	MatrixType op = update.post_obs_error * update.post_obs_error.transpose();
-	_innoProds.emplace_front( time, op + HPHT );
+	_innoProds.emplace_front( update.time, op + HPHT );
 }
 
-void AdaptiveObservationCovarianceEstimator::Reset()
+void AdaptiveObsCovEstimator::Reset()
 {
 	_innoProds.clear();
 }
 
-void AdaptiveObservationCovarianceEstimator::CheckBuffer( const ros::Time& now )
+void AdaptiveObsCovEstimator::CheckBuffer( const ros::Time& now )
 {
 	while( !_innoProds.empty() &&
 	       ( NumSamples() > _maxSamples ||

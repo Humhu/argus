@@ -17,11 +17,11 @@ namespace argus
  * outer products to more smoothly handle outliers and incorporate a prior.
  *
  */
-class AdaptiveTransitionCovarianceEstimator
+class AdaptiveTransCovEstimator
 {
 public:
 
-	AdaptiveTransitionCovarianceEstimator();
+	AdaptiveTransCovEstimator();
 
 	// Read parameters for the estimator
 	void Initialize( ros::NodeHandle& ph );
@@ -56,11 +56,11 @@ private:
 	void CheckBuffer( const ros::Time& now );
 };
 
-class AdaptiveObservationCovarianceEstimator
+class AdaptiveObsCovEstimator
 {
 public:
 
-	AdaptiveObservationCovarianceEstimator();
+	AdaptiveObsCovEstimator();
 
 	void Initialize( unsigned int dim, ros::NodeHandle& ph );
 
@@ -70,7 +70,7 @@ public:
 
 	const MatrixType& GetPriorCov() const;
 
-	void Update( const ros::Time& time, const UpdateInfo& update );
+	void Update( const UpdateInfo& update );
 
 	void Reset();
 

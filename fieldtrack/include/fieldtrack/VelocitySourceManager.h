@@ -24,7 +24,7 @@ public:
 	                 const std::string& targetFrame,
 	                 ExtrinsicsInterface::Ptr extrinsics );
 
-	void Update( const ros::Time& time, const UpdateInfo& info );
+	void Update( const UpdateInfo& info );
 	void Reset();
 
 	const MatrixType& GetObservationMatrix() const;
@@ -46,7 +46,7 @@ private:
 	
 	CovarianceMode _mode;
 	MatrixType _fixedCov;
-	AdaptiveObservationCovarianceEstimator _adaptiveCov;
+	AdaptiveObsCovEstimator _adaptiveCov;
 
 	MatrixType _obsMatrix;
 

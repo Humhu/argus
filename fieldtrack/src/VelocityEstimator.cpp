@@ -13,16 +13,14 @@ VelocityEstimator::VelocityEstimator() {}
 void VelocityEstimator::Initialize( ros::NodeHandle& ph,
                                     ExtrinsicsInterface::Ptr extrinsics )
 {
-	_extrinsicsManager = extrinsics;
-	_stepCounter = 0;
-
 	GetParamRequired( ph, "body_frame", _bodyFrame );
 	GetParam( ph, "log_likelihood_threshold",
 	          _logLikelihoodThreshold,
 	          -std::numeric_limits<double>::infinity() );
-	GetParam( ph, "two_dimensional", _twoDimensional, false );
-	GetParam( ph, "max_entropy_threshold", _maxEntropyThreshold,
+	GetParam( ph, "max_entropy_threshold",
+	          _maxEntropyThreshold,
 	          std::numeric_limits<double>::infinity() );
+	GetParam( ph, "two_dimensional", _twoDimensional, false );
 
 	GetParamRequired( ph, "filter_order", _filterOrder );
 
@@ -45,9 +43,11 @@ void VelocityEstimator::Initialize( ros::NodeHandle& ph,
 		{
 			throw std::invalid_argument( "Source " + sourceName + " already registered!" );
 		}
-		_sourceRegistry[sourceName].Initialize( sh, _twoDimensional,
-		                                        _filterOrder, _bodyFrame,
-		                                        _extrinsicsManager );
+		_sourceRegistry[sourceName].Initialize( sh,
+		                                        _twoDimensional,
+		                                        _filterOrder,
+		                                        _bodyFrame,
+		                                        extrinsics );
 	}
 }
 
@@ -63,7 +63,7 @@ VelocityEstimator::InitObsCovModels() const
 {
 	std::unordered_map<std::string, CovarianceModel::Ptr> out;
 	typedef SourceRegistry::value_type Item;
-	BOOST_FOREACH( const Item& item, _sourceRegistry )
+	BOOST_FOREACH( const Item &item, _sourceRegistry )
 	{
 		const std::string& name = item.first;
 		const VelocitySourceManager& manager = item.second;
@@ -71,7 +71,6 @@ VelocityEstimator::InitObsCovModels() const
 	}
 	return out;
 }
-
 
 void VelocityEstimator::SetTransCovModel( const CovarianceModel& model )
 {
@@ -109,13 +108,80 @@ unsigned int VelocityEstimator::FullDim() const
 	return (_filterOrder + 1) * StateDim();
 }
 
-void VelocityEstimator::Reset( const ros::Time& time )
+void VelocityEstimator::GetFullVels( PoseSE3::TangentVector& vel,
+                                     PoseSE3::CovarianceMatrix& cov ) const
+{
+	vel.setZero();
+	cov.setZero();
+
+	if( _twoDimensional )
+	{
+		std::vector<unsigned int> inds;
+		inds = std::vector<unsigned int>( {0, 1, 5} );
+		PutSubmatrix( _filter.GetState().head<3>(),
+		              vel, inds );
+		PutSubmatrix( _filter.GetCovariance().topLeftCorner<3, 3>(),
+		              cov, inds, inds );
+	}
+	else
+	{
+		vel = _filter.GetState().head<6>();
+		cov = _filter.GetCovariance().topLeftCorner<6, 6>();
+	}
+}
+
+nav_msgs::Odometry VelocityEstimator::GetOdom() const
+{
+	PoseSE3::TangentVector vel;
+	PoseSE3::CovarianceMatrix cov;
+	GetFullVels( vel, cov );
+
+	nav_msgs::Odometry msg;
+	msg.header.frame_id = _bodyFrame;
+	msg.header.stamp = GetFilterTime();
+	msg.child_frame_id = _bodyFrame;
+	msg.twist.twist = TangentToMsg( vel );
+	SerializeMatrix( cov, msg.twist.covariance );
+	return msg;
+}
+
+geometry_msgs::TwistStamped VelocityEstimator::GetTwist() const
+{
+	PoseSE3::TangentVector vel;
+	PoseSE3::CovarianceMatrix cov;
+	GetFullVels( vel, cov );
+
+	geometry_msgs::TwistStamped msg;
+	msg.header.frame_id = _bodyFrame;
+	msg.header.stamp = GetFilterTime();
+	msg.twist = TangentToMsg( vel );
+	return msg;
+}
+
+geometry_msgs::TwistWithCovarianceStamped 
+VelocityEstimator::GetTwistWithCovariance() const
+{
+	PoseSE3::TangentVector vel;
+	PoseSE3::CovarianceMatrix cov;
+	GetFullVels( vel, cov );
+
+	geometry_msgs::TwistWithCovarianceStamped msg;
+	msg.header.frame_id = _bodyFrame;
+	msg.header.stamp = GetFilterTime();
+	msg.twist.twist = TangentToMsg( vel );
+	SerializeMatrix( cov, msg.twist.covariance );
+	return msg;
+}
+
+MatrixType VelocityEstimator::GetTransitionCov( double dt )
+{
+	return _transCovRate * dt;
+}
+
+void VelocityEstimator::ResetDerived( const ros::Time& time )
 {
 	// Reset the filter state
 	_filter.Initialize( VectorType::Zero( FullDim() ), _initialCovariance );
-	_filterTime = time;
-
-	_updateBuffer.clear();
 
 	// Reset all observation covariance adapters
 	typedef SourceRegistry::value_type Item;
@@ -125,131 +191,50 @@ void VelocityEstimator::Reset( const ros::Time& time )
 	}
 }
 
-std::vector<FilterInfo> VelocityEstimator::Process( const ros::Time& until )
-{
-	std::vector<FilterInfo> infos;
-	if( until < _filterTime )
-	{
-		ROS_WARN_STREAM( "Cannot process to time " << until << " as it precedes filter time "
-		                                           << _filterTime );
-		return infos;
-	}
-
-	while( !_updateBuffer.empty() )
-	{
-		UpdateBuffer::const_iterator oldest = _updateBuffer.begin();
-		const ros::Time& earliestBufferTime = oldest->first;
-		if( earliestBufferTime > until ) { break; }
-
-		const SourceMsg& sourceMsg = oldest->second;
-		const std::string& sourceName = sourceMsg.first;
-		const ObservationMessage& msg = sourceMsg.second;
-
-		// Perform the predict and update
-		VelocitySourceManager& manager = _sourceRegistry.at( sourceName );
-		DerivObservation obs = boost::apply_visitor( manager, msg );
-
-		// Perform predict
-		PredictInfo predInfo = PredictUntil( obs.timestamp );
-		predInfo.time = _filterTime;
-		predInfo.frameId = "predict";
-		predInfo.stepNum = _stepCounter++;
-		infos.emplace_back( predInfo );
-
-		// Check observation likelihood
-		// TODO HACK!
-		const MatrixType& C = manager.GetObservationMatrix();
-		VectorType v = obs.derivatives - C * _filter.GetState();
-		MatrixType V = C * _filter.GetCovariance() * C.transpose() + obs.covariance;
-		double ll = GaussianLogPdf( V, v );
-		if( std::isnan( ll ) )
-		{
-			ROS_WARN_STREAM( "Log likelihood is nan!" );
-		}
-		else if( ll < _logLikelihoodThreshold )
-		{
-			ROS_WARN_STREAM( "Rejecting observation from " <<
-			                 sourceName << " with log likelihood " <<
-			                 ll << " less than threshold " <<
-			                 _logLikelihoodThreshold );
-		}
-		else // Perform filter update
-		{
-			UpdateInfo upInfo = _filter.Update( obs.derivatives, C, obs.covariance );
-
-			upInfo.time = _filterTime;
-			upInfo.frameId = sourceName; //obs.referenceFrame;
-			upInfo.stepNum = _stepCounter++;
-			infos.emplace_back( upInfo );
-
-			manager.Update( obs.timestamp, upInfo );
-		}
-
-		_updateBuffer.erase( oldest );
-
-		// Check filter while processing
-		CheckFilter();
-	}
-
-	// Predict the remainder of requested time
-	PredictInfo predInfo = PredictUntil( until );
-	infos.emplace_back( predInfo );
-
-	// Have to check after final predict
-	CheckFilter();
-
-	return infos;
-}
-
-nav_msgs::Odometry VelocityEstimator::GetOdom() const
-{
-	nav_msgs::Odometry msg;
-	msg.header.frame_id = _bodyFrame;
-	msg.header.stamp = _filterTime;
-	msg.child_frame_id = _bodyFrame;
-
-	PoseSE3::TangentVector fullVel = PoseSE3::TangentVector::Zero();
-	// TODO Hard-coded constants!
-	MatrixType velCov = MatrixType::Zero( 6, 6 );
-	if( _twoDimensional )
-	{
-		std::vector<unsigned int> inds;
-		inds = std::vector<unsigned int>( {0, 1, 5} );
-		PutSubmatrix( _filter.GetState().head<3>(),
-		              fullVel, inds );
-		PutSubmatrix( _filter.GetCovariance().topLeftCorner<3, 3>(),
-		              velCov, inds, inds );
-	}
-	else
-	{
-		fullVel = _filter.GetState().head<6>();
-		velCov = _filter.GetCovariance().topLeftCorner<6, 6>();
-	}
-
-	msg.twist.twist = TangentToMsg( fullVel );
-	SerializeMatrix( velCov, msg.twist.covariance );
-	return msg;
-}
-
-MatrixType VelocityEstimator::GetTransitionCov( double dt )
-{
-	return _transCovRate * dt;
-}
-
 PredictInfo VelocityEstimator::PredictUntil( const ros::Time& until )
 {
-	double dt = (until - _filterTime).toSec();
-	if( dt < 0 )
-	{
-		std::stringstream ss;
-		ss << "Predict to " << until << " requested from " << _filterTime;
-		throw std::runtime_error( ss.str() );
-	}
-	_filterTime = until;
+	double dt = (until - GetFilterTime() ).toSec();
 	MatrixType A = IntegralMatrix<double>( dt, StateDim(), _filterOrder );
 	PredictInfo info = _filter.Predict( A, GetTransitionCov( dt ) );
 	info.step_dt = dt;
 	return info;
+}
+
+bool VelocityEstimator::ProcessMessage( const std::string& source,
+                                        const ObservationMessage& msg,
+                                        UpdateInfo& info )
+{
+	VelocitySourceManager& manager = _sourceRegistry.at( source );
+	DerivObservation obs = boost::apply_visitor( manager, msg );
+
+	// Check observation likelihood
+	// TODO HACK!
+	const MatrixType& C = manager.GetObservationMatrix();
+	VectorType v = obs.derivatives - C * _filter.GetState();
+	MatrixType V = C * _filter.GetCovariance() * C.transpose() + obs.covariance;
+	double ll = GaussianLogPdf( V, v );
+	if( std::isnan( ll ) )
+	{
+		ROS_WARN_STREAM( "Log likelihood is nan!" );
+		return false;
+	}
+	else if( ll < _logLikelihoodThreshold )
+	{
+		ROS_WARN_STREAM( "Rejecting observation from " <<
+		                 source << " with log likelihood " <<
+		                 ll << " less than threshold " <<
+		                 _logLikelihoodThreshold );
+		return false;
+	}
+	else // Perform filter update
+	{
+		info = _filter.Update( obs.derivatives, C, obs.covariance );
+		info.time = GetFilterTime();
+		info.frameId = source;
+
+		manager.Update( info );
+	}
+	return true;
 }
 
 void VelocityEstimator::CheckFilter()
@@ -259,7 +244,7 @@ void VelocityEstimator::CheckFilter()
 	{
 		ROS_WARN_STREAM( "Filter entropy: " << entropy << " greater than max: " <<
 		                 _maxEntropyThreshold << " Resetting filter..." );
-		Reset( _filterTime );
+		Reset( GetFilterTime() );
 	}
 }
 }

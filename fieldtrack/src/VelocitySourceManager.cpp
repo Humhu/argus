@@ -114,12 +114,11 @@ void VelocitySourceManager::SetModel( const CovarianceModel& model )
 	}
 }
 
-void VelocitySourceManager::Update( const ros::Time& time,
-                                    const UpdateInfo& info )
+void VelocitySourceManager::Update( const UpdateInfo& info )
 {
 	if( _mode == COV_ADAPTIVE )
 	{
-		_adaptiveCov.Update( time, info );
+		_adaptiveCov.Update( info );
 	}
 }
 

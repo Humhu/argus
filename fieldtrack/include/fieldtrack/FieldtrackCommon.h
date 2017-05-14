@@ -20,13 +20,6 @@
 
 namespace argus
 {
-// Info computed before applying an update
-struct UpdatePreviewInfo
-{
-	MatrixType prior_state_cov;
-	VectorType prior_obs_error;
-	MatrixType obs_jacobian;
-};
 
 // Types of filter covariance models
 enum CovarianceMode
@@ -68,6 +61,7 @@ typedef boost::variant<geometry_msgs::PoseStamped,
                        geometry_msgs::TransformStamped,
                        sensor_msgs::Imu>
 ObservationMessage;
+ros::Time get_timestamp( const ObservationMessage& msg );
 
 struct ObservationBase
 {
@@ -78,28 +72,24 @@ struct ObservationBase
 struct PoseObservation : public ObservationBase
 {
 	PoseSE3 pose;
-
 	MatrixType covariance; // TODO This appears to be common across obs...
 };
 
 struct PositionObservation : public ObservationBase
 {
 	Translation3Type position;
-
 	MatrixType covariance;
 };
 
 struct OrientationObservation : public ObservationBase
 {
 	QuaternionType orientation;
-
 	MatrixType covariance;
 };
 
 struct DerivObservation : public ObservationBase
 {
 	VectorType derivatives;
-
 	MatrixType covariance;
 	std::vector<unsigned int> indices;
 };
@@ -109,24 +99,7 @@ typedef boost::variant<PoseObservation,
                        OrientationObservation,
                        DerivObservation>
 Observation;
+ros::Time get_timestamp( const Observation& obs );
+std::string get_frame( const Observation& obs );
 
-// Various observation visitors
-struct ObservationTimestampVisitor
-	: public boost::static_visitor<ros::Time>
-{
-	ObservationTimestampVisitor();
-
-	ros::Time operator()( const ObservationBase& obs ) const;
-};
-
-struct ObservationFrameVisitor
-	: public boost::static_visitor<std::string>
-{
-	ObservationFrameVisitor();
-
-	std::string operator()( const ObservationBase& obs ) const;
-};
-
-ros::Time get_observation_timestamp( const Observation& obs );
-std::string get_observation_frame( const Observation& obs );
 }
