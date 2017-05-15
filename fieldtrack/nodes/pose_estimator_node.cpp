@@ -179,6 +179,7 @@ public:
 		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
 		PoseSE3::CovarianceMatrix cov;
 		ParseMatrix( msg->twist.covariance, cov );
+		WriteLock lock( _estimatorMutex );
 		_estimator.BufferVelocity( msg->header.stamp, vel, cov );
 	}
 
@@ -186,6 +187,7 @@ public:
 	void VelocityCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
 	{
 		PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
+		WriteLock lock( _estimatorMutex );		
 		_estimator.BufferVelocity( msg->header.stamp, vel, _velCov );
 	}
 
@@ -195,6 +197,7 @@ public:
 		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
 		PoseSE3::CovarianceMatrix cov;
 		ParseMatrix( msg->twist.covariance, cov );
+		WriteLock lock( _estimatorMutex );		
 		_estimator.BufferVelocity( msg->header.stamp, vel, cov );
 	}
 
@@ -214,9 +217,9 @@ public:
 		// copy construction
 		WriteLock lock( _estimatorMutex );
 		std::vector<FilterInfo> info = _estimator.Process( lagged );
+		PoseEstimator rollOutEstimator( _estimator );
 		lock.unlock();
 
-		PoseEstimator rollOutEstimator( _estimator );
 		rollOutEstimator.Process( event.current_real );
 
 		// TODO Publish Twist, TwistStamped, TwistWithCovarianceStamped modes as well

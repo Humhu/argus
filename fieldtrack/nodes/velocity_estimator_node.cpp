@@ -188,9 +188,9 @@ public:
 		// copy construction
 		WriteLock lock( _estimatorMutex );
 		std::vector<FilterInfo> info = _estimator.Process( lagged );
+		VelocityEstimator rollOutEstimator( _estimator );
 		lock.unlock();
 
-		VelocityEstimator rollOutEstimator( _estimator );
 		rollOutEstimator.Process( event.current_real );
 
 		// TODO Publish Twist, TwistStamped, TwistWithCovarianceStamped modes as well
