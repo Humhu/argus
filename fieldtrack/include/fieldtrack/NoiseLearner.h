@@ -18,6 +18,7 @@ public:
 
 	void Initialize( ros::NodeHandle& ph );
 	void BufferInfo( const FilterInfo& info );
+	void ClearBuffer();
 
 	void RegisterTransModel( const CovarianceModel::Ptr& model );
 	void RegisterObsModel( const std::string& name,

@@ -46,7 +46,7 @@ public:
 			unsigned int buffSize;
 			GetParamRequired( info, "topic", topic );
 			GetParamRequired( info, "type", type );
-			GetParam( info, "buffer_size", buffSize, (unsigned int) 0 );
+			GetParam( info, "buffer_size", buffSize, (unsigned int) 10 );
 
 			if( type == "pose_stamped" )
 			{

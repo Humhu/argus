@@ -35,22 +35,26 @@ public:
 		                                    this );
 
 		// Initialize covariance learner
-		ros::NodeHandle lh( ph.resolveName( "learner" ) );
-		double learnRate;
-		GetParam( lh, "rate", learnRate, 1.0 );
-		_learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
-		                              &VelocityEstimatorNode::LearnCallback,
-		                              this );
-		_learner.Initialize( lh );
-		_transModel = _estimator.InitTransCovModel();
-		_learner.RegisterTransModel( _transModel );
-		_obsModels = _estimator.InitObsCovModels();
-		typedef ModelRegistry::value_type Item;
-		BOOST_FOREACH( Item & item, _obsModels )
+		_enableLearning = ph.hasParam( "learner" );
+		if( _enableLearning )
 		{
-			const std::string& name = item.first;
-			const CovarianceModel::Ptr& model = item.second;
-			_learner.RegisterObsModel( name, model );
+			ros::NodeHandle lh( ph.resolveName( "learner" ) );
+			double learnRate;
+			GetParamRequired( lh, "rate", learnRate );
+			_learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
+										&VelocityEstimatorNode::LearnCallback,
+										this );
+			_learner.Initialize( lh );
+			_transModel = _estimator.InitTransCovModel();
+			_learner.RegisterTransModel( _transModel );
+			_obsModels = _estimator.InitObsCovModels();
+			typedef ModelRegistry::value_type Item;
+			BOOST_FOREACH( Item & item, _obsModels )
+			{
+				const std::string& name = item.first;
+				const CovarianceModel::Ptr& model = item.second;
+				_learner.RegisterObsModel( name, model );
+			}
 		}
 
 		// Subscribe to all update topics
@@ -67,7 +71,7 @@ public:
 			unsigned int buffSize;
 			GetParamRequired( info, "topic", topic );
 			GetParamRequired( info, "type", type );
-			GetParam( info, "buffer_size", buffSize, (unsigned int) 0 );
+			GetParam( info, "buffer_size", buffSize, (unsigned int) 10 );
 
 			if( type == "deriv_stamped" )
 			{
@@ -207,6 +211,13 @@ public:
 			BOOST_FOREACH( const FilterInfo &fi, info )
 			{
 				_infoPub.publish( boost::apply_visitor( vis, fi ) );
+			}
+		}
+		if( _enableLearning )
+		{
+			FilterInfoMessageVisitor vis;
+			BOOST_FOREACH( const FilterInfo &fi, info )
+			{
 				_learner.BufferInfo( fi );
 			}
 		}
@@ -221,6 +232,7 @@ public:
 		_initialized = !req.filter_time.isZero();
 		_updateTimer.stop();
 		_updateTimer.start();
+		if( _enableLearning ) { _learner.ClearBuffer(); }
 		return true;
 	}
 
@@ -256,6 +268,7 @@ private:
 	ros::Publisher _twistCovPub;
 	bool _publishInfo;
 	ros::Publisher _infoPub;
+	bool _enableLearning;
 
 	ros::ServiceServer _resetServer;
 	ros::Timer _updateTimer;

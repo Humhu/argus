@@ -7,6 +7,7 @@ namespace argus
 {
 PoseEstimator::PoseEstimator() {}
 
+// TODO Support 2D mode
 void PoseEstimator::Initialize( ros::NodeHandle& ph,
                                 ExtrinsicsInterface::Ptr extrinsics )
 {

@@ -24,8 +24,14 @@ void NoiseLearner::BufferInfo( const FilterInfo& info )
 {
 	WriteLock lock( _bufferMutex );
 	_infoBuffer.push_back( info );
-	while( _infoBuffer.size() > _maxBufferSize ) { _infoBuffer.pop_front();
-	}
+	while( _infoBuffer.size() > _maxBufferSize ) { _infoBuffer.pop_front(); }
+}
+
+void NoiseLearner::ClearBuffer()
+{
+	WriteLock lock( _bufferMutex );
+	_infoBuffer.clear();
+	_chain.ClearChain();
 }
 
 void NoiseLearner::RegisterTransModel( const CovarianceModel::Ptr& model )

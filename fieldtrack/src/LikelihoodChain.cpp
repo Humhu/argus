@@ -41,6 +41,7 @@ void LikelihoodChain::Invalidate()
 		CovarianceModel::Ptr& model = item.second;
 		model->Invalidate();
 	}
+	_meanSink.Invalidate();
 }
 
 double LikelihoodChain::GetMeanLL()
