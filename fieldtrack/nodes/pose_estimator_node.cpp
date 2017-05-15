@@ -164,6 +164,7 @@ public:
 	{
 		if( _initialized )
 		{
+			WriteLock lock( _estimatorMutex );
 			_estimator.BufferObservation<M>( sourceName, *msg );
 		}
 		else
