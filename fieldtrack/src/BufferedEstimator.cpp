@@ -70,6 +70,7 @@ std::vector<FilterInfo> BufferedEstimator::Process( const ros::Time& until )
 
 	// Predict the remainder of requested time
 	PredictInfo predInfo = PredictUntil( until );
+	_filterTime = until;
 	infos.emplace_back( predInfo );
 
 	// Have to check after final predict

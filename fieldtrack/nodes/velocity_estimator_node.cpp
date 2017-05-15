@@ -190,7 +190,6 @@ public:
 		std::vector<FilterInfo> info = _estimator.Process( lagged );
 		VelocityEstimator rollOutEstimator( _estimator );
 		lock.unlock();
-
 		rollOutEstimator.Process( event.current_real );
 
 		// TODO Publish Twist, TwistStamped, TwistWithCovarianceStamped modes as well
@@ -296,10 +295,8 @@ int main( int argc, char** argv )
 
 	unsigned int numThreads;
 	GetParam( ph, "num_threads", numThreads, (unsigned int) 2 );
-	if( numThreads < 2 )
-	{
-		throw std::invalid_argument( "Requires at least 2 threads" );
-	}
+
+	// TODO Check for if learning, require num_threads > 2
 	ros::AsyncSpinner spinner( numThreads );
 	spinner.start();
 	ros::waitForShutdown();

@@ -244,7 +244,7 @@ void VelocityEstimator::CheckFilter()
 	{
 		ROS_WARN_STREAM( "Filter entropy: " << entropy << " greater than max: " <<
 		                 _maxEntropyThreshold << " Resetting filter..." );
-		Reset( GetFilterTime() );
+		ResetDerived( GetFilterTime() );
 	}
 }
 }
