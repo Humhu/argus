@@ -70,6 +70,28 @@ public:
 			}
 		}
 
+		std::string velTopic, velMode;
+		if( GetParam( ph, "velocity_mode", velMode ) &&
+		    GetParam( ph, "velocity_topic", velTopic ) )
+		{
+			unsigned int buffSize;
+			GetParam( ph, "velocity_buff_len", buffSize, (unsigned int) 10 );
+		
+			if( velMode == "twist" )
+			{
+				_velSub = nh.subscribe( velTopic, buffSize, &PoseEstimatorNode::VelocityCallback, this );
+				GetParamRequired( ph, "velocity_covariance", _velCov );
+			}
+			else if( velMode == "twist_with_cov" )
+			{
+				_velSub = nh.subscribe( velTopic, buffSize, &PoseEstimatorNode::VelocityCovCallback, this );
+			}
+			else if( velMode == "odom" )
+			{
+				_velSub = nh.subscribe( velTopic, buffSize, &PoseEstimatorNode::OdomCallback, this );
+			}
+		}
+
 		// Parse output parameters
 		GetParam( ph, "publish_odom", _publishOdom, false );
 		if( _publishOdom )
@@ -150,6 +172,31 @@ public:
 		}
 	}
 
+	// TODO Different velocity input types
+	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
+	{
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix( msg->twist.covariance, cov );
+		_estimator.BufferVelocity( msg->header.stamp, vel, cov );
+	}
+
+	// TODO Different velocity input types
+	void VelocityCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
+	{
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
+		_estimator.BufferVelocity( msg->header.stamp, vel, _velCov );
+	}
+
+	// TODO Different velocity input types
+	void VelocityCovCallback( const geometry_msgs::TwistWithCovarianceStamped::ConstPtr& msg )
+	{
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix( msg->twist.covariance, cov );
+		_estimator.BufferVelocity( msg->header.stamp, vel, cov );
+	}
+
 	void TimerCallback( const ros::TimerEvent& event )
 	{
 		if( !_initialized )
@@ -206,6 +253,8 @@ public:
 		return true;
 	}
 
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
 private:
 
 	bool _initialized;
@@ -221,6 +270,9 @@ private:
 	ros::Publisher _poseCovPub;
 	bool _publishInfo;
 	ros::Publisher _infoPub;
+
+	ros::Subscriber _velSub;
+	PoseSE3::CovarianceMatrix _velCov;
 
 	ros::ServiceServer _resetServer;
 	ros::Timer _updateTimer;

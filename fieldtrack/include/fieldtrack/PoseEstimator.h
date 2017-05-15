@@ -23,7 +23,8 @@ public:
 
 	void Initialize( ros::NodeHandle& ph, ExtrinsicsInterface::Ptr extrinsics );
 
-	void BufferVelocity( const ros::Time& time, const VectorType& vel,
+	void BufferVelocity( const ros::Time& time,
+	                     const VectorType& vel,
 	                     const MatrixType& cov );
 
 	nav_msgs::Odometry GetOdom() const;
@@ -42,8 +43,10 @@ private:
 	PoseSE3KalmanFilter _filter;
 	PoseSE3 _initialPose;
 	PoseSE3::CovarianceMatrix _initialCovariance;
-
 	PoseSE3::CovarianceMatrix _transCovRate;
+
+	PoseSE3::TangentVector _lastVel;
+	PoseSE3::CovarianceMatrix _lastVelCov;
 
 	std::string _referenceFrame;
 	std::string _bodyFrame;
@@ -67,8 +70,8 @@ private:
 	virtual void CheckFilter();
 
 	void IntegrateVelocities( const ros::Time& from,
-	                             const ros::Time& to,
-								 PoseSE3& disp,
-								 PoseSE3::CovarianceMatrix& cov );
+	                          const ros::Time& to,
+	                          PoseSE3& disp,
+	                          PoseSE3::CovarianceMatrix& cov );
 };
 }

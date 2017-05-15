@@ -69,7 +69,10 @@ nav_msgs::Odometry PoseEstimator::GetOdom() const
 	msg.header.stamp = GetFilterTime();
 	msg.pose.pose = PoseToMsg( _filter.GetState() );
 	SerializeMatrix( _filter.GetCovariance(), msg.pose.covariance );
-	// TODO Add in velocity estimate somehow
+	
+	msg.twist.twist = TangentToMsg( _lastVel );
+	SerializeMatrix( _lastVelCov, msg.twist.covariance );
+
 	return msg;
 }
 
@@ -149,6 +152,9 @@ void PoseEstimator::ResetDerived( const ros::Time& time )
 	{
 		item.second.Reset();
 	}
+
+	_lastVel.setZero();
+	_lastVelCov.setZero();
 }
 
 PredictInfo PoseEstimator::PredictUntil( const ros::Time& until )
@@ -258,5 +264,8 @@ void PoseEstimator::IntegrateVelocities( const ros::Time& from,
 	double dt = (to - lastTime).toSec();
 	disp = disp * PoseSE3::Exp( dt * lastVel );
 	cov += dt * lastCov;
+
+	_lastVel = lastVel;
+	_lastVelCov = lastCov;
 }
 }
