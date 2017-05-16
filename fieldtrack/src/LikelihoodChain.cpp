@@ -57,7 +57,6 @@ void LikelihoodChain::InitializeChain( const VectorType& x,
 
 void LikelihoodChain::ClearChain()
 {
-	KalmanChain::Clear();
 	_transCov->UnregisterAll();
 	typedef SourceRegistry::value_type Item;
 	BOOST_FOREACH( Item & item, _obsModels )
@@ -68,6 +67,7 @@ void LikelihoodChain::ClearChain()
 	_glls.clear();
 	_scalers.clear();
 	_meanLL.UnregisterAllSources( false );
+	KalmanChain::Clear();
 	_initialized = false;
 }
 
