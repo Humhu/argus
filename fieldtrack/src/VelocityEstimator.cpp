@@ -14,9 +14,6 @@ void VelocityEstimator::Initialize( ros::NodeHandle& ph,
                                     ExtrinsicsInterface::Ptr extrinsics )
 {
 	GetParamRequired( ph, "body_frame", _bodyFrame );
-	GetParam( ph, "log_likelihood_threshold",
-	          _logLikelihoodThreshold,
-	          -std::numeric_limits<double>::infinity() );
 	GetParam( ph, "max_entropy_threshold",
 	          _maxEntropyThreshold,
 	          std::numeric_limits<double>::infinity() );
@@ -55,6 +52,7 @@ CovarianceModel::Ptr VelocityEstimator::InitTransCovModel() const
 {
 	TimeScaledCovariance::Ptr cov = std::make_shared<TimeScaledCovariance>();
 	cov->Initialize( _transCovRate );
+	cov->EnableL( false ); // TODO
 	return cov;
 }
 
@@ -79,7 +77,10 @@ void VelocityEstimator::SetTransCovModel( const CovarianceModel& model )
 	{
 		const FixedCovariance& mod = dynamic_cast<const FixedCovariance&>( model );
 		_transCovRate = mod.GetValue();
-		ROS_INFO_STREAM( "Transition covariance rate updated to: " << std::endl << _transCovRate );
+		ROS_INFO_STREAM( "Transition covariance rate updated to: " << std::endl <<
+		                 _transCovRate << std::endl <<
+		                 "L: " << mod.GetLValue() << std::endl <<
+		                 "D: " << mod.GetDValue().transpose() );
 	}
 	catch( std::bad_cast& e )
 	{
@@ -94,6 +95,18 @@ void VelocityEstimator::SetObsCovModel( const std::string& name,
 	{
 		throw std::invalid_argument( "Source " + name + " not registered!" );
 	}
+	try
+	{
+		const FixedCovariance& mod = dynamic_cast<const FixedCovariance&>( model );
+		MatrixType R = mod.GetValue();
+		ROS_INFO_STREAM( name << " covariance updated to: " << std::endl <<
+		                 R << std::endl <<
+		                 "L: " << mod.GetLValue() << std::endl <<
+		                 "D: " << mod.GetDValue().transpose() );
+	}
+	catch( std::bad_cast& e )
+	{}
+
 	_sourceRegistry[name].SetModel( model );
 }
 
@@ -158,7 +171,7 @@ geometry_msgs::TwistStamped VelocityEstimator::GetTwist() const
 	return msg;
 }
 
-geometry_msgs::TwistWithCovarianceStamped 
+geometry_msgs::TwistWithCovarianceStamped
 VelocityEstimator::GetTwistWithCovariance() const
 {
 	PoseSE3::TangentVector vel;
@@ -213,27 +226,19 @@ bool VelocityEstimator::ProcessMessage( const std::string& source,
 	VectorType v = obs.derivatives - C * _filter.GetState();
 	MatrixType V = C * _filter.GetCovariance() * C.transpose() + obs.covariance;
 	double ll = GaussianLogPdf( V, v );
-	if( std::isnan( ll ) )
-	{
-		ROS_WARN_STREAM( "Log likelihood is nan!" );
-		return false;
-	}
-	else if( ll < _logLikelihoodThreshold )
+	if( !manager.CheckLogLikelihood( ll ) )
 	{
 		ROS_WARN_STREAM( "Rejecting observation from " <<
-		                 source << " with log likelihood " <<
-		                 ll << " less than threshold " <<
-		                 _logLikelihoodThreshold );
+		                 source << " with log likelihood " << ll );
 		return false;
-	}
-	else // Perform filter update
-	{
-		info = _filter.Update( obs.derivatives, C, obs.covariance );
-		info.time = GetFilterTime();
-		info.frameId = source;
 
-		manager.Update( info );
 	}
+
+	info = _filter.Update( obs.derivatives, C, obs.covariance );
+	info.time = GetFilterTime();
+	info.frameId = source;
+
+	manager.Update( info );
 	return true;
 }
 

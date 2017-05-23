@@ -27,6 +27,7 @@ public:
 	void Update( const UpdateInfo& info );
 	void Reset();
 
+	bool CheckLogLikelihood( double ll ) const;
 	const MatrixType& GetObservationMatrix() const;
 
 	CovarianceModel::Ptr InitializeModel() const;
@@ -49,6 +50,7 @@ private:
 	AdaptiveObsCovEstimator _adaptiveCov;
 
 	MatrixType _obsMatrix;
+	double _minLogLikelihood;
 
 	bool _twoDimensional;
 	std::vector<unsigned int> _dimInds;

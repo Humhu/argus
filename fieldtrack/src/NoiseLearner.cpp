@@ -8,6 +8,9 @@ NoiseLearner::NoiseLearner() {}
 
 void NoiseLearner::Initialize( ros::NodeHandle& ph )
 {
+	_numIterations = 0;
+	GetParam( ph, "step_decay_rate", _stepDecayRate, 1.0 );
+
 	GetParam( ph, "max_buffer_size", _maxBufferSize, (unsigned int) 100 );
 	GetParamRequired( ph, "min_num_modules", _minNumModules );
 	if( _maxBufferSize < _minNumModules )
@@ -29,13 +32,15 @@ void NoiseLearner::BufferInfo( const FilterInfo& info )
 
 void NoiseLearner::ClearBuffer()
 {
-	WriteLock lock( _bufferMutex );
+	WriteLock bLock( _bufferMutex );
+	WriteLock cLock( _chainMutex );
 	_infoBuffer.clear();
 	_chain.ClearChain();
 }
 
 void NoiseLearner::RegisterTransModel( const CovarianceModel::Ptr& model )
 {
+	WriteLock cLock( _chainMutex );	
 	_transCov = model;
 	_chain.RegisterTransCov( model );
 }
@@ -44,19 +49,21 @@ void NoiseLearner::RegisterObsModel( const std::string& name,
                                      const CovarianceModel::Ptr& model )
 
 {
+	WriteLock cLock( _chainMutex );	
 	_obsModels.push_back( model );
 	_chain.RegisterObsSource( name, model );
 }
 
 void NoiseLearner::LearnSpin()
 {
-	WriteLock lock( _bufferMutex );
+	WriteLock bLock( _bufferMutex );
 	if( _infoBuffer.size() < _minNumModules ) 
 	{ 
 		ROS_INFO_STREAM( "Info buffer has: " << _infoBuffer.size() );
 		return; 
 	}
 
+	WriteLock cLock( _chainMutex );
 	_chain.ClearChain();
 	while( !_infoBuffer.empty() &&
 	       _chain.NumModules() < _minNumModules )
@@ -64,7 +71,13 @@ void NoiseLearner::LearnSpin()
 		_chain.ProcessInfo( _infoBuffer.front() );
 		_infoBuffer.pop_front();
 	}
-	lock.unlock();
+	bLock.unlock();
+	
+	if( _chain.NumUpdates() == 0 )
+	{
+		ROS_WARN_STREAM( "Zero updates - skipping" );
+		return;
+	}
 
 	for( unsigned int i = 0; i < _stepsPerBatch; ++i )
 	{
@@ -73,12 +86,18 @@ void NoiseLearner::LearnSpin()
 		ROS_INFO_STREAM( "Mean LL: " << _chain.GetMeanLL() );
 		_chain.Backprop();
 
-		VectorType step = _stepSize * GetDerivatives();
+		VectorType step = GetStepSize() * GetDerivatives();
 		ROS_INFO_STREAM( "Deriv: " << step.transpose() );
 		double l1Norm = step.lpNorm<1>();
 		if( l1Norm > _maxL1Norm ) { step = step * _maxL1Norm / l1Norm; }
 		StepParameters( step );
+		_numIterations++;
 	}
+}
+
+double NoiseLearner::GetStepSize() const
+{
+	return _stepSize / std::sqrt( _stepDecayRate * _numIterations + 1 );
 }
 
 unsigned int NoiseLearner::GetParamDim() const

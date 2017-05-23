@@ -39,11 +39,10 @@ public:
 		if( _enableLearning )
 		{
 			ros::NodeHandle lh( ph.resolveName( "learner" ) );
-			double learnRate;
-			GetParamRequired( lh, "rate", learnRate );
-			_learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
-										&VelocityEstimatorNode::LearnCallback,
-										this );
+			GetParamRequired( lh, "rate", _learnRate );
+			// _learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
+			// &VelocityEstimatorNode::LearnCallback,
+			// this );
 			_learner.Initialize( lh );
 			_transModel = _estimator.InitTransCovModel();
 			_learner.RegisterTransModel( _transModel );
@@ -232,24 +231,38 @@ public:
 		_initialized = !req.filter_time.isZero();
 		_updateTimer.stop();
 		_updateTimer.start();
-		if( _enableLearning ) { _learner.ClearBuffer(); }
+		if( _enableLearning )
+		{
+			_learner.ClearBuffer();
+		}
 		return true;
 	}
 
-	void LearnCallback( const ros::TimerEvent& event )
+	void LearnSpin()
 	{
-		ROS_INFO_STREAM( "Spinning..." );
-		_learner.LearnSpin();
-
-		WriteLock lock( _estimatorMutex );
-		ROS_INFO_STREAM( "Updating models..." );
-		_estimator.SetTransCovModel( *_transModel );
-		typedef ModelRegistry::value_type Item;
-		BOOST_FOREACH( const Item &item, _obsModels )
+		if( !_enableLearning )
 		{
-			const std::string& name = item.first;
-			const CovarianceModel::Ptr& model = item.second;
-			_estimator.SetObsCovModel( name, *model );
+			ros::waitForShutdown();
+			return;
+		}
+
+		ros::Rate spinRate( _learnRate );
+		while( !ros::isShuttingDown() )
+		{
+			spinRate.sleep();
+			ROS_INFO_STREAM( "Spinning..." );
+			_learner.LearnSpin();
+
+			WriteLock lock( _estimatorMutex );
+			ROS_INFO_STREAM( "Updating models..." );
+			_estimator.SetTransCovModel( *_transModel );
+			typedef ModelRegistry::value_type Item;
+			BOOST_FOREACH( const Item &item, _obsModels )
+			{
+				const std::string& name = item.first;
+				const CovarianceModel::Ptr& model = item.second;
+				_estimator.SetObsCovModel( name, *model );
+			}
 		}
 	}
 
@@ -278,8 +291,10 @@ private:
 	VelocityEstimator _estimator;
 	Mutex _estimatorMutex;
 
-	ros::Timer _learnTimer;
+	// ros::Timer _learnTimer;
+	double _learnRate;
 	NoiseLearner _learner;
+	Mutex _learnerMutex;
 	CovarianceModel::Ptr _transModel;
 	typedef std::unordered_map<std::string, CovarianceModel::Ptr> ModelRegistry;
 	ModelRegistry _obsModels;
@@ -294,12 +309,11 @@ int main( int argc, char** argv )
 	VelocityEstimatorNode estimator( nh, ph );
 
 	unsigned int numThreads;
-	GetParam( ph, "num_threads", numThreads, (unsigned int) 2 );
+	GetParam( ph, "num_threads", numThreads, (unsigned int) 1 );
 
-	// TODO Check for if learning, require num_threads > 2
 	ros::AsyncSpinner spinner( numThreads );
 	spinner.start();
-	ros::waitForShutdown();
+	estimator.LearnSpin();
 
 	return 0;
 }

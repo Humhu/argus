@@ -32,6 +32,9 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 	// TODO Currently am not validating obsInds vs the expected message type
 	_obsInds = parse_dim_string( indSpecs, false, 2, 1 );
 
+	GetParam( ph, "min_log_likelihood", _minLogLikelihood,
+	          -std::numeric_limits<double>::infinity() );
+
 	// Construct observation matrix
 	unsigned int stateDim = twoDimensional ?
 	                        PoseSE2::TangentDimension :
@@ -74,12 +77,17 @@ CovarianceModel::Ptr VelocitySourceManager::InitializeModel() const
 	{
 		FixedCovariance::Ptr cov = std::make_shared<FixedCovariance>();
 		cov->Initialize( _fixedCov );
+		// TODO Make settable
+		cov->EnableL( false );
 		return cov;
 	}
 	else if( _mode == COV_ADAPTIVE )
 	{
 		AdaptiveCovariance::Ptr cov = std::make_shared<AdaptiveCovariance>();
 		// TODO HACK
+		// TODO Read parameters correctly
+		// TODO Enable/disable diagonal
+		// TODO Add temporal weighting and prior
 		cov->SetWindowSize( 10 );
 		cov->SetDefaultValue( _adaptiveCov.GetPriorCov() );
 		return cov;
@@ -110,7 +118,7 @@ void VelocitySourceManager::SetModel( const CovarianceModel& model )
 	}
 	catch( std::bad_cast& e )
 	{
-		throw std::invalid_argument( "Incorrect model type: " + std::string(e.what()) );
+		throw std::invalid_argument( "Incorrect model type: " + std::string( e.what() ) );
 	}
 }
 
@@ -128,6 +136,11 @@ void VelocitySourceManager::Reset()
 	{
 		_adaptiveCov.Reset();
 	}
+}
+
+bool VelocitySourceManager::CheckLogLikelihood( double ll ) const
+{
+	return !std::isnan(ll) && ll > _minLogLikelihood;
 }
 
 DerivObservation

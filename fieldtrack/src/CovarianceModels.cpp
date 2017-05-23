@@ -244,6 +244,24 @@ MatrixType FixedCovariance::GetValue() const
 	return cov.GetValue();
 }
 
+MatrixType FixedCovariance::GetLValue() const
+{
+	FixedCovariance copy( *this );
+	SinkModule L;
+	link_ports( copy._lReshape.GetOutput(), L.GetInput() );
+	copy.Foreprop();
+	return L.GetValue();
+}
+
+VectorType FixedCovariance::GetDValue() const
+{
+	FixedCovariance copy( *this );
+	SinkModule d;
+	link_ports( copy._expD.GetOutput(), d.GetInput() );
+	copy.Foreprop();
+	return d.GetValue();
+}
+
 OutputPort& FixedCovariance::GetCovOut()
 {
 	return _ldlt.GetSOut();

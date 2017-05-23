@@ -31,11 +31,15 @@ private:
 	unsigned int _minNumModules;
 	unsigned int _maxBufferSize;
 
+	unsigned int _numIterations;
+	double _stepDecayRate;
+
 	unsigned int _stepsPerBatch;
 	double _stepSize;
 	double _maxL1Norm;
 
-	Mutex _bufferMutex;
+	Mutex _bufferMutex; // Controls access to buffer
+	Mutex _chainMutex; // Controls access to chain
 	std::deque<FilterInfo> _infoBuffer;
 
 	LikelihoodChain _chain;
@@ -43,6 +47,7 @@ private:
 	std::vector<CovarianceModel::Ptr> _obsModels;
 	CovarianceModel::Ptr _transCov;
 
+	double GetStepSize() const;
 	unsigned int GetParamDim() const;
 	VectorType GetDerivatives() const;
 	void StepParameters( const VectorType& s );

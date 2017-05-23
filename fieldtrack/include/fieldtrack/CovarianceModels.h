@@ -87,7 +87,10 @@ public:
 	VectorType GetL() const;
 	void SetLogD( const VectorType& D );
 	VectorType GetLogD() const;
+	
 	MatrixType GetValue() const;
+	MatrixType GetLValue() const;
+	VectorType GetDValue() const;
 
 	MatrixType GetLBackpropValue() const;
 	MatrixType GetLogDBackpropValue() const;

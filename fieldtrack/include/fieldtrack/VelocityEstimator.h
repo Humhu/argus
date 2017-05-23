@@ -68,4 +68,5 @@ private:
 
 	MatrixType GetTransitionCov( double dt );
 };
+
 }
