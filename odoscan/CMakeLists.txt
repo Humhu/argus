@@ -49,11 +49,12 @@ include_directories(
 	${catkin_INCLUDE_DIRS}
 )
 
-set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
+set(CMAKE_CXX_FLAGS "-g -Wall -std=c++0x")
 
 add_library( odoscan
     src/ApproximateVoxelGridFilter.cpp
     src/ICPMatcher.cpp
+	src/MatchRestarter.cpp
     src/ScanFilter.cpp
 	src/ScanMatcher.cpp
 	src/VoxelGridFilter.cpp
@@ -72,10 +73,6 @@ add_executable( scan_to_cloud_converter nodes/scan_to_cloud_converter.cpp )
 target_link_libraries( scan_to_cloud_converter
 					   odoscan 
 					   ${catkin_LIBRARIES} )
-
-#############
-## Install ##
-#############
 
 ## Mark executables and/or libraries for installation
 install(TARGETS odoscan

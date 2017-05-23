@@ -6,6 +6,7 @@
 
 #include "odoscan/ScanMatcher.h"
 #include "odoscan/ICPMatcher.h"
+#include "odoscan/MatchRestarter.h"
 
 #include "geometry_msgs/TwistStamped.h"
 #include "sensor_msgs/LaserScan.h"
@@ -25,11 +26,11 @@ using namespace argus;
 class LaserOdometryNode
 {
 public:
-	LaserOdometryNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-		: _nodeHandle( nh ), _privHandle( ph )
 
+	LaserOdometryNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
+		: _nh( nh ), _ph( ph )
 	{
-		ros::NodeHandle mh( _privHandle.resolveName( "matcher" ) );
+		ros::NodeHandle mh( ph.resolveName( "matcher" ) );
 		std::string type;
 		GetParamRequired( mh, "type", type );
 		if( type == "icp" )
@@ -42,7 +43,10 @@ public:
 		}
 		_matcher->Initialize( mh );
 
-		ros::NodeHandle fh( _privHandle.resolveName( "filter" ) );
+		ros::NodeHandle rh( ph.resolveName( "restarter" ) );
+		_restarter.Initialize( rh, _matcher );
+
+		ros::NodeHandle fh( ph.resolveName( "filter" ) );
 		GetParamRequired( fh, "type", type );
 		if( type == "voxel" )
 		{
@@ -76,17 +80,33 @@ public:
 		}
 
 		GetParamRequired( ph, "max_dt", _maxDt );
+		GetParam( ph, "max_keyframe_age", _maxKeyframeAge, std::numeric_limits<double>::infinity() );
+
+		_maxError.InitializeAndRead( ph, 0.25, "max_error",
+		                             "Maximum alignment mean sum of squared errors." );
+		_maxError.AddCheck<GreaterThan>( 0.0 );
+
+		_minInlierRatio.InitializeAndRead( ph, 0.5, "min_inlier_ratio",
+		                                   "Minimum solution inlier to full scan ratio." );
+		_minInlierRatio.AddCheck<GreaterThanOrEqual>( 0.0 );
+		_minInlierRatio.AddCheck<LessThanOrEqual>( 1.0 );
 	}
 
 private:
-	ros::NodeHandle _nodeHandle;
-	ros::NodeHandle _privHandle;
+
+	ros::NodeHandle _nh;
+	ros::NodeHandle _ph;
 
 	ScanFilter::Ptr _filter;
 	ScanMatcher::Ptr _matcher;
+	MatchRestarter _restarter;
 
 	LookupInterface _lookupInterface;
 	double _maxDt;
+	double _maxKeyframeAge; // TODO Make parameters as well
+
+	NumericParam _maxError;
+	NumericParam _minInlierRatio;
 
 	struct CloudRegistration
 	{
@@ -100,13 +120,17 @@ private:
 		ros::Publisher debugAlignedPub;
 		ros::Publisher debugKeyPub;
 
-		LaserCloudType::Ptr lastCloud;
-		ros::Time lastCloudTime;
+		LaserCloudType::Ptr keyframeCloud;
+		ros::Time keyframeTime;
+		PoseSE3 lastPose;
+		ros::Time lastPoseTime;
 	};
+
 	typedef std::unordered_map<std::string, CloudRegistration> CloudRegistry;
 	CloudRegistry _cloudRegistry;
 
-	void RegisterCloudSource( const std::string& name, const YAML::Node& info )
+	void RegisterCloudSource( const std::string& name,
+	                          const YAML::Node& info )
 	{
 		ROS_INFO_STREAM( "LaserOdometryNode: Registering cloud source: " << name );
 
@@ -116,17 +140,19 @@ private:
 		if( reg.showOutput )
 		{
 			std::string debugAlignedTopic = name + "/aligned_cloud";
-			ROS_INFO_STREAM( "Publishing debug aligned cloud on: " << debugAlignedTopic );
-			reg.debugAlignedPub = _privHandle.advertise<LaserCloudType>( debugAlignedTopic, 0 );
+			ROS_INFO_STREAM( "Publishing debug aligned cloud on: " <<
+			                 _ph.resolveName( debugAlignedTopic ) );
+			reg.debugAlignedPub = _ph.advertise<LaserCloudType>( debugAlignedTopic, 0 );
 
-			std::string debugKeyTopic = name + "/key_cloud";
-			ROS_INFO_STREAM( "Publishing debug key cloud on: " << debugKeyTopic );
-			reg.debugKeyPub = _privHandle.advertise<LaserCloudType>( debugKeyTopic, 0 );
+			std::string debugKeyTopic = name +  "/key_cloud";
+			ROS_INFO_STREAM( "Publishing debug key cloud on: " <<
+			                 _ph.resolveName( debugKeyTopic ) );
+			reg.debugKeyPub = _ph.advertise<LaserCloudType>( debugKeyTopic, 0 );
 		}
 
 		std::string outputTopic;
 		GetParamRequired( info, "output_topic", outputTopic );
-		reg.velPub = _nodeHandle.advertise<geometry_msgs::TwistStamped>( outputTopic, 0 );
+		reg.velPub = _nh.advertise<geometry_msgs::TwistStamped>( outputTopic, 0 );
 
 		unsigned int buffSize;
 		std::string inputTopic;
@@ -134,30 +160,28 @@ private:
 
 		if( GetParam( info, "cloud_topic", inputTopic ) )
 		{
-		  ROS_INFO_STREAM( "Subscribing to cloud at " << inputTopic );
-		  reg.cloudSub = _nodeHandle.subscribe<LaserCloudType>
-			                   ( inputTopic,
-			                   buffSize,
-			                   boost::bind( &LaserOdometryNode::CloudCallback,
-			                                this,
-			                                boost::ref( reg ),
-			                                _1 ) );
+			ROS_INFO_STREAM( "Subscribing to cloud at " << inputTopic );
+			reg.cloudSub = _nh.subscribe<LaserCloudType>( inputTopic,
+			                                              buffSize,
+			                                              boost::bind( &LaserOdometryNode::CloudCallback,
+			                                                           this,
+			                                                           boost::ref( reg ),
+			                                                           _1 ) );
 		}
 		else if( GetParam( info, "scan_topic", inputTopic ) )
 		{
-		  ROS_INFO_STREAM( "Subscribing to scan at " << inputTopic );
-			reg.cloudSub = _nodeHandle.subscribe<sensor_msgs::LaserScan>
-			                   ( inputTopic,
-			                   buffSize,
-			                   boost::bind( &LaserOdometryNode::ScanCallback,
-			                                this,
-			                                boost::ref( reg ),
-			                                _1 ) );
+			ROS_INFO_STREAM( "Subscribing to scan at " << inputTopic );
+			reg.cloudSub = _nh.subscribe<sensor_msgs::LaserScan>( inputTopic,
+			                                                      buffSize,
+			                                                      boost::bind( &LaserOdometryNode::ScanCallback,
+			                                                                   this,
+			                                                                   boost::ref( reg ),
+			                                                                   _1 ) );
 		}
 		else
-		  {
-		    throw std::runtime_error("No input topic specified for " + name );
-		  }
+		{
+			throw std::runtime_error( "No input topic specified for " + name );
+		}
 	}
 
 	void ScanCallback( CloudRegistration& reg,
@@ -176,6 +200,16 @@ private:
 	                    const LaserCloudType::ConstPtr& msg )
 	{
 		ProcessCloud( reg, msg );
+	}
+
+	void ResetKeyframe( CloudRegistration& reg,
+	                    const LaserCloudType::Ptr& cloud,
+	                    const ros::Time& time )
+	{
+		reg.keyframeCloud = cloud;
+		reg.keyframeTime = time;
+		reg.lastPose = PoseSE3();
+		reg.lastPoseTime = time;
 	}
 
 	void ProcessCloud( CloudRegistration& reg,
@@ -199,44 +233,52 @@ private:
 		// Synchronize registration access
 		WriteLock lock( reg.mutex );
 
-		if( !reg.lastCloud )
+		double keyframeAge = (currTime - reg.keyframeTime).toSec();
+		double dt = (currTime - reg.lastPoseTime).toSec();
+		if( !reg.keyframeCloud || dt > _maxDt || dt < 0 || keyframeAge > _maxKeyframeAge )
 		{
-			reg.lastCloud = currCloud;
-			reg.lastCloudTime = currTime;
-			return;
-		}
-
-		double dt = ( currTime - reg.lastCloudTime ).toSec();
-		if( dt > _maxDt )
-		{
-			reg.lastCloud = currCloud;
-			reg.lastCloudTime = currTime;
+			ResetKeyframe( reg, currCloud, currTime );
 			return;
 		}
 
 		LaserCloudType::Ptr aligned = boost::make_shared<LaserCloudType>();
 
-		PoseSE3 laserDisplacement;
-		bool success = _matcher->Match( reg.lastCloud, currCloud, laserDisplacement, aligned );
+		ScanMatchResult result = _restarter.Match( reg.keyframeCloud, currCloud, reg.lastPose, aligned );
 
 		if( reg.showOutput )
 		{
 			reg.debugAlignedPub.publish( aligned );
-			reg.debugKeyPub.publish( reg.lastCloud );
+			reg.debugKeyPub.publish( reg.keyframeCloud );
 		}
 
-		if( !success )
+		if( !result.success )
 		{
-			ROS_WARN_STREAM( "Scan matching failed!" );
-			reg.lastCloud = currCloud;
-			reg.lastCloudTime = currTime;
+			ROS_WARN_STREAM( "Scan matching failed! Resetting keyframe..." );
+			ResetKeyframe( reg, currCloud, currTime );
 			return;
 		}
 
-		PoseSE3::TangentVector laserVelocity = PoseSE3::Log( laserDisplacement ) / dt;
-		// ROS_INFO_STREAM( "Frame velocity: " << frameVelocity.transpose() << std::endl <<
-		//                  "Laser displacement: " << laserDisplacement << std::endl <<
-		//                  "dt: " << dt );
+		double inlierRatio = result.numInliers / (float) reg.keyframeCloud->size();
+		if( inlierRatio < _minInlierRatio )
+		{
+			ROS_WARN_STREAM( "Found " << result.numInliers << " inliers out of "
+			                          << reg.keyframeCloud->size() << " input points, less than min ratio "
+			                          << _minInlierRatio );
+			ResetKeyframe( reg, currCloud, currTime );
+			return;
+		}
+
+		if( result.fitness > _maxError )
+		{
+			ROS_WARN_STREAM( "Scan match result has error " << result.fitness << " greater than threshold " << _maxError );
+			ResetKeyframe( reg, currCloud, currTime );
+			return;
+		}
+
+		// TODO Logic for 2D flip case
+
+		PoseSE3 displacement = reg.lastPose.Inverse() * result.transform;
+		PoseSE3::TangentVector laserVelocity = PoseSE3::Log( displacement ) / dt;
 
 		geometry_msgs::TwistStamped out;
 		out.header.stamp = currTime;
@@ -245,12 +287,12 @@ private:
 		reg.velPub.publish( out );
 
 		// Update
-		reg.lastCloud = currCloud;
-		reg.lastCloudTime = currTime;
+		reg.lastPose = result.transform;
+		reg.lastPoseTime = currTime;
 	}
 };
 
-int main( int argc, char**argv )
+int main( int argc, char ** argv )
 {
 	ros::init( argc, argv, "laser_odometry_node" );
 
