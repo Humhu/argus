@@ -76,7 +76,7 @@ public:
 		{
 			unsigned int buffSize;
 			GetParam( ph, "velocity_buff_len", buffSize, (unsigned int) 10 );
-		
+
 			if( velMode == "twist" )
 			{
 				_velSub = nh.subscribe( velTopic, buffSize, &PoseEstimatorNode::VelocityCallback, this );
@@ -128,6 +128,8 @@ public:
 			GetParam( ph, "info_buff_len", infoBuffLen, (unsigned int) 100 );
 			_infoPub = nh.advertise<argus_msgs::FilterStepInfo>( "info", infoBuffLen );
 		}
+
+		GetParam( ph, "publish_tf", _publishTf, false );
 
 		// NOTE We have to reset the filter to compensate for the lag, otherwise the
 		// first timer call will request it predict to the past
@@ -187,7 +189,7 @@ public:
 	void VelocityCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
 	{
 		PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
-		WriteLock lock( _estimatorMutex );		
+		WriteLock lock( _estimatorMutex );
 		_estimator.BufferVelocity( msg->header.stamp, vel, _velCov );
 	}
 
@@ -197,7 +199,7 @@ public:
 		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
 		PoseSE3::CovarianceMatrix cov;
 		ParseMatrix( msg->twist.covariance, cov );
-		WriteLock lock( _estimatorMutex );		
+		WriteLock lock( _estimatorMutex );
 		_estimator.BufferVelocity( msg->header.stamp, vel, cov );
 	}
 
@@ -238,10 +240,19 @@ public:
 		if( _publishInfo )
 		{
 			FilterInfoMessageVisitor vis;
-			BOOST_FOREACH( const FilterInfo &fi, info )
+			BOOST_FOREACH ( const FilterInfo &fi, info )
 			{
 				_infoPub.publish( boost::apply_visitor( vis, fi ) );
 			}
+		}
+		if( _publishTf )
+		{
+			// TODO Have a get relative pose method
+			nav_msgs::Odometry odom = rollOutEstimator.GetOdom();
+			_extrinsicsManager->SetExtrinsics( odom.child_frame_id,
+			                                   odom.header.frame_id,
+			                                   event.current_real,
+			                                   MsgToPose( odom.pose.pose ) );
 		}
 	}
 
@@ -274,6 +285,7 @@ private:
 	ros::Publisher _poseCovPub;
 	bool _publishInfo;
 	ros::Publisher _infoPub;
+	bool _publishTf;
 
 	ros::Subscriber _velSub;
 	PoseSE3::CovarianceMatrix _velCov;
@@ -287,7 +299,7 @@ private:
 	Mutex _estimatorMutex;
 };
 
-int main( int argc, char** argv )
+int main( int argc, char ** argv )
 {
 	ros::init( argc, argv, "pose_estimator_node" );
 
