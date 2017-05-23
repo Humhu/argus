@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(manycal)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -std=c++11")
+set(CMAKE_CXX_FLAGS "-g -Wall -std=c++0x")
 
 if( NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "" )
     message( STATUS "No build type selected, default to Release" )
