@@ -12,10 +12,12 @@ void ScanMatcher::Initialize(ros::NodeHandle &ph)
 	_maxIters.InitializeAndRead(ph, 100, "max_iters",
 								"Maximum number of matching iterations.");
 	_maxIters.AddCheck<GreaterThan>(0);
+	_maxIters.AddCheck<IntegerValued>();
 
 	_ransacIters.InitializeAndRead(ph, 10, "ransac_iters",
 								   "Maximum number of RANSAC iterations.");
 	_ransacIters.AddCheck<GreaterThan>(0);
+	_ransacIters.AddCheck<IntegerValued>();
 
 	_ransacThreshold.InitializeAndRead(ph, 0.1, "ransac_threshold",
 									   "RANSAC outlier rejection distance.");
