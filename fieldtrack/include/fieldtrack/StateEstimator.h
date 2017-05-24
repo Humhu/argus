@@ -53,6 +53,9 @@ public:
 	// Get the current filter state
 	TargetState GetState() const;
 
+	const MatrixType& GetTransitionCovRate() const;
+	void SetTransitionCovRate( const MatrixType& Q );
+
 private:
 
 	ExtrinsicsInterface::Ptr _extrinsicsManager;
@@ -70,9 +73,7 @@ private:
 	std::string _referenceFrame;
 	std::string _bodyFrame;
 
-	CovarianceMode _transitionMode;
-	MatrixType _fixedTransCov;
-	AdaptiveTransitionCovarianceEstimator _adaptiveTransCov;
+	MatrixType _transCovRate;
 
 	typedef std::unordered_map<std::string, ObservationSourceManager> SourceRegistry;
 	SourceRegistry _sourceRegistry;
@@ -80,11 +81,6 @@ private:
 	typedef std::pair<std::string, ObservationMessage> SourceMsg;
 	typedef std::map<ros::Time, SourceMsg> UpdateBuffer;
 	UpdateBuffer _updateBuffer;
-
-	// Converts a Predict/Update info to a FilterInfo
-	// NOTE Must be called immediately after the predict/update
-	argus_msgs::FilterStepInfo NotarizeStep( const std::string& frame, 
-	                                         const FilterInfo& obs );
 
 	// Forward predicts the filter to the specified time
 	PredictInfo PredictUntil( const ros::Time& until );

@@ -15,13 +15,11 @@ class OdometryDifferentiator
 public:
 
 	OdometryDifferentiator( ros::NodeHandle& nh, ros::NodeHandle& ph )
-	: initialized( false )
+	: _initialized( false )
 	{
 		unsigned int buffLen;
 		GetParam<unsigned int>( ph, "buffer_length", buffLen, 10 );
-		double dt;
-		GetParam<double>( ph, "min_dt", dt, 0.1 );
-		_minDt = ros::Duration( dt );
+		GetParam<double>( ph, "min_dt", _minDt, 0.1 );
 
 		GetParam<std::string>( ph, "fixed_child_frame", _fixedChildFrame, "" );
 
@@ -73,8 +71,8 @@ private:
 	ros::Publisher _outputPub;
 	ros::Subscriber _inputSub;
 
-	bool initialized;
-	ros::Duration _minDt;
+	bool _initialized;
+	double _minDt;
 	std::string _outputMode;
 	std::string _fixedChildFrame;
 
@@ -104,17 +102,24 @@ private:
 	                  const std::string& childFrame,
 	                  const std_msgs::Header& header )
 	{
-		if( !initialized )
+		if( !_initialized )
 		{
 			_lastPose = pose;
 			_lastPoseTime = header.stamp;
-			initialized = true;
+			_initialized = true;
 			return;
 		}
-		if( header.stamp - _lastPoseTime < _minDt ) { return; }
+		double dt = ( header.stamp - _lastPoseTime ).toSec();
+		if( dt < 0 )
+		{
+			ROS_WARN_STREAM( "Negative dt detected. Resetting state." );
+			_initialized = false;
+			return;
+		}
+
+		if( dt < _minDt ) { return; }
 
 		PoseSE3 delta = _lastPose.Inverse() * pose;
-		double dt = ( header.stamp - _lastPoseTime ).toSec();
 		PoseSE3::TangentVector twist = PoseSE3::Log( delta ) / dt;
 
 		if( _outputMode == "twist_stamped" )

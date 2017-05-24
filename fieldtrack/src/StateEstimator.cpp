@@ -39,22 +39,8 @@ void StateEstimator::Initialize( ros::NodeHandle& ph,
 
 	std::string mode;
 	ros::NodeHandle th( ph.resolveName("transition") );	
-	GetParamRequired( th, "mode", mode );
-	_transitionMode = StringToCovMode( mode );
-	if( _transitionMode == COV_PASS )
-	{
-		throw std::invalid_argument( "Transition mode cannot be: pass" );
-	}
-	else if( _transitionMode == COV_FIXED )
-	{
-		_fixedTransCov = MatrixType( _filter.CovDim(), 
-		                             _filter.CovDim() );
-		GetParamRequired( th, "covariance", _fixedTransCov );
-	}
-	else if( _transitionMode == COV_ADAPTIVE )
-	{		
-		_adaptiveTransCov.Initialize( th );
-	}
+	_transCovRate = MatrixType( _filter.CovDim(), _filter.CovDim() );
+	GetParamRequired( th, "covariance", _transCovRate );
 
 	// Parse all update sources
 	YAML::Node updateSources;
@@ -82,12 +68,6 @@ void StateEstimator::Reset( const ros::Time& time )
 	_filterTime = time;
 
 	_updateBuffer.clear();
-
-	// Reset the transition covariance adapter
-	if( _transitionMode == COV_ADAPTIVE )
-	{
-		_adaptiveTransCov.Reset();
-	}
 
 	// Reset all observation covariance adapters
 	typedef SourceRegistry::value_type Item;
@@ -148,11 +128,6 @@ std::vector<FilterInfo> StateEstimator::Process( const ros::Time& until )
 			upInfo.stepNum = _stepCounter;
 			infos.emplace_back( upInfo );
 
-			// Update adaptive estimators if needed
-			if( _transitionMode == COV_ADAPTIVE )
-			{
-				_adaptiveTransCov.Update( timestamp, predInfo, upInfo );
-			}
 			_sourceRegistry.at( sourceName ).Update( timestamp, upInfo );
 		}
 
@@ -190,18 +165,20 @@ TargetState StateEstimator::GetState() const
 	return state;
 }
 
+const MatrixType& StateEstimator::GetTransitionCovRate() const
+{
+	return _transCovRate;
+}
+
+void StateEstimator::SetTransitionCovRate( const MatrixType& Q )
+{
+	_transCovRate = Q;
+}
+
 MatrixType StateEstimator::GetTransitionCov( const ros::Time& time,
                                              double dt )
 {
-	if( _transitionMode == COV_FIXED )
-	{
-		return _fixedTransCov * dt;
-	}
-	if( _transitionMode == COV_ADAPTIVE )
-	{
-		return _adaptiveTransCov.GetQ( time ) * dt;
-	}
-	throw std::runtime_error( "Unknown transition mode!" );
+	return _transCovRate * dt;
 }
 
 PredictInfo StateEstimator::PredictUntil( const ros::Time& until )
@@ -246,7 +223,7 @@ void StateEstimator::CheckFilter()
 	}
 
 	// LDLT-based entropy computation is more stable
-	double entropy = std::log( Dvec.array().prod() );
+	double entropy = Dvec.array().log().sum();
 	if( entropy > _maxEntropyThreshold )
 	{
 		ROS_WARN_STREAM( "Filter entropy: " << entropy << " greater than max: " << 

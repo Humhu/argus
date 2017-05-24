@@ -10,7 +10,7 @@ PoseDerivativeFilter::PoseDerivativeFilter( unsigned int order )
 {
 	_derivs = VectorType::Zero( DerivsDim() );
 	_cov = MatrixType::Identity( CovDim(), CovDim() );
-	_tfunc = boost::bind( &IntegralMatrix<double>, _1, order );
+	_tfunc = boost::bind( &IntegralMatrix<double>, PoseSE3::TangentDimension, _1, order );
 }
 
 unsigned int PoseDerivativeFilter::PoseDim() const

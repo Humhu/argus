@@ -26,16 +26,17 @@ enum CovarianceMode
 {
 	COV_PASS,     // Pass-through
 	COV_FIXED,    // Fixed value
-	COV_ADAPTIVE, // Window adaptive 
+	COV_ADAPTIVE, // Window adaptive
 	//COV_PREDICTIVE // TODO
 };
+
 CovarianceMode StringToCovMode( const std::string& str );
 std::string CovModeToString( CovarianceMode mode );
 
 // TODO: Print functions for all structs
 
 /*! \brief C++ counterpart of nav_msgs::Odometry message.
-*/
+ */
 struct TargetState
 {
 	std::string referenceFrame;
@@ -44,7 +45,7 @@ struct TargetState
 	PoseSE3 pose;
 	VectorType derivatives;
 	MatrixType covariance;
-	
+
 	TargetState();
 	TargetState( const fieldtrack::TargetState& state );
 	TargetState( const nav_msgs::Odometry& odom );
@@ -53,13 +54,14 @@ struct TargetState
 	nav_msgs::Odometry ToOdometryMsg() const;
 };
 
-typedef boost::variant< geometry_msgs::PoseStamped,
-                        geometry_msgs::PoseWithCovarianceStamped,
-                        geometry_msgs::TwistStamped,
-                        geometry_msgs::TwistWithCovarianceStamped,
-                        geometry_msgs::TransformStamped,
-                        sensor_msgs::Imu >
-        ObservationMessage;
+typedef boost::variant<geometry_msgs::PoseStamped,
+                       geometry_msgs::PoseWithCovarianceStamped,
+                       geometry_msgs::TwistStamped,
+                       geometry_msgs::TwistWithCovarianceStamped,
+                       geometry_msgs::TransformStamped,
+                       sensor_msgs::Imu>
+ObservationMessage;
+ros::Time get_timestamp( const ObservationMessage& msg );
 
 struct ObservationBase
 {
@@ -70,7 +72,7 @@ struct ObservationBase
 struct PoseObservation : public ObservationBase
 {
 	PoseSE3 pose;
-	MatrixType covariance;
+	MatrixType covariance; // TODO This appears to be common across obs...
 };
 
 struct PositionObservation : public ObservationBase
@@ -92,30 +94,12 @@ struct DerivObservation : public ObservationBase
 	std::vector<unsigned int> indices;
 };
 
-typedef boost::variant< PoseObservation, 
-                        PositionObservation, 
-                        OrientationObservation,
-                        DerivObservation > 
-        Observation;
-
-// Various observation visitors
-struct ObservationTimestampVisitor
-: public boost::static_visitor<ros::Time>
-{
-	ObservationTimestampVisitor();
-
-	ros::Time operator()( const ObservationBase& obs ) const ;
-};
-
-struct ObservationFrameVisitor
-: public boost::static_visitor<std::string>
-{
-	ObservationFrameVisitor();
-
-	std::string operator()( const ObservationBase& obs ) const ;
-};
-
-ros::Time get_observation_timestamp( const Observation& obs );
-std::string get_observation_frame( const Observation& obs );
+typedef boost::variant<PoseObservation,
+                       PositionObservation,
+                       OrientationObservation,
+                       DerivObservation>
+Observation;
+ros::Time get_timestamp( const Observation& obs );
+std::string get_frame( const Observation& obs );
 
 }
