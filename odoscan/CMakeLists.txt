@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
 					paraset
 					pcl_ros
 					laser_geometry
+					extrinsics_array					
 )
 
 message( STATUS ${CMAKE_SOURCE_DIR} )
@@ -37,6 +38,7 @@ catkin_package(
 					paraset
 					pcl_ros
 					laser_geometry
+					extrinsics_array
 					
 	DEPENDS 		Boost 
 					PCL 

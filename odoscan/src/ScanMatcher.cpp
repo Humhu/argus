@@ -50,6 +50,7 @@ ScanMatchResult ScanMatcher::Match(const LaserCloudType::ConstPtr &key,
 	}
 
 	// Set all the latest parameters
+	// TODO Revamp this interface to use a reference instead of smart pointer
 	MatcherType::Ptr matcher = CreateMatcher();
 	matcher->ToRegistrar().setMaximumIterations(_maxIters);
 	matcher->ToRegistrar().setRANSACIterations(_ransacIters);

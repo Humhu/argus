@@ -17,9 +17,8 @@ void MatchRestarter::Initialize( ros::NodeHandle& ph,
 
 	unsigned int dim = _twoDimensional ? PoseSE2::TangentDimension
 					   : PoseSE3::TangentDimension;
-	MatrixType cov( dim, dim );
-	GetParam( ph, "sample_cov", cov, MatrixType::Identity( dim, dim ) );
-	_guessDist = UniformEllipse<>( VectorType::Zero( dim ), cov );
+	_guessDist = MultivariateGaussian<>( dim );
+	GetParam( ph, "num_std_devs", _numStdDevs, 2.5 );
 
 	_numRestarts.InitializeAndRead( ph, 0, "num_restarts",
 	                                "Number of random re-initializations" );
@@ -27,9 +26,27 @@ void MatchRestarter::Initialize( ros::NodeHandle& ph,
 	_numRestarts.AddCheck<IntegerValued>();
 }
 
+void MatchRestarter::SetDisplacementDistribution( const PoseSE3& disp,
+                                                  const PoseSE3::CovarianceMatrix& cov )
+{
+	if( _twoDimensional )
+	{
+		PoseSE2 disp2 = PoseSE2::FromSE3( disp );
+		PoseSE2::CovarianceMatrix cov2;
+		std::vector<int> inds = {0, 1, 5};
+		GetSubmatrix( cov, cov2, inds, inds );
+		_guessDist.SetMean( PoseSE2::Log( disp2 ) );
+		_guessDist.SetCovariance( cov2 );
+	}
+	else
+	{
+		_guessDist.SetMean( PoseSE3::Log( disp ) );
+		_guessDist.SetCovariance( cov );
+	}
+}
+
 ScanMatchResult MatchRestarter::Match( const LaserCloudType::ConstPtr& key,
                                        const LaserCloudType::ConstPtr& tar,
-                                       const PoseSE3& guess,
                                        LaserCloudType::Ptr& aligned )
 {
 	ScanMatchResult best;
@@ -39,8 +56,7 @@ ScanMatchResult MatchRestarter::Match( const LaserCloudType::ConstPtr& key,
 
 	for( unsigned int i = 0; i < _numRestarts + 1; ++i )
 	{
-		PoseSE3 trialGuess = (i == 0) ? guess : guess * SampleInit();
-		//PoseSE3 trialGuess = guess * SampleInit();
+		PoseSE3 trialGuess = SampleInit( i == 0 );
 		LaserCloudType::Ptr trialAligned;
 		ScanMatchResult trial = _matcher->Match( key, tar, trialGuess,
 		                                         trialAligned );
@@ -59,17 +75,20 @@ ScanMatchResult MatchRestarter::Match( const LaserCloudType::ConstPtr& key,
 	return best;
 }
 
-PoseSE3 MatchRestarter::SampleInit()
+PoseSE3 MatchRestarter::SampleInit( bool meanOnly )
 {
-	VectorType sample = _guessDist.Sample();
 	if( _twoDimensional )
 	{
-		PoseSE2 init = PoseSE2::Exp( sample );
+		PoseSE2 init = meanOnly ?
+		               PoseSE2::Exp( _guessDist.GetMean() ) :
+		               PoseSE2::Exp( _guessDist.Sample() );
 		return PoseSE3::FromSE2( init );
 	}
 	else
 	{
-		return PoseSE3::Exp( sample );
+		return meanOnly ?
+		       PoseSE3::Exp( _guessDist.GetMean() ) :
+		       PoseSE3::Exp( _guessDist.Sample() );
 	}
 }
 }

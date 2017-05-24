@@ -10,10 +10,14 @@
 
 #include "geometry_msgs/TwistStamped.h"
 #include "sensor_msgs/LaserScan.h"
+#include <nav_msgs/Odometry.h>
 
 #include <laser_geometry/laser_geometry.h>
 
 #include "lookup/LookupInterface.h"
+#include "extrinsics_array/ExtrinsicsInterface.h"
+
+#include "argus_utils/geometry/VelocityIntegrator.hpp"
 #include "argus_utils/synchronization/SynchronizationTypes.h"
 
 #include <pcl_ros/point_cloud.h>
@@ -28,7 +32,7 @@ class LaserOdometryNode
 public:
 
 	LaserOdometryNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-		: _nh( nh ), _ph( ph )
+		: _nh( nh ), _ph( ph ), _extrinsics( nh, ph )
 	{
 		ros::NodeHandle mh( ph.resolveName( "matcher" ) );
 		std::string type;
@@ -42,6 +46,11 @@ public:
 			throw std::invalid_argument( "Unknown matcher type: " + type );
 		}
 		_matcher->Initialize( mh );
+
+		double odomLen;
+		GetParam( ph, "max_odom_buff_len", odomLen, 5.0 );
+		_velIntegrator.SetMaxBuffLen( odomLen );
+		_odomSub = nh.subscribe( "odom", 10, &LaserOdometryNode::OdomCallback, this );
 
 		ros::NodeHandle rh( ph.resolveName( "restarter" ) );
 		_restarter.Initialize( rh, _matcher );
@@ -96,6 +105,11 @@ private:
 
 	ros::NodeHandle _nh;
 	ros::NodeHandle _ph;
+
+	ExtrinsicsInterface _extrinsics;
+	ros::Subscriber _odomSub;
+	std::string _odomFrame;
+	VelocityIntegratorSE3 _velIntegrator;
 
 	ScanFilter::Ptr _filter;
 	ScanMatcher::Ptr _matcher;
@@ -184,6 +198,15 @@ private:
 		}
 	}
 
+	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
+	{
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix( msg->twist.covariance, cov );
+		_velIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
+		_odomFrame = msg->child_frame_id;
+	}
+
 	void ScanCallback( CloudRegistration& reg,
 	                   const sensor_msgs::LaserScan::ConstPtr& msg )
 	{
@@ -235,7 +258,14 @@ private:
 
 		double keyframeAge = (currTime - reg.keyframeTime).toSec();
 		double dt = (currTime - reg.lastPoseTime).toSec();
-		if( !reg.keyframeCloud || dt > _maxDt || dt < 0 || keyframeAge > _maxKeyframeAge )
+		if( dt < 0 )
+		{
+			ROS_WARN_STREAM( "Negative dt detected. Resetting..." );
+			_velIntegrator.Reset();
+			ResetKeyframe( reg, currCloud, currTime );
+			return;
+		}
+		if( !reg.keyframeCloud || dt > _maxDt || keyframeAge > _maxKeyframeAge )
 		{
 			ResetKeyframe( reg, currCloud, currTime );
 			return;
@@ -243,7 +273,43 @@ private:
 
 		LaserCloudType::Ptr aligned = boost::make_shared<LaserCloudType>();
 
-		ScanMatchResult result = _restarter.Match( reg.keyframeCloud, currCloud, reg.lastPose, aligned );
+		// Attempt to use velocity prediction
+		PoseSE3 odomDisp;
+		PoseSE3::CovarianceMatrix odomCov;
+		if( !_velIntegrator.Integrate( reg.lastPoseTime.toSec(), currTime.toSec(),
+		                               odomDisp, odomCov ) )
+		{
+			odomDisp = PoseSE3();
+			odomCov = dt * PoseSE3::CovarianceMatrix::Identity(); // TODO Cov-time-scale parameter
+		}
+		else
+		{
+			ROS_INFO_STREAM( "Odometry frame dt: " << dt << " displacement: " << odomDisp << std::endl
+			<< "cov: " << std::endl << odomCov );
+		}
+
+		PoseSE3 odomToLaser;
+		PoseSE3 laserDisp;
+		PoseSE3::CovarianceMatrix guessCov;
+		try
+		{
+			odomToLaser = _extrinsics.GetExtrinsics( _odomFrame,
+			                                         cloud->header.frame_id,
+			                                         currTime );
+
+			laserDisp = odomToLaser * odomDisp * odomToLaser.Inverse();
+			guessCov = TransformCovariance( odomCov, odomToLaser );
+		}
+		catch( ExtrinsicsException& e )
+		{
+			ROS_WARN_STREAM( "Could not get extrinsics: " << e.what() );
+			laserDisp = PoseSE3();
+			guessCov = odomCov;
+		}
+
+		PoseSE3 guessDisp = reg.lastPose * laserDisp;
+		_restarter.SetDisplacementDistribution( guessDisp, guessCov );
+		ScanMatchResult result = _restarter.Match( reg.keyframeCloud, currCloud, aligned );
 
 		if( reg.showOutput )
 		{
