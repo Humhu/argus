@@ -282,11 +282,6 @@ private:
 			odomDisp = PoseSE3();
 			odomCov = dt * PoseSE3::CovarianceMatrix::Identity(); // TODO Cov-time-scale parameter
 		}
-		else
-		{
-			ROS_INFO_STREAM( "Odometry frame dt: " << dt << " displacement: " << odomDisp << std::endl
-			<< "cov: " << std::endl << odomCov );
-		}
 
 		PoseSE3 odomToLaser;
 		PoseSE3 laserDisp;
