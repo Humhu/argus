@@ -65,8 +65,8 @@ void PoseEstimator::BufferVelocity( const ros::Time& time,
 nav_msgs::Odometry PoseEstimator::GetOdom() const
 {
 	nav_msgs::Odometry msg;
-	msg.header.frame_id = _bodyFrame;
-	msg.child_frame_id = _referenceFrame;
+	msg.header.frame_id = _referenceFrame;
+	msg.child_frame_id = _bodyFrame;
 	msg.header.stamp = GetFilterTime();
 	msg.pose.pose = PoseToMsg( _filter.GetState() );
 	SerializeMatrix( _filter.GetCovariance(), msg.pose.covariance );
