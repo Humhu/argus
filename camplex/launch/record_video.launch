@@ -1,0 +1,13 @@
+<launch>
+
+<arg name="output_path"/>
+<arg name="framerate" default="30"/>
+<arg name="image_topic"/>
+
+<node pkg="camplex" type="video_recorder" name="recorder" output="screen">
+    <remap from="image" to="$(arg image_topic)"/>
+    <param name="output_file" value="$(arg output_path)"/>
+    <param name="framerate" value="$(arg framerate)"/>
+</node>
+
+</launch>
