@@ -308,8 +308,14 @@ private:
 
 		if( reg.showOutput )
 		{
-			reg.debugAlignedPub.publish( aligned );
-			reg.debugKeyPub.publish( reg.keyframeCloud );
+			if( aligned )
+			{
+				reg.debugAlignedPub.publish( aligned );
+			}
+			if( reg.keyframeCloud )
+			{
+				reg.debugKeyPub.publish( reg.keyframeCloud );
+			}
 		}
 
 		if( !result.success )

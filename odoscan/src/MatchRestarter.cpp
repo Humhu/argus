@@ -71,7 +71,10 @@ ScanMatchResult MatchRestarter::Match( const LaserCloudType::ConstPtr& key,
 		}
 		// TODO Compare error & numInliers together
 	}
-	aligned = bestAligned;
+	if( best.success )
+	{
+		aligned = bestAligned;
+	}
 	return best;
 }
 

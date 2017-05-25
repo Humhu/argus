@@ -19,7 +19,7 @@ public:
 
 private:
 
-	NumericParam _leafSize;
+	NumericParam _logLeafSize;
 	// NumericParam _minPointsPerVox;
 
 	virtual void InitializeDerived( ros::NodeHandle& ph );
