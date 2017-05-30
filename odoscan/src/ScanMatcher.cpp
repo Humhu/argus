@@ -33,6 +33,10 @@ void ScanMatcher::Initialize(ros::NodeHandle &ph)
 	_logMinObjectiveEps.InitializeAndRead(ph, -1, "log_min_objective_eps",
 										  "Min log objective change");
 
+	_minNumPoints.InitializeAndRead(ph, 0, "min_num_points",
+										  "Min number of cloud points required");
+	_minNumPoints.AddCheck<GreaterThanOrEqual>( 0.0 );
+
 	InitializeDerived(ph);
 }
 
@@ -47,6 +51,12 @@ ScanMatchResult ScanMatcher::Match(const LaserCloudType::ConstPtr &key,
 	if (!key || !tar)
 	{
 		throw std::invalid_argument("ScanMatcher: Received null point clouds.");
+	}
+	if( key->size() < _minNumPoints || tar->size() < _minNumPoints )
+	{
+		ROS_WARN_STREAM( "Input cloud sizes " << key->size() << " and " <<
+		                 tar->size() << " less than required min " << _minNumPoints );
+		return result;
 	}
 
 	// Set all the latest parameters

@@ -59,6 +59,7 @@ class ScanMatcher
 	NumericParam _maxCorrespondDist;
 	NumericParam _logMinTransformEps;
 	NumericParam _logMinObjectiveEps;
+	NumericParam _minNumPoints;
 	
 	virtual void InitializeDerived(ros::NodeHandle &ph) = 0;
 
