@@ -86,8 +86,9 @@ void NoiseLearner::LearnSpin()
 		ROS_INFO_STREAM( "Mean LL: " << _chain.GetMeanLL() );
 		_chain.Backprop();
 
-		VectorType step = GetStepSize() * GetDerivatives();
-		ROS_INFO_STREAM( "Deriv: " << step.transpose() );
+		double stepSize = GetStepSize();
+		VectorType step = stepSize * GetDerivatives();
+		ROS_INFO_STREAM( "Beta: " << stepSize << " Deriv: " << step.transpose() );
 		double l1Norm = step.lpNorm<1>();
 		if( l1Norm > _maxL1Norm ) { step = step * _maxL1Norm / l1Norm; }
 		StepParameters( step );
