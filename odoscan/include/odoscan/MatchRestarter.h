@@ -1,12 +1,16 @@
 #pragma once
 
 #include "odoscan/ScanMatcher.h"
-#include "argus_utils/geometry/PoseSE3.h"
 #include "paraset/ParameterManager.hpp"
+
+#include "argus_utils/geometry/PoseSE3.h"
 #include "argus_utils/random/MultivariateGaussian.hpp"
+#include "argus_utils/synchronization/WorkerPool.h"
+#include "argus_utils/synchronization/Semaphore.h"
 
 namespace argus
 {
+// TODO Make class safer for multi-threaded usage
 class MatchRestarter
 {
 public:
@@ -32,7 +36,19 @@ private:
 
 	NumericParam _numRestarts;
 	ScanMatcher::Ptr _matcher;
+	WorkerPool _workers;
 
 	PoseSE3 SampleInit( bool meanOnly );
+
+	struct MatchJobInfo
+	{
+		LaserCloudType::ConstPtr key;
+	    LaserCloudType::ConstPtr tar;
+	    LaserCloudType::Ptr aligned;
+		ScanMatchResult result;
+		PoseSE3 guess;
+	};
+
+	void MatchJob( MatchJobInfo& info, Semaphore& sema );
 };
 }
