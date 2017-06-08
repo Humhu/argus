@@ -130,6 +130,7 @@ private:
 		ros::Subscriber cloudSub;
 		ros::Publisher velPub;
 
+		bool overrideTimestamp;
 		bool showOutput;
 		ros::Publisher debugAlignedPub;
 		ros::Publisher debugKeyPub;
@@ -150,6 +151,7 @@ private:
 
 		CloudRegistration& reg = _cloudRegistry[name];
 
+		GetParam( info, "override_timestamp", reg.overrideTimestamp, false );
 		GetParam( info, "show_output", reg.showOutput, false );
 		if( reg.showOutput )
 		{
@@ -251,7 +253,14 @@ private:
 		}
 
 		ros::Time currTime;
-		pcl_conversions::fromPCL( cloud->header.stamp, currTime );
+		if( reg.overrideTimestamp )
+		{
+			currTime = ros::Time::now();
+		}
+		else
+		{
+			pcl_conversions::fromPCL( cloud->header.stamp, currTime );
+		}
 
 		// Synchronize registration access
 		WriteLock lock( reg.mutex );
@@ -308,7 +317,7 @@ private:
 
 		if( reg.showOutput )
 		{
-			if( aligned )
+			if( result.success && aligned )
 			{
 				reg.debugAlignedPub.publish( aligned );
 			}
