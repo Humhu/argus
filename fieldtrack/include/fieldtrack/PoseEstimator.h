@@ -62,7 +62,9 @@ private:
 	typedef std::map<ros::Time, VelocityInfo> VelocityBuffer;
 	VelocityBuffer _velocityBuffer;
 
-	virtual void ResetDerived( const ros::Time& time );
+	virtual void ResetDerived( const ros::Time& time,
+	                           const VectorType& state = VectorType(),
+	                           const MatrixType& cov = MatrixType() );
 	virtual PredictInfo PredictUntil( const ros::Time& until );
 	virtual bool ProcessMessage( const std::string& source,
 	                             const ObservationMessage& msg,

@@ -33,6 +33,9 @@ public:
 	void SetTransCovModel( const CovarianceModel& model );
 	void SetObsCovModel( const std::string& name, const CovarianceModel& model );
 
+	unsigned int StateDim() const;
+	unsigned int FullDim() const;
+
 private:
 
 	KalmanFilter _filter;
@@ -43,6 +46,7 @@ private:
 	double _logLikelihoodThreshold; // Min likelihood before rejecting observations
 	double _maxEntropyThreshold; // Maximum state entropy before reset
 
+	VectorType _initialState;
 	MatrixType _initialCovariance; // Cov to reset to
 
 	std::string _bodyFrame;
@@ -52,14 +56,13 @@ private:
 	typedef std::unordered_map<std::string, VelocitySourceManager> SourceRegistry;
 	SourceRegistry _sourceRegistry;
 
-	unsigned int StateDim() const;
-	unsigned int FullDim() const;
-
 	void GetFullVels( PoseSE3::TangentVector& vel,
 	                  PoseSE3::CovarianceMatrix& cov ) const;
 
 
-	virtual void ResetDerived( const ros::Time& time );
+	virtual void ResetDerived( const ros::Time& time,
+	                           const VectorType& state = VectorType(),
+	                           const MatrixType& cov = MatrixType() );
 	virtual PredictInfo PredictUntil( const ros::Time& until );
 	virtual bool ProcessMessage( const std::string& source,
 	                             const ObservationMessage& msg,
@@ -68,5 +71,4 @@ private:
 
 	MatrixType GetTransitionCov( double dt );
 };
-
 }

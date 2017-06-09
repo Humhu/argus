@@ -12,6 +12,7 @@ class KalmanChain
 {
 public:
 
+	typedef std::shared_ptr<KalmanChain> Ptr;
 	typedef std::shared_ptr<PredictModule> PredictModulePtr;
 	typedef std::shared_ptr<UpdateModule> UpdateModulePtr;
 	typedef std::pair<PredictModulePtr, UpdateModulePtr> ModulePtrPair;

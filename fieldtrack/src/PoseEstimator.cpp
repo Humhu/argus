@@ -70,7 +70,7 @@ nav_msgs::Odometry PoseEstimator::GetOdom() const
 	msg.header.stamp = GetFilterTime();
 	msg.pose.pose = PoseToMsg( _filter.GetState() );
 	SerializeMatrix( _filter.GetCovariance(), msg.pose.covariance );
-	
+
 	msg.twist.twist = TangentToMsg( _lastVel );
 	SerializeMatrix( _lastVelCov, msg.twist.covariance );
 
@@ -142,9 +142,15 @@ void PoseEstimator::SetObsCovModel( const std::string& name,
 	_sourceRegistry[name].SetModel( model );
 }
 
-void PoseEstimator::ResetDerived( const ros::Time& time )
+void PoseEstimator::ResetDerived( const ros::Time& time,
+                                  const VectorType& state,
+                                  const MatrixType& cov )
 {
-	_filter.Initialize( _initialPose, _initialCovariance );
+	PoseSE3 initPose = ( state.size() == 0 ) ? _initialPose : PoseSE3( state );
+	PoseSE3::CovarianceMatrix initCov = ( cov.size() == 0 ) ? _initialCovariance :
+	                                    PoseSE3::CovarianceMatrix( cov );
+
+	_filter.Initialize( initPose, initCov );
 	_velocityBuffer.clear();
 
 	// Reset all observation covariance adapters

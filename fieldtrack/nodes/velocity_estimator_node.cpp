@@ -38,14 +38,14 @@ public:
 		_enableLearning = ph.hasParam( "learner" );
 		if( _enableLearning )
 		{
+			ROS_INFO_STREAM( "Initializing learner..." );
 			ros::NodeHandle lh( ph.resolveName( "learner" ) );
 			GetParamRequired( lh, "rate", _learnRate );
-			// _learnTimer = nh.createTimer( ros::Rate( 1.0 / learnRate ),
-			// &VelocityEstimatorNode::LearnCallback,
-			// this );
 			_learner.Initialize( lh );
+
 			_transModel = _estimator.InitTransCovModel();
 			_learner.RegisterTransModel( _transModel );
+
 			_obsModels = _estimator.InitObsCovModels();
 			typedef ModelRegistry::value_type Item;
 			BOOST_FOREACH( Item & item, _obsModels )
@@ -54,6 +54,7 @@ public:
 				const CovarianceModel::Ptr& model = item.second;
 				_learner.RegisterObsModel( name, model );
 			}
+			_learner.StartNewChain();
 		}
 
 		// Subscribe to all update topics
@@ -65,13 +66,13 @@ public:
 			const std::string& sourceName = iter->first.as<std::string>();
 			const YAML::Node& info = iter->second;
 
-
 			std::string topic, type;
 			unsigned int buffSize;
 			GetParamRequired( info, "topic", topic );
 			GetParamRequired( info, "type", type );
 			GetParam( info, "buffer_size", buffSize, (unsigned int) 10 );
 
+			ROS_INFO_STREAM( "Subscribing to source " << sourceName << " on topic " << topic );
 			if( type == "deriv_stamped" )
 			{
 				SubscribeToUpdates<geometry_msgs::TwistStamped>( nh, topic, buffSize, sourceName );
@@ -227,13 +228,62 @@ public:
 	{
 		// NOTE May not want to use ros sleep in sim mode?
 		ros::Duration( req.time_to_wait ).sleep();
-		_estimator.Reset( req.filter_time );
+
+		VectorType state;
+		if( req.state.size() == 0 )
+		{
+			// Do nothing
+		}
+		else if( req.state.size() == _estimator.StateDim() )
+		{
+			Eigen::Map<VectorType> stateMap( req.state.data(), req.state.size() );
+			state = stateMap;
+		}
+		else if( req.state.size() == _estimator.FullDim() )
+		{
+			Eigen::Map<VectorType> stateMap( req.state.data(), req.state.size() );
+			state = stateMap;
+		}
+		else
+		{
+			ROS_ERROR_STREAM( "Expected " << _estimator.FullDim() << " or " <<
+			                  _estimator.StateDim() << " dim state but got " << req.state.size() );
+			return false;
+		}
+
+		MatrixType cov;
+		if( req.covariance.size() == 0 )
+		{
+			// Do nothing
+		}
+		else if( req.covariance.size() == _estimator.StateDim() * _estimator.StateDim() )
+		{
+			Eigen::Map<MatrixType> covMap( req.covariance.data(),
+			                               _estimator.StateDim(),
+			                               _estimator.StateDim() );
+			cov = covMap;
+		}
+		else if( req.covariance.size() == _estimator.FullDim() * _estimator.FullDim() )
+		{
+			Eigen::Map<MatrixType> covMap( req.covariance.data(),
+			                               _estimator.FullDim(),
+			                               _estimator.FullDim() );
+			cov = covMap;
+		}
+		else
+		{
+			ROS_ERROR_STREAM( "Expected " << _estimator.FullDim() * _estimator.FullDim() <<
+			                  " or " << _estimator.StateDim() * _estimator.StateDim() <<
+			                  " dim state but got " << req.covariance.size() );
+		}
+
+		_estimator.Reset( req.filter_time, state, cov );
 		_initialized = !req.filter_time.isZero();
 		_updateTimer.stop();
 		_updateTimer.start();
 		if( _enableLearning )
 		{
-			_learner.ClearBuffer();
+			_learner.StartNewChain();
 		}
 		return true;
 	}
@@ -251,6 +301,7 @@ public:
 		{
 			spinRate.sleep();
 			ROS_INFO_STREAM( "Spinning..." );
+			// TODO Check for chain time length and cap it
 			_learner.LearnSpin();
 
 			WriteLock lock( _estimatorMutex );

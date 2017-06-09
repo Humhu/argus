@@ -16,19 +16,16 @@ class LikelihoodChain
 {
 public:
 
+	typedef std::shared_ptr<LikelihoodChain> Ptr;
+
 	typedef KalmanChain::PredictModulePtr PredictModulePtr;
 	typedef KalmanChain::UpdateModulePtr UpdateModulePtr;
 	typedef KalmanChain::ModulePtrPair ModulePtrPair;
 
 	LikelihoodChain();
+	~LikelihoodChain();
 	
-	// TODO Don't really need/want this anymore
-	void SetDiscountFactor( double gamma );
-
-	void Foreprop();
-	void Backprop();
-	void Invalidate();
-	double GetMeanLL();
+	OutputPort& GetMeanLL();
 
 	void InitializeChain( const VectorType& x, const MatrixType& P );
 	void ClearChain();
@@ -54,7 +51,6 @@ private:
 	std::deque<ScalingModule> _scalers;
 	std::deque<GaussianLikelihoodModule> _glls;
 	MeanModule _meanLL;
-	SinkModule _meanSink;
 
 	void ProcessPreds();
 };

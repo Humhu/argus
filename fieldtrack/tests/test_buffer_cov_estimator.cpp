@@ -33,7 +33,6 @@ int main( int argc, char** argv )
 	initDist.SetCovariance( P0 );
 
 	VectorType x0 = initDist.Sample();
-	SinkModule meanLL;
 
 	TimeScaledCovariance::Ptr Qmodel = std::make_shared<TimeScaledCovariance>();
 	Qmodel->Initialize( Qguess );
@@ -47,9 +46,10 @@ int main( int argc, char** argv )
 	PassCovariance::Ptr Rmodel = std::make_shared<PassCovariance>();
 
 	LikelihoodChain chain;
-	chain.SetDiscountFactor( 1.0 );
 	chain.RegisterTransCov( Qmodel );
 	chain.RegisterObsSource( "obs", Rmodel );
+	SinkModule meanLL;
+	link_ports( chain.GetMeanLL(), meanLL.GetInput() );
 
 	unsigned int numOuterIters = 100;
 	time_t start = clock();
@@ -91,7 +91,7 @@ int main( int argc, char** argv )
 			chain.Invalidate();
 			chain.Foreprop();
 			std::cout << "Mean LL: " << chain.GetMeanLL() << std::endl;
-			chain.Backprop();
+			meanLL.Backprop( MatrixType::Identity(1, 1 ) );
 
 			MatrixType dQ = Qmodel->GetBackpropValue();
 			Eigen::Map<VectorType> dQvec( dQ.data(), dQ.size(), 1 );

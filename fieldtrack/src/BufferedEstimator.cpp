@@ -7,12 +7,14 @@ BufferedEstimator::BufferedEstimator()
 
 BufferedEstimator::~BufferedEstimator() {}
 
-void BufferedEstimator::Reset( const ros::Time& time )
+void BufferedEstimator::Reset( const ros::Time& time,
+                               const VectorType& state,
+                               const MatrixType& cov )
 {
 	_filterTime = time;
 	_stepCounter = 0;
 	_updateBuffer.clear();
-	ResetDerived( time );
+	ResetDerived( time, state, cov );
 }
 
 const ros::Time& BufferedEstimator::GetFilterTime() const { return _filterTime; }

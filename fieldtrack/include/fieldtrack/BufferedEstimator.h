@@ -16,7 +16,7 @@ public:
 
 	// NOTE Messages are buffered as variants, but we need to process their timestamps
 	// to get super-resolution since ros::Time has some weird min comparison resolution
-	template<typename M>
+	template <typename M>
 	void BufferObservation( const std::string& sourceName, M msg )
 	{
 		// Make sure message does not precede filter
@@ -40,8 +40,10 @@ public:
 	// Process all messages in the buffer until the specified time
 	std::vector<FilterInfo> Process( const ros::Time& until );
 
-	// Clear the buffer and reset the filter time
-	void Reset( const ros::Time& time );
+	// Clear the buffer and reset the filter state and time
+	void Reset( const ros::Time& time,
+	            const VectorType& state = VectorType(),
+	            const MatrixType& cov = MatrixType() );
 
 	// Retrieve the current filter time
 	const ros::Time& GetFilterTime() const;
@@ -56,7 +58,8 @@ private:
 	UpdateBuffer _updateBuffer;
 
 	// Reset method called by the derived filter class
-	virtual void ResetDerived( const ros::Time& time ) = 0;
+	virtual void ResetDerived( const ros::Time& time, const VectorType& state,
+	                           const MatrixType& cov ) = 0;
 
 	// Forward predicts the filter to the specified time
 	virtual PredictInfo PredictUntil( const ros::Time& until ) = 0;

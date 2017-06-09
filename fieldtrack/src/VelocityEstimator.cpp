@@ -21,9 +21,12 @@ void VelocityEstimator::Initialize( ros::NodeHandle& ph,
 
 	GetParamRequired( ph, "filter_order", _filterOrder );
 
+	_initialState = VectorType::Zero( FullDim() );
+	GetParam( ph, "initial_mean", _initialState );
+
 	_initialCovariance = MatrixType( FullDim(), FullDim() );
 	GetParamRequired( ph, "initial_covariance", _initialCovariance );
-	_filter.Initialize( VectorType::Zero( FullDim() ), _initialCovariance );
+	_filter.Initialize( _initialState, _initialCovariance );
 
 	_transCovRate = MatrixType( FullDim(), FullDim() );
 	GetParamRequired( ph, "transition_covariance", _transCovRate );
@@ -191,10 +194,34 @@ MatrixType VelocityEstimator::GetTransitionCov( double dt )
 	return _transCovRate * dt;
 }
 
-void VelocityEstimator::ResetDerived( const ros::Time& time )
+void VelocityEstimator::ResetDerived( const ros::Time& time,
+                                      const VectorType& state,
+                                      const MatrixType& cov )
 {
+	VectorType initState = _initialState;
+	if( state.size() == StateDim() )
+	{
+		initState.head( StateDim() ) = state;
+	}
+	else if( state.size() == FullDim() )
+	{
+		initState = state;
+	}
+
+	MatrixType initCov = _initialCovariance;
+	if( cov.rows() == StateDim() && cov.cols() == StateDim() )
+	{
+		initCov.topLeftCorner( StateDim(), StateDim() ) = cov;
+	}
+	else if( cov.rows() == FullDim() && cov.cols() == FullDim() )
+	{
+		initCov = cov;
+	}
+
 	// Reset the filter state
-	_filter.Initialize( VectorType::Zero( FullDim() ), _initialCovariance );
+	ROS_INFO_STREAM( "Resetting filter mean to: " << initState.transpose() <<
+	                 " and cov: " << std::endl << initCov );
+	_filter.Initialize( initState, initCov );
 
 	// Reset all observation covariance adapters
 	typedef SourceRegistry::value_type Item;
@@ -231,7 +258,6 @@ bool VelocityEstimator::ProcessMessage( const std::string& source,
 		ROS_WARN_STREAM( "Rejecting observation from " <<
 		                 source << " with log likelihood " << ll );
 		return false;
-
 	}
 
 	info = _filter.Update( obs.derivatives, C, obs.covariance );

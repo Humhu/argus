@@ -261,7 +261,35 @@ public:
 	{
 		// NOTE May not want to use ros sleep in sim mode?
 		ros::Duration( req.time_to_wait ).sleep();
-		_estimator.Reset( req.filter_time );
+
+		VectorType state;
+		if( req.state.size() != 0 )
+		{
+			if( req.state.size() != PoseSE3::VectorDimension )
+			{
+				ROS_ERROR_STREAM( "Expected " << PoseSE3::VectorDimension << " dim state but got " << req.state.size() );
+				return false;
+			}
+			Eigen::Map<VectorType> stateMap( req.state.data(), req.state.size() );
+			state = stateMap;
+		}
+
+		MatrixType cov;
+		if( req.covariance.size() != 0 )
+		{
+			if( req.covariance.size() != PoseSE3::TangentDimension * PoseSE3::TangentDimension )
+			{
+				ROS_ERROR_STREAM( "Expected " << PoseSE3::TangentDimension * PoseSE3::TangentDimension <<
+				                  " dim state but got " << req.covariance.size() );
+			}
+			Eigen::Map<MatrixType> covMap( req.covariance.data(),
+			                               PoseSE3::TangentDimension,
+			                               PoseSE3::TangentDimension );
+			cov = covMap;
+		}
+
+		_estimator.Reset( req.filter_time, state, cov );
+
 		_initialized = !req.filter_time.isZero();
 		_updateTimer.stop();
 		_updateTimer.start();

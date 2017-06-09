@@ -4,49 +4,17 @@
 namespace argus
 {
 LikelihoodChain::LikelihoodChain()
-	: _gamma( 1.0 ), _initialized( false )
+	: _initialized( false )
+{}
+
+LikelihoodChain::~LikelihoodChain()
 {
-	link_ports( _meanLL.GetOutput(), _meanSink.GetInput() );
+	ClearChain();
 }
 
-void LikelihoodChain::SetDiscountFactor( double gamma )
+OutputPort& LikelihoodChain::GetMeanLL()
 {
-	_gamma = gamma;
-}
-
-void LikelihoodChain::Foreprop()
-{
-	KalmanChain::Foreprop();
-	_transCov->Foreprop();
-	typedef SourceRegistry::value_type Item;
-	BOOST_FOREACH( Item & item, _obsModels )
-	{
-		CovarianceModel::Ptr& model = item.second;
-		model->Foreprop();
-	}
-}
-
-void LikelihoodChain::Backprop()
-{
-	_meanSink.Backprop( MatrixType::Identity( 1, 1 ) );
-}
-
-void LikelihoodChain::Invalidate()
-{
-	KalmanChain::Invalidate();
-	_transCov->Invalidate();
-	typedef SourceRegistry::value_type Item;
-	BOOST_FOREACH( Item & item, _obsModels )
-	{
-		CovarianceModel::Ptr& model = item.second;
-		model->Invalidate();
-	}
-	_meanSink.Invalidate();
-}
-
-double LikelihoodChain::GetMeanLL()
-{
-	return _meanSink.GetValue() ( 0 );
+	return _meanLL.GetOutput();
 }
 
 void LikelihoodChain::InitializeChain( const VectorType& x,
@@ -120,12 +88,8 @@ void LikelihoodChain::operator()( const UpdateInfo& info )
 	_glls.emplace_back();
 	_scalers.emplace_back();
 	GaussianLikelihoodModule& gll = _glls.back();
-	ScalingModule& sll = _scalers.back();
 
-	sll.SetBackwardScale( std::pow( _gamma, _glls.size() ) );
-
-	_meanLL.RegisterSource( sll.GetOutput() );
-	link_ports( gll.GetLLOut(), sll.GetInput() );
+	_meanLL.RegisterSource( gll.GetLLOut() );
 	link_ports( upd->GetVOut(), gll.GetXIn() );
 	link_ports( upd->GetSOut(), gll.GetSIn() );
 }
