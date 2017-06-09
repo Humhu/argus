@@ -127,6 +127,7 @@ void AdaptiveObsCovEstimator::Initialize( unsigned int dim,
                                                          ros::NodeHandle& ph )
 {
 	GetParamRequired( ph, "max_window_samples", _maxSamples );
+	GetParam( ph, "min_window_samples", _minSamples, (unsigned int) 0 );
 
 	double dur;
 	GetParamRequired( ph, "max_sample_age", dur );
@@ -150,26 +151,38 @@ MatrixType AdaptiveObsCovEstimator::GetR( const ros::Time& time )
 {
 	CheckBuffer( time );
 
-	double wAcc = std::exp( _decayRate * _priorAge );
-	MatrixType Racc = _priorCov * wAcc;
-	for( unsigned int i = 0; i < _innoProds.size(); ++i )
+	MatrixType adaptR;
+	if( _innoProds.size() >= _minSamples )
 	{
-		const InnoStamped& data = _innoProds[i];
-		const ros::Time& stamp = data.first;
-		const MatrixType& Rhat = data.second;
+		double priorW = std::exp( _decayRate * _priorAge );
+		double wAcc = priorW;
+		MatrixType Racc = _priorCov * priorW;
+		for( unsigned int i = 0; i < _innoProds.size(); ++i )
+		{
+			const InnoStamped& data = _innoProds[i];
+			const ros::Time& stamp = data.first;
+			const MatrixType& Rhat = data.second;
 
-		double dt = ( time - stamp ).toSec();
-		double w = std::exp( _decayRate * dt );
-		Racc += Rhat * w;
-		wAcc += w;
+			double dt = ( time - stamp ).toSec();
+			double w = std::exp( _decayRate * dt );
+			Racc += Rhat * w;
+			wAcc += w;
+		}
+		adaptR = Racc / wAcc;
 	}
-	MatrixType adaptR = Racc / wAcc;
+	else
+	{
+		adaptR = _priorCov;
+	}
 
 	// Check for diagonal
 	if( _useDiag )
 	{
 		adaptR = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( adaptR.diagonal() );
 	}
+
+	ROS_INFO_STREAM( "R: " << adaptR.diagonal().transpose() );
+
 	return adaptR;
 }
 

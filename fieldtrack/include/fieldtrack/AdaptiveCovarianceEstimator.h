@@ -40,6 +40,7 @@ private:
 	typedef std::pair<ros::Time,MatrixType> InnoStamped;
 
 	unsigned int _maxSamples;
+	
 	ros::Duration _maxAge;
 
 	MatrixType _priorCov;
@@ -80,6 +81,8 @@ private:
 
 	unsigned int _dim;
 	unsigned int _maxSamples;
+	unsigned int _minSamples;
+	
 	ros::Duration _maxAge;
 
 	MatrixType _priorCov;
