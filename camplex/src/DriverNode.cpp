@@ -6,6 +6,7 @@
 
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm/remove_if.hpp>
 
 #include <assert.h>
 
@@ -93,7 +94,7 @@ DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		std::string convName = origName;
 		boost::to_lower( convName );
 		boost::replace_all( convName, " ", "_" );
-		boost::erase_all( convName, "," );
+		convName.erase( boost::remove_if( convName, boost::is_any_of(",()[]") ), convName.end() );
 
 		std::string type = ControlSpecification::TypeToString( spec.type );
 		if( type == "integer" || type == "menu" )
@@ -156,11 +157,14 @@ DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		StartStreaming( lock );
 	}
 
-	double spinRate;
-	GetParam( ph, "spin_rate", spinRate, (double) frameRate );
-	_timer = nh.createTimer( ros::Duration( 1.0 / spinRate ),
-	                         &DriverNode::Spin,
-	                         this );
+	unsigned int numThreads;
+	GetParam<unsigned int>(ph, "num_threads", numThreads, 1);
+	_workers.SetNumWorkers( numThreads );
+	WorkerPool::Job job = boost::bind( &DriverNode::Spin, this );
+	for( unsigned int i = 0; i < numThreads; ++i )
+	{
+		_workers.EnqueueJob( job );
+	}
 
 	_getInfoServer = ph.advertiseService( "get_camera_info",
 	                                      &DriverNode::GetCameraInfoService,
@@ -269,34 +273,35 @@ bool DriverNode::PrintCapabilitiesService( camplex::PrintCapabilities::Request& 
 	return true;
 }
 
-void DriverNode::Spin( const ros::TimerEvent& event )
+void DriverNode::Spin()
 {
 	cv::Mat frame;
 	std_msgs::Header header;
 	header.frame_id = _cameraName;
 
-
-	WriteLock lock( _mutex );
-	while( _mode == STREAM_OFF && ros::ok() )
+	while( !ros::isShuttingDown() )
 	{
-		_blocked.wait( lock );
+		WriteLock lock( _mutex );
+		while( _mode == STREAM_OFF && !ros::isShuttingDown() )
+		{
+			_blocked.wait( lock );
+		}
+		if( ros::isShuttingDown() ) { return; }
+		
+		frame = _driver.GetFrame();
+		if( frame.empty() )
+		{
+			ROS_WARN( "Received empty frame from device." );
+		}
+		lock.unlock();
+
+		// Populate message headers
+		header.stamp = ros::Time::now(); // TODO Configure ROS time or wall time
+		_cameraInfo->header = header; // Want timestamps to match
+
+		cv_bridge::CvImage img( header, "bgr8", frame );
+		_itPub.publish( img.toImageMsg(), _cameraInfo );
 	}
-	// lock.unlock();
-
-	// Unlock here in case the call to GetFrame blocks
-	frame = _driver.GetFrame();
-	if( frame.empty() )
-	{
-		ROS_WARN( "Received empty frame from device." );
-	}
-	lock.unlock();
-
-	// Populate message headers
-	header.stamp = ros::Time::now(); // TODO Configure ROS time or wall time
-	_cameraInfo->header = header; // Want timestamps to match
-
-	cv_bridge::CvImage img( header, "bgr8", frame );
-	_itPub.publish( img.toImageMsg(), _cameraInfo );
 }
 
 }

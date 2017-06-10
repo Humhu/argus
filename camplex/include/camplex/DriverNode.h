@@ -16,6 +16,7 @@
 #include "paraset/ParameterManager.hpp"
 
 #include "argus_utils/synchronization/SynchronizationTypes.h"
+#include "argus_utils/synchronization/WorkerPool.h"
 
 #include <memory>
 #include <boost/thread/locks.hpp>
@@ -39,7 +40,7 @@ private:
 
 	typedef camera_info_manager::CameraInfoManager InfoManager;
 
-	ros::Timer _timer;
+	WorkerPool _workers;
 
 	// Service handlers
 	ros::ServiceServer _getInfoServer;
@@ -85,7 +86,7 @@ private:
 	bool PrintCapabilitiesService( camplex::PrintCapabilities::Request& req,
 	                               camplex::PrintCapabilities::Response& res );
 
-	void Spin( const ros::TimerEvent& event );
+	void Spin();
 
 };
 

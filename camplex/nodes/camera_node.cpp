@@ -13,12 +13,7 @@ int main( int argc, char** argv )
 	ros::NodeHandle ph( "~" );
 	
 	DriverNode node( nh, ph );
+	ros::spin();
 	
-	unsigned int numThreads;
-	GetParam<unsigned int>(ph, "num_threads", numThreads, 1);
-
-	ros::MultiThreadedSpinner spinner( numThreads );
-	spinner.spin();
-
 	return 0;
 }
