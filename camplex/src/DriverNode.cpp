@@ -173,6 +173,11 @@ DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	                                           this );
 }
 
+DriverNode::~DriverNode()
+{
+	_blocked.notify_all();
+}
+
 void DriverNode::IntControlCallback( int id, double value )
 {
 	int valInt = (int) std::round( value );
@@ -272,7 +277,7 @@ void DriverNode::Spin( const ros::TimerEvent& event )
 
 
 	WriteLock lock( _mutex );
-	while( _mode == STREAM_OFF )
+	while( _mode == STREAM_OFF && ros::ok() )
 	{
 		_blocked.wait( lock );
 	}

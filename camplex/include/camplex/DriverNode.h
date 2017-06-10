@@ -33,6 +33,7 @@ public:
 	typedef std::shared_ptr<DriverNode> Ptr;
 
 	DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	~DriverNode();
 
 private:
 
