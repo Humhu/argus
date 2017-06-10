@@ -139,7 +139,9 @@ void ProcessImage(const cv::Mat& img, const std_msgs::Header& header)
 
 	// TODO Normalize by x and y resolution separately and have one scale for each
 	double imgWidth = (double) img.size().width;
-	PoseSE3::TangentVector dvel = _scale * PoseSE3::Log(disp) / (dt * imgWidth);
+	PoseSE3::TangentVector dvel = PoseSE3::Log(disp) / dt;
+	// NOTE Don't scale rotations by image scale!
+	dvel.head<3>() = dvel.head<3>() * _scale / imgWidth; 
 	tmsg.twist = TangentToMsg(dvel);
 	_twistPub.publish(tmsg);
 }
