@@ -209,7 +209,7 @@ PoseSourceManager::ProcessPose( const PoseSE3& pose,
 	PoseObservation obs;
 	obs.timestamp = stamp;
 	obs.referenceFrame = _referenceFrame;
-	obs.pose = pose;
+	obs.pose = obsPose;
 	obs.covariance = obsCov;
 	return obs;
 }
