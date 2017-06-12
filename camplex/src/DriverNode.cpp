@@ -165,6 +165,7 @@ DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	{
 		_workers.EnqueueJob( job );
 	}
+	_workers.StartWorkers();
 
 	_getInfoServer = ph.advertiseService( "get_camera_info",
 	                                      &DriverNode::GetCameraInfoService,
