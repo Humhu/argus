@@ -36,7 +36,11 @@ public:
 
 		GetParamRequired( ph, "scale", _scale );
 
-		_odomSub = nh.subscribe( "odom", 10, &DenseVONode::OdomCallback, this );
+		GetParam( ph, "enable_prediction", _enablePrediction, false );
+		if( _enablePrediction )
+		{
+			_odomSub = nh.subscribe( "odom", 10, &DenseVONode::OdomCallback, this );
+		}
 
 		GetParam( ph, "debug", _debug, false );
 		if( _debug )
@@ -117,14 +121,15 @@ public:
 	PoseSE2 PredictMotion( const ros::Time& currTime, const std::string& camFrame )
 	{
 		// Can't predict motion if we haven't received any odom messages
-		if( _odomFrame.empty() )
+		if( !_enablePrediction || _odomFrame.empty() )
 		{
+			// ROS_WARN_STREAM( "No odometry messages received" );
 			return PoseSE2();
 		}
 
 		PoseSE3 odomDisp;
 		PoseSE3::CovarianceMatrix odomCov;
-		if( !_velIntegrator.Integrate( _keyTime.toSec(), currTime.toSec(),
+		if( !_velIntegrator.Integrate( _lastTime.toSec(), currTime.toSec(),
 		                               odomDisp, odomCov ) )
 		{
 			ROS_WARN_STREAM( "Could not predict motion from " << _keyTime << " to " << currTime );
@@ -152,13 +157,13 @@ public:
 		camDisp = odomToCam * odomDisp * odomToCam.Inverse();
 		// guessCov = TransformCovariance( odomCov, odomToCam );
 
-
 		PoseSE2 ret;
 		StandardToCamera( camDisp, ret );
 
 		unsigned int imgWidth = _keyPyramid[0].size().width; // NOTE Hack?
 		PoseSE2::TangentVector logRet = PoseSE2::Log( ret );
 		logRet.head<2>() *= imgWidth / _scale;
+		ret = PoseSE2::Exp( logRet );
 
 		return ret;
 	}
@@ -237,7 +242,7 @@ public:
 			const cv::Mat& currImg = currPyramid[i];
 			const cv::Mat& prevImg = _keyPyramid[i];
 
-			// ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << disp );
+			ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << currToKey );
 			if( !_tracker.TrackImages( prevImg, currImg, currToKey ) )
 			{
 				ROS_INFO_STREAM( "Tracking failed! Resetting keyframe..." );
@@ -245,6 +250,7 @@ public:
 				Visualize( currPyramid[0], header );				
 				return;
 			}
+			ROS_INFO_STREAM( "Depth: " << i << " found disp: " << currToKey );
 
 			// Next level will be twice as much resolution, so we double the translation prediction
 			logPose = PoseSE2::Log( currToKey );
@@ -282,6 +288,7 @@ private:
 
 	ros::Publisher _twistPub;
 
+	bool _enablePrediction;
 	ros::Subscriber _odomSub;
 	std::string _odomFrame;
 	VelocityIntegratorSE3 _velIntegrator;

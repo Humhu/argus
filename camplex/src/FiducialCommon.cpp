@@ -355,7 +355,7 @@ void CameraToStandard( const PoseSE2& cam, PoseSE3& standard )
 {
 	FixedMatrixType<3,3> Hcam = cam.ToMatrix();
 	FixedMatrixType<4,4> Hstd = FixedMatrixType<4,4>::Identity();
-	Hstd.block<2,2>(0,0) = Hcam.block<2,2>(0,0);
+	Hstd.block<2,2>(1,1) = Hcam.block<2,2>(0,0); // standard x rotation is camera z rotation
 	Hstd(1,3) = -Hcam(0,2); // standard y is camera negative x
 	Hstd(2,3) = -Hcam(1,2); // standard z is camera negative y
 	standard = PoseSE3( Hstd );
@@ -365,9 +365,11 @@ void StandardToCamera( const PoseSE3& standard, PoseSE2& cam )
 {
 	FixedMatrixType<4,4> Hstd = standard.ToMatrix();
 	FixedMatrixType<3,3> Hcam = FixedMatrixType<3,3>::Identity();
-	Hcam.block<2,2>(0,0) = Hstd.block<2,2>(0,0); // TODO Do we have to normalize?
+	// TODO Do we have to normalize?
+	Hcam.block<2,2>(0,0) = Hstd.block<2,2>(1,1); // camera z rotation is standard x rotation
 	Hcam(0,2) = -Hstd(1,3); // camera x is negative standard y
 	Hcam(1,2) = -Hstd(2,3); // camera y is negative standard z
+	cam = PoseSE2( Hcam );
 }
 
 } // end namespace camplex

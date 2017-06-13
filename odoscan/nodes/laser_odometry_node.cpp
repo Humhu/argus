@@ -47,10 +47,14 @@ public:
 		}
 		_matcher->Initialize( mh );
 
-		double odomLen;
-		GetParam( ph, "max_odom_buff_len", odomLen, 5.0 );
-		_velIntegrator.SetMaxBuffLen( odomLen );
-		_odomSub = nh.subscribe( "odom", 10, &LaserOdometryNode::OdomCallback, this );
+		GetParam( ph, "enable_prediction", _enablePrediction, false );
+		if( _enablePrediction )
+		{
+			double odomLen;
+			GetParam( ph, "max_odom_buff_len", odomLen, 5.0 );
+			_velIntegrator.SetMaxBuffLen( odomLen );
+			_odomSub = nh.subscribe( "odom", 10, &LaserOdometryNode::OdomCallback, this );
+		}
 
 		ros::NodeHandle rh( ph.resolveName( "restarter" ) );
 		_restarter.Initialize( rh, _matcher );
@@ -107,6 +111,8 @@ private:
 	ros::NodeHandle _ph;
 
 	ExtrinsicsInterface _extrinsics;
+
+	bool _enablePrediction;
 	ros::Subscriber _odomSub;
 	std::string _odomFrame;
 	VelocityIntegratorSE3 _velIntegrator;
@@ -237,6 +243,50 @@ private:
 		reg.lastPoseTime = time;
 	}
 
+	void PredictMotion( CloudRegistration& reg,
+	                    const std::string laserFrame,
+	                    const ros::Time& currTime,
+	                    PoseSE3& laserDisp,
+	                    PoseSE3::CovarianceMatrix& laserDispCov )
+	{
+		// Initialization of default values
+		laserDisp = PoseSE3();
+		laserDispCov = PoseSE3::CovarianceMatrix::Identity(); // TODO
+
+		// If not predicting or haven't received odometry yet, return default values
+		if( !_enablePrediction || _odomFrame.empty() ) { return; }
+
+		// First try to integrate odom frame motion
+		// If fails, return defaults
+		PoseSE3 odomDisp;
+		PoseSE3::CovarianceMatrix odomCov;
+		if( !_velIntegrator.Integrate( reg.lastPoseTime.toSec(), currTime.toSec(),
+		                               odomDisp, odomCov ) )
+		{
+			ROS_WARN_STREAM( "Could not integrate motion from " << reg.lastPoseTime <<
+			                 " to " << currTime );
+			return;
+		}
+
+		// Then try to get extrinsics
+		// If fails, return defaults
+		PoseSE3 odomToLaser;
+		try
+		{
+			odomToLaser = _extrinsics.GetExtrinsics( _odomFrame,
+			                                         laserFrame,
+			                                         currTime );
+
+			laserDisp = odomToLaser * odomDisp * odomToLaser.Inverse();
+			laserDispCov = TransformCovariance( odomCov, odomToLaser );
+		}
+		catch( ExtrinsicsException& e )
+		{
+			ROS_WARN_STREAM( "Could not get extrinsics: " << e.what() );
+			return;;
+		}
+	}
+
 	void ProcessCloud( CloudRegistration& reg,
 	                   const LaserCloudType::ConstPtr& cloud )
 	{
@@ -283,36 +333,11 @@ private:
 		LaserCloudType::Ptr aligned = boost::make_shared<LaserCloudType>();
 
 		// Attempt to use velocity prediction
-		PoseSE3 odomDisp;
-		PoseSE3::CovarianceMatrix odomCov;
-		if( !_velIntegrator.Integrate( reg.lastPoseTime.toSec(), currTime.toSec(),
-		                               odomDisp, odomCov ) )
-		{
-			odomDisp = PoseSE3();
-			odomCov = dt * PoseSE3::CovarianceMatrix::Identity(); // TODO Cov-time-scale parameter
-		}
-
-		PoseSE3 odomToLaser;
 		PoseSE3 laserDisp;
-		PoseSE3::CovarianceMatrix guessCov;
-		try
-		{
-			odomToLaser = _extrinsics.GetExtrinsics( _odomFrame,
-			                                         cloud->header.frame_id,
-			                                         currTime );
-
-			laserDisp = odomToLaser * odomDisp * odomToLaser.Inverse();
-			guessCov = TransformCovariance( odomCov, odomToLaser );
-		}
-		catch( ExtrinsicsException& e )
-		{
-			ROS_WARN_STREAM( "Could not get extrinsics: " << e.what() );
-			laserDisp = PoseSE3();
-			guessCov = odomCov;
-		}
-
+		PoseSE3::CovarianceMatrix laserDispCov;
+		PredictMotion( reg, cloud->header.frame_id, currTime, laserDisp, laserDispCov );
 		PoseSE3 guessDisp = reg.lastPose * laserDisp;
-		_restarter.SetDisplacementDistribution( guessDisp, guessCov );
+		_restarter.SetDisplacementDistribution( guessDisp, laserDispCov );
 		ScanMatchResult result = _restarter.Match( reg.keyframeCloud, currCloud, aligned );
 
 		if( reg.showOutput )
