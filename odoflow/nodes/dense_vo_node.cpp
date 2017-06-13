@@ -34,6 +34,10 @@ public:
 		_pyramidDepth.AddCheck<IntegerValued>();
 		_pyramidDepth.AddCheck<GreaterThanOrEqual>( 0 );
 
+		_maxDisplacement.InitializeAndRead( ph, 0.2, "max_displacement", "Max keyframe displacement as ratio of image dimension" );
+		_maxDisplacement.AddCheck<GreaterThanOrEqual>( 0.0 );
+		_maxDisplacement.AddCheck<LessThanOrEqual>( 1.0 );
+
 		GetParamRequired( ph, "scale", _scale );
 
 		GetParam( ph, "enable_prediction", _enablePrediction, false );
@@ -233,6 +237,21 @@ public:
 		PoseSE2 disp = PredictMotion( currTime, header.frame_id );
 		PoseSE2 currToKey = _lastPose * disp;
 
+		// Check for field-of-view moving too far from keyframe
+		FixedVectorType<3> dispVec = currToKey.ToVector();
+		double dispX = dispVec(0);
+		double dispY = dispVec(1);		
+		double r = std::sqrt( dispX * dispX + dispY * dispY );
+		double maxR = _maxDisplacement * _keyPyramid[0].size().width;
+		if( r > maxR )
+		{
+			ROS_INFO_STREAM( "Predicted displacement " << r << " larger than allowed "
+			<< r << ". Resetting keyframe..." );
+			SetKeyframe( currPyramid, currTime );
+			Visualize( currPyramid[0], header );
+			return;			
+		}
+
 		PoseSE2::TangentVector logPose = PoseSE2::Log( currToKey );
 		logPose.head<2>() = logPose.head<2>() / std::pow( 2, _pyramidDepth );
 		for( int i = _pyramidDepth; i >= 0; --i )
@@ -242,7 +261,7 @@ public:
 			const cv::Mat& currImg = currPyramid[i];
 			const cv::Mat& prevImg = _keyPyramid[i];
 
-			ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << currToKey );
+			// ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << currToKey );
 			if( !_tracker.TrackImages( prevImg, currImg, currToKey ) )
 			{
 				ROS_INFO_STREAM( "Tracking failed! Resetting keyframe..." );
@@ -250,7 +269,7 @@ public:
 				Visualize( currPyramid[0], header );				
 				return;
 			}
-			ROS_INFO_STREAM( "Depth: " << i << " found disp: " << currToKey );
+			// ROS_INFO_STREAM( "Depth: " << i << " found disp: " << currToKey );
 
 			// Next level will be twice as much resolution, so we double the translation prediction
 			logPose = PoseSE2::Log( currToKey );
@@ -301,6 +320,7 @@ private:
 
 	double _scale;
 	NumericParam _pyramidDepth;
+	NumericParam _maxDisplacement;
 
 	ExtrinsicsInterface _extrinsics;
 
