@@ -1,6 +1,8 @@
 #include "odoflow/OdoflowCommon.h"
 #include "odoflow/ECCDenseTracker.h"
 
+#include "camplex/FiducialCommon.h"
+
 #include <opencv2/video/tracking.hpp>
 
 namespace argus
@@ -19,15 +21,12 @@ ECCDenseTracker::ECCDenseTracker(ros::NodeHandle &nh, ros::NodeHandle &ph)
     _minCorrelation.AddCheck<LessThan>( 1.0 );
 }
 
-bool ECCDenseTracker::TrackImages(const cv::Mat &from,
-                                  const cv::Mat &to,
-                                  PoseSE3 &pose,
-                                  PoseSE3& rawPose)
+bool ECCDenseTracker::TrackImages(const cv::Mat &to,
+                                  const cv::Mat &from,
+                                  PoseSE2& pose)
 {
-    FixedMatrixType<4, 4> Hinit = pose.ToMatrix();
-    FixedMatrixType<3,2> HinitR;
-    HinitR.block<2,2>(0,0) = Hinit.block<2,2>(0,0);
-    HinitR.block<2,1>(0,2) = Hinit.block<2,1>(0,3);
+    FixedMatrixType<3,3> Hinit = pose.ToMatrix();
+    FixedMatrixType<2,3> HinitR = Hinit.block<2,3>(0,0);
 
     cv::Mat warp = cv::Mat::zeros(2, 3, CV_32F);
     EigenToMat<float>( HinitR, warp );
@@ -52,16 +51,12 @@ bool ECCDenseTracker::TrackImages(const cv::Mat &from,
     }
 
     Eigen::MatrixXd Wd = MatToEigen<float>(warp).cast<double>();
+	
+	PoseSE2::Rotation R(0);
+	R.fromRotationMatrix( Wd.topLeftCorner<2,2>() );
+	Translation2Type t( Wd(0,2), Wd(1,2) );
 
-    FixedMatrixType<4, 4> H = FixedMatrixType<4, 4>::Identity();
-    H.block<2, 2>(1, 1) = Wd.block<2, 2>(0, 0);
-    H(1,3) = -Wd(0,2);
-    H(2,3) = -Wd(1,2);
-    pose = PoseSE3(H).Inverse();
-    
-    H.block<2, 1>(0, 3) = Wd.block<2, 1>(0, 2);
-    rawPose = PoseSE3(H);
-
+	pose = PoseSE2(t, R);
     return true;
 }
 }

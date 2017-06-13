@@ -4,11 +4,15 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <geometry_msgs/TwistStamped.h>
+#include <nav_msgs/Odometry.h>
 
 #include "odoflow/ECCDenseTracker.h"
 #include "argus_utils/geometry/GeometryUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
 #include "paraset/ParameterManager.hpp"
+#include "camplex/FiducialCommon.h"
+#include "extrinsics_array/ExtrinsicsInterface.h"
+#include "argus_utils/geometry/VelocityIntegrator.hpp"
 
 using namespace argus;
 
@@ -17,158 +21,292 @@ class DenseVONode
 EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
 public:
-DenseVONode(ros::NodeHandle& nh, ros::NodeHandle& ph)
-	: _imageTrans(nh), _tracker(nh, ph)
-{
-	_imageSub = _imageTrans.subscribe("image",
-	                                  2,
-	                                  boost::bind(&DenseVONode::ImageCallback, this, _1));
-	_twistPub = ph.advertise<geometry_msgs::TwistStamped>("velocity_raw", 10);
 
-	_pyramidDepth.InitializeAndRead(ph, 0, "pyramid_depth", "Number of image pyramids");
-	_pyramidDepth.AddCheck<IntegerValued>();
-	_pyramidDepth.AddCheck<GreaterThanOrEqual>(0);
-
-	_prevImgVel = PoseSE3::TangentVector::Zero();
-	GetParamRequired(ph, "scale", _scale);
-	GetParam(ph, "min_dt", _minDt, 1E-3);
-
-	ResetTracking();
-}
-
-void ImageCallback(const sensor_msgs::ImageConstPtr& msg)
-{
-	cv_bridge::CvImageConstPtr frame;
-	try
+	DenseVONode( ros::NodeHandle& nh, ros::NodeHandle& ph )
+		: _imageTrans( nh ), _extrinsics( nh, ph ), _tracker( nh, ph )
 	{
-		frame = cv_bridge::toCvShare(msg, "mono8");
-	}
-	catch(cv_bridge::Exception& e)
-	{
-		ROS_ERROR("VisualOdometryNode cv_bridge exception: %s", e.what());
-		return;
-	}
+		_imageSub = _imageTrans.subscribe( "image",
+		                                   2,
+		                                   boost::bind( &DenseVONode::ImageCallback, this, _1 ) );
+		_twistPub = ph.advertise<geometry_msgs::TwistStamped>( "velocity_raw", 10 );
 
-	ProcessImage(frame->image, msg->header);
-}
+		_pyramidDepth.InitializeAndRead( ph, 0, "pyramid_depth", "Number of image pyramids" );
+		_pyramidDepth.AddCheck<IntegerValued>();
+		_pyramidDepth.AddCheck<GreaterThanOrEqual>( 0 );
 
-void CreatePyramid(const cv::Mat& img, std::vector<cv::Mat>& pyr,
-                   unsigned int depth)
-{
-	pyr.clear();
-	pyr.resize(depth + 1);
-	pyr[0] = img;
-	for(unsigned int i = 0; i < depth; ++i)
-	{
-		cv::pyrDown(pyr[i], pyr[i + 1]);
-	}
-}
+		GetParamRequired( ph, "scale", _scale );
 
-void ResetTracking()
-{
-	_prevImgVel.setZero();
-	_prevPyramid.clear();
-}
+		_odomSub = nh.subscribe( "odom", 10, &DenseVONode::OdomCallback, this );
 
-void ProcessImage(const cv::Mat& img, const std_msgs::Header& header)
-{
-	std::vector<cv::Mat> pyramid;
-	unsigned int depth = _pyramidDepth;
-
-	CreatePyramid(img, pyramid, depth);
-
-	// Check for initialization or change in image size
-	if(_prevPyramid.empty() || img.size() != _prevPyramid[0].size())
-	{
-		_prevPyramid = pyramid;
-		_prevTime = header.stamp;
-		return;
-	}
-
-	// In case the depth increased since last time
-	if(_prevPyramid.size() <= (depth + 1))
-	{
-		_prevPyramid.resize(depth + 1);
-		for(unsigned int i = _prevPyramid.size() - 1; i < depth; ++i)
+		GetParam( ph, "debug", _debug, false );
+		if( _debug )
 		{
-			cv::pyrDown(_prevPyramid[i], _prevPyramid[i + 1]);
+			_debugPub = _imageTrans.advertise( "image_debug", 1 );
 		}
+
 	}
 
-	// Check for too small dt
-	double dt = (header.stamp - _prevTime).toSec();
-	if(dt < _minDt)
+	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
-		// ROS_WARN_STREAM( "Got dt " << dt << " less than min " << _minDt );
-		return;
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix( msg->twist.covariance, cov );
+		_velIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
+		_odomFrame = msg->child_frame_id;
 	}
 
-	// Have to prescale the last velocity by timestep and lowest level size
-	PoseSE3::TangentVector prevLogDisp = _prevImgVel * dt;
-	prevLogDisp.head<3>() = prevLogDisp.head<3>() / std::pow(2, _pyramidDepth);
-	PoseSE3 disp, imgDisp;
-	for(int i = _pyramidDepth; i >= 0; --i)
+	void ImageCallback( const sensor_msgs::ImageConstPtr& msg )
 	{
-		disp = PoseSE3::Exp(prevLogDisp);
-
-		const cv::Mat& currImg = pyramid[i];
-		const cv::Mat& prevImg = _prevPyramid[i];
-
-		// TODO Clean up the interface - why is disp the prediction for imgdisp?
-		// ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << disp );
-		if(!_tracker.TrackImages(prevImg, currImg, disp, imgDisp))
+		cv_bridge::CvImageConstPtr frame;
+		try
 		{
-			ROS_INFO_STREAM("Tracking failed!");
-			ResetTracking();
+			frame = cv_bridge::toCvShare( msg, "mono8" );
+		}
+		catch( cv_bridge::Exception& e )
+		{
+			ROS_ERROR( "VisualOdometryNode cv_bridge exception: %s", e.what() );
 			return;
 		}
-		// ROS_INFO_STREAM( "Got disp: " << imgDisp );
 
-		// Next level will be twice as much resolution, so we double the translation prediction
-		prevLogDisp = PoseSE3::Log(imgDisp);
-		prevLogDisp.head<3>() *= 2;
+		ProcessImage( frame->image, msg->header );
 	}
 
-	// Last iteration doubles prevLogDisp so we halve it again and normalize by time
-	_prevImgVel = prevLogDisp / (2 * dt);
-	_prevPyramid = pyramid;
-	_prevTime = header.stamp;
+	void CreatePyramid( const cv::Mat& img, std::vector<cv::Mat>& pyr,
+	                    unsigned int depth )
+	{
+		pyr.clear();
+		pyr.resize( depth + 1 );
+		pyr[0] = img;
+		for( unsigned int i = 0; i < depth; ++i )
+		{
+			cv::pyrDown( pyr[i], pyr[i + 1] );
+		}
+	}
 
-	geometry_msgs::TwistStamped tmsg;
-	tmsg.header = header;
+	bool ValidateKeyPyramid( const std::vector<cv::Mat>& pyramid )
+	{
+		// If image size has changed, fail
+		if( _keyPyramid[0].size() != pyramid[0].size() )
+		{
+			return false;
+		}
 
-	// TODO Normalize by x and y resolution separately and have one scale for each
-	double imgWidth = (double) img.size().width;
-	PoseSE3::TangentVector dvel = PoseSE3::Log(disp) / dt;
-	// NOTE Don't scale rotations by image scale!
-	dvel.head<3>() = dvel.head<3>() * _scale / imgWidth; 
-	tmsg.twist = TangentToMsg(dvel);
-	_twistPub.publish(tmsg);
-}
+		// If depth has changed, add more depths
+		unsigned int depth = pyramid.size();
+
+		if( _keyPyramid.size() <= (depth + 1) )
+		{
+			_keyPyramid.resize( depth + 1 );
+			for( unsigned int i = _keyPyramid.size() - 1; i < depth; ++i )
+			{
+				cv::pyrDown( _keyPyramid[i], _keyPyramid[i + 1] );
+			}
+		}
+		return true;
+	}
+
+	void SetKeyframe( const std::vector<cv::Mat>& pyramid,
+	                  const ros::Time& time )
+	{
+		_keyPyramid = pyramid;
+		_keyTime = time;
+		_lastPose = PoseSE2();
+		_lastTime = time;
+	}
+
+	PoseSE2 PredictMotion( const ros::Time& currTime, const std::string& camFrame )
+	{
+		// Can't predict motion if we haven't received any odom messages
+		if( _odomFrame.empty() )
+		{
+			return PoseSE2();
+		}
+
+		PoseSE3 odomDisp;
+		PoseSE3::CovarianceMatrix odomCov;
+		if( !_velIntegrator.Integrate( _keyTime.toSec(), currTime.toSec(),
+		                               odomDisp, odomCov ) )
+		{
+			ROS_WARN_STREAM( "Could not predict motion from " << _keyTime << " to " << currTime );
+			odomDisp = PoseSE3(); // Unnecessary
+			odomCov = PoseSE3::CovarianceMatrix::Identity(); // TODO
+		}
+
+		PoseSE3 odomToCam;
+		PoseSE3 camDisp;
+		// PoseSE3::CovarianceMatrix guessCov; // TODO Use the covariance?
+		try
+		{
+			odomToCam = _extrinsics.GetExtrinsics( _odomFrame,
+			                                       camFrame,
+			                                       currTime );
+
+		}
+		catch( ExtrinsicsException& e )
+		{
+			ROS_WARN_STREAM( "Could not get extrinsics: " << e.what() );
+			return PoseSE2();
+			// guessCov = odomCov;
+		}
+		
+		camDisp = odomToCam * odomDisp * odomToCam.Inverse();
+		// guessCov = TransformCovariance( odomCov, odomToCam );
+
+
+		PoseSE2 ret;
+		StandardToCamera( camDisp, ret );
+
+		unsigned int imgWidth = _keyPyramid[0].size().width; // NOTE Hack?
+		PoseSE2::TangentVector logRet = PoseSE2::Log( ret );
+		logRet.head<2>() *= imgWidth / _scale;
+
+		return ret;
+	}
+
+	void Visualize( const cv::Mat& curr, const std_msgs::Header& header )
+	{
+		if( !_debug || _keyPyramid.empty() ) { return; }
+		
+		const cv::Mat& key = _keyPyramid[0];
+		unsigned int width = key.cols;
+		unsigned int height = key.rows;
+
+		cv::Mat visImage( height, 2*width, key.type() );
+		cv::Mat visLeft( visImage, cv::Rect( 0, 0, width, height ) );
+		cv::Mat visRight( visImage, cv::Rect( width, 0, width, height ) );
+		key.copyTo( visLeft );
+		curr.copyTo( visRight );
+
+		FixedMatrixType<3,4> corners;
+		corners << 1, 1, width, width,
+		           1, height, height, 1,
+				   1, 1, 1, 1;
+		FixedMatrixType<2,4> warped = (_lastPose.ToMatrix() * corners).colwise().hnormalized();
+
+		std::vector<cv::Point2f> cornerPoints;
+		for( unsigned int i = 0; i < 4; ++i )
+		{
+			cornerPoints.emplace_back( warped(0,i), warped(1,i) );
+		}
+		cv::line(visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar(255,0,255));
+		cv::line(visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar(255,0,255));
+		cv::line(visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar(255,0,255));
+		cv::line(visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar(255,0,255));
+
+		cv_bridge::CvImage vimg( header, "mono8", visImage );
+		_debugPub.publish( vimg.toImageMsg() );
+	}
+
+// TODO Use external motion prediction as prior
+// TODO Use keyframes and correlation coefficient to decide when to update keyframes
+	void ProcessImage( const cv::Mat& img, const std_msgs::Header& header )
+	{
+		std::vector<cv::Mat> currPyramid;
+		unsigned int depth = _pyramidDepth;
+		CreatePyramid( img, currPyramid, depth );
+		const ros::Time& currTime = header.stamp;
+
+		// If initialization and validation fails, reset keyframe
+		if( _keyPyramid.empty() || !ValidateKeyPyramid( currPyramid ) )
+		{
+			SetKeyframe( currPyramid, currTime );
+			Visualize( currPyramid[0], header );
+			return;
+		}
+
+		// Check for negative dt from clock reset
+		double dt = (header.stamp - _lastTime).toSec();
+		if( dt < 0 )
+		{
+			ROS_WARN_STREAM( "Negative dt detected. Resetting keyframe..." );
+			_velIntegrator.Reset(); // Need to dump integration data
+			SetKeyframe( currPyramid, currTime );
+			Visualize( currPyramid[0], header );
+			return;
+		}
+
+		PoseSE2 disp = PredictMotion( currTime, header.frame_id );
+		PoseSE2 currToKey = _lastPose * disp;
+
+		PoseSE2::TangentVector logPose = PoseSE2::Log( currToKey );
+		logPose.head<2>() = logPose.head<2>() / std::pow( 2, _pyramidDepth );
+		for( int i = _pyramidDepth; i >= 0; --i )
+		{
+			currToKey = PoseSE2::Exp( logPose );
+
+			const cv::Mat& currImg = currPyramid[i];
+			const cv::Mat& prevImg = _keyPyramid[i];
+
+			// ROS_INFO_STREAM( "Depth: " << i << " predicted disp: " << disp );
+			if( !_tracker.TrackImages( prevImg, currImg, currToKey ) )
+			{
+				ROS_INFO_STREAM( "Tracking failed! Resetting keyframe..." );
+				SetKeyframe( currPyramid, currTime );
+				Visualize( currPyramid[0], header );				
+				return;
+			}
+
+			// Next level will be twice as much resolution, so we double the translation prediction
+			logPose = PoseSE2::Log( currToKey );
+			logPose.head<2>() *= 2;
+		}
+
+		Visualize( currPyramid[0], header );
+		
+		// Compute displacement relative to last image, not keyframe
+		disp = _lastPose.Inverse() * currToKey;
+
+		_lastPose = currToKey;
+		_lastTime = currTime;
+
+		geometry_msgs::TwistStamped tmsg;
+		tmsg.header = header;
+		double imgWidth = (double) img.size().width;
+		PoseSE3 disp3;
+		CameraToStandard( disp, disp3 );
+
+		PoseSE3::TangentVector dvel = PoseSE3::Log( disp3 ) / dt;
+		// NOTE Don't scale rotations by image scale!
+		dvel.head<3>() = dvel.head<3>() * _scale / imgWidth;
+		tmsg.twist = TangentToMsg( dvel );
+		_twistPub.publish( tmsg );
+	}
 
 private:
-image_transport::ImageTransport _imageTrans;
-image_transport::Subscriber _imageSub;
-ros::Publisher _twistPub;
 
-std::vector<cv::Mat> _prevPyramid;
-ros::Time _prevTime;
-PoseSE3::TangentVector _prevImgVel;     // At the lowest level pyramid
+	image_transport::ImageTransport _imageTrans;
+	image_transport::Subscriber _imageSub;
 
-double _scale;
-double _minDt;
-NumericParam _pyramidDepth;
+	bool _debug;
+	image_transport::Publisher _debugPub;
 
-ECCDenseTracker _tracker;
+	ros::Publisher _twistPub;
+
+	ros::Subscriber _odomSub;
+	std::string _odomFrame;
+	VelocityIntegratorSE3 _velIntegrator;
+
+	// Keyframe
+	std::vector<cv::Mat> _keyPyramid;
+	ros::Time _keyTime;
+	PoseSE2 _lastPose;
+	ros::Time _lastTime;
+
+	double _scale;
+	NumericParam _pyramidDepth;
+
+	ExtrinsicsInterface _extrinsics;
+
+	ECCDenseTracker _tracker;
 };
 
-int main(int argc, char**argv)
+int main( int argc, char** argv )
 {
-	ros::init(argc, argv, "image_viewer");
+	ros::init( argc, argv, "image_viewer" );
 
 	ros::NodeHandle nodeHandle;
-	ros::NodeHandle privHandle("~");
-	DenseVONode ecc(nodeHandle, privHandle);
+	ros::NodeHandle privHandle( "~" );
+	DenseVONode ecc( nodeHandle, privHandle );
 
 	ros::spin();
 

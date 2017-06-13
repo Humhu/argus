@@ -7,6 +7,7 @@
 #include "argus_msgs/FiducialDetection.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
+#include "argus_utils/geometry/PoseSE2.h"
 #include "argus_utils/geometry/PoseSE3.h"
 #include "geometry_msgs/Point.h"
 
@@ -69,6 +70,14 @@ std::vector<Translation2Type> CvToPoints( const std::vector<cv::Point2f>& cv );
 
 std::vector<cv::Point3f> PointsToCv( const std::vector<Translation3Type>& points );
 std::vector<Translation3Type> CvToPoints( const std::vector<cv::Point3f>& cv );
+
+// Converts between camera (z-forward) and standard (x-forward) conventions
+void CameraToStandard( const PoseSE3& cam, PoseSE3& standard );
+void StandardToCamera( const PoseSE3& standard, PoseSE3& cam );
+
+// Versions that convert to camera 2D z-forward convention and standard 3D x-forward
+void CameraToStandard( const PoseSE2& cam, PoseSE3& standard );
+void StandardToCamera( const PoseSE3& standard, PoseSE2& cam );
 
 /*! \brief Simulates a fiducial detection. Ignores ROI constraints. Does not
  populate name field of detection. Returns success. */

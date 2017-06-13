@@ -309,14 +309,12 @@ PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
 		points3d.insert( points3d.end(), pts.begin(), pts.end() );
 	}
 
-	// Maps from z-forward convention to x-forward
-	static PoseSE3 zToX( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
-
 	// Initialize guess
 	cv::Mat rvec;
 	cv::Mat tvec( 3, 1, CV_64FC1 ); // Must allocate tvec
 	cv::Matx33d R;
-	PoseSE3 postGuess = zToX.Inverse() * guess;
+	PoseSE3 postGuess;
+	StandardToCamera( guess, postGuess );
 	Eigen::Matrix4d H = postGuess.ToTransform().matrix();
 	for( unsigned int i = 0; i < 3; i++ )
 	{
@@ -336,7 +334,40 @@ PoseSE3 EstimateArrayPose( const std::vector<FiducialDetection>& detections,
 	     R(1,0), R(1,1), R(1,2), tvec.at<double>(1),
 	     R(2,0), R(2,1), R(2,2), tvec.at<double>(2),
 	          0,      0,      0,      1;
-	return zToX * PoseSE3( H );
+	PoseSE3 Hout;
+	CameraToStandard( PoseSE3( H ), Hout );
+	return Hout;
+}
+
+void CameraToStandard( const PoseSE3& cam, PoseSE3& standard )
+{
+	static PoseSE3 zToX( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
+	standard = zToX * cam;
+}
+
+void StandardToCamera( const PoseSE3& standard, PoseSE3& cam )
+{
+	static PoseSE3 xToZ( 0, 0, 0, -0.5, -0.5, 0.5, -0.5 );
+	cam = xToZ * standard;
+}
+
+void CameraToStandard( const PoseSE2& cam, PoseSE3& standard )
+{
+	FixedMatrixType<3,3> Hcam = cam.ToMatrix();
+	FixedMatrixType<4,4> Hstd = FixedMatrixType<4,4>::Identity();
+	Hstd.block<2,2>(0,0) = Hcam.block<2,2>(0,0);
+	Hstd(1,3) = -Hcam(0,2); // standard y is camera negative x
+	Hstd(2,3) = -Hcam(1,2); // standard z is camera negative y
+	standard = PoseSE3( Hstd );
+}
+
+void StandardToCamera( const PoseSE3& standard, PoseSE2& cam )
+{
+	FixedMatrixType<4,4> Hstd = standard.ToMatrix();
+	FixedMatrixType<3,3> Hcam = FixedMatrixType<3,3>::Identity();
+	Hcam.block<2,2>(0,0) = Hstd.block<2,2>(0,0); // TODO Do we have to normalize?
+	Hcam(0,2) = -Hstd(1,3); // camera x is negative standard y
+	Hcam(1,2) = -Hstd(2,3); // camera y is negative standard z
 }
 
 } // end namespace camplex

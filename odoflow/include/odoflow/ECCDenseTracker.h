@@ -5,7 +5,7 @@
 #include <opencv2/core/core.hpp>
 #include "paraset/ParameterManager.hpp"
 
-#include "argus_utils/geometry/PoseSE3.h"
+#include "argus_utils/geometry/PoseSE2.h"
 
 namespace argus
 {
@@ -19,8 +19,8 @@ public:
 
     ECCDenseTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
-    bool TrackImages( const cv::Mat& from, const cv::Mat& to,
-                      PoseSE3& pose, PoseSE3& rawPose );
+    bool TrackImages( const cv::Mat& to, const cv::Mat& from,
+                      PoseSE2& pose );
 
 private:
 
