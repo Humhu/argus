@@ -15,10 +15,9 @@ ECCDenseTracker::ECCDenseTracker(ros::NodeHandle &nh, ros::NodeHandle &ph)
     _maxIters.InitializeAndRead(ph, 50, "max_iters",
                                 "Maximum solver iterations");
     _maxIters.AddCheck<GreaterThan>( 0 );
-    _minCorrelation.InitializeAndRead(ph, 0.8, "min_correlation",
-                                      "Minimum solution correlation");
-    _minCorrelation.AddCheck<GreaterThan>( 0 );
-    _minCorrelation.AddCheck<LessThan>( 1.0 );
+    _logMinCorrelation.InitializeAndRead(ph, 0.8, "log_min_correlation",
+                                      "log of 1.0 - minimum solution correlation");
+    _logMinCorrelation.AddCheck<LessThan>( std::log10( 1.0 ) );
 }
 
 bool ECCDenseTracker::TrackImages(const cv::Mat &to,
@@ -39,9 +38,10 @@ bool ECCDenseTracker::TrackImages(const cv::Mat &to,
         double ecc = cv::findTransformECC(from, to, warp,
                                           cv::MOTION_EUCLIDEAN,
                                           termCriteria);
-        if( ecc < _minCorrelation )
+        double minECC = 1.0 - std::pow(10, _logMinCorrelation);
+        if( ecc < minECC )
         {
-            ROS_INFO_STREAM( "Correlation " << ecc << " less than min " << _minCorrelation );
+            ROS_INFO_STREAM( "Correlation " << ecc << " less than min " << minECC );
             return false;
         }
     }
