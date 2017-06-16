@@ -26,7 +26,7 @@ private:
 
     NumericParam _logMinEps;
     NumericParam _maxIters;
-    NumericParam _minCorrelation;
+    NumericParam _logMinCorrelation;
 
 };
 

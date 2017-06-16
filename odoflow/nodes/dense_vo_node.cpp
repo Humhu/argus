@@ -13,6 +13,7 @@
 #include "camplex/FiducialCommon.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 #include "argus_utils/geometry/VelocityIntegrator.hpp"
+#include "argus_utils/random/MultivariateGaussian.hpp"
 
 using namespace argus;
 
@@ -37,6 +38,8 @@ public:
 		_maxDisplacement.InitializeAndRead( ph, 0.2, "max_displacement", "Max keyframe displacement as ratio of image dimension" );
 		_maxDisplacement.AddCheck<GreaterThanOrEqual>( 0.0 );
 		_maxDisplacement.AddCheck<LessThanOrEqual>( 1.0 );
+
+		_maxPredictEntropy.InitializeAndRead( ph, 1.0, "max_predict_entropy", "Max predict uncertainty entropy" );
 
 		GetParamRequired( ph, "scale", _scale );
 
@@ -143,7 +146,7 @@ public:
 
 		PoseSE3 odomToCam;
 		PoseSE3 camDisp;
-		// PoseSE3::CovarianceMatrix guessCov; // TODO Use the covariance?
+		PoseSE3::CovarianceMatrix guessCov; // TODO Use the covariance?
 		try
 		{
 			odomToCam = _extrinsics.GetExtrinsics( _odomFrame,
@@ -159,7 +162,17 @@ public:
 		}
 		
 		camDisp = odomToCam * odomDisp * odomToCam.Inverse();
-		// guessCov = TransformCovariance( odomCov, odomToCam );
+		guessCov = TransformCovariance( odomCov, odomToCam );
+                // HACK
+                MatrixType subCov(3,3);
+		std::vector<unsigned int> inds = {1,2,3};
+                GetSubmatrix( guessCov, subCov, inds, inds );
+                double entropy = GaussianEntropy( subCov );
+		if( entropy > _maxPredictEntropy )
+		  {
+		    ROS_WARN_STREAM( "Motion prediction entropy exceeds limit! Using default prior" );
+                    return PoseSE2();
+		  }
 
 		PoseSE2 ret;
 		StandardToCamera( camDisp, ret );
@@ -321,6 +334,7 @@ private:
 	double _scale;
 	NumericParam _pyramidDepth;
 	NumericParam _maxDisplacement;
+        NumericParam _maxPredictEntropy;
 
 	ExtrinsicsInterface _extrinsics;
 

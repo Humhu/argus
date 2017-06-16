@@ -173,7 +173,7 @@ void FixedCovariance::Initialize( const MatrixType& cov )
 	_lReshape.SetShapeParams( MatrixType::Identity( dim, dim ), trilInds );
 
 	std::vector<IndPair> diagInds = gen_vec_to_diag_inds( dim );
-	VectorType dInit = ldlt.vectorD().array().log().matrix();
+	VectorType dInit = (ldlt.transpositionsP().transpose() * ldlt.vectorD()).array().log().matrix();
 	_logD.SetValue( dInit );
 	_dReshape.SetShapeParams( MatrixType::Zero( dim, dim ), diagInds );
 }
