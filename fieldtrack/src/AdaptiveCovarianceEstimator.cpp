@@ -3,6 +3,7 @@
 #include "argus_utils/utils/MatrixUtils.h"
 #include <boost/foreach.hpp>
 #include <sstream>
+#include <Eigen/SVD>
 
 using namespace argus_msgs;
 using namespace argus;
@@ -181,7 +182,7 @@ MatrixType AdaptiveObsCovEstimator::GetR( const ros::Time& time )
 		adaptR = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( adaptR.diagonal() );
 	}
 
-	ROS_INFO_STREAM( "R: " << adaptR.diagonal().transpose() );
+	//	ROS_INFO_STREAM( "R: " << std::endl << adaptR );
 
 	return adaptR;
 }
@@ -235,7 +236,18 @@ void AdaptiveObsCovEstimator::Update( const UpdateInfo& update )
 	MatrixType HPHT = update.obs_jacobian * update.post_state_cov *
 	                  update.obs_jacobian.transpose();
 	MatrixType op = update.post_obs_error * update.post_obs_error.transpose();
-	_innoProds.emplace_front( update.time, op + HPHT );
+        MatrixType Rest = HPHT + op;
+
+        // Update is R = Cv- - H * P- * H^T
+        //MatrixType HPHT = update.obs_jacobian * update.prior_state_cov *
+        //         	  update.obs_jacobian.transpose();
+        //MatrixType op = update.prior_obs_error * update.prior_obs_error.transpose();
+        //MatrixType Rest = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( ( op - HPHT ).diagonal() );
+        //for( unsigned int i =0; i < Rest.rows(); ++i )
+	//  {
+	//    if( Rest(i,i) < 0.0 ) { Rest(i,i) = 0.0; }
+	//  }
+	_innoProds.emplace_front( update.time, Rest );
 }
 
 void AdaptiveObsCovEstimator::Reset()
