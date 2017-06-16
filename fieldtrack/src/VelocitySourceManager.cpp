@@ -18,6 +18,8 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
                                         const std::string& targetFrame,
                                         ExtrinsicsInterface::Ptr extrinsics )
 {
+	_filterOrder = filterOrder;
+
 	_targetFrame = targetFrame;
 	_twoDimensional = twoDimensional;
 	_extrinsicsManager = extrinsics;
@@ -28,7 +30,7 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 
 	std::vector<std::string> indSpecs;
 	GetParamRequired( ph, "dim_specs", indSpecs );
-	_dimInds = parse_dim_string( indSpecs, twoDimensional, filterOrder + 1, 1 );
+	_dimInds = parse_dim_string( indSpecs, false, filterOrder + 1, 1 );
 	// NOTE These are hard-coded limits for twist, IMU messages which will have
 	// at most acceleration info
 	// TODO Currently am not validating obsInds vs the expected message type
@@ -47,6 +49,8 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 	{
 		_obsMatrix( i, _dimInds[i] ) = 1.0;
 	}
+
+	_filterToThreeD = promote_3d_matrix( twoDimensional, filterOrder );
 
 	// Parse covariance operating mode
 	if( _mode == COV_PASS )
@@ -221,8 +225,17 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
 {
 	PoseSE3 ext = _extrinsicsManager->GetExtrinsics( frame, _targetFrame, stamp );
 	// VectorType transDerivs = TransformTangent( derivs, ext );
-	MatrixType C = PoseSE3::Adjoint( ext );
+	
+	unsigned int fullDim = PoseSE3::TangentDimension * ( _filterOrder + 1 );
 
+	// C maps full 3D derivatives to reference full 3D derivatives
+	MatrixType C = MatrixType::Zero( fullDim, fullDim );
+	MatrixType adj = PoseSE3::Adjoint( ext );
+	for( unsigned int i = 0; i < _filterOrder + 1; ++i )
+	{
+		unsigned int j = i * PoseSE3::TangentDimension;
+		C.block<PoseSE3::TangentDimension, PoseSE3::TangentDimension>( j, j ) = adj;
+	}
 
 	DerivObservation obs;
 	obs.timestamp = stamp;
@@ -232,7 +245,8 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
 	GetSubmatrix( derivs, obs.derivatives, _obsInds );	
 	obs.covariance = GetCovariance( stamp, cov );
 	// obs.indices = _dimInds;
-	obs.C = _obsMatrix * C;
+	// We map from filter -> 3D -> reference frame -> relevant indices
+	obs.C = _obsMatrix * C * _filterToThreeD;
 	return obs;
 }
 

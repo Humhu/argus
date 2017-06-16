@@ -1,8 +1,12 @@
 #include <string>
 #include <vector>
+#include "argus_utils/utils/LinalgTypes.h"
 
 namespace argus
 {
+
+MatrixType promote_3d_matrix( bool twoDimensional, unsigned int order );
+
 /*! \brief Parses strings of the format [type]_[dim]_[order] to indices
  * for a filter. Assumes order 0 corresponds to pose, 1 to velocity, etc.
  *

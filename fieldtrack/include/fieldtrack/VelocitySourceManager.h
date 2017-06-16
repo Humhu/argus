@@ -49,6 +49,8 @@ private:
 	MatrixType _fixedCov;
 	AdaptiveObsCovEstimator _adaptiveCov;
 
+	unsigned int _filterOrder;
+	MatrixType _filterToThreeD; // Maps filter state to 3d derivs
 	MatrixType _obsMatrix;
 	double _minLogLikelihood;
 

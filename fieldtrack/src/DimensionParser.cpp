@@ -1,9 +1,42 @@
 #include "fieldtrack/DimensionParser.h"
+#include "argus_utils/geometry/PoseSE2.h"
+#include "argus_utils/geometry/PoseSE3.h"
 
 #include <boost/algorithm/string.hpp>
 
 namespace argus
 {
+
+unsigned int twod_to_threed( unsigned int d )
+{
+	// NOTE Integer division rounding down
+	unsigned int order = d / PoseSE2::TangentDimension;
+	unsigned int ind = d - order * PoseSE2::TangentDimension;
+	if( ind == 2 ) { ind = 5; } // 2D angle maps to 3D z angle
+	return order * PoseSE3::TangentDimension + ind;
+}
+
+MatrixType promote_3d_matrix( bool twoDimensional, unsigned int order )
+{
+	unsigned int fullDim = PoseSE3::TangentDimension * (order + 1);
+	if( !twoDimensional )
+	{
+		return MatrixType::Identity( fullDim, fullDim );
+	}
+	
+	unsigned int dim = twoDimensional ? PoseSE2::TangentDimension
+							: PoseSE3::TangentDimension;
+	unsigned int inDim = dim * (order + 1);
+	
+	MatrixType p( fullDim, inDim );
+
+	for( unsigned int i = 0; i < inDim; ++i )
+	{
+		p( twod_to_threed(i), i ) = 1;
+	}
+	return p;
+}
+
 unsigned int parse_dim_string( const std::string& s,
                                bool twoDimensional,
                                unsigned int maxOrder,
