@@ -6,6 +6,8 @@
 #include "argus_utils/geometry/PoseSE3.h"
 #include "argus_utils/geometry/PoseSE2.h"
 
+#include <algorithm>
+
 namespace argus
 {
 VelocitySourceManager::VelocitySourceManager() {}
@@ -183,7 +185,32 @@ VelocitySourceManager::operator()( const geometry_msgs::TransformStamped& msg )
 DerivObservation
 VelocitySourceManager::operator()( const sensor_msgs::Imu& msg )
 {
-	throw std::runtime_error ( "VelocitySourceManager does not yet support IMU" );
+	// TODO Hard-coded check on IMU valid inds
+	// IMU contains angular velocities (3, 4, 5) and linear accelerations (6, 7, 8)
+	BOOST_FOREACH( unsigned int ind, _obsInds )
+	{
+		if( ind < 3 || ind > 8 )
+		{
+			throw std::runtime_error("Invalid indices for IMU message");
+		}
+	}
+	
+	// TODO Hard-coded constants
+	VectorType derivs = VectorType::Zero(12);
+	derivs.segment<3>(3) = MsgToVector3( msg.angular_velocity );
+	derivs.segment<3>(6) = MsgToVector3( msg.linear_acceleration );
+	
+	MatrixType gyroCov = MatrixType( 3, 3 );
+	MatrixType xlCov = MatrixType( 3, 3 );
+	ParseMatrix( msg.angular_velocity_covariance, gyroCov );
+	ParseMatrix( msg.linear_acceleration_covariance, xlCov );	
+	MatrixType cov = MatrixType::Zero(12, 12);
+	std::vector<unsigned int> gyroInds = {3,4,5};
+	std::vector<unsigned int> xlInds = {6,7,8};
+	PutSubmatrix( gyroCov, cov, gyroInds, gyroInds );
+	PutSubmatrix( xlCov, cov, xlInds, xlInds );
+
+	return ProcessDerivatives( derivs, cov, msg.header.stamp, msg.header.frame_id );
 }
 
 DerivObservation
