@@ -250,6 +250,8 @@ bool VelocityEstimator::ProcessMessage( const std::string& source,
 	// Check observation likelihood
 	// TODO HACK!
 	const MatrixType& C = obs.C; //manager.GetObservationMatrix();
+        //ROS_INFO_STREAM( "C: " << std::endl << obs.C );
+        //ROS_INFO_STREAM( "Obs: " << obs.derivatives.transpose() << std::endl << "pred: " << C * _filter.GetState() );
 	VectorType v = obs.derivatives - C * _filter.GetState();
 	MatrixType V = C * _filter.GetCovariance() * C.transpose() + obs.covariance;
 	double ll = GaussianLogPdf( V, v );
