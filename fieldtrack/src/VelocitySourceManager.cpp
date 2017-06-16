@@ -62,7 +62,7 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 	}
 }
 
-const MatrixType& VelocitySourceManager::GetObservationMatrix() const
+const MatrixType& VelocitySourceManager::GetIndexMatrix() const
 {
 	return _obsMatrix;
 }
@@ -193,15 +193,19 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
                                            const std::string& frame )
 {
 	PoseSE3 ext = _extrinsicsManager->GetExtrinsics( frame, _targetFrame, stamp );
-	VectorType transDerivs = TransformTangent( derivs, ext );
+	// VectorType transDerivs = TransformTangent( derivs, ext );
+	MatrixType C = PoseSE3::Adjoint( ext );
+
 
 	DerivObservation obs;
 	obs.timestamp = stamp;
 	obs.referenceFrame = _targetFrame;
 	obs.derivatives = VectorType( _obsInds.size() );
-	GetSubmatrix( transDerivs, obs.derivatives, _obsInds );
+	// GetSubmatrix( transDerivs, obs.derivatives, _obsInds );
+	GetSubmatrix( derivs, obs.derivatives, _obsInds );	
 	obs.covariance = GetCovariance( stamp, cov );
-	obs.indices = _dimInds;
+	// obs.indices = _dimInds;
+	obs.C = _obsMatrix * C;
 	return obs;
 }
 

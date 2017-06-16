@@ -70,7 +70,7 @@ add_library( fieldtrack
 	src/LikelihoodChain.cpp
 	src/NoiseLearner.cpp
 	# src/ObservationSourceManager.cpp
-	src/PoseDerivativeFilter.cpp
+	# src/PoseDerivativeFilter.cpp
 	src/PoseEstimator.cpp
 	src/PoseSourceManager.cpp
 	# src/StateEstimator.cpp

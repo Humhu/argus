@@ -91,7 +91,8 @@ struct DerivObservation : public ObservationBase
 {
 	VectorType derivatives;
 	MatrixType covariance;
-	std::vector<unsigned int> indices;
+	// std::vector<unsigned int> indices;
+	MatrixType C;
 };
 
 typedef boost::variant<PoseObservation,

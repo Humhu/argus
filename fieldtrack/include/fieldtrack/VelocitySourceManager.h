@@ -28,7 +28,7 @@ public:
 	void Reset();
 
 	bool CheckLogLikelihood( double ll ) const;
-	const MatrixType& GetObservationMatrix() const;
+	const MatrixType& GetIndexMatrix() const;
 
 	CovarianceModel::Ptr InitializeModel() const;
 	void SetModel( const CovarianceModel& model );
