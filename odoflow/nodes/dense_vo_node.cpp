@@ -41,6 +41,9 @@ public:
 
 		_maxPredictEntropy.InitializeAndRead( ph, 1.0, "max_predict_entropy", "Max predict uncertainty entropy" );
 
+		_minTimeDelta.InitializeAndRead( ph, 0.0, "min_time_delta", "Min time between frames to estimate velocity" );
+		_minTimeDelta.AddCheck<GreaterThanOrEqual>( 0.0 );
+
 		GetParamRequired( ph, "scale", _scale );
 
 		GetParam( ph, "enable_prediction", _enablePrediction, false );
@@ -123,6 +126,8 @@ public:
 		_keyTime = time;
 		_lastPose = PoseSE2();
 		_lastTime = time;
+		_lastVelPose = PoseSE2();
+		_lastVelTime = time;
 	}
 
 	PoseSE2 PredictMotion( const ros::Time& currTime, const std::string& camFrame )
@@ -291,11 +296,17 @@ public:
 
 		Visualize( currPyramid[0], header );
 		
-		// Compute displacement relative to last image, not keyframe
-		disp = _lastPose.Inverse() * currToKey;
-
 		_lastPose = currToKey;
 		_lastTime = currTime;
+
+		// Don't compute velocities if too little time passed since last differentiation
+		double velDt = (currTime - _lastVelTime).toSec();
+		if( velDt < _minTimeDelta ) { return; }
+
+		// Compute displacement relative to last image, not keyframe
+		disp = _lastVelPose.Inverse() * currToKey;
+		_lastVelTime = currTime;
+		_lastVelPose = currToKey;
 
 		geometry_msgs::TwistStamped tmsg;
 		tmsg.header = header;
@@ -303,7 +314,7 @@ public:
 		PoseSE3 disp3;
 		CameraToStandard( disp, disp3 );
 
-		PoseSE3::TangentVector dvel = PoseSE3::Log( disp3 ) / dt;
+		PoseSE3::TangentVector dvel = PoseSE3::Log( disp3 ) / velDt;
 		// NOTE Don't scale rotations by image scale!
 		dvel.head<3>() = dvel.head<3>() * _scale / imgWidth;
 		tmsg.twist = TangentToMsg( dvel );
@@ -330,11 +341,14 @@ private:
 	ros::Time _keyTime;
 	PoseSE2 _lastPose;
 	ros::Time _lastTime;
+  ros::Time _lastVelTime;
+  PoseSE2 _lastVelPose;
 
 	double _scale;
 	NumericParam _pyramidDepth;
 	NumericParam _maxDisplacement;
         NumericParam _maxPredictEntropy;
+  NumericParam _minTimeDelta;
 
 	ExtrinsicsInterface _extrinsics;
 
