@@ -28,7 +28,7 @@ MatrixType promote_3d_matrix( bool twoDimensional, unsigned int order )
 							: PoseSE3::TangentDimension;
 	unsigned int inDim = dim * (order + 1);
 	
-	MatrixType p( fullDim, inDim );
+	MatrixType p = MatrixType::Zero( fullDim, inDim );
 
 	for( unsigned int i = 0; i < inDim; ++i )
 	{

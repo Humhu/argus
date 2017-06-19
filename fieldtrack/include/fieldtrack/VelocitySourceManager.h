@@ -55,8 +55,8 @@ private:
 	double _minLogLikelihood;
 
 	bool _twoDimensional;
-	std::vector<unsigned int> _dimInds;
-	std::vector<unsigned int> _obsInds;
+	std::vector<unsigned int> _obsInds; // Dimensions of state that are observed
+	std::vector<unsigned int> _sensorInds; // Dimensions of sensor that are active
 
 	DerivObservation ProcessDerivatives( const VectorType& derivs,
 	                                     const MatrixType& cov,

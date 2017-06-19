@@ -10,6 +10,16 @@
 
 namespace argus
 {
+
+  std::ostream& operator<<( std::ostream& os, const std::vector<std::string>& v )
+  {
+    BOOST_FOREACH( const std::string& s, v )
+      {
+	os << s << " ";
+      }
+    return os;
+  }
+
 VelocitySourceManager::VelocitySourceManager() {}
 
 void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
@@ -28,13 +38,15 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 	GetParamRequired( ph, "mode", mode );
 	_mode = StringToCovMode( mode );
 
-	std::vector<std::string> indSpecs;
-	GetParamRequired( ph, "dim_specs", indSpecs );
-	_dimInds = parse_dim_string( indSpecs, false, filterOrder + 1, 1 );
+	std::vector<std::string> dimSpecs;
+	GetParamRequired( ph, "observed_dims", dimSpecs );
+
 	// NOTE These are hard-coded limits for twist, IMU messages which will have
 	// at most acceleration info
 	// TODO Currently am not validating obsInds vs the expected message type
-	_obsInds = parse_dim_string( indSpecs, false, 2, 1 );
+        //parse_dim_string( dimSpecs, twoDimensional, 2, 1 ); // Will validate dimSpecs for us
+	_obsInds = parse_dim_string( dimSpecs, false, filterOrder + 1, 1 );
+        //_sensorInds = parse_dim_string( sensorSpecs, false, 2, 1 );
 
 	GetParam( ph, "min_log_likelihood", _minLogLikelihood,
 	          -std::numeric_limits<double>::infinity() );
@@ -43,11 +55,11 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 	unsigned int stateDim = twoDimensional ?
 	                        PoseSE2::TangentDimension :
 	                        PoseSE3::TangentDimension;
-	unsigned int fullDim = stateDim * (filterOrder + 1);
-	_obsMatrix = MatrixType::Zero( _dimInds.size(), fullDim );
-	for( unsigned int i = 0; i < _dimInds.size(); ++i )
+	unsigned int fullDim = PoseSE3::TangentDimension * (filterOrder + 1);
+	_obsMatrix = MatrixType::Zero( _obsInds.size(), fullDim );
+	for( unsigned int i = 0; i < _obsInds.size(); ++i )
 	{
-		_obsMatrix( i, _dimInds[i] ) = 1.0;
+		_obsMatrix( i, _obsInds[i] ) = 1.0;
 	}
 
 	_filterToThreeD = promote_3d_matrix( twoDimensional, filterOrder );
@@ -59,12 +71,12 @@ void VelocitySourceManager::Initialize( ros::NodeHandle& ph,
 	}
 	else if( _mode == COV_FIXED )
 	{
-		_fixedCov = MatrixType( _dimInds.size(), _dimInds.size() );
+		_fixedCov = MatrixType( _obsInds.size(), _obsInds.size() );
 		GetParamRequired( ph, "fixed_covariance", _fixedCov );
 	}
 	else if( _mode == COV_ADAPTIVE )
 	{
-		_adaptiveCov.Initialize( _dimInds.size(), ph );
+		_adaptiveCov.Initialize( _obsInds.size(), ph );
 	}
 }
 
@@ -230,12 +242,17 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
 
 	// C maps full 3D derivatives to reference full 3D derivatives
 	MatrixType C = MatrixType::Zero( fullDim, fullDim );
-	MatrixType adj = PoseSE3::Adjoint( ext );
+        // NOTE Use inverse extrinsics adjoint to map from reference frame to sensor frame
+	MatrixType adj = PoseSE3::Adjoint( ext.Inverse() );
 	for( unsigned int i = 0; i < _filterOrder + 1; ++i )
 	{
 		unsigned int j = i * PoseSE3::TangentDimension;
 		C.block<PoseSE3::TangentDimension, PoseSE3::TangentDimension>( j, j ) = adj;
 	}
+
+	//ROS_INFO_STREAM( "filtTo3D: " << std::endl << _filterToThreeD );
+	//ROS_INFO_STREAM( "Adjoints: " << std::endl << C );
+	//ROS_INFO_STREAM( "subObs: " << std::endl << _obsMatrix );
 
 	DerivObservation obs;
 	obs.timestamp = stamp;
@@ -244,7 +261,7 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
 	// GetSubmatrix( transDerivs, obs.derivatives, _obsInds );
 	GetSubmatrix( derivs, obs.derivatives, _obsInds );	
 	obs.covariance = GetCovariance( stamp, cov );
-	// obs.indices = _dimInds;
+	// obs.indices = _obsInds;
 	// We map from filter -> 3D -> reference frame -> relevant indices
 	obs.C = _obsMatrix * C * _filterToThreeD;
 	return obs;
