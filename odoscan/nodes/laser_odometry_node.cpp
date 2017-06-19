@@ -5,6 +5,7 @@
 #include "odoscan/ApproximateVoxelGridFilter.h"
 
 #include "odoscan/ScanMatcher.h"
+#include "odoscan/DegeneracyDetector.h"
 #include "odoscan/ICPMatcher.h"
 #include "odoscan/MatchRestarter.h"
 
@@ -55,6 +56,9 @@ public:
 			_velIntegrator.SetMaxBuffLen( odomLen );
 			_odomSub = nh.subscribe( "odom", 10, &LaserOdometryNode::OdomCallback, this );
 		}
+
+		ros::NodeHandle ch( ph.resolveName( "checker" ) );
+		_checker.Initialize( ch );
 
 		ros::NodeHandle rh( ph.resolveName( "restarter" ) );
 		_restarter.Initialize( rh, _matcher );
@@ -119,6 +123,7 @@ private:
 
 	ScanFilter::Ptr _filter;
 	ScanMatcher::Ptr _matcher;
+	DegeneracyDetector _checker;
 	MatchRestarter _restarter;
 
 	LookupInterface _lookupInterface;
@@ -283,7 +288,7 @@ private:
 		catch( ExtrinsicsException& e )
 		{
 			ROS_WARN_STREAM( "Could not get extrinsics: " << e.what() );
-			return;;
+			return;
 		}
 	}
 
@@ -340,6 +345,12 @@ private:
 		_restarter.SetDisplacementDistribution( guessDisp, laserDispCov );
 		ScanMatchResult result = _restarter.Match( reg.keyframeCloud, currCloud, aligned );
 
+		if( _checker.HasDegeneracy( result.inliers ) )
+		{
+			ResetKeyframe( reg, currCloud, currTime );
+			return;
+		}
+
 		if( reg.showOutput )
 		{
 			if( result.success && aligned )
@@ -359,12 +370,12 @@ private:
 			return;
 		}
 
-		double inlierRatio = result.numInliers / (float) reg.keyframeCloud->size();
+		double inlierRatio = result.inliers->size() / (float) reg.keyframeCloud->size();
 		if( inlierRatio < _minInlierRatio )
 		{
-			ROS_WARN_STREAM( "Found " << result.numInliers << " inliers out of "
-			                          << reg.keyframeCloud->size() << " input points, less than min ratio "
-			                          << _minInlierRatio );
+			ROS_WARN_STREAM( "Found " << result.inliers->size() <<
+			                 " inliers out of " << reg.keyframeCloud->size() <<
+			                 " input points, less than min ratio " << _minInlierRatio );
 			ResetKeyframe( reg, currCloud, currTime );
 			return;
 		}

@@ -20,16 +20,16 @@ class ExposedMatcher
 	ExposedMatcher() {}
 	virtual ~ExposedMatcher() {}
 
-	virtual unsigned int CountCorrespondences(double dist) = 0;
+	virtual LaserCloudType::Ptr GetInliers(double dist) = 0;
 	virtual Registrar &ToRegistrar() = 0;
 };
 
 struct ScanMatchResult
 {
 	bool success;
-	unsigned int numInliers;
 	double fitness;
 	PoseSE3 transform;
+	LaserCloudType::Ptr inliers;
 };
 
 /*! \brief Base for all classes that find the transform between two point cloud. Provides

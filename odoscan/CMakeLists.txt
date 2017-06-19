@@ -55,6 +55,7 @@ set(CMAKE_CXX_FLAGS "-g -Wall -std=c++0x")
 
 add_library( odoscan
     src/ApproximateVoxelGridFilter.cpp
+	src/DegeneracyDetector.cpp
     src/ICPMatcher.cpp
 	src/MatchRestarter.cpp
     src/ScanFilter.cpp

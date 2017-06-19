@@ -83,7 +83,8 @@ ScanMatchResult ScanMatcher::Match( const LaserCloudType::ConstPtr& key,
 		return result;
 	}
 
-	result.numInliers = matcher->CountCorrespondences( _maxCorrespondDist );
+	result.inliers = matcher->GetInliers( _maxCorrespondDist );
+	// result.numInliers = matcher->CountCorrespondences( _maxCorrespondDist );
 	result.fitness = matcher->ToRegistrar().getFitnessScore( _maxCorrespondDist );
 
 	FixedMatrixType<4, 4> H = matcher->ToRegistrar().getFinalTransformation().cast<double>();

@@ -13,15 +13,19 @@ class ExposedICP
 public:
 	typedef std::shared_ptr<ExposedICP> Ptr;
 
-	unsigned int CountCorrespondences( double dist )
+	LaserCloudType::Ptr GetInliers( double dist )
 	{
-		unsigned int count = 0;
+		LaserCloudType::Ptr out = boost::make_shared<LaserCloudType>();
+		const LaserCloudType& src = *(this->getInputSource());
 		for (uint32_t i = 0; i < this->correspondences_->size(); i++)
 		{
 			pcl::Correspondence currCorr = (*this->correspondences_)[i];
-			if( currCorr.index_match != -1 && currCorr.distance < dist ) { ++count; }
+			if( currCorr.index_match != -1 && currCorr.distance < dist ) 
+			{ 
+				out->push_back(src[currCorr.index_query]);
+			}
 		}
-		return count;
+		return out;
 	}
 
 	Registrar& ToRegistrar() { return *this; }

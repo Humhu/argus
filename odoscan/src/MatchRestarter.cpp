@@ -76,16 +76,17 @@ ScanMatchResult MatchRestarter::Match( const LaserCloudType::ConstPtr& key,
 	// Find best result
 	ScanMatchResult best;
 	best.success = false;
-	best.numInliers = 0;
+	unsigned int bestNumInliers = 0;
 	for( unsigned int i = 0; i < N; ++i )
 	{
 		if( !infos[i].result.success )
 		{
 			continue;
 		}
-		if( infos[i].result.numInliers > best.numInliers )
+		if( infos[i].result.inliers->size() > bestNumInliers )
 		{
 			best = infos[i].result;
+			bestNumInliers = best.inliers->size();
 			aligned = infos[i].aligned;
 		}
 	}
