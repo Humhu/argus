@@ -107,6 +107,9 @@ public:
 		                                   "Minimum solution inlier to full scan ratio." );
 		_minInlierRatio.AddCheck<GreaterThanOrEqual>( 0.0 );
 		_minInlierRatio.AddCheck<LessThanOrEqual>( 1.0 );
+
+		_minNumInliers.InitializeAndRead( ph, 50, "min_num_inliers",
+						  "Minimum number of inliers required" );
 	}
 
 private:
@@ -132,6 +135,7 @@ private:
 
 	NumericParam _maxError;
 	NumericParam _minInlierRatio;
+  NumericParam _minNumInliers;
 
 	struct CloudRegistration
 	{
@@ -345,17 +349,12 @@ private:
 		_restarter.SetDisplacementDistribution( guessDisp, laserDispCov );
 		ScanMatchResult result = _restarter.Match( reg.keyframeCloud, currCloud, aligned );
 
-		if( _checker.HasDegeneracy( result.inliers ) )
-		{
-			ResetKeyframe( reg, currCloud, currTime );
-			return;
-		}
-
 		if( reg.showOutput )
 		{
 			if( result.success && aligned )
 			{
-				reg.debugAlignedPub.publish( aligned );
+			  //result.inliers->header = aligned->header;
+			        reg.debugAlignedPub.publish( aligned );
 			}
 			if( reg.keyframeCloud )
 			{
@@ -370,12 +369,20 @@ private:
 			return;
 		}
 
+
+		if( _checker.HasDegeneracy( result.inliers ) )
+		{
+			ResetKeyframe( reg, currCloud, currTime );
+			return;
+		}
+
 		double inlierRatio = result.inliers->size() / (float) reg.keyframeCloud->size();
-		if( inlierRatio < _minInlierRatio )
+		if( inlierRatio < _minInlierRatio || result.inliers->size() < _minNumInliers )
 		{
 			ROS_WARN_STREAM( "Found " << result.inliers->size() <<
 			                 " inliers out of " << reg.keyframeCloud->size() <<
-			                 " input points, less than min ratio " << _minInlierRatio );
+			                 " input points, less than min ratio " << _minInlierRatio <<
+					 " or number " << _minNumInliers );
 			ResetKeyframe( reg, currCloud, currTime );
 			return;
 		}

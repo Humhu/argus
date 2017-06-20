@@ -23,6 +23,8 @@ private:
 
 	BooleanParam _checkPlane;
 	BooleanParam _checkSphere;
+        BooleanParam _checkLine;
+        BooleanParam _checkCircle;
 	NumericParam _inlierThreshold;
 	NumericParam _maxIterations;
 	NumericParam _maxDegeneracyRatio;
