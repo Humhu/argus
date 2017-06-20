@@ -41,7 +41,7 @@ void VelocityEstimator::Initialize( ros::NodeHandle& ph,
 		ros::NodeHandle sh = ph.resolveName( "update_sources/" + sourceName );
 		if( _sourceRegistry.count( sourceName ) > 0 )
 		{
-			throw std::invalid_argument( "Source " + sourceName + " already registered!" );
+		  throw std::invalid_argument( "Source " + sourceName + " already registered!" );
 		}
 		_sourceRegistry[sourceName].Initialize( sh,
 		                                        _twoDimensional,

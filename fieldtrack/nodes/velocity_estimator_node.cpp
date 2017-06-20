@@ -66,24 +66,28 @@ public:
 			const std::string& sourceName = iter->first.as<std::string>();
 			const YAML::Node& info = iter->second;
 
+			std::vector<std::string> topics;
 			std::string topic, type;
 			unsigned int buffSize;
-			GetParamRequired( info, "topic", topic );
+			if( !GetParam( info, "topics", topics ) )
+			  {
+			    GetParamRequired( info, "topic", topic );
+			    topics.push_back( topic );
+			  }
 			GetParamRequired( info, "type", type );
 			GetParam( info, "buffer_size", buffSize, (unsigned int) 10 );
 
-			ROS_INFO_STREAM( "Subscribing to source " << sourceName << " on topic " << topic );
 			if( type == "deriv_stamped" )
 			{
-				SubscribeToUpdates<geometry_msgs::TwistStamped>( nh, topic, buffSize, sourceName );
+				SubscribeToUpdates<geometry_msgs::TwistStamped>( nh, topics, buffSize, sourceName );
 			}
 			else if( type == "deriv_cov_stamped" )
 			{
-				SubscribeToUpdates<geometry_msgs::TwistWithCovarianceStamped>( nh, topic, buffSize, sourceName );
+				SubscribeToUpdates<geometry_msgs::TwistWithCovarianceStamped>( nh, topics, buffSize, sourceName );
 			}
 			else if( type == "imu" )
 			{
-				SubscribeToUpdates<sensor_msgs::Imu>( nh, topic, buffSize, sourceName );
+				SubscribeToUpdates<sensor_msgs::Imu>( nh, topics, buffSize, sourceName );
 			}
 			else
 			{
@@ -145,10 +149,12 @@ public:
 	}
 
 	template <typename M>
-	void SubscribeToUpdates( ros::NodeHandle& nh, const std::string& topic,
+	void SubscribeToUpdates( ros::NodeHandle& nh, const std::vector<std::string>& topics,
 	                         unsigned int buffSize, const std::string& sourceName )
 	{
-		ROS_INFO_STREAM( "Subscribing to " << sourceName << " at " << topic );
+	  BOOST_FOREACH( const std::string& topic, topics )
+	    {
+		ROS_INFO_STREAM( "Subscribing to source " << sourceName << " on topic " << topic );
 		_updateSubs.emplace_back();
 		_updateSubs.back() =
 		    nh.subscribe<M>( topic, buffSize,
@@ -156,6 +162,7 @@ public:
 		                                  this,
 		                                  _1,
 		                                  sourceName ) );
+	    }
 	}
 
 	template <typename M>
