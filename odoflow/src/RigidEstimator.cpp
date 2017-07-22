@@ -1,4 +1,5 @@
 #include "odoflow/RigidEstimator.h"
+#include "camplex/FiducialCommon.h"
 #include "argus_utils/utils/ParamUtils.h"
 
 #include <opencv2/calib3d.hpp>

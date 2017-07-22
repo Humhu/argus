@@ -123,9 +123,9 @@ target_link_libraries( recorder_node
 	${catkin_LIBRARIES}
 	${OpenCV_LIBS} )
 	
-add_executable( video_recorder 
+add_executable( video_recorder_node 
 	nodes/video_recorder.cpp )
-target_link_libraries( video_recorder
+target_link_libraries( video_recorder_node
 	${catkin_LIBRARIES}
 	${OpenCV_LIBS} )
 
@@ -156,7 +156,7 @@ add_executable( resize_node nodes/resize_node.cpp )
 target_link_libraries( resize_node camplex ${catkin_LIBRARIES} )
 	
 ## Mark executables and/or libraries for installation
-install(TARGETS camplex camera_node viewer_node recorder_node video_recorder undistortion_node
+install(TARGETS camplex camera_node viewer_node recorder_node video_recorder_node undistortion_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

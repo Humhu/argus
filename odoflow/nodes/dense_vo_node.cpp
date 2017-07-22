@@ -57,7 +57,6 @@ public:
 		{
 			_debugPub = _imageTrans.advertise( "image_debug", 1 );
 		}
-
 	}
 
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
@@ -157,7 +156,6 @@ public:
 			odomToCam = _extrinsics.GetExtrinsics( _odomFrame,
 			                                       camFrame,
 			                                       currTime );
-
 		}
 		catch( ExtrinsicsException& e )
 		{
@@ -165,19 +163,19 @@ public:
 			return PoseSE2();
 			// guessCov = odomCov;
 		}
-		
+
 		camDisp = odomToCam * odomDisp * odomToCam.Inverse();
 		guessCov = TransformCovariance( odomCov, odomToCam );
-                // HACK
-                MatrixType subCov(3,3);
-		std::vector<unsigned int> inds = {1,2,3};
-                GetSubmatrix( guessCov, subCov, inds, inds );
-                double entropy = GaussianEntropy( subCov );
+		// HACK
+		MatrixType subCov( 3, 3 );
+		std::vector<unsigned int> inds = {1, 2, 3};
+		GetSubmatrix( guessCov, subCov, inds, inds );
+		double entropy = GaussianEntropy( subCov );
 		if( entropy > _maxPredictEntropy )
-		  {
-		    ROS_WARN_STREAM( "Motion prediction entropy exceeds limit! Using default prior" );
-                    return PoseSE2();
-		  }
+		{
+			ROS_WARN_STREAM( "Motion prediction entropy exceeds limit! Using default prior" );
+			return PoseSE2();
+		}
 
 		PoseSE2 ret;
 		StandardToCamera( camDisp, ret );
@@ -193,32 +191,32 @@ public:
 	void Visualize( const cv::Mat& curr, const std_msgs::Header& header )
 	{
 		if( !_debug || _keyPyramid.empty() ) { return; }
-		
+
 		const cv::Mat& key = _keyPyramid[0];
 		unsigned int width = key.cols;
 		unsigned int height = key.rows;
 
-		cv::Mat visImage( height, 2*width, key.type() );
+		cv::Mat visImage( height, 2 * width, key.type() );
 		cv::Mat visLeft( visImage, cv::Rect( 0, 0, width, height ) );
 		cv::Mat visRight( visImage, cv::Rect( width, 0, width, height ) );
 		key.copyTo( visLeft );
 		curr.copyTo( visRight );
 
-		FixedMatrixType<3,4> corners;
+		FixedMatrixType<3, 4> corners;
 		corners << 1, 1, width, width,
-		           1, height, height, 1,
-				   1, 1, 1, 1;
-		FixedMatrixType<2,4> warped = (_lastPose.ToMatrix() * corners).colwise().hnormalized();
+		1, height, height, 1,
+		1, 1, 1, 1;
+		FixedMatrixType<2, 4> warped = (_lastPose.ToMatrix() * corners).colwise().hnormalized();
 
 		std::vector<cv::Point2f> cornerPoints;
 		for( unsigned int i = 0; i < 4; ++i )
 		{
-			cornerPoints.emplace_back( warped(0,i), warped(1,i) );
+			cornerPoints.emplace_back( warped( 0, i ), warped( 1, i ) );
 		}
-		cv::line(visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar(255,0,255));
-		cv::line(visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar(255,0,255));
-		cv::line(visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar(255,0,255));
-		cv::line(visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar(255,0,255));
+		cv::line( visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar( 255, 0, 255 ) );
+		cv::line( visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar( 255, 0, 255 ) );
+		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 255, 0, 255 ) );
+		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 255, 0, 255 ) );
 
 		cv_bridge::CvImage vimg( header, "mono8", visImage );
 		_debugPub.publish( vimg.toImageMsg() );
@@ -257,17 +255,17 @@ public:
 
 		// Check for field-of-view moving too far from keyframe
 		FixedVectorType<3> dispVec = currToKey.ToVector();
-		double dispX = dispVec(0);
-		double dispY = dispVec(1);		
+		double dispX = dispVec( 0 );
+		double dispY = dispVec( 1 );
 		double r = std::sqrt( dispX * dispX + dispY * dispY );
 		double maxR = _maxDisplacement * _keyPyramid[0].size().width;
 		if( r > maxR )
 		{
 			ROS_INFO_STREAM( "Predicted displacement " << r << " larger than allowed "
-			<< r << ". Resetting keyframe..." );
+			                                           << r << ". Resetting keyframe..." );
 			SetKeyframe( currPyramid, currTime );
 			Visualize( currPyramid[0], header );
-			return;			
+			return;
 		}
 
 		PoseSE2::TangentVector logPose = PoseSE2::Log( currToKey );
@@ -284,7 +282,7 @@ public:
 			{
 				ROS_INFO_STREAM( "Tracking failed! Resetting keyframe..." );
 				SetKeyframe( currPyramid, currTime );
-				Visualize( currPyramid[0], header );				
+				Visualize( currPyramid[0], header );
 				return;
 			}
 			// ROS_INFO_STREAM( "Depth: " << i << " found disp: " << currToKey );
@@ -295,7 +293,7 @@ public:
 		}
 
 		Visualize( currPyramid[0], header );
-		
+
 		_lastPose = currToKey;
 		_lastTime = currTime;
 
@@ -341,14 +339,14 @@ private:
 	ros::Time _keyTime;
 	PoseSE2 _lastPose;
 	ros::Time _lastTime;
-  ros::Time _lastVelTime;
-  PoseSE2 _lastVelPose;
+	ros::Time _lastVelTime;
+	PoseSE2 _lastVelPose;
 
 	double _scale;
 	NumericParam _pyramidDepth;
 	NumericParam _maxDisplacement;
-        NumericParam _maxPredictEntropy;
-  NumericParam _minTimeDelta;
+	NumericParam _maxPredictEntropy;
+	NumericParam _minTimeDelta;
 
 	ExtrinsicsInterface _extrinsics;
 

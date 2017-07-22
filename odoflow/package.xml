@@ -2,7 +2,7 @@
 <package>
   <name>odoflow</name>
   <version>0.1.0</version>
-  <description>Package for visual odometry.</description>
+  <description>Package for monocular visual odometry.</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
