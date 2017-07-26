@@ -8,7 +8,8 @@ find_package(catkin REQUIRED
 	COMPONENTS		roscpp
 					sensor_msgs
 					stereo_msgs					
-					geometry_msgs					
+					geometry_msgs
+					nav_msgs					
 					cv_bridge
 					image_transport
 					image_geometry
@@ -53,6 +54,7 @@ catkin_package(
 					sensor_msgs 
 					stereo_msgs
 					geometry_msgs
+					nav_msgs
 					cv_bridge 
 					image_transport 
 					message_runtime

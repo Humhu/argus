@@ -49,7 +49,20 @@ public:
 		GetParam( ph, "enable_prediction", _enablePrediction, false );
 		if( _enablePrediction )
 		{
-			_odomSub = nh.subscribe( "odom", 10, &DenseVONode::OdomCallback, this );
+			std::string predictionMode;
+			GetParam<std::string>( ph, "prediction_mode", predictionMode, "odom" );
+			if( predictionMode == "odometry" )
+			{
+				_trueSub = nh.subscribe( "truth", 10, &DenseVONode::OdomCallback, this );			
+			}
+			else if( predictionMode == "twist_stamped" )
+			{
+				_trueSub = nh.subscribe( "truth", 10, &DenseVONode::TwistStampedCallback, this );			
+			}
+			else
+			{
+				throw std::invalid_argument("Unknown prediction mode");
+			}
 		}
 
 		GetParam( ph, "debug", _debug, false );
@@ -66,6 +79,14 @@ public:
 		ParseMatrix( msg->twist.covariance, cov );
 		_velIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
 		_odomFrame = msg->child_frame_id;
+	}
+
+	void TwistStampedCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
+	{
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
+		PoseSE3::CovarianceMatrix cov = PoseSE3::CovarianceMatrix::Zero();
+		_velIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
+		_odomFrame = msg->header.frame_id;		
 	}
 
 	void ImageCallback( const sensor_msgs::ImageConstPtr& msg )
@@ -330,7 +351,7 @@ private:
 	ros::Publisher _twistPub;
 
 	bool _enablePrediction;
-	ros::Subscriber _odomSub;
+	ros::Subscriber _trueSub;
 	std::string _odomFrame;
 	VelocityIntegratorSE3 _velIntegrator;
 
