@@ -46,7 +46,7 @@ public:
 		if( _enablePrediction )
 		{
 			std::string predictionMode;
-			GetParam<std::string>( ph, "prediction_mode", predictionMode, "odom" );
+			GetParam<std::string>( ph, "prediction_mode", predictionMode );
 			if( predictionMode == "odometry" )
 			{
 				_trueSub = nh.subscribe( "truth", 10, &DisparityVO::OdomCallback, this );			
