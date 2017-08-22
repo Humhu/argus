@@ -211,22 +211,59 @@ VelocitySourceManager::operator()( const sensor_msgs::Imu& msg )
 		}
 	}
 	
-	// TODO Hard-coded constants
-	VectorType derivs = VectorType::Zero(12);
-	derivs.segment<3>(3) = MsgToVector3( msg.angular_velocity );
-	derivs.segment<3>(6) = MsgToVector3( msg.linear_acceleration );
+	FixedVectorType<3> angVel = MsgToVector3( msg.angular_velocity );
+	FixedVectorType<3> linAcc = MsgToVector3( msg.linear_acceleration );
+	// orientation rotates IMU to world frame
+	QuaternionType orientation = MsgToQuaternion( msg.orientation );
 	
 	MatrixType gyroCov = MatrixType( 3, 3 );
 	MatrixType xlCov = MatrixType( 3, 3 );
 	ParseMatrix( msg.angular_velocity_covariance, gyroCov );
 	ParseMatrix( msg.linear_acceleration_covariance, xlCov );	
+	
+	// Perform IMU transformations
+	PoseSE3 ext = _extrinsicsManager->GetExtrinsics( msg.header.frame_id, _targetFrame, msg.header.stamp );
+
+	// angular_vel = R * gyro_vel
+	MatrixType R = ext.GetQuaternion().toRotationMatrix();
+	FixedVectorType<3> bodyAngVel = R * angVel;
+
+	// lin_acc = R * (xl_acc - ori_inv * grav - centripetal)
+	FixedVectorType<3> gravity;
+	gravity << 0, 0, -9.81;
+	Translation3Type rTrans = ext.GetTranslation();
+	FixedVectorType<3> r;
+	r << rTrans.x(), rTrans.y(), rTrans.z();
+	FixedVectorType<3> centri; // w x w x r
+	centri = bodyAngVel.cross( bodyAngVel.cross( r ) );
+	
+	FixedVectorType<3> bodyLinAcc = R * (linAcc - orientation.inverse().toRotationMatrix() * gravity) - centri;
+
+	// TODO Hard-coded constants
+	VectorType derivs = VectorType::Zero(12);
+	derivs.segment<3>(3) = bodyAngVel;
+	derivs.segment<3>(6) = bodyLinAcc;
+	
+	// TODO Transform covariance properly
 	MatrixType cov = MatrixType::Zero(12, 12);
 	std::vector<unsigned int> gyroInds = {3,4,5};
 	std::vector<unsigned int> xlInds = {6,7,8};
 	PutSubmatrix( gyroCov, cov, gyroInds, gyroInds );
 	PutSubmatrix( xlCov, cov, xlInds, xlInds );
 
-	return ProcessDerivatives( derivs, cov, msg.header.stamp, msg.header.frame_id );
+	// return ProcessDerivatives( derivs, cov, msg.header.stamp, msg.header.frame_id );
+	unsigned int fullDim = PoseSE3::TangentDimension * ( _filterOrder + 1 );
+	MatrixType C = MatrixType::Identity( fullDim, fullDim );
+
+	DerivObservation obs;
+	obs.timestamp = msg.header.stamp;
+	obs.referenceFrame = _targetFrame;
+	obs.derivatives = VectorType( _obsInds.size() );
+	GetSubmatrix( derivs, obs.derivatives, _obsInds );	
+	obs.covariance = GetCovariance( msg.header.stamp, cov );
+	// We map from filter -> 3D -> reference frame -> relevant indices
+	obs.C = _obsMatrix * C * _filterToThreeD;
+	return obs;
 }
 
 DerivObservation
@@ -242,7 +279,7 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
 
 	// C maps full 3D derivatives to reference full 3D derivatives
 	MatrixType C = MatrixType::Zero( fullDim, fullDim );
-        // NOTE Use inverse extrinsics adjoint to map from reference frame to sensor frame
+	// NOTE Use inverse extrinsics adjoint to map from reference frame to sensor frame
 	MatrixType adj = PoseSE3::Adjoint( ext.Inverse() );
 	for( unsigned int i = 0; i < _filterOrder + 1; ++i )
 	{
@@ -250,18 +287,12 @@ VelocitySourceManager::ProcessDerivatives( const VectorType& derivs,
 		C.block<PoseSE3::TangentDimension, PoseSE3::TangentDimension>( j, j ) = adj;
 	}
 
-	//ROS_INFO_STREAM( "filtTo3D: " << std::endl << _filterToThreeD );
-	//ROS_INFO_STREAM( "Adjoints: " << std::endl << C );
-	//ROS_INFO_STREAM( "subObs: " << std::endl << _obsMatrix );
-
 	DerivObservation obs;
 	obs.timestamp = stamp;
 	obs.referenceFrame = _targetFrame;
 	obs.derivatives = VectorType( _obsInds.size() );
-	// GetSubmatrix( transDerivs, obs.derivatives, _obsInds );
 	GetSubmatrix( derivs, obs.derivatives, _obsInds );	
 	obs.covariance = GetCovariance( stamp, cov );
-	// obs.indices = _obsInds;
 	// We map from filter -> 3D -> reference frame -> relevant indices
 	obs.C = _obsMatrix * C * _filterToThreeD;
 	return obs;
