@@ -27,6 +27,10 @@ public:
 		_extrinsicsInterface( nh, ph )
 	{
 		GetParam<std::string>( ph, "reference_frame", _refFrame, "" );
+		GetParam<std::string>( ph, "robot_frame", _robotFrame, "base_link");
+
+		bool combineDetect;
+		GetParam( ph, "combine_detections", combineDetect, true);
 
 		unsigned int inBuffSize, outBuffSize;
 		GetParam( ph, "input_buffer_size", inBuffSize, (unsigned int) 20 );
@@ -47,10 +51,20 @@ public:
 			_visPub = nh.advertise<MarkerMsg>( "markers", 10 );
 		}
 
-		_detSub = nh.subscribe( "detections",
-		                        inBuffSize,
-		                        &FiducialPoseEstimator::DetectionsCallback,
-		                        this );
+		if( combineDetect )
+		{
+			_detSub = nh.subscribe( "detections",
+															inBuffSize,
+															&FiducialPoseEstimator::DetectionsCallbackCombined,
+															this );
+		}
+		else
+		{
+			_detSub = nh.subscribe( "detections",
+															inBuffSize,
+															&FiducialPoseEstimator::DetectionsCallbackIndependent,
+															this );
+		}
 		_posePub = ph.advertise<geometry_msgs::TransformStamped>( "relative_pose",
 		                                                          outBuffSize );
 	}
@@ -58,6 +72,7 @@ public:
 private:
 
 	std::string _refFrame;
+	std::string _robotFrame;
 	ros::Subscriber _detSub;
 	ros::Publisher _posePub;
 
@@ -102,7 +117,7 @@ private:
 		}
 	}
 
-	void DetectionsCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
+	void DetectionsCallbackCombined( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
 	{
 		const std::string& cameraName = msg->header.frame_id;
 		const ros::Time& detTime = msg->header.stamp;
@@ -164,6 +179,37 @@ private:
 			namesToVis.push_back( _refFrame );
 			std::vector<MarkerMsg> camMarkers = _camVis.ToMarkers( posesToVis, namesToVis );
 			PublishMarkers( camMarkers );
+		}
+	}
+
+	// Get pose of each detected tag relative to robot
+	void DetectionsCallbackIndependent( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
+	{
+		const std::string& cameraName = msg->header.frame_id;
+		const ros::Time& detTime = msg->header.stamp;
+
+		std::vector<Fiducial> fids;
+		std::vector<FiducialDetection> detections;
+		std::vector<PoseSE3> fidExts;
+		// 1. Process all fiducials
+		BOOST_FOREACH( const argus_msgs::FiducialDetection & det, msg->detections )
+		{
+			Fiducial fid;
+			PoseSE3 extrinsics;
+			if( !GetFiducial( det.name, detTime, fid, extrinsics ) ) { continue; }
+			// Pose of tag relative to camera
+			PoseSE3 relPose = EstimateArrayPose( det, fid );
+			// Pose of camera relative to robot
+			PoseSE3 cameraPose = _extrinsicsInterface.GetExtrinsics(cameraName,
+																															_robotFrame);
+			PoseSE3 tagPose = cameraPose * relPose;
+
+			geometry_msgs::TransformStamped poseMsg;
+			poseMsg.header.stamp = msg->header.stamp;
+			poseMsg.header.frame_id = det.name;
+			poseMsg.child_frame_id = _robotFrame;
+			poseMsg.transform = PoseToTransform ( tagPose );
+			_posePub.publish( poseMsg );
 		}
 	}
 
