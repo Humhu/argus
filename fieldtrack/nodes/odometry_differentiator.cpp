@@ -82,20 +82,21 @@ private:
 	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
 	{
 		PoseSE3 pose = MsgToPose( msg->pose.pose );
-		ProcessPose( pose, msg->child_frame_id, msg->header );
+		std::string childFrame = _fixedChildFrame.empty() ? msg->child_frame_id : _fixedChildFrame;
+		ProcessPose( pose, childFrame, msg->header );
 	}
 
 	void PoseStampedCallback( const geometry_msgs::PoseStamped::ConstPtr& msg )
 	{
 		PoseSE3 pose = MsgToPose( msg->pose );
-		// TODO: Logic for checking static child_frame_id as parameter?
 		ProcessPose( pose, _fixedChildFrame, msg->header );
 	}
 
 	void TransformStampedCallback( const geometry_msgs::TransformStamped::ConstPtr& msg )
 	{
 		PoseSE3 pose = TransformToPose( msg->transform );
-		ProcessPose( pose, msg->child_frame_id, msg->header );
+		std::string childFrame = _fixedChildFrame.empty() ? msg->child_frame_id : _fixedChildFrame;
+                ProcessPose( pose, childFrame, msg->header );
 	}
 
 	void ProcessPose( const PoseSE3& pose, 

@@ -182,7 +182,7 @@ MatrixType AdaptiveObsCovEstimator::GetR( const ros::Time& time )
 		adaptR = Eigen::DiagonalMatrix<double, Eigen::Dynamic>( adaptR.diagonal() );
 	}
 
-	//	ROS_INFO_STREAM( "R: " << std::endl << adaptR );
+	//ROS_INFO_STREAM( "R: " << adaptR.diagonal().transpose() );
 
 	return adaptR;
 }
