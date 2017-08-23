@@ -292,9 +292,9 @@ private:
 			return; 
 		}
 
-		FixedMatrixType<4, 4> H = res.pose.cast<double>();
-		H(3,3) = 1.0; // NOTE Sometimes bad conditioning inside BPVO's optimization
-		PoseSE3 camDisplacement = PoseSE3( H ).Inverse();
+		FixedMatrixType<4, 4> delta = res.displacement.cast<double>();
+		delta(3,3) = 1.0; // NOTE Sometimes bad conditioning inside BPVO's optimization
+		PoseSE3 camDisplacement = PoseSE3( delta ).Inverse();
 
 		static PoseSE3 zToX( 0, 0, 0, -0.5, 0.5, -0.5, 0.5 );
 		if( _camXForward )
