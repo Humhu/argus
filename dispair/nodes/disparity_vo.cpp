@@ -206,6 +206,7 @@ private:
 		_voParams.minRotationMagToKeyFrame = config.keyframe_min_rotation;
 		_voParams.maxFractionOfGoodPointsToKeyFrame = config.keyframe_min_inlier_ratio;
 		_voParams.goodPointThreshold = config.keyframe_inlier_threshold;
+		_voParams.maxSolutionError = config.max_solution_error;
 
 		_voParams.minNumPixelsForNonMaximaSuppression = config.min_pix_nms;
 		_voParams.nonMaxSuppRadius = config.radius_nms;
