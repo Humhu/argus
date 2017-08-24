@@ -231,6 +231,14 @@ std::ostream& operator<<( std::ostream& os, const ControlSpecification& spec )
 	{
 		os << "Is volatile" << std::endl;
 	}
+	if( spec.menuItems.size() > 0 )
+	{
+		os << "Menu:" << std::endl;
+		for( unsigned int i = 0; i < spec.menuItems.size(); ++i )
+		{
+			os << "\t(" << spec.menuValues[i] << ") " << spec.menuItems[i] << std::endl;
+		}
+	}
 	return os;
 }
 

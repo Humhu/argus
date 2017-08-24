@@ -1,6 +1,7 @@
 #include "camplex/CameraDriver.h"
 
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <cstring>
 #include <stdexcept>
@@ -143,7 +144,30 @@ std::vector<ControlSpecification> CameraDriver::ReadControlSpecifications()
 			if( errno == EINVAL ) { break; }
 			throw std::runtime_error( "Could not query control." );
 		}
-		specs.emplace_back( query );
+		
+		ControlSpecification spec( query );
+		if( ControlSpecification::TypeToString(spec.type) == "menu" )
+		{
+			v4l2_querymenu mquery;
+			mquery.id = query.id;
+			for( int i = spec.minVal; i <= spec.maxVal; ++i )
+			{
+				mquery.index = i; // NOTE Should start at 0... check?
+				if( retry_ioctl( camFD, VIDIOC_QUERYMENU, &mquery ) == -1 )
+				{
+					// EINVAL means this control is not supported
+					if( errno == EINVAL ) { continue; }
+					throw std::runtime_error("Menu query error");
+				}
+				std::string name( reinterpret_cast<const char*>(mquery.name) );
+				spec.menuItems.emplace_back( name );
+				spec.menuValues.push_back(i);
+			}
+		}
+
+		//specs.emplace_back( query );
+		specs.push_back(spec);
+		
 	}
 	return specs;
 }
@@ -515,9 +539,11 @@ cv::Mat CameraDriver::GetFrame()
 	// This operation does not copy data so we have to clone it!
 	imbuff = cv::Mat( currentOutputSpec.frameSize.second,
 	                  currentOutputSpec.frameSize.first,
-	                  CV_8UC3, bufferAddress );
+	                  CV_8UC2, bufferAddress );
 
-	cv::Mat image = imbuff.clone();
+	//cv::Mat image = imbuff.clone();
+	cv::Mat image;
+	cv::cvtColor( imbuff, image, CV_YUV2BGR_YUY2 );
 
 	if( retry_ioctl( camFD, VIDIOC_QBUF, &buffer ) == -1 )
 	{

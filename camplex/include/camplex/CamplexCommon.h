@@ -3,6 +3,7 @@
 #include <linux/videodev2.h>
 
 #include <iostream>
+#include <vector>
 
 namespace argus
 {
@@ -107,6 +108,9 @@ struct ControlSpecification
 	bool readOnly;
 	bool writeOnly;
 	bool isVolatile;
+
+	std::vector<std::string> menuItems;
+	std::vector<int> menuValues;
 
 	ControlSpecification( const v4l2_queryctrl& ctrl );
 	

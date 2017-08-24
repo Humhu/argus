@@ -327,8 +327,10 @@ void SplitStereoDriverNode::Spin()
 		unsigned int w = frame.size().width;
 		unsigned int h = frame.size().height;
 
-		frameLeft = cv::Mat( frame, cv::Rect( 0, 0, w / 2, h ) );
-		frameRight = cv::Mat( frame, cv::Rect( w / 2, 0, w / 2, h ) );
+        cv::Rect leftRoi( 0, 0, w / 2, h );
+        cv::Rect rightRoi( w / 2, 0, w / 2, h );
+		frameLeft = frame( leftRoi );
+		frameRight = frame( rightRoi );
 
 		cv_bridge::CvImage imgLeft( _leftInfo->header, "bgr8", frameLeft );
 		cv_bridge::CvImage imgRight( _rightInfo->header, "bgr8", frameRight );
