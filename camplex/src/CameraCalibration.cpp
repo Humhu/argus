@@ -1,5 +1,7 @@
 #include "camplex/CameraCalibration.h"
 
+#include "argus_utils/utils/MatrixUtils.h"
+
 #define AR_RATIO_MIN ( 0.99 )
 #define AR_RATIO_MAX ( 1.01 )
 
@@ -76,6 +78,8 @@ void CameraCalibration::SetScale( const cv::Size& scale )
 	_currentCameraMatrix = ratio * _origCameraMatrix;
 	_currentCameraMatrix( 2, 2 ) = 1.0;
 	_currentScale = scale;
+ 
+        // TODO Scaling of projection, rectification matrices
 }
 
 void CameraCalibration::ParseInfo( const sensor_msgs::CameraInfo& info )
@@ -97,6 +101,9 @@ void CameraCalibration::ParseInfo( const sensor_msgs::CameraInfo& info )
 	{
 		_distortionCoeffs.at<double>( i ) = info.D[i];
 	}
+
+	ParseMatrix( info.P, _P, RowMajor );
+        ParseMatrix( info.R, _R, RowMajor );
 
 	// Read scale
 	_origScale.height = info.height;
@@ -125,7 +132,10 @@ sensor_msgs::CameraInfo CameraCalibration::GetInfo() const
 			++ind;
 		}
 	}
-	// TODO Populate R, T, and P
+        
+        SerializeMatrix( _P, msg.P, RowMajor );
+        SerializeMatrix( _R, msg.R, RowMajor );
+
 	return msg;
 }
 
