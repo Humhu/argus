@@ -44,7 +44,7 @@ SplitStereoDriverNode::SplitStereoDriverNode( ros::NodeHandle& nh, ros::NodeHand
 	unsigned int frameWidth, frameHeight;
 	GetParam<unsigned int>( ph, "frame_width", frameWidth, 640 );
 	GetParam<unsigned int>( ph, "frame_height", frameHeight, 480 );
-	cv::Size frameSize( frameWidth, frameHeight );
+	cv::Size frameSize( frameWidth/2, frameHeight );
 
 	// Read camera calibrations
 	std::string calibFile;
