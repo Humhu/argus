@@ -5,6 +5,8 @@
 #include <memory>
 #include <opencv2/core.hpp>
 
+#include <argus_utils/utils/LinalgTypes.h>
+
 #include <iostream>
 
 namespace argus
@@ -58,6 +60,9 @@ private:
 
 	cv::Matx33d _origCameraMatrix;
 	cv::Size _origScale;
+
+	FixedMatrixType<3,3> _R;
+	FixedMatrixType<3,4> _P;
 
 	// NOTE Distortion coefficients are normalized and thus scale-invariant
 	cv::Mat _distortionCoeffs;

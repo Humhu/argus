@@ -95,6 +95,7 @@ add_library( camplex
 	src/FiducialInfoManager.cpp
 	src/FiducialCommon.cpp
 	src/FiducialVisualizer.cpp
+	src/SplitStereoDriverNode.cpp
 )
 add_dependencies( camplex ${camplex_EXPORTED_TARGETS})
 target_link_libraries( camplex
@@ -107,6 +108,13 @@ target_link_libraries( camplex
 add_executable( camera_node
 	nodes/camera_node.cpp )
 target_link_libraries( camera_node
+	${catkin_LIBRARIES}
+	camplex
+	${OpenCV_LIBS} )
+
+add_executable( split_camera_node
+	nodes/split_camera_node.cpp )
+target_link_libraries( split_camera_node
 	${catkin_LIBRARIES}
 	camplex
 	${OpenCV_LIBS} )
