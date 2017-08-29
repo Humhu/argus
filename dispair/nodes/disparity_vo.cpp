@@ -289,7 +289,7 @@ private:
 										  guessH );
 		if( !res.success )
 		{ 
-			ROS_WARN_STREAM( "VO Failed!" );
+		  //ROS_WARN_STREAM( "VO Failed!" );
 			return; 
 		}
 
