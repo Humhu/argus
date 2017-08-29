@@ -141,8 +141,8 @@ private:
 	struct ImageData
 	{
 		cv_bridge::CvImageConstPtr image;
-		cv_bridge::CvImageConstPtr disparity;
-		boost::shared_ptr<void const> disparityObject;
+		// NOTE Need to modify the disparity image
+		cv_bridge::CvImagePtr disparity;
 		CameraCalibration model;
 		double baseline;
 	};
@@ -262,7 +262,11 @@ private:
 		try
 		{
 			data.image = cv_bridge::toCvShare( image, "mono8" );
-			data.disparity = cv_bridge::toCvShare( disparity->image, data.disparityObject, "32FC1" );
+			data.disparity = cv_bridge::toCvCopy( disparity->image, "32FC1" );
+			// NOTE Have to indicate to BPVO the invalid pixels
+			// NOTE DisparityImage spec only says values less than min
+			// are invalid, but what about max?
+			data.disparity->image.setTo( -1.0, data.disparity->image < disparity->min_disparity );
 		}
 		catch( cv_bridge::Exception& e )
 		{
