@@ -71,7 +71,7 @@ SplitStereoDriverNode::SplitStereoDriverNode( ros::NodeHandle& nh, ros::NodeHand
 	unsigned int frameRate;
 	GetParam<unsigned int>( ph, "frame_rate", frameRate, 30 );
 	std::string fourCC;
-	GetParam<std::string>( ph, "four_cc", fourCC, "BGR3" );
+	GetParam<std::string>( ph, "four_cc", fourCC, "YUYV" );
 
 	OutputSpecification spec;
 	spec.frameSize.first = frameWidth;
