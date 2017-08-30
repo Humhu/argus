@@ -210,7 +210,7 @@ private:
 
 		_voParams.minNumPixelsForNonMaximaSuppression = config.min_pix_nms;
 		_voParams.nonMaxSuppRadius = config.radius_nms;
-		_voParams.minNumPixelsToWork = config.min_num_pix;
+		_voParams.minRatioPixelsToWork = config.min_num_pix;
 		_voParams.minSaliency = config.min_saliency;
 
 		if( config.min_valid_disparity > config.max_valid_disparity )
