@@ -4,6 +4,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include "camplex/CameraCalibration.h"
 #include "argus_utils/utils/ParamUtils.h"
 #include "paraset/ParameterManager.hpp"
 
@@ -45,15 +46,29 @@ public:
 		_outputScale.InitializeAndRead( ph, 1.0, "output_scale",
 		                                "Resize scale factor" );
 
-		_imageSub = _imagePort.subscribeCamera( "image_raw",
-		                                        inBuffSize,
-		                                        &SubsamplerNode::ImageCallback,
-		                                        this );
-		_imagePub = _imagePort.advertiseCamera( "image_resized", outBuffSize );
+		bool imageOnly;
+		GetParam( ph, "image_only", imageOnly, false );
+		if( imageOnly )
+		{
+			ROS_INFO_STREAM( "Operating in image mode - resizing image only" );
+			_imageSub = _imagePort.subscribe( "image_raw",
+			                                  inBuffSize,
+			                                  &SubsamplerNode::ImageCallback,
+			                                  this );
+			_imagePub = _imagePort.advertise( "image_resized", outBuffSize );
+		}
+		else
+		{
+			ROS_INFO_STREAM( "Operating in camera mode - resizing image and info" );
+			_cameraSub = _imagePort.subscribeCamera( "image_raw",
+			                                         inBuffSize,
+			                                         &SubsamplerNode::CameraCallback,
+			                                         this );
+			_cameraPub = _imagePort.advertiseCamera( "image_resized", outBuffSize );
+		}
 	}
 
-	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
-	                    const sensor_msgs::CameraInfoConstPtr& info )
+	sensor_msgs::ImagePtr DecodeImage( const sensor_msgs::ImageConstPtr& msg )
 	{
 		cv_bridge::CvImageConstPtr frame;
 		try
@@ -63,28 +78,55 @@ public:
 		catch( cv_bridge::Exception& e )
 		{
 			ROS_ERROR( "cv_bridge exception: %s", e.what() );
-			return;
+			return nullptr;
 		}
 
 		cv::Mat resized;
 		cv::resize( frame->image, resized, cv::Size( 0, 0 ), _outputScale, _outputScale, _interpMode );
-		sensor_msgs::ImagePtr outImage = cv_bridge::CvImage( msg->header,
-		                                                     msg->encoding,
-		                                                     resized ).toImageMsg();
-		_imagePub.publish( outImage, info );
+		return cv_bridge::CvImage( msg->header, msg->encoding, resized ).toImageMsg();
+	}
+
+	void ImageCallback( const sensor_msgs::ImageConstPtr& msg )
+	{
+		sensor_msgs::ImagePtr outImage = DecodeImage( msg );
+		if( !outImage ) { return; }
+		_imagePub.publish( outImage );
+	}
+
+	void CameraCallback( const sensor_msgs::ImageConstPtr& msg,
+	                     const sensor_msgs::CameraInfoConstPtr& info )
+	{
+		sensor_msgs::ImagePtr outImage = DecodeImage( msg );
+		if( !outImage ) { return; }
+
+		CameraCalibration calib( "", *info );
+		cv::Size dims = calib.GetScale();
+		dims.width *= _outputScale;
+		dims.height *= _outputScale;
+		calib.SetScale( dims );
+
+		sensor_msgs::CameraInfoPtr infoResized = 
+			boost::make_shared<sensor_msgs::CameraInfo>( calib.GetInfo() );
+
+		_cameraPub.publish( outImage, infoResized );
 	}
 
 private:
 
 	image_transport::ImageTransport _imagePort;
-	image_transport::CameraSubscriber _imageSub;
-	image_transport::CameraPublisher _imagePub;
+
+	image_transport::Subscriber _imageSub;
+	image_transport::Publisher _imagePub;
+
+	image_transport::CameraSubscriber _cameraSub;
+	image_transport::CameraPublisher _cameraPub;
+
 	cv::InterpolationFlags _interpMode;
 
 	NumericParam _outputScale;
 };
 
-int main( int argc, char**argv )
+int main( int argc, char** argv )
 {
 	ros::init( argc, argv, "subsampler_node" );
 
