@@ -3,27 +3,57 @@
 #include <cv_bridge/cv_bridge.h>
 #include "camplex/CameraCalibration.h"
 #include <opencv2/imgproc/imgproc.hpp>
+#include <unordered_map>
 
-class UndistortionNode 
+class UndistortionNode
 {
 public:
-	
-	UndistortionNode( const ros::NodeHandle& nh, 
+
+	struct UndistortMaps
+	{
+		cv::Mat distMap1;
+		cv::Mat distMap2;
+	};
+
+	UndistortionNode( const ros::NodeHandle& nh,
 	                  const ros::NodeHandle& ph )
-	: _imagePort( nh ), _mapsInited( false )
+		: _imagePort( nh ), _mapsInited( false )
 	{
 		int inBuffSize, outBuffSize;
 		ph.param( "input_buffer_size", inBuffSize, 5 );
 		ph.param( "output_buffer_size", outBuffSize, 5 );
 		ph.param( "cache_undistortion", _useMaps, false );
 
-		_imageSub = _imagePort.subscribeCamera( "image_raw", 
-		                                        inBuffSize, 
-		                                        &UndistortionNode::ImageCallback, 
+		_imageSub = _imagePort.subscribeCamera( "image_raw",
+		                                        inBuffSize,
+		                                        &UndistortionNode::ImageCallback,
 		                                        this );
 		_imagePub = _imagePort.advertiseCamera( "image_undistorted", outBuffSize );
 	}
-	
+
+	UndistortMaps& GetMaps( const std::string& cameraName,
+	                        const cv::Mat& frame,
+	                        const argus::CameraCalibration& calib )
+	{
+		if( _mapRegistry.count( cameraName ) > 0 )
+		{
+			return _mapRegistry[cameraName];
+		}
+
+		UndistortMaps& maps = _mapRegistry[cameraName];
+		maps.distMap1 = cv::Mat( frame.size(), CV_16SC2 );
+		maps.distMap2 = cv::Mat( frame.size(), CV_16UC1 );
+		cv::initUndistortRectifyMap( calib.GetIntrinsicMatrix(),
+		                             calib.GetDistortionCoeffs(),
+		                             cv::noArray(),
+		                             calib.GetIntrinsicMatrix(),
+		                             frame.size(),
+		                             CV_16SC2,
+		                             maps.distMap1,
+		                             maps.distMap2 );
+		return maps;
+	}
+
 	void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
 	                    const sensor_msgs::CameraInfoConstPtr& info )
 	{
@@ -37,50 +67,37 @@ public:
 			ROS_ERROR( "cv_bridge exception: %s", e.what() );
 			return;
 		}
-		
+
 		argus::CameraCalibration calib( "", *info );
-		
-		if( _useMaps && !_mapsInited )
-		{
-			_distMap1 = cv::Mat( frame->image.size(), CV_16SC2 );
-			_distMap2 = cv::Mat( frame->image.size(), CV_16UC1 );
-			cv::initUndistortRectifyMap( calib.GetIntrinsicMatrix(),
-			                             calib.GetDistortionCoeffs(),
-			                             cv::noArray(),
-			                             calib.GetIntrinsicMatrix(),
-			                             frame->image.size(),
-			                             CV_16SC2,
-			                             _distMap1,
-			                             _distMap2 );
-			_mapsInited = true;
-		}
 
 		cv::Mat undistorted( frame->image.size(), frame->image.type() );
-
 		if( !_useMaps )
 		{
-			cv::undistort( frame->image, 
-			               undistorted, 
-			               calib.GetIntrinsicMatrix(), 
+			cv::undistort( frame->image,
+			               undistorted,
+			               calib.GetIntrinsicMatrix(),
 			               calib.GetDistortionCoeffs() );
 		}
 		else
 		{
-			cv::remap( frame->image, 
+			UndistortMaps& maps = GetMaps( msg->header.frame_id,
+			                               frame->image,
+			                               calib );
+			cv::remap( frame->image,
 			           undistorted,
-			           _distMap1, 
-			           _distMap2, 
+			           maps.distMap1,
+			           maps.distMap2,
 			           cv::INTER_LINEAR );
 		}
 
-		sensor_msgs::ImagePtr outImage = cv_bridge::CvImage( msg->header, 
-		                                                     msg->encoding, 
+		sensor_msgs::ImagePtr outImage = cv_bridge::CvImage( msg->header,
+		                                                     msg->encoding,
 		                                                     undistorted ).toImageMsg();
 		sensor_msgs::CameraInfoPtr outInfo = boost::make_shared<sensor_msgs::CameraInfo>( *info );
 		outInfo->D = std::vector<double>( 5, 0.0 );
 		_imagePub.publish( outImage, outInfo );
 	}
-	
+
 private:
 
 	image_transport::ImageTransport _imagePort;
@@ -89,19 +106,19 @@ private:
 
 	bool _useMaps;
 	bool _mapsInited;
-	cv::Mat _distMap1;
-	cv::Mat _distMap2;
+
+	std::unordered_map<std::string, UndistortMaps> _mapRegistry;
 };
 
 int main( int argc, char** argv )
 {
 	ros::init( argc, argv, "undistortion_node" );
-	
+
 	ros::NodeHandle nodeHandle;
-	ros::NodeHandle privHandle("~");
+	ros::NodeHandle privHandle( "~" );
 	UndistortionNode undisto( nodeHandle, privHandle );
-	
+
 	ros::spin();
-	
+
 	return 0;
 }
