@@ -22,7 +22,7 @@ for device in $devices ; do
 	path=$(udevadm info -a -p $(udevadm info -q path -n $device) | grep -m1 KERNELS== | sed -e 's/[ ]*KERNELS==//')
 	printf -v padded "%02d" ${device//[!0-9]/}
 	echo "Found device $device with USB path $path. Assigning to ID $padded"
-	echo KERNELS==$path, SUBSYSTEM==\"video4linux\", SYMLINK+=\"argus/camera$padded\", MODE="0666" >> $output_file
+	echo KERNELS==$path, SUBSYSTEM==\"video4linux\", SYMLINK+=\"argus/camera$padded\", MODE=\"0666\" >> $output_file
 	#((counter++))
 done
 
