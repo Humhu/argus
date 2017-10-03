@@ -4,6 +4,9 @@
 #include "camplex/CameraCalibration.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <unordered_map>
+#include <argus_utils/utils/ParamUtils.h>
+
+using namespace argus;
 
 class UndistortionNode
 {
@@ -19,10 +22,10 @@ public:
 	                  const ros::NodeHandle& ph )
 		: _imagePort( nh ), _mapsInited( false )
 	{
-		int inBuffSize, outBuffSize;
-		ph.param( "input_buffer_size", inBuffSize, 5 );
-		ph.param( "output_buffer_size", outBuffSize, 5 );
-		ph.param( "cache_undistortion", _useMaps, false );
+		unsigned int inBuffSize, outBuffSize;
+		GetParam( ph, "input_buffer_size", inBuffSize, (unsigned int) 5 );
+		GetParam( ph, "output_buffer_size", outBuffSize, (unsigned int) 5 );
+		GetParam( ph, "cache_undistortion", _useMaps, false );
 
 		_imageSub = _imagePort.subscribeCamera( "image_raw",
 		                                        inBuffSize,
@@ -33,7 +36,7 @@ public:
 
 	UndistortMaps& GetMaps( const std::string& cameraName,
 	                        const cv::Mat& frame,
-	                        const argus::CameraCalibration& calib )
+	                        const CameraCalibration& calib )
 	{
 		if( _mapRegistry.count( cameraName ) > 0 )
 		{
@@ -68,7 +71,7 @@ public:
 			return;
 		}
 
-		argus::CameraCalibration calib( "", *info );
+		CameraCalibration calib( "", *info );
 
 		cv::Mat undistorted( frame->image.size(), frame->image.type() );
 		if( !_useMaps )
@@ -118,7 +121,11 @@ int main( int argc, char** argv )
 	ros::NodeHandle privHandle( "~" );
 	UndistortionNode undisto( nodeHandle, privHandle );
 
-	ros::spin();
+	unsigned int numThreads;
+	GetParam( privHandle, "num_threads", numThreads, (unsigned int) 1 );
+	ros::AsyncSpinner spinner( numThreads );
+	spinner.start();
+	ros::waitForShutdown();
 
 	return 0;
 }
