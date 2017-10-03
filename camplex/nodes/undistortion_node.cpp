@@ -4,7 +4,9 @@
 #include "camplex/CameraCalibration.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <unordered_map>
+
 #include <argus_utils/utils/ParamUtils.h>
+#include <argus_utils/synchronization/SynchronizationTypes.h>
 
 using namespace argus;
 
@@ -34,10 +36,11 @@ public:
 		_imagePub = _imagePort.advertiseCamera( "image_undistorted", outBuffSize );
 	}
 
-	UndistortMaps& GetMaps( const std::string& cameraName,
-	                        const cv::Mat& frame,
-	                        const CameraCalibration& calib )
+	const UndistortMaps& GetMaps( const std::string& cameraName,
+	                              const cv::Mat& frame,
+	                              const CameraCalibration& calib )
 	{
+		WriteLock lock( _mutex );
 		if( _mapRegistry.count( cameraName ) > 0 )
 		{
 			return _mapRegistry[cameraName];
@@ -83,9 +86,9 @@ public:
 		}
 		else
 		{
-			UndistortMaps& maps = GetMaps( msg->header.frame_id,
-			                               frame->image,
-			                               calib );
+			const UndistortMaps& maps = GetMaps( msg->header.frame_id,
+			                                     frame->image,
+			                                     calib );
 			cv::remap( frame->image,
 			           undistorted,
 			           maps.distMap1,
@@ -106,6 +109,8 @@ private:
 	image_transport::ImageTransport _imagePort;
 	image_transport::CameraSubscriber _imageSub;
 	image_transport::CameraPublisher _imagePub;
+
+	Mutex _mutex;
 
 	bool _useMaps;
 	bool _mapsInited;
