@@ -69,6 +69,7 @@ public:
 		if( _debug )
 		{
 			_debugPub = _imageTrans.advertise( "image_debug", 1 );
+			GetParam( ph, "vis_arrow_scale", _visArrowScale, 1.0 );
 		}
 	}
 
@@ -217,15 +218,17 @@ public:
 		unsigned int width = key.cols;
 		unsigned int height = key.rows;
 
-		cv::Mat visImage( height, 2 * width, key.type() );
+		cv::Mat visImage( height, 2 * width, CV_8UC3 );
 		cv::Mat visLeft( visImage, cv::Rect( 0, 0, width, height ) );
 		cv::Mat visRight( visImage, cv::Rect( width, 0, width, height ) );
-		key.copyTo( visLeft );
-		curr.copyTo( visRight );
+		//key.copyTo( visLeft );
+		//curr.copyTo( visRight );
+		cv::cvtColor( key, visLeft, cv::COLOR_GRAY2BGR );
+		cv::cvtColor( curr, visRight, cv::COLOR_GRAY2BGR );
 
 		FixedMatrixType<3, 4> corners;
-		corners << 1, 1, width, width,
-		1, height, height, 1,
+		corners << 1, 1, width-1, width-1,
+		1, height-1, height-1, 1,
 		1, 1, 1, 1;
 		FixedMatrixType<2, 4> warped = (_lastPose.ToMatrix() * corners).colwise().hnormalized();
 
@@ -239,8 +242,9 @@ public:
 		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 0, 255, 0 ) );
 		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 0, 255, 0 ) );
 		
-		cv::Point2f center(0,0), arrowEnd( _lastVel[0], _lastVel[1] );
-		cv::arrowedLine( visRight, center, arrowEnd, cv::Scalar( 0, 255, 0 ) );
+		cv::Point2f center( height/2, width/2 );
+		cv::Point2f arrowEnd = cv::Point2f( _lastVel[0], _lastVel[1] ) * _visArrowScale;
+		cv::arrowedLine( visRight, center, arrowEnd + center, cv::Scalar( 0, 255, 0 ) );
 
 		cv_bridge::CvImage vimg( header, "bgr8", visImage );
 		_debugPub.publish( vimg.toImageMsg() );
@@ -351,6 +355,7 @@ private:
 
 	bool _debug;
 	image_transport::Publisher _debugPub;
+  double _visArrowScale;
 
 	ros::Publisher _twistPub;
 
