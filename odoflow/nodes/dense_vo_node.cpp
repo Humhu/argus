@@ -234,12 +234,15 @@ public:
 		{
 			cornerPoints.emplace_back( warped( 0, i ), warped( 1, i ) );
 		}
-		cv::line( visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar( 255, 0, 255 ) );
-		cv::line( visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar( 255, 0, 255 ) );
-		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 255, 0, 255 ) );
-		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 255, 0, 255 ) );
+		cv::line( visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar( 0, 255, 0 ) );
+		cv::line( visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar( 0, 255, 0 ) );
+		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 0, 255, 0 ) );
+		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 0, 255, 0 ) );
+		
+		cv::Point2f center(0,0), arrowEnd( _lastVel[0], _lastVel[1] );
+		cv::arrowedLine( visRight, center, arrowEnd, cv::Scalar( 0, 255, 0 ) );
 
-		cv_bridge::CvImage vimg( header, "mono8", visImage );
+		cv_bridge::CvImage vimg( header, "bgr8", visImage );
 		_debugPub.publish( vimg.toImageMsg() );
 	}
 
@@ -326,6 +329,7 @@ public:
 		disp = _lastVelPose.Inverse() * currToKey;
 		_lastVelTime = currTime;
 		_lastVelPose = currToKey;
+		_lastVel = PoseSE2::Log( disp ) / velDt;
 
 		geometry_msgs::TwistStamped tmsg;
 		tmsg.header = header;
@@ -362,6 +366,7 @@ private:
 	ros::Time _lastTime;
 	ros::Time _lastVelTime;
 	PoseSE2 _lastVelPose;
+	PoseSE2::TangentVector _lastVel;
 
 	double _scale;
 	NumericParam _pyramidDepth;
