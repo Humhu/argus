@@ -45,6 +45,7 @@ public:
 		_minTimeDelta.AddCheck<GreaterThanOrEqual>( 0.0 );
 
 		GetParamRequired( ph, "scale", _scale );
+		GetParam( ph, "min_pixel_variance", _minPixelVariance, 10.0 );
 
 		GetParam( ph, "enable_prediction", _enablePrediction, false );
 		if( _enablePrediction )
@@ -250,10 +251,18 @@ public:
 		_debugPub.publish( vimg.toImageMsg() );
 	}
 
-// TODO Use external motion prediction as prior
-// TODO Use keyframes and correlation coefficient to decide when to update keyframes
 	void ProcessImage( const cv::Mat& img, const std_msgs::Header& header )
 	{
+		// Check for image having too little variation
+		cv::Scalar mean, stddev;
+		cv::meanStdDev( img, mean, stddev );
+                if( stddev[0] < _minPixelVariance )
+		  {
+		    ROS_WARN_STREAM( "Pixel variance " << stddev[0] << " less than min " << _minPixelVariance );
+		    return;
+		  }
+
+
 		std::vector<cv::Mat> currPyramid;
 		unsigned int depth = _pyramidDepth;
 		CreatePyramid( img, currPyramid, depth );
@@ -363,6 +372,7 @@ private:
 	ros::Subscriber _trueSub;
 	std::string _odomFrame;
 	VelocityIntegratorSE3 _velIntegrator;
+  double _minPixelVariance;
 
 	// Keyframe
 	std::vector<cv::Mat> _keyPyramid;
