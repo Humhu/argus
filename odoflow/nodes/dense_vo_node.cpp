@@ -45,6 +45,7 @@ public:
 		_minTimeDelta.AddCheck<GreaterThanOrEqual>( 0.0 );
 
 		GetParamRequired( ph, "scale", _scale );
+		GetParam( ph, "min_pixel_variance", _minPixelVariance, 10.0 );
 
 		GetParam( ph, "enable_prediction", _enablePrediction, false );
 		if( _enablePrediction )
@@ -69,6 +70,7 @@ public:
 		if( _debug )
 		{
 			_debugPub = _imageTrans.advertise( "image_debug", 1 );
+			GetParam( ph, "vis_arrow_scale", _visArrowScale, 1.0 );
 		}
 	}
 
@@ -217,15 +219,17 @@ public:
 		unsigned int width = key.cols;
 		unsigned int height = key.rows;
 
-		cv::Mat visImage( height, 2 * width, key.type() );
+		cv::Mat visImage( height, 2 * width, CV_8UC3 );
 		cv::Mat visLeft( visImage, cv::Rect( 0, 0, width, height ) );
 		cv::Mat visRight( visImage, cv::Rect( width, 0, width, height ) );
-		key.copyTo( visLeft );
-		curr.copyTo( visRight );
+		//key.copyTo( visLeft );
+		//curr.copyTo( visRight );
+		cv::cvtColor( key, visLeft, cv::COLOR_GRAY2BGR );
+		cv::cvtColor( curr, visRight, cv::COLOR_GRAY2BGR );
 
 		FixedMatrixType<3, 4> corners;
-		corners << 1, 1, width, width,
-		1, height, height, 1,
+		corners << 1, 1, width-1, width-1,
+		1, height-1, height-1, 1,
 		1, 1, 1, 1;
 		FixedMatrixType<2, 4> warped = (_lastPose.ToMatrix() * corners).colwise().hnormalized();
 
@@ -234,19 +238,31 @@ public:
 		{
 			cornerPoints.emplace_back( warped( 0, i ), warped( 1, i ) );
 		}
-		cv::line( visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar( 255, 0, 255 ) );
-		cv::line( visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar( 255, 0, 255 ) );
-		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 255, 0, 255 ) );
-		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 255, 0, 255 ) );
+		cv::line( visLeft, cornerPoints[0], cornerPoints[1], cv::Scalar( 0, 255, 0 ) );
+		cv::line( visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar( 0, 255, 0 ) );
+		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 0, 255, 0 ) );
+		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 0, 255, 0 ) );
+		
+		cv::Point2f center( height/2, width/2 );
+		cv::Point2f arrowEnd = cv::Point2f( _lastVel[0], _lastVel[1] ) * _visArrowScale;
+		cv::arrowedLine( visRight, center, arrowEnd + center, cv::Scalar( 0, 255, 0 ) );
 
-		cv_bridge::CvImage vimg( header, "mono8", visImage );
+		cv_bridge::CvImage vimg( header, "bgr8", visImage );
 		_debugPub.publish( vimg.toImageMsg() );
 	}
 
-// TODO Use external motion prediction as prior
-// TODO Use keyframes and correlation coefficient to decide when to update keyframes
 	void ProcessImage( const cv::Mat& img, const std_msgs::Header& header )
 	{
+		// Check for image having too little variation
+		cv::Scalar mean, stddev;
+		cv::meanStdDev( img, mean, stddev );
+                if( stddev[0] < _minPixelVariance )
+		  {
+		    ROS_WARN_STREAM( "Pixel variance " << stddev[0] << " less than min " << _minPixelVariance );
+		    return;
+		  }
+
+
 		std::vector<cv::Mat> currPyramid;
 		unsigned int depth = _pyramidDepth;
 		CreatePyramid( img, currPyramid, depth );
@@ -326,6 +342,7 @@ public:
 		disp = _lastVelPose.Inverse() * currToKey;
 		_lastVelTime = currTime;
 		_lastVelPose = currToKey;
+		_lastVel = PoseSE2::Log( disp ) / velDt;
 
 		geometry_msgs::TwistStamped tmsg;
 		tmsg.header = header;
@@ -347,6 +364,7 @@ private:
 
 	bool _debug;
 	image_transport::Publisher _debugPub;
+  double _visArrowScale;
 
 	ros::Publisher _twistPub;
 
@@ -354,6 +372,7 @@ private:
 	ros::Subscriber _trueSub;
 	std::string _odomFrame;
 	VelocityIntegratorSE3 _velIntegrator;
+  double _minPixelVariance;
 
 	// Keyframe
 	std::vector<cv::Mat> _keyPyramid;
@@ -362,6 +381,7 @@ private:
 	ros::Time _lastTime;
 	ros::Time _lastVelTime;
 	PoseSE2 _lastVelPose;
+	PoseSE2::TangentVector _lastVel;
 
 	double _scale;
 	NumericParam _pyramidDepth;
