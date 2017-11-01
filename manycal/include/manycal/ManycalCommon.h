@@ -8,7 +8,7 @@
 
 #include "camplex/FiducialCommon.h"
 
-#include "manycal/sclam_fiducial.h"
+#include "graphopt/sclam_fiducial.h"
 #include "argus_utils/geometry/PoseSE3.h"
 
 #include <geometry_msgs/Point.h>

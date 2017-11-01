@@ -4,6 +4,7 @@
 #include <isam/sclam_monocular.h>
 
 #include "graphopt/GraphOptimizer.h"
+#include "graphopt/sclam_fiducial.h"
 
 #include "lookup/LookupInterface.h"
 #include "camplex/FiducialCommon.h"
@@ -15,14 +16,12 @@
 
 #include "manycal/ManycalCommon.h"
 #include "manycal/WriteCalibration.h"
-#include "manycal/sclam_fiducial.h"
 #include "argus_msgs/ImageFiducialDetections.h"
 
 namespace argus
 {
 
-/*! \brief Calibrates an array of synchronized cameras. Assumes fiducials can move
- * around arbitrarily. */
+/*! \brief Calibrates an array of unsynchronized cameras.*/
 class CameraArrayCalibrator
 {
 public:

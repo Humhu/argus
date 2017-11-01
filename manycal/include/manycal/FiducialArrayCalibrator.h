@@ -10,9 +10,9 @@
 
 #include "extrinsics_array/ExtrinsicsInterface.h"
 #include "graphopt/GraphOptimizer.h"
+#include "graphopt/sclam_fiducial.h"
 
 #include "manycal/ManycalCommon.h"
-#include "manycal/sclam_fiducial.h"
 
 #include "argus_msgs/ImageFiducialDetections.h"
 

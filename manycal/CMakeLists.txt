@@ -49,9 +49,9 @@ catkin_package( INCLUDE_DIRS    include
                                 graphopt
                                 extrinsics_array
                                 camplex
-                                vizard                                
+                                vizard
 
-               DEPENDS          Boost 
+                DEPENDS         Boost 
                                 OpenCV
                                 system_lib
 )
@@ -66,8 +66,6 @@ add_library( manycal
              src/CameraArrayCalibrator.cpp
              src/FiducialArrayCalibrator.cpp
              src/ManycalCommon.cpp
-             src/sclam_fiducial.cpp
-             src/slamse3.cpp
 )
 add_dependencies( manycal ${manycal_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 target_link_libraries( manycal
@@ -96,20 +94,6 @@ target_link_libraries( camera_array_calibrator_node
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
                        manycal 
-)
-
-add_executable( isam_test tests/IsamTest.cpp )
-target_link_libraries( isam_test
-                       ${isam_LIBRARIES}
-                       ${catkin_LIBRARIES}
-                       manycal
-)
-
-add_executable( odometry_test tests/OdometryTest.cpp )
-target_link_libraries( odometry_test
-                      ${isam_LIBRARIES}
-                      ${catkin_LIBRARIES}
-                      manycal
 )
 
 add_executable( cam_synchronizer nodes/camera_synchronizer.cpp )
