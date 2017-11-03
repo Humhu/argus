@@ -1,4 +1,8 @@
 # argus
-Software to calibrate and control large arrays of cameras for mobile robot navigation.
+Main package in the argus state estimation framework in ROS. This package was originally written to control large arrays of cameras, hence the name.
 
-This software uses the AprilTags library which is released under the LGPL license. A copy of this license is available in APRILTAGS_LICENSE.txt, and the source can be obtained from https://github.com/Humhu/apriltags.
+# Packages
+* [camplex](https://github.com/Humhu/argus/tree/master/camplex): Software for controlling and using cameras and fiducials
+* [dispair](https://github.com/Humhu/argus/tree/master/dispair): A wrapper around the [bitplanes](https://github.com/halismai/bpvo) visual odometry library
+* [manycal](https://github.com/Humhu/argus/tree/master/manycal): Software for calibration arrays of cameras and fiducials
+* [odoflow](https://github.com/Humhu/argus/tree/master/manycal): Software for dense planar monocular visual odometry
