@@ -12,7 +12,7 @@ void ImageCallback( const sensor_msgs::ImageConstPtr& msg,
 	cv_bridge::CvImageConstPtr frame;
 	try
 	{
-		frame = cv_bridge::toCvShare( msg, "mono8" );
+		frame = cv_bridge::toCvShare( msg, "bgr8" );
 	}
 	catch( cv_bridge::Exception& e )
 	{
