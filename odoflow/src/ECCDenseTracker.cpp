@@ -15,7 +15,7 @@ ECCDenseTracker::ECCDenseTracker(ros::NodeHandle &nh, ros::NodeHandle &ph)
     _maxIters.InitializeAndRead(ph, 50, "max_iters",
                                 "Maximum solver iterations");
     _maxIters.AddCheck<GreaterThan>( 0 );
-    _logMinCorrelation.InitializeAndRead(ph, 0.8, "log_min_correlation",
+    _logMinCorrelation.InitializeAndRead(ph, -2.0, "log_min_correlation",
                                       "log of 1.0 - minimum solution correlation");
     _logMinCorrelation.AddCheck<LessThan>( std::log10( 1.0 ) );
 }

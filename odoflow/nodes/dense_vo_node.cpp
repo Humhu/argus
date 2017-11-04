@@ -54,11 +54,11 @@ public:
 			GetParam<std::string>( ph, "prediction_mode", predictionMode, "odom" );
 			if( predictionMode == "odometry" )
 			{
-				_trueSub = nh.subscribe( "truth", 10, &DenseVONode::OdomCallback, this );			
+				_trueSub = nh.subscribe( "odom", 10, &DenseVONode::OdomCallback, this );			
 			}
 			else if( predictionMode == "twist_stamped" )
 			{
-				_trueSub = nh.subscribe( "truth", 10, &DenseVONode::TwistStampedCallback, this );			
+				_trueSub = nh.subscribe( "odom", 10, &DenseVONode::TwistStampedCallback, this );			
 			}
 			else
 			{
