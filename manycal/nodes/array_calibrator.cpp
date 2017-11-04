@@ -11,7 +11,8 @@ int main( int argc, char** argv )
 	
 	argus::ArrayCalibrator calibrator( nh, ph );
 	
-	ros::spin();
-	
+	ros::MultiThreadedSpinner spinner(2);
+	spinner.spin();
+
 	return 0;
 }

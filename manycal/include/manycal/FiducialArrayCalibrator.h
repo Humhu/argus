@@ -14,7 +14,7 @@
 
 #include "manycal/ManycalCommon.h"
 
-#include "argus_msgs/ImageFiducialDetections.h"
+#include "argus_utils/synchronization/ThreadsafeQueue.hpp"
 
 namespace argus
 {
@@ -46,16 +46,20 @@ class FiducialArrayCalibrator
 {
 public:
 	
+	typedef std::vector<FiducialDetection> FiducialDetections;
+
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-	FiducialArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
-	
+	FiducialArrayCalibrator();
+	void Initialize( ros::NodeHandle& ph, LookupInterface& lookup );
+
+	void BufferDetections( const FiducialDetections& detections );
+	void Spin();
+
 	void WriteResults();
 	
 private:
 	
-	ros::Subscriber _detSub;
-
 	LookupInterface _lookupInterface;
 	FiducialInfoManager _fiducialManager;
 	ExtrinsicsInterface _extrinsicsManager;
@@ -67,6 +71,9 @@ private:
 	unsigned int _batchPeriod;
 	
 	PoseSE3::CovarianceMatrix _priorCovariance;
+
+	typedef ThreadsafeQueue<FiducialDetections> DetectionsBuffer;
+	DetectionsBuffer _detectionsBuffer;
 
 	GraphOptimizer _optimizer;
 	isam::MonocularIntrinsics_Node::Ptr _cameraIntrinsics; // Unoptimized cam intrinsics factor
@@ -82,9 +89,7 @@ private:
 	};
 	typedef std::unordered_map <std::string, FiducialRegistration> FiducialRegistry;
 	FiducialRegistry _fiducialRegistry;
-	
-	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
-	
+		
 	// Attempt to initialize the camera pose from detections. Returns a nullptr
 	// if fails. Does not add the node to the slam instance on success.
 	isam::PoseSE3_Node::Ptr InitializeCameraPose( const std::vector<FiducialDetection>& dets );

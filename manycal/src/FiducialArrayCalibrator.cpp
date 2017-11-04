@@ -85,24 +85,19 @@ FiducialArrayCalibrator::InitializeCameraPose( const std::vector<FiducialDetecti
 	return cameraNode;
 }
 
-void 
-FiducialArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
+void FiducialArrayCalibrator::ProcessDetections( const FiducialDetections& detections )
 {
-	if( msg->detections.size() < _minDetectionsPerImage )
+	if( detections.size() < _minDetectionsPerImage )
 	{
-		ROS_WARN_STREAM( "Only " << msg->detections.size() << " detections, less than " <<
+		ROS_WARN_STREAM( "Only " << detections.size() << " detections, less than " <<
 		                 _minDetectionsPerImage << " minimum. Skipping..." );
 		return;
 	}
+	_detectionsBuffer.PushBack( detections );
+}
 
-	// Convert to C++
-	std::vector<FiducialDetection> detections;
-	detections.reserve( msg->detections.size() );
-	BOOST_FOREACH( const argus_msgs::FiducialDetection& d, msg->detections )
-	{
-		detections.emplace_back( d );
-	}
-
+void FiducialArrayCalibrator::Spin()
+{
 	isam::PoseSE3_Node::Ptr cameraNode = InitializeCameraPose( detections );
 	if( !cameraNode )
 	{

@@ -62,10 +62,12 @@ include_directories( include
 )
 
 add_library( manycal
-             #src/ArrayCalibrator.cpp
-             src/CameraArrayCalibrator.cpp
-             src/FiducialArrayCalibrator.cpp
+             src/ArrayCalibrator.cpp
+        #      src/CameraArrayCalibrator.cpp
+        #      src/FiducialArrayCalibrator.cpp
+             src/Factors.cpp
              src/ManycalCommon.cpp
+             src/Registrations.cpp
 )
 add_dependencies( manycal ${manycal_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 target_link_libraries( manycal
@@ -75,26 +77,26 @@ target_link_libraries( manycal
                        ${catkin_LIBRARIES}
 )
 
-# add_executable( array_calibrator_node nodes/array_calibrator.cpp )
-# target_link_libraries( array_calibrator_node 
-#                        ${isam_LIBRARIES}
-#                        ${catkin_LIBRARIES}
-#                        manycal 
-# )
-
-add_executable( fiducial_array_calibrator_node nodes/fiducial_array_calibrator.cpp )
-target_link_libraries( fiducial_array_calibrator_node 
-                       ${isam_LIBRARIES}
-                       ${catkin_LIBRARIES}
-                       manycal
-)
-
-add_executable( camera_array_calibrator_node nodes/camera_array_calibrator.cpp )
-target_link_libraries( camera_array_calibrator_node 
+add_executable( array_calibrator_node nodes/array_calibrator.cpp )
+target_link_libraries( array_calibrator_node 
                        ${isam_LIBRARIES}
                        ${catkin_LIBRARIES}
                        manycal 
 )
+
+# add_executable( fiducial_array_calibrator_node nodes/fiducial_array_calibrator.cpp )
+# target_link_libraries( fiducial_array_calibrator_node 
+#                        ${isam_LIBRARIES}
+#                        ${catkin_LIBRARIES}
+#                        manycal
+# )
+
+# add_executable( camera_array_calibrator_node nodes/camera_array_calibrator.cpp )
+# target_link_libraries( camera_array_calibrator_node 
+#                        ${isam_LIBRARIES}
+#                        ${catkin_LIBRARIES}
+#                        manycal 
+# )
 
 add_executable( cam_synchronizer nodes/camera_synchronizer.cpp )
 target_link_libraries( cam_synchronizer
@@ -112,8 +114,8 @@ target_link_libraries( cam_throttler
 
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
-                fiducial_array_calibrator_node
-                camera_array_calibrator_node
+                #fiducial_array_calibrator_node
+                #camera_array_calibrator_node
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

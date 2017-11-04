@@ -16,26 +16,19 @@
 namespace argus
 {
 
-struct ObjectCalibration
+enum TargetType
 {
-    std::string name;
-    PoseSE3 extrinsics;
+    TARGET_STATIC, // A non-moving target
+    TARGET_DYNAMIC, // A moving target with odometry info
+    TARGET_DISCONTINUOUS // A moving target without odometry info
 };
 
-struct FiducialObjectCalibration : public ObjectCalibration
-{
-	Fiducial intrinsics;
-};
-
-struct CameraObjectCalibration : public ObjectCalibration
-{
-	// CameraCalibration intrinsics;
-};
-// TODO Message representations?
+TargetType string_to_target( const std::string& str );
+std::string target_to_string( TargetType type );
 
 /*! \brief Convert to and from the ISAM pose representation. */
-isam::Pose3d PoseToIsam( const PoseSE3& pose );
-PoseSE3 IsamToPose( const isam::Pose3d& is );
+isam::PoseSE3 PoseToIsam( const PoseSE3& pose );
+PoseSE3 IsamToPose( const isam::PoseSE3& is );
 
 /*! \brief Convert to and from the ISAM point representation. */
 isam::Point3d PointToIsam( const Translation3Type& msg );
@@ -48,5 +41,8 @@ FiducialDetection IsamToDetection( const isam::FiducialDetection& detection );
 /*! \brief Convert to and from the ISAM fiducial representation. */
 isam::FiducialIntrinsics FiducialToIsam( const Fiducial& fid );
 Fiducial IsamToFiducial( const isam::FiducialIntrinsics& fid );
+
+isam::MonocularIntrinsics CalibrationToIsam( const CameraCalibration& calib );
+CameraCalibration IsamToCalibration( const isam::MonocularIntrinsics& calib );
 
 }
