@@ -20,7 +20,11 @@ TargetRegistration::TargetRegistration( const std::string& n,
 	_type = string_to_target( type );
 	ROS_INFO_STREAM( "Target: " << _name << " initializing as type: " << type );
 
-	if( _type == TargetType::TARGET_DYNAMIC )
+	if( _type == TargetType::TARGET_STATIC )
+	{
+		_poses = std::make_shared<StaticGraphType>( _graph );
+	}
+	else if( _type == TargetType::TARGET_DYNAMIC )
 	{
 		double tLen;
 		unsigned int buffLen;
@@ -30,24 +34,21 @@ TargetRegistration::TargetRegistration( const std::string& n,
 		GetParam( ph, "odom_buffer_len", buffLen, (unsigned int) 10 );
 		GetParamRequired( ph, "odom_topic", topic );
 		_odomSub = nh.subscribe( topic,
-		                         buffLen,
-		                         &TargetRegistration::OdometryCallback,
-		                         this );
+								 buffLen,
+								 &TargetRegistration::OdometryCallback,
+								 this );
 		ROS_INFO_STREAM( "Target: " << _name << " subscribing to odometry on "
-		                            << topic );
-	}
+									<< topic );
 
-	if( _type == TargetType::TARGET_STATIC )
-	{
-		_poses = std::make_shared<StaticGraphType>( _graph.GetOptimizer() );
-	}
-	else if( _type == TargetType::TARGET_DYNAMIC )
-	{
-		_poses = std::make_shared<OdomGraphType>( _graph.GetOptimizer() );
+		_poses = std::make_shared<OdomGraphType>( _graph );
 	}
 	else if( _type == TargetType::TARGET_DISCONTINUOUS )
 	{
-		_poses = std::make_shared<JumpGraphType>( _graph.GetOptimizer() );
+		_poses = std::make_shared<JumpGraphType>( _graph );
+	}
+	else
+	{
+		throw std::invalid_argument( "Unknown graph type" );
 	}
 
 	_initialized = false;
@@ -103,20 +104,22 @@ void TargetRegistration::InitializePose( const ros::Time& time,
 {
 	isam::PoseSE3 p = PoseToIsam( pose );
 	_poses->CreateNode( time, p );
-	// TODO?
-	// _poses->CreatePrior( time, p, isam::Covariance( cov ) );
+	// TODO
+	PoseSE3::CovarianceMatrix cov = PoseSE3::CovarianceMatrix::Identity();
+	_poses->CreatePrior( time, p, isam::Covariance( cov ) );
 }
 
 bool TargetRegistration::IsPoseOptimizing() const { return _optimizePose; }
 
-isam::PoseSE3_Node* TargetRegistration::CreatePoseNode( const ros::Time& t )
+isam::PoseSE3_Node* TargetRegistration::GetPoseNode( const ros::Time& t )
 {
-	if( t < _lastTime )
-	{
-		ROS_ERROR_STREAM( "Requested node time " << t << " precedes head " << _lastTime );
-		return nullptr;
-	}
+	// If the node already exists, return it
+	isam::PoseSE3_Node* node;
+	node = _poses->RetrieveNode( t ).get();
+	if( node ) { return node; }
 
+	// Else we have to create the pose node
+	ROS_INFO_STREAM( "Creating pose node for " << _name << " at " << t );
 	if( _type == TargetType::TARGET_DYNAMIC )
 	{
 		PoseSE3 disp;
@@ -136,7 +139,8 @@ isam::PoseSE3_Node* TargetRegistration::CreatePoseNode( const ros::Time& t )
 	}
 	else if( _type == TargetType::TARGET_DISCONTINUOUS )
 	{
-		_poses->CreateNode( t, _poses->RetrieveNode( _lastTime )->value() );
+		// TODO
+		_poses->CreateNode( t, PoseSE3() );
 	}
 
 	_lastTime = t;
@@ -155,7 +159,32 @@ const std::vector<FiducialRegistration::Ptr>& TargetRegistration::GetFiducials()
 
 bool TargetRegistration::IsPoseInitialized( const ros::Time& time ) const
 {
-	return _poses->IsGrounded( time );
+	if( _type == TargetType::TARGET_DYNAMIC )
+	{
+		OdomGraphType::Ptr poses = std::dynamic_pointer_cast<OdomGraphType>( _poses );
+
+		// If time is within bounds of existing nodes
+		if( poses->InRange( time ) ) { return poses->IsGrounded( time ); }
+
+		// If time precedes bounds
+		if( time < poses->EarliestIndex() ) { return false; }
+
+		// Otherwise, see if we can integrate forward to required time
+		// NOTE _lastTime should == poses->LatestIndex()
+		PoseSE3 disp;
+		PoseSE3::CovarianceMatrix cov;
+		bool succ = !_velocityIntegrator.Integrate( _lastTime.toSec(),
+		                                            time.toSec(),
+		                                            disp,
+		                                            cov );
+		return succ && poses->IsGrounded( time );
+	}
+	// TODO Need a way to tell if JumpGraph is initialized or not, since we will never
+	// actually be adding priors to it
+	else
+	{
+		return _poses->IsGrounded( time );
+	}
 }
 
 void TargetRegistration::OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg )
@@ -175,6 +204,8 @@ ExtrinsicsRegistration::ExtrinsicsRegistration( TargetRegistration& p,
 	GetParam( ph, "optimize_extrinsics", _optimizeExtrinsics, false );
 
 	_extrinsics = std::make_shared<isam::PoseSE3_Node>();
+	// NOTE We initialize it here so that if node->value() is called it won't segfault
+	_extrinsics->init( PoseToIsam( PoseSE3() ) );
 
 	PoseSE3 initExt;
 	if( GetParam( ph, "initial_extrinsics", initExt ) )
@@ -212,6 +243,7 @@ void ExtrinsicsRegistration::InitializeExtrinsics( const PoseSE3& pose,
 		_extrinsicsPrior = std::make_shared<isam::PoseSE3_Prior>( _extrinsics.get(),
 		                                                          isam::PoseSE3( p ),
 		                                                          isam::Covariance( cov ) );
+		
 		_graph.AddFactor( _extrinsicsPrior );
 	}
 	_extInitialized = true;
@@ -225,6 +257,11 @@ bool ExtrinsicsRegistration::IsExtrinsicsInitialized() const
 bool ExtrinsicsRegistration::IsExtrinsicsOptimizing() const
 {
 	return _optimizeExtrinsics;
+}
+
+PoseSE3 ExtrinsicsRegistration::GetExtrinsicsPose() const
+{
+	return IsamToPose( _extrinsics->value() );
 }
 
 isam::PoseSE3_Node* ExtrinsicsRegistration::GetExtrinsicsNode()
@@ -304,7 +341,7 @@ FiducialRegistration::FiducialRegistration( TargetRegistration& p,
                                             ros::NodeHandle& ph )
 	: ExtrinsicsRegistration( p, n, g, ph ), _intInitialized( false )
 {
-	GetParam( ph, "optimizer_intrinsics", _optimizeIntrinsics, false );
+	GetParam( ph, "optimize_intrinsics", _optimizeIntrinsics, false );
 
 	LookupInterface lookup;
 	FiducialInfoManager fiducials( lookup );

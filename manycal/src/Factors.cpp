@@ -25,13 +25,11 @@ isam::FiducialFactor::Ptr create_fiducial_factor( const ros::Time& time,
 		throw std::invalid_argument( ss.str() );
 	}
 
-	isam::FiducialFactor::Ptr factor;
-
-	isam::PoseSE3_Node* camParentNode = camera.parent.CreatePoseNode( time );	
-	isam::PoseSE3_Node* fidParentNode = fiducial.parent.CreatePoseNode( time );
+	isam::PoseSE3_Node* camParentNode = camera.parent.GetPoseNode( time );	
+	isam::PoseSE3_Node* fidParentNode = fiducial.parent.GetPoseNode( time );
 	if( !camParentNode || !fidParentNode )
 	{
-		// TODO
+		return nullptr;
 	}
 
 	return std::make_shared<isam::FiducialFactor>( camParentNode,

@@ -51,6 +51,7 @@ public:
 	bool IsExtrinsicsInitialized() const;
 	// Returns whether optimization is enabled
 	bool IsExtrinsicsOptimizing() const;
+	PoseSE3 GetExtrinsicsPose() const;
 	isam::PoseSE3_Node* GetExtrinsicsNode();
 	isam::PoseSE3_Prior* GetExtrinsicsPrior();
 
@@ -124,13 +125,18 @@ public:
 	                    ros::NodeHandle& nh,
 	                    ros::NodeHandle& ph );
 
+	// TODO Clean up interface
 	void InitializePose( const ros::Time& time, const PoseSE3& pose );
 	
+	// Returns whether a pose node at the specified time would be initialized
+	// from odometry, priors, etc.
 	bool IsPoseInitialized( const ros::Time& time ) const;
 	bool IsPoseOptimizing() const;
 
-	// Processes odometry into the pose graph until the specified time
-	isam::PoseSE3_Node* CreatePoseNode( const ros::Time& t );
+	// Retrieves or creates a pose node at the specified time
+	// If dynamic mode, integrates odometry to initialize pose
+	// If discontinuous mode, initializes to previous value
+	isam::PoseSE3_Node* GetPoseNode( const ros::Time& t );
 
 	const std::vector<CameraRegistration::Ptr>& GetCameras() const;
 	const std::vector<FiducialRegistration::Ptr>& GetFiducials() const;

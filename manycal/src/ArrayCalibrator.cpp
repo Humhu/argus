@@ -1,5 +1,7 @@
 #include "manycal/ArrayCalibrator.h"
 #include "manycal/ManycalCommon.h"
+#include "manycal/Factors.h"
+
 #include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
 
 #include "argus_utils/geometry/GeometryUtils.h"
@@ -19,6 +21,9 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 {
 	GetParam( ph, "extrinsics_init_cov", _extInitCov, PoseSE3::CovarianceMatrix::Identity() );
 
+	ros::NodeHandle gh( ph.resolveName( "graph" ) );
+	_graph = GraphOptimizer( gh );
+
 	// Parse the list of objects to be calibrated
 	YAML::Node targets;
 	GetParamRequired( ph, "targets", targets );
@@ -36,9 +41,9 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 			ROS_INFO_STREAM( "Registering camera " << cam->_name );
 			_cameraRegistry[cam->_name] = cam;
 		}
-		BOOST_FOREACH( const FiducialRegistration::Ptr& fid, target.GetFiducials() )
+		BOOST_FOREACH( const FiducialRegistration::Ptr & fid, target.GetFiducials() )
 		{
-			ROS_INFO_STREAM( "Registering fiducial " << fid->_name );			
+			ROS_INFO_STREAM( "Registering fiducial " << fid->_name );
 			_fiducialRegistry[fid->_name] = fid;
 		}
 	}
@@ -47,6 +52,10 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	unsigned int buffLen;
 	GetParamRequired( ph, "detection_topics", topics );
 	GetParam( ph, "detection_buffer_len", buffLen, (unsigned int) 10 );
+
+	double maxLag;
+	GetParam( ph, "max_detection_buffer_lag", maxLag, 5.0 );
+	_maxLag = ros::Duration( maxLag );
 
 	BOOST_FOREACH( const std::string & topic, topics )
 	{
@@ -60,13 +69,37 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_spinTimer = nh.createTimer( ros::Duration( 1.0 ),
 	                             &ArrayCalibrator::TimerCallback,
 	                             this );
-
-	// slam->write( std::cout );
 }
 
 void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 {
 	ProcessUntil( event.current_real );
+
+	_graph.GetOptimizer().write( std::cout );
+	Print();
+	// if( !_observations.empty() )
+	// {
+	_graph.GetOptimizer().update();
+	// }
+}
+
+void ArrayCalibrator::Print()
+{
+	typedef CameraRegistry::value_type CameraItem;
+	BOOST_FOREACH( const CameraItem &item, _cameraRegistry )
+	{
+		CameraRegistration::Ptr cam = item.second;
+		ROS_INFO_STREAM( "Camera " << cam->_name << " relative to " <<
+		                 cam->parent._name << " has extrinsics " << cam->GetExtrinsicsPose() );
+	}
+
+	typedef FiducialRegistry::value_type FiducialItem;
+	BOOST_FOREACH( const FiducialItem &item, _fiducialRegistry )
+	{
+		FiducialRegistration::Ptr fid = item.second;
+		ROS_INFO_STREAM( "Fiducial " << fid->_name << " relative to " <<
+		                 fid->parent._name << " has extrinsics " << fid->GetExtrinsicsPose() );
+	}
 }
 
 void ArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
@@ -74,7 +107,16 @@ void ArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetectio
 	WriteLock lock( _mutex );
 	ImageFiducialDetections dets( *msg );
 	if( dets.detections.empty() ) { return; }
-	_detBuffer[dets.timestamp.toSec()] = dets;
+
+	BOOST_FOREACH( const FiducialDetection &det, dets.detections )
+	{
+		DetectionData data;
+		data.sourceName = dets.sourceName;
+		data.timestamp = dets.timestamp;
+		data.detection = det;
+		_detBuffer.push_back( data );
+	}
+
 	ROS_INFO_STREAM( _detBuffer.size() << " detections buffered" );
 }
 
@@ -88,37 +130,58 @@ void ArrayCalibrator::ProcessUntil( const ros::Time& until )
 	}
 
 	// TODO Copy detections out with mutex, then process?
-	WriteLock lock( _mutex );	
-	while( !_detBuffer.empty() )
+	WriteLock lock( _mutex );
+	unsigned int numProcessed = 1;
+	DetectionsBuffer unprocessed( _detBuffer.size() );
+	while( numProcessed != 0 )
 	{
-		DetectionsBuffer::const_iterator oldest = _detBuffer.begin();
-		ImageFiducialDetections dets = oldest->second;
-
-		if( dets.timestamp > until ) { break; }
-
-		BOOST_FOREACH( const FiducialDetection &det, dets.detections )
+		numProcessed = 0;
+		unprocessed.clear();
+		BOOST_FOREACH( DetectionData & data, _detBuffer )
 		{
-			ProcessDetection( dets.sourceName, dets.timestamp, det );
-		}
+			// If in future, save it for later
+			if( data.timestamp > until )
+			{
+				unprocessed.push_back( data );
+				continue;
+			}
 
-		_detBuffer.erase( oldest );
+			// If too lagged, drop it
+			if( data.timestamp < (until - _maxLag) ) { continue; }
+
+			bool succ = ProcessDetection( data.sourceName,
+			                              data.timestamp,
+			                              data.detection );
+			if( succ )
+			{
+				++numProcessed;
+			}
+			else
+			{
+				unprocessed.push_back( data );
+			}
+		}
+		_detBuffer = unprocessed;
 	}
+
 	_buffTime = until;
 }
 
-void ArrayCalibrator::ProcessDetection( const std::string& sourceName,
+// TODO Re-buffer detections that we dropped due to initializations to try again afterwards
+bool ArrayCalibrator::ProcessDetection( const std::string& sourceName,
                                         const ros::Time& time,
                                         const FiducialDetection& det  )
 {
+	ROS_INFO_STREAM( "Processing observation of " << det.name << " from " << sourceName );
 	if( _cameraRegistry.count( sourceName ) == 0 )
 	{
 		ROS_WARN_STREAM( "No optimization camera target " << sourceName );
-		return;
+		return false;
 	}
 	if( _fiducialRegistry.count( det.name ) == 0 )
 	{
 		ROS_WARN_STREAM( "No optimization fiducial target " << det.name );
-		return;
+		return false;
 	}
 
 	CameraRegistration::Ptr& camera = _cameraRegistry.at( sourceName );
@@ -126,26 +189,37 @@ void ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 
 	if( !camera->IsIntrinsicsInitialized() )
 	{
-		ROS_ERROR_STREAM( "Uninitialized camera " << camera->_name );
-		return;
+		ROS_ERROR_STREAM( "Uninitialized camera intrinsics " << camera->_name );
+		return false;
 	}
 	if( !fiducial->IsIntrinsicsInitialized() )
 	{
-		ROS_ERROR_STREAM( "Uninitialized fiducial " << fiducial->_name );
-		return;
+		ROS_ERROR_STREAM( "Uninitialized fiducial intrinsics " << fiducial->_name );
+		return false;
 	}
-
-	isam::PoseSE3_Node* camPoseNode = camera->parent.CreatePoseNode( time );
-	isam::PoseSE3_Node* fidPoseNode = fiducial->parent.CreatePoseNode( time );
 
 	bool camPoseGrounded = camera->parent.IsPoseInitialized( time );
 	bool fidPoseGrounded = fiducial->parent.IsPoseInitialized( time );
 	bool camExtInit = camera->IsExtrinsicsInitialized();
 	bool fidExtInit = fiducial->IsExtrinsicsInitialized();
 
-	// If something is uninitialized
-	if( !camPoseGrounded ^ !fidPoseGrounded ^ !camExtInit ^ !fidExtInit )
+	unsigned int numInit = 0;
+	if( camPoseGrounded ) { numInit++; }
+	if( fidPoseGrounded ) { numInit++; }
+	if( camExtInit ) { numInit++; }
+	if( fidExtInit ) { numInit++; }
+
+	// If one part of the pose loop is uninitialized
+	if( numInit == 3 )
 	{
+		isam::PoseSE3_Node* camPoseNode = camera->parent.GetPoseNode( time );
+		isam::PoseSE3_Node* fidPoseNode = fiducial->parent.GetPoseNode( time );
+		if( !camPoseNode || !fidPoseNode )
+		{
+			ROS_WARN_STREAM( "Could not get pose node at time " << time );
+			return false;
+		}
+
 		PoseSE3 relPose = EstimateArrayPose( det,
 		                                     IsamToFiducial( fiducial->GetIntrinsicsNode()->value() ) );
 
@@ -165,8 +239,9 @@ void ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 		{
 			fidPose = camPose * camExt * relPose * fidExt.Inverse();
 			ROS_INFO_STREAM( "Initializing pose of " << fiducial->parent._name <<
-			                 " at " << time << " to " << fidPose );
+			" at " << time << " to " << fidPose );
 			fiducial->parent.InitializePose( time, fidPose );
+			ROS_INFO_STREAM( "Post-init pose: " << IsamToPose( fidPoseNode->value() ) );
 		}
 		else if( !camExtInit )
 		{
@@ -183,169 +258,31 @@ void ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 			fiducial->InitializeExtrinsics( fidExt, _extInitCov );
 		}
 	}
+	// If we fail above then there must be more than one uninitialized
+	else if( numInit < 4 )
+	{
+		ROS_WARN_STREAM( "More than one part of pose chain missing: camPose: " <<
+		                 camPoseGrounded << " fidPose: " << fidPoseGrounded << " camExt: " <<
+		                 camExtInit << " fidExt: " << fidExtInit );
+		return false;
+	}
+
+	// Otherwise everything is initialized
+	isam::FiducialFactor::Ptr factor;
+	MatrixType cov = MatrixType::Identity( 2 * det.points.size(), 2 * det.points.size() );
+	factor = create_fiducial_factor( time,
+	                                 det,
+	                                 cov,
+	                                 *camera,
+	                                 *fiducial );
+
+	if( !factor )
+	{
+		ROS_WARN_STREAM( "Could not create factor!" );
+		return false;
+	}
+	_observations.push_back( factor );
+	_graph.AddFactor( factor );
+	return true;
 }
-
-// void ArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
-// {
-//  ROS_INFO_STREAM( "Detection received." );
-
-//  ros::Time timestamp = msg->header.stamp;
-//  std::string camName = msg->header.frame_id;
-//  if( cameraRegistry.count( camName ) == 0 ) { return; }
-//  CameraRegistration& camReg = cameraRegistry[camName];
-
-//  //const ExtrinsicsInfo& camInfo = extrinsicsManager.GetInfo( camName );
-//  PoseSE3 camPose = extrinsicsInterface.GetExtrinsics( camName, ? ? ? );
-
-//  // ALready verified target registered during registration
-//  TargetRegistration& camFrameReg = targetRegistry[camInfo.referenceFrame];
-
-//  BOOST_FOREACH( const FiducialDetection &detection, msg->detections )
-//  {
-//      std::string fidName = detection.name;
-//      if( fiducialRegistry.count( fidName ) == 0 ) { return; }
-//      FiducialRegistration& fidReg = fiducialRegistry[fidName];
-
-//      // const ExtrinsicsInfo& fidInfo = extrinsicsManager.GetInfo( fidName );
-//      PoseSE3 fidPose = extrinsicsInterface.GetExtrinsics( fidName, ? ? ? );
-//      // Already verified target registered during registration
-//      TargetRegistration& fidFrameReg = targetRegistry[fidInfo.referenceFrame];
-
-//      bool camGrounded = camFrameReg.poses->IsGrounded( timestamp );
-//      bool fidGrounded = fidFrameReg.poses->IsGrounded( timestamp );
-
-//      // If one of the two frames is uninitialized, we initialize it using PNP
-//      if( !camGrounded || !fidGrounded )
-//      {
-//          if( !camGrounded && !fidGrounded )
-//          {
-//              ROS_WARN_STREAM( "Cannot create observation between frames "
-//                               << camInfo.referenceFrame << " and "
-//                               << fidInfo.referenceFrame << " because both are ungrounded." );
-//              return;
-//          }
-
-//          PoseSE3 relPose = EstimateArrayPose( detection,
-//                                               IsamToFiducial( fidReg.intrinsics->value() ) );
-
-//          ROS_INFO_STREAM( "Fiducial detected at: " << relPose );
-
-//          if( !camGrounded )
-//          {
-//              // TODO Buffer observation if can't retrieve node, probably due to odometry lagging
-//              isam::PoseSE3_Node::Ptr fidFrameNode = fidFrameReg.poses->RetrieveNode( timestamp );
-//              if( !fidFrameNode )
-//              {
-//                  ROS_WARN_STREAM( "Could not retrieve fiducial frame node." );
-//                  continue;
-//              }
-//              PoseSE3 fidFramePose = fidFrameNode->value().pose;
-//              PoseSE3 camFramePose = fidFramePose * fidInfo.extrinsics
-//                                     * relPose.Inverse() * camInfo.extrinsics.Inverse();
-//              ROS_INFO_STREAM( "Creating camera node with prior at pose " << camFramePose );
-//              camFrameReg.poses->CreateNode( timestamp, camFramePose );
-//              camFrameReg.poses->CreatePrior( timestamp,
-//                                              camFramePose,
-//                                              isam::Covariance( 1E6 * isam::eye( 6 ) ) );
-//              camFrameReg.initialized = true;
-//          }
-//          else if( !fidGrounded )
-//          {
-//              // TODO Buffer observation if can't retrieve node, probably due to odometry lagging
-//              isam::PoseSE3_Node::Ptr camFrameNode = camFrameReg.poses->RetrieveNode( timestamp );
-//              if( !camFrameNode )
-//              {
-//                  ROS_WARN_STREAM( "Could not retrieve camera frame node." );
-//                  continue;
-//              }
-//              PoseSE3 camFramePose = camFrameNode->value().pose;
-//              PoseSE3 fidFramePose = camFramePose * camInfo.extrinsics
-//                                     * relPose * fidInfo.extrinsics.Inverse();
-//              ROS_INFO_STREAM( "Creating fiducial node with prior at pose " << fidFramePose );
-//              fidFrameReg.poses->CreateNode( timestamp, fidFramePose );
-//              fidFrameReg.poses->CreatePrior( timestamp,
-//                                              fidFramePose,
-//                                              isam::Covariance( 1E6 * isam::eye( 6 ) ) );
-//              fidFrameReg.initialized = true;
-//          }
-//      }
-
-//      CreateObservationFactor( camReg, camFrameReg,
-//                               fidReg, fidFrameReg,
-//                               detection, msg->header.stamp );
-//  }
-
-//  ROS_INFO_STREAM( "Running optimization..." );
-//  slam->batch_optimization();
-// //  std::cout << "===== Iteration: " << observations.size() << std::endl;
-// //  slam->write( std::cout );
-
-//  // char buff[50];
-//  // sprintf( buff, "%3.2f", observations.size() * 100.0 / targetNumObservations );
-//  // std::string percentage( buff );
-
-//  // ROS_INFO_STREAM( "Observations: [" << observations.size() << "/" << targetNumObservations
-//  //     << "] (" << percentage << "%");
-//  // if( observations.size() >= targetNumObservations ) {
-//  //  WriteResults();
-//  //  exit( 0 );
-//  // }
-// }
-
-// void ArrayCalibrator::RegisterFiducial( const std::string& fidName, bool calibrate )
-// {
-//  // Cache the fiducial lookup information
-//  // TODO Support no-prior startup
-//  if( !fiducialManager.CheckMemberInfo( fidName, true, ros::Duration( 5.0 ) )
-//      || !extrinsicsManager.CheckMemberInfo( fidName, true, ros::Duration( 5.0 ) ) )
-//  {
-//      ROS_ERROR_STREAM( "Could not retrieve info for " << fidName );
-//      return;
-//  }
-
-//  // Retrieve the fiducial extrinsics, intrinsics, and reference frame
-//  const Fiducial& fiducial = fiducialManager.GetInfo( fidName );
-//  const ExtrinsicsInfo& extrinsicsInfo = extrinsicsManager.GetInfo( fidName );
-
-//  if( targetRegistry.count( extrinsicsInfo.referenceFrame ) == 0 )
-//  {
-//      ROS_ERROR_STREAM( "Parent target " << extrinsicsInfo.referenceFrame
-//                                         << " for fiducial " << fidName << " is not registered target." );
-//      return;
-//  }
-
-//  ROS_INFO_STREAM( "Registering fiducial " << fidName );
-
-//  FiducialRegistration& registration = fiducialRegistry[fidName];
-//  registration.name = fidName;
-//  registration.optimizeExtrinsics = calibrate;
-//  registration.optimizeIntrinsics = false;
-
-//  registration.extrinsics = std::make_shared<isam::PoseSE3_Node>();
-//  registration.extrinsics->init( isam::PoseSE3( extrinsicsInfo.extrinsics ) );
-//  if( registration.optimizeExtrinsics )
-//  {
-//      slam->add_node( registration.extrinsics.get() );
-//      registration.extrinsicsPrior = std::make_shared<isam::PoseSE3_Prior>
-//                                         ( registration.extrinsics.get(),
-//                                         isam::PoseSE3( extrinsicsInfo.extrinsics ),
-//                                         isam::Covariance( 1E-2 * isam::eye( 6 ) ) );
-//      slam->add_factor( registration.extrinsicsPrior.get() );
-//  }
-
-//  std::vector<isam::Point3d> pts;
-//  pts.reserve( fiducial.points.size() );
-//  for( unsigned int i = 0; i < fiducial.points.size(); i++ )
-//  {
-//      pts.push_back( PointToIsam( fiducial.points[i] ) );
-//  }
-//  isam::FiducialIntrinsics intrinsics( pts );
-//  registration.intrinsics = std::make_shared<isam::FiducialIntrinsics_Node>( intrinsics.name(), intrinsics.dim() );
-//  registration.intrinsics->init( intrinsics );
-//  if( registration.optimizeIntrinsics )
-//  {
-//      slam->add_node( registration.intrinsics.get() );
-//      // TODO priors
-//  }
-// }
 }

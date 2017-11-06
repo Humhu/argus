@@ -20,7 +20,7 @@
 #include "argus_utils/geometry/VelocityIntegrator.hpp"
 #include "argus_utils/synchronization/SynchronizationTypes.h"
 
-#include <map>
+#include <deque>
 #include <unordered_map>
 
 namespace argus
@@ -35,6 +35,7 @@ public:
 	ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
 	void ProcessUntil( const ros::Time& until );
+	void Print();
 
 private:
 
@@ -46,14 +47,24 @@ private:
 
 	Mutex _mutex;
 	std::vector<ros::Subscriber> _detSubs;
-	typedef std::map<double, ImageFiducialDetections> DetectionsBuffer;
+
+	struct DetectionData
+	{
+		std::string sourceName;
+		ros::Time timestamp;
+		FiducialDetection detection;
+	};
+	typedef std::deque<DetectionData> DetectionsBuffer;
 	DetectionsBuffer _detBuffer;
 	ros::Time _buffTime;
+	ros::Duration _maxLag;
 
 	/*! \brief Stores subscriptions to odometry and detection inputs. */
 	typedef std::unordered_map<std::string, CameraRegistration::Ptr> CameraRegistry;
 	typedef std::unordered_map<std::string, FiducialRegistration::Ptr> FiducialRegistry;
-	std::vector<TargetRegistration> _targetRegistry;
+	
+	// NOTE Must be deque so that memory isn't moved and references don't break
+	std::deque<TargetRegistration> _targetRegistry;
 	CameraRegistry _cameraRegistry;
 	FiducialRegistry _fiducialRegistry;
 
@@ -64,10 +75,11 @@ private:
 
 	void TimerCallback( const ros::TimerEvent& event );
 
-	void ProcessDetection( const std::string& sourceName,
+	// Attempt to process a detection, returns success
+	bool ProcessDetection( const std::string& sourceName,
 	                       const ros::Time& time,
-						   const FiducialDetection& det );
-						   
+	                       const FiducialDetection& det );
+
 	void DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg );
 };
 } // end namespace manycal
