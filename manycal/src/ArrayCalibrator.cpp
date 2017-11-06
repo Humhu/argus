@@ -68,6 +68,10 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 	GetParamRequired( ph, "save_path", _savePath );
 
+	double spinLag;
+	GetParamRequired( ph, "spin_lag", spinLag );
+	_spinLag = ros::Duration( spinLag );
+
 	double spinRate;
 	GetParam( ph, "spin_rate", spinRate, 1.0 );
 	_spinTimer = nh.createTimer( ros::Duration( 1.0 / spinRate ),
@@ -82,9 +86,9 @@ ArrayCalibrator::~ArrayCalibrator()
 
 void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 {
-	ProcessUntil( event.current_real );
+	ProcessUntil( event.current_real - _spinLag );
 
-	_graph.GetOptimizer().write( std::cout );
+	// _graph.GetOptimizer().write( std::cout );
 	Print();
 	_graph.GetOptimizer().update();
 }
@@ -92,7 +96,7 @@ void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 void ArrayCalibrator::Save()
 {
 	std::vector<RelativePose> extrinsics;
-	typedef CameraRegistry::value_type CameraItem;	
+	typedef CameraRegistry::value_type CameraItem;
 	BOOST_FOREACH( const CameraItem &item, _cameraRegistry )
 	{
 		CameraRegistration::Ptr cam = item.second;
@@ -103,7 +107,7 @@ void ArrayCalibrator::Save()
 	BOOST_FOREACH( const FiducialItem &item, _fiducialRegistry )
 	{
 		FiducialRegistration::Ptr fid = item.second;
-		extrinsics.emplace_back( fid->parent._name, fid->_name, fid->GetExtrinsicsPose() );		
+		extrinsics.emplace_back( fid->parent._name, fid->_name, fid->GetExtrinsicsPose() );
 	}
 	WriteExtrinsicsCalibration( _savePath, extrinsics );
 }
@@ -237,21 +241,23 @@ bool ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 	// If one part of the pose loop is uninitialized
 	if( numInit == 3 )
 	{
-		isam::PoseSE3_Node* camPoseNode = camera->parent.GetPoseNode( time );
-		isam::PoseSE3_Node* fidPoseNode = fiducial->parent.GetPoseNode( time );
-		if( !camPoseNode || !fidPoseNode )
-		{
-			ROS_WARN_STREAM( "Could not get pose node at time " << time );
-			return false;
-		}
-
 		PoseSE3 relPose = EstimateArrayPose( det,
 		                                     IsamToFiducial( fiducial->GetIntrinsicsNode()->value() ) );
 
 		PoseSE3 camExt = IsamToPose( camera->GetExtrinsicsNode()->value() );
 		PoseSE3 fidExt = IsamToPose( fiducial->GetExtrinsicsNode()->value() );
-		PoseSE3 camPose = IsamToPose( camPoseNode->value() );
-		PoseSE3 fidPose = IsamToPose( fidPoseNode->value() );
+
+		// NOTE In the case of OdometryGraph we may get nullptr for these pose nodes
+		// Case 1. If the graph is grounded, this means we don't have odometry available yet,
+		//         so come back later
+		// Case 2. If the graph is not grounded, this means the graph is uninitialized
+		isam::PoseSE3_Node* camPoseNode = camera->parent.GetPoseNode( time );
+		isam::PoseSE3_Node* fidPoseNode = fiducial->parent.GetPoseNode( time );
+		if( camPoseGrounded && !camPoseNode ) { return false; }
+		if( fidPoseGrounded && !fidPoseNode ) { return false; }
+		PoseSE3 camPose = (camPoseNode) ? IsamToPose( camPoseNode->value() ) : PoseSE3();
+		PoseSE3 fidPose = (fidPoseNode) ? IsamToPose( fidPoseNode->value() ) : PoseSE3();
+
 
 		if( !camPoseGrounded )
 		{
@@ -264,9 +270,8 @@ bool ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 		{
 			fidPose = camPose * camExt * relPose * fidExt.Inverse();
 			ROS_INFO_STREAM( "Initializing pose of " << fiducial->parent._name <<
-			" at " << time << " to " << fidPose );
+			                 " at " << time << " to " << fidPose );
 			fiducial->parent.InitializePose( time, fidPose );
-			ROS_INFO_STREAM( "Post-init pose: " << IsamToPose( fidPoseNode->value() ) );
 		}
 		else if( !camExtInit )
 		{

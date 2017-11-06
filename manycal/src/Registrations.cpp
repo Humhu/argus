@@ -1,6 +1,7 @@
 #include "manycal/Registrations.h"
 
 #include "argus_utils/utils/ParamUtils.h"
+
 #include "extrinsics_array/ExtrinsicsInterface.h"
 #include "camplex/FiducialInfoManager.h"
 
@@ -34,11 +35,11 @@ TargetRegistration::TargetRegistration( const std::string& n,
 		GetParam( ph, "odom_buffer_len", buffLen, (unsigned int) 10 );
 		GetParamRequired( ph, "odom_topic", topic );
 		_odomSub = nh.subscribe( topic,
-								 buffLen,
-								 &TargetRegistration::OdometryCallback,
-								 this );
+		                         buffLen,
+		                         &TargetRegistration::OdometryCallback,
+		                         this );
 		ROS_INFO_STREAM( "Target: " << _name << " subscribing to odometry on "
-									<< topic );
+		                            << topic );
 
 		_poses = std::make_shared<OdomGraphType>( _graph );
 	}
@@ -107,6 +108,7 @@ void TargetRegistration::InitializePose( const ros::Time& time,
 	// TODO
 	PoseSE3::CovarianceMatrix cov = PoseSE3::CovarianceMatrix::Identity();
 	_poses->CreatePrior( time, p, isam::Covariance( cov ) );
+	_lastTime = time;
 }
 
 bool TargetRegistration::IsPoseOptimizing() const { return _optimizePose; }
@@ -119,21 +121,22 @@ isam::PoseSE3_Node* TargetRegistration::GetPoseNode( const ros::Time& t )
 	if( node ) { return node; }
 
 	// Else we have to create the pose node
-	ROS_INFO_STREAM( "Creating pose node for " << _name << " at " << t );
 	if( _type == TargetType::TARGET_DYNAMIC )
 	{
 		PoseSE3 disp;
 		PoseSE3::CovarianceMatrix cov;
-		bool succ = !_velocityIntegrator.Integrate( _lastTime.toSec(),
-		                                            t.toSec(),
-		                                            disp,
-		                                            cov );
+		bool succ = _velocityIntegrator.Integrate( _lastTime.toSec(),
+		                                           t.toSec(),
+		                                           disp,
+		                                           cov );
 		if( !succ )
 		{
 			ROS_ERROR_STREAM( "Could not integrate odometry" );
 			return nullptr;
 		}
 
+		PoseSE3 prevPose = IsamToPose( _poses->RetrieveNode( _lastTime )->value() );
+		_poses->CreateNode( t, prevPose * disp );
 		_poses->CreateEdge( _lastTime, t,
 		                    PoseToIsam( disp ), isam::Covariance( cov ) );
 	}
@@ -159,32 +162,7 @@ const std::vector<FiducialRegistration::Ptr>& TargetRegistration::GetFiducials()
 
 bool TargetRegistration::IsPoseInitialized( const ros::Time& time ) const
 {
-	if( _type == TargetType::TARGET_DYNAMIC )
-	{
-		OdomGraphType::Ptr poses = std::dynamic_pointer_cast<OdomGraphType>( _poses );
-
-		// If time is within bounds of existing nodes
-		if( poses->InRange( time ) ) { return poses->IsGrounded( time ); }
-
-		// If time precedes bounds
-		if( time < poses->EarliestIndex() ) { return false; }
-
-		// Otherwise, see if we can integrate forward to required time
-		// NOTE _lastTime should == poses->LatestIndex()
-		PoseSE3 disp;
-		PoseSE3::CovarianceMatrix cov;
-		bool succ = !_velocityIntegrator.Integrate( _lastTime.toSec(),
-		                                            time.toSec(),
-		                                            disp,
-		                                            cov );
-		return succ && poses->IsGrounded( time );
-	}
-	// TODO Need a way to tell if JumpGraph is initialized or not, since we will never
-	// actually be adding priors to it
-	else
-	{
-		return _poses->IsGrounded( time );
-	}
+	return _poses->IsGrounded( time );
 }
 
 void TargetRegistration::OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg )
@@ -243,7 +221,7 @@ void ExtrinsicsRegistration::InitializeExtrinsics( const PoseSE3& pose,
 		_extrinsicsPrior = std::make_shared<isam::PoseSE3_Prior>( _extrinsics.get(),
 		                                                          isam::PoseSE3( p ),
 		                                                          isam::Covariance( cov ) );
-		
+
 		_graph.AddFactor( _extrinsicsPrior );
 	}
 	_extInitialized = true;

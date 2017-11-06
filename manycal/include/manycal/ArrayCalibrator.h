@@ -46,6 +46,7 @@ private:
 	ros::ServiceServer _writeServer;
 
 	ros::Timer _spinTimer;
+	ros::Duration _spinLag;
 
 	Mutex _mutex;
 	std::vector<ros::Subscriber> _detSubs;

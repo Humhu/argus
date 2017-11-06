@@ -112,6 +112,13 @@ target_link_libraries( cam_throttler
                        manycal
 )
 
+add_executable( dummy_odometry nodes/dummy_odometry.cpp )
+target_link_libraries( dummy_odometry
+                       ${isam_LIBRARIES}
+                       ${catkin_LIBRARIES}
+                       manycal
+)
+
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
                 array_calibrator_node
