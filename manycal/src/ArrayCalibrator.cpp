@@ -68,7 +68,9 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 	GetParamRequired( ph, "save_path", _savePath );
 
-	_spinTimer = nh.createTimer( ros::Duration( 1.0 ),
+	double spinRate;
+	GetParam( ph, "spin_rate", spinRate, 1.0 );
+	_spinTimer = nh.createTimer( ros::Duration( 1.0 / spinRate ),
 	                             &ArrayCalibrator::TimerCallback,
 	                             this );
 }
@@ -84,10 +86,7 @@ void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 
 	_graph.GetOptimizer().write( std::cout );
 	Print();
-	// if( !_observations.empty() )
-	// {
 	_graph.GetOptimizer().update();
-	// }
 }
 
 void ArrayCalibrator::Save()

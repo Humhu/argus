@@ -114,6 +114,7 @@ target_link_libraries( cam_throttler
 
 ## Mark executables and/or libraries for installation
 install(TARGETS manycal
+                array_calibrator_node
                 #fiducial_array_calibrator_node
                 #camera_array_calibrator_node
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
