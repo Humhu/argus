@@ -33,9 +33,11 @@ public:
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 	ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	~ArrayCalibrator();
 
 	void ProcessUntil( const ros::Time& until );
 	void Print();
+	void Save();
 
 private:
 
@@ -58,6 +60,8 @@ private:
 	DetectionsBuffer _detBuffer;
 	ros::Time _buffTime;
 	ros::Duration _maxLag;
+
+	std::string _savePath;
 
 	/*! \brief Stores subscriptions to odometry and detection inputs. */
 	typedef std::unordered_map<std::string, CameraRegistration::Ptr> CameraRegistry;

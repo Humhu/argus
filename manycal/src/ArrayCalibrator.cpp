@@ -66,9 +66,16 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		ROS_INFO_STREAM( "Subscribing to detections on " << topic );
 	}
 
+	GetParamRequired( ph, "save_path", _savePath );
+
 	_spinTimer = nh.createTimer( ros::Duration( 1.0 ),
 	                             &ArrayCalibrator::TimerCallback,
 	                             this );
+}
+
+ArrayCalibrator::~ArrayCalibrator()
+{
+	Save();
 }
 
 void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
@@ -81,6 +88,25 @@ void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 	// {
 	_graph.GetOptimizer().update();
 	// }
+}
+
+void ArrayCalibrator::Save()
+{
+	std::vector<RelativePose> extrinsics;
+	typedef CameraRegistry::value_type CameraItem;	
+	BOOST_FOREACH( const CameraItem &item, _cameraRegistry )
+	{
+		CameraRegistration::Ptr cam = item.second;
+		extrinsics.emplace_back( cam->parent._name, cam->_name, cam->GetExtrinsicsPose() );
+	}
+
+	typedef FiducialRegistry::value_type FiducialItem;
+	BOOST_FOREACH( const FiducialItem &item, _fiducialRegistry )
+	{
+		FiducialRegistration::Ptr fid = item.second;
+		extrinsics.emplace_back( fid->parent._name, fid->_name, fid->GetExtrinsicsPose() );		
+	}
+	WriteExtrinsicsCalibration( _savePath, extrinsics );
 }
 
 void ArrayCalibrator::Print()
