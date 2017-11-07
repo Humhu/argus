@@ -329,7 +329,7 @@ FiducialRegistration::FiducialRegistration( TargetRegistration& p,
 		Fiducial intr = fiducials.GetInfo( n );
 		if( _optimizeIntrinsics )
 		{
-			unsigned int N = 2 * intr.points.size();
+			unsigned int N = 3 * intr.points.size();
 			MatrixType cov( N, N );
 			GetParam( ph, "intrinsics_prior_cov", cov, 1E-3 * MatrixType::Identity( N, N ) );
 			InitializeIntrinsics( intr, cov );
