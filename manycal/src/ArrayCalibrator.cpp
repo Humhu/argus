@@ -2,8 +2,6 @@
 #include "manycal/ManycalCommon.h"
 #include "manycal/Factors.h"
 
-#include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
-
 #include "argus_utils/geometry/GeometryUtils.h"
 #include "argus_utils/utils/MatrixUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
@@ -19,8 +17,6 @@ namespace argus
 ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	: _nodeHandle( nh ), _privHandle( ph )
 {
-	GetParam( ph, "extrinsics_init_cov", _extInitCov, PoseSE3::CovarianceMatrix::Identity() );
-
 	ros::NodeHandle gh( ph.resolveName( "graph" ) );
 	_graph = GraphOptimizer( gh );
 
@@ -66,8 +62,6 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 		ROS_INFO_STREAM( "Subscribing to detections on " << topic );
 	}
 
-	GetParamRequired( ph, "save_path", _savePath );
-
 	double spinLag;
 	GetParamRequired( ph, "spin_lag", spinLag );
 	_spinLag = ros::Duration( spinLag );
@@ -86,7 +80,10 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 ArrayCalibrator::~ArrayCalibrator()
 {
-	Save();
+	BOOST_FOREACH( const TargetRegistration& target, _targetRegistry )
+	{
+		target.SaveExtrinsics();
+	}
 }
 
 void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
@@ -95,26 +92,8 @@ void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 
 	// _graph.GetOptimizer().write( std::cout );
 	Print();
-	_graph.GetOptimizer().update();
-}
-
-void ArrayCalibrator::Save()
-{
-	std::vector<RelativePose> extrinsics;
-	typedef CameraRegistry::value_type CameraItem;
-	BOOST_FOREACH( const CameraItem &item, _cameraRegistry )
-	{
-		CameraRegistration::Ptr cam = item.second;
-		extrinsics.emplace_back( cam->parent._name, cam->_name, cam->GetExtrinsicsPose() );
-	}
-
-	typedef FiducialRegistry::value_type FiducialItem;
-	BOOST_FOREACH( const FiducialItem &item, _fiducialRegistry )
-	{
-		FiducialRegistration::Ptr fid = item.second;
-		extrinsics.emplace_back( fid->parent._name, fid->_name, fid->GetExtrinsicsPose() );
-	}
-	WriteExtrinsicsCalibration( _savePath, extrinsics );
+	// TODO Switch back to .update()?
+	_graph.GetOptimizer().batch_optimization();
 }
 
 void ArrayCalibrator::Print()
@@ -283,14 +262,14 @@ bool ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 			camExt = camPose.Inverse() * fidPose * fidExt * relPose.Inverse();
 			ROS_INFO_STREAM( "Initializing extrinsics of " << camera->_name <<
 			                 " to " << camExt );
-			camera->InitializeExtrinsics( camExt, _extInitCov );
+			camera->InitializeExtrinsics( camExt );
 		}
 		else // !fidExtInit
 		{
 			fidExt = fidPose.Inverse() * camPose * camExt * relPose;
 			ROS_INFO_STREAM( "Initializing extrinsics of " << fiducial->_name <<
 			                 " to " << fidExt );
-			fiducial->InitializeExtrinsics( fidExt, _extInitCov );
+			fiducial->InitializeExtrinsics( fidExt );
 		}
 	}
 	// If we fail above then there must be more than one uninitialized

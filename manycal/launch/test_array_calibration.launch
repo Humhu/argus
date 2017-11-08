@@ -76,16 +76,21 @@
 
 <node pkg="manycal" type="array_calibrator_node" name="calibrator" output="screen">
     <rosparam>
-        save_path: /tmp/extrinsics.yaml
         detection_topics: [detections]
         max_detection_buffer_lag: 1.0
         spin_lag: 1.0
         spin_rate: 1.0
+
+        detection_img_std: 0.05
+
         targets:
             board:
                 type: dynamic
                 odom_topic: odom
                 optimize_pose: true
+                output_path: /tmp/board_extrinsics.yaml
+                create_prior_on_init: true
+                pose_prior_cov: [1, 1, 1, 1, 1, 1]
                 fiducials:
                     apriltag_36h11_id0:
                         optimize_extrinsics: false
@@ -100,12 +105,15 @@
                     apriltag_36h11_id1:
                         optimize_extrinsics: true
                         optimize_intrinsics: false
+                        init_with_prior: true
                     apriltag_36h11_id2:
                         optimize_extrinsics: true
                         optimize_intrinsics: false
+                        init_with_prior: true
                     apriltag_36h11_id3:
                         optimize_extrinsics: true
                         optimize_intrinsics: false
+                        init_with_prior: true
             cams:
                 type: static
                 initial_pose:
@@ -116,6 +124,7 @@
                     pitch: 0
                     roll: 0
                 optimize_pose: false
+                output_path: /tmp/cams_extrinsics.yaml
                 cameras:
                     elp0:
                         optimize_extrinsics: false

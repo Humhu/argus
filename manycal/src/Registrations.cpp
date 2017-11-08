@@ -2,6 +2,7 @@
 
 #include "argus_utils/utils/ParamUtils.h"
 
+#include "extrinsics_array/ExtrinsicsCalibrationParsers.h"
 #include "extrinsics_array/ExtrinsicsInterface.h"
 #include "camplex/FiducialInfoManager.h"
 
@@ -14,16 +15,17 @@ TargetRegistration::TargetRegistration( const std::string& n,
                                         GraphOptimizer& g,
                                         ros::NodeHandle& nh,
                                         ros::NodeHandle& ph )
-	: RegistrationBase( n, g )
+	: RegistrationBase( n, g ), _isOdomInitialized( false ), _createPriorOnInit( false )
 {
 	std::string type;
 	GetParamRequired( ph, "type", type );
 	_type = string_to_target( type );
 	ROS_INFO_STREAM( "Target: " << _name << " initializing as type: " << type );
+	GetParam( ph, "optimize_pose", _optimizePose, false );
 
 	if( _type == TargetType::TARGET_STATIC )
 	{
-		_poses = std::make_shared<StaticGraphType>( _graph );
+		_poses = std::make_shared<StaticGraphType>( _graph, _optimizePose );
 	}
 	else if( _type == TargetType::TARGET_DYNAMIC )
 	{
@@ -43,11 +45,11 @@ TargetRegistration::TargetRegistration( const std::string& n,
 		ROS_INFO_STREAM( "Target: " << _name << " subscribing to odometry on "
 		                            << topic );
 
-		_poses = std::make_shared<OdomGraphType>( _graph );
+		_poses = std::make_shared<OdomGraphType>( _graph, _optimizePose );
 	}
 	else if( _type == TargetType::TARGET_DISCONTINUOUS )
 	{
-		_poses = std::make_shared<JumpGraphType>( _graph );
+		_poses = std::make_shared<JumpGraphType>( _graph, _optimizePose );
 	}
 	else
 	{
@@ -55,7 +57,15 @@ TargetRegistration::TargetRegistration( const std::string& n,
 	}
 
 	_initialized = false;
-	GetParam( ph, "optimize_pose", _optimizePose, false );
+	if( _optimizePose )
+	{
+		GetParam( ph, "create_prior_on_init", _createPriorOnInit, false );
+		if( _createPriorOnInit )
+		{
+			GetParamRequired( ph, "pose_prior_cov", _initPriorCov );
+		}
+	}
+
 	PoseSE3 initPose;
 	if( GetParam( ph, "initial_pose", initPose ) )
 	{
@@ -100,6 +110,8 @@ TargetRegistration::TargetRegistration( const std::string& n,
 		                                                                        ch );
 		_fiducials.push_back( fid );
 	}
+
+	GetParam( ph, "output_path", _outputPath, "/tmp/" + _name + ".yaml" );
 }
 
 void TargetRegistration::InitializePose( const ros::Time& time,
@@ -107,13 +119,33 @@ void TargetRegistration::InitializePose( const ros::Time& time,
 {
 	isam::PoseSE3 p = PoseToIsam( pose );
 	_poses->CreateNode( time, p );
-	// TODO
-	PoseSE3::CovarianceMatrix cov = PoseSE3::CovarianceMatrix::Identity();
-	_poses->CreatePrior( time, p, isam::Covariance( cov ) );
+
+	if( _createPriorOnInit )
+	{
+		ROS_INFO_STREAM( "Creating prior for pose of " << _name << " at time " <<
+		                 time << " at " << pose );
+		_poses->CreatePrior( time, p, isam::Covariance( _initPriorCov ) );
+	}
 	_lastTime = time;
+	_isOdomInitialized = true;
 }
 
 bool TargetRegistration::IsPoseOptimizing() const { return _optimizePose; }
+
+void TargetRegistration::SaveExtrinsics() const
+{
+	std::vector<RelativePose> extrinsics;
+	BOOST_FOREACH( const CameraRegistration::Ptr & cam, _cameras )
+	{
+		cam->CollectExtrinsics( extrinsics );
+	}
+
+	BOOST_FOREACH( const FiducialRegistration::Ptr & fid, _fiducials )
+	{
+		fid->CollectExtrinsics( extrinsics );
+	}
+	WriteExtrinsicsCalibration( _outputPath, extrinsics );
+}
 
 isam::PoseSE3_Node* TargetRegistration::GetPoseNode( const ros::Time& t )
 {
@@ -165,7 +197,11 @@ const std::vector<FiducialRegistration::Ptr>& TargetRegistration::GetFiducials()
 
 bool TargetRegistration::IsPoseInitialized( const ros::Time& time ) const
 {
-	return _poses->IsGrounded( time );
+	if( _type == TargetType::TARGET_DYNAMIC )
+	{
+		return _isOdomInitialized;
+	}
+	return _poses->IsInitialized( time );
 }
 
 void TargetRegistration::OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg )
@@ -180,33 +216,35 @@ ExtrinsicsRegistration::ExtrinsicsRegistration( TargetRegistration& p,
                                                 const std::string& n,
                                                 GraphOptimizer& g,
                                                 ros::NodeHandle& ph )
-	: RegistrationBase( n, g ), parent( p ), _extInitialized( false )
+	: RegistrationBase( n, g ), parent( p ), _extInitialized( false ),
+	_createPriorOnInit( false )
 {
-	GetParam( ph, "optimize_extrinsics", _optimizeExtrinsics, false );
-
 	_extrinsics = std::make_shared<isam::PoseSE3_Node>();
 	// NOTE We initialize it here so that if node->value() is called it won't segfault
 	_extrinsics->init( PoseToIsam( PoseSE3() ) );
 
+	GetParam( ph, "optimize_extrinsics", _optimizeExtrinsics, false );
+	if( _optimizeExtrinsics )
+	{
+		GetParam( ph, "create_prior_on_init", _createPriorOnInit, false );
+		if( _createPriorOnInit )
+		{
+			GetParamRequired( ph, "extrinsics_prior_cov", _initPriorCov );
+		}
+	}
+
 	PoseSE3 initExt;
 	if( GetParam( ph, "initial_extrinsics", initExt ) )
 	{
-		if( _optimizeExtrinsics )
-		{
-			PoseSE3::CovarianceMatrix cov;
-			GetParam( ph, "extrinsics_prior_cov", cov, 1E-3 * PoseSE3::CovarianceMatrix::Identity() );
-			InitializeExtrinsics( initExt, cov );
-		}
-		else
-		{
-			InitializeExtrinsics( initExt );
-		}
+		InitializeExtrinsics( initExt );
 	}
+
+	GetParam( ph, "output_extrinsics", _outputExtrinsics, true );
 }
 
-void ExtrinsicsRegistration::InitializeExtrinsics( const PoseSE3& pose,
-                                                   const PoseSE3::CovarianceMatrix& cov )
+void ExtrinsicsRegistration::InitializeExtrinsics( const PoseSE3& pose )
 {
+	// TODO Print warning when not optimizing extrinsics but creating a prior
 	isam::PoseSE3 p = PoseToIsam( pose );
 	_extrinsics->init( p );
 	if( _optimizeExtrinsics )
@@ -215,18 +253,34 @@ void ExtrinsicsRegistration::InitializeExtrinsics( const PoseSE3& pose,
 		{
 			_graph.AddNode( _extrinsics );
 		}
-		if( _extrinsicsPrior )
+
+		if( _createPriorOnInit )
 		{
-			_graph.RemoveFactor( _extrinsicsPrior );
+			if( _extrinsicsPrior )
+			{
+				_graph.RemoveFactor( _extrinsicsPrior );
+			}
+			ROS_INFO_STREAM( "Creating prior for extrinsics of " << _name <<
+			                 " at " << pose );
+			isam::Noise noise = isam::Covariance( _initPriorCov );
+			_extrinsicsPrior = std::make_shared<isam::PoseSE3_Prior>( _extrinsics.get(),
+			                                                          isam::PoseSE3( p ),
+			                                                          noise );
+			_graph.AddFactor( _extrinsicsPrior );
 		}
-
-		_extrinsicsPrior = std::make_shared<isam::PoseSE3_Prior>( _extrinsics.get(),
-		                                                          isam::PoseSE3( p ),
-		                                                          isam::Covariance( cov ) );
-
-		_graph.AddFactor( _extrinsicsPrior );
 	}
 	_extInitialized = true;
+}
+
+bool ExtrinsicsRegistration::ShouldOutputExtrinsics() const
+{
+	return _outputExtrinsics;
+}
+
+void ExtrinsicsRegistration::CollectExtrinsics( std::vector<RelativePose>& exts )
+{
+	if( !_outputExtrinsics ) { return; }
+	exts.emplace_back( parent._name, _name, GetExtrinsicsPose() );
 }
 
 bool ExtrinsicsRegistration::IsExtrinsicsInitialized() const

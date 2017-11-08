@@ -25,12 +25,14 @@
 
 namespace argus
 {
+
+// TODO Track the groundedness of the various extrinsics trees to inform users
+// when they don't have enough priors
+
 /*! \brief Calibrates arrays of cameras and fiducials. */
 class ArrayCalibrator
 {
 public:
-
-	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 	ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph );
 	~ArrayCalibrator();
@@ -76,7 +78,6 @@ private:
 	GraphOptimizer _graph;
 	std::vector<isam::FiducialFactor::Ptr> _observations;
 
-	PoseSE3::CovarianceMatrix _extInitCov;
 	double _detectionImgVariance;
 
 	void TimerCallback( const ros::TimerEvent& event );
