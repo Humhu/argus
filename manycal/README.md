@@ -21,10 +21,17 @@ Clearly, robots and walls don't exhibit the same dynamics, and manycal is able t
 ## Toggling Optimization of Variables
 Not all extrinsics and intrinsics have to be optimized. For instance, if we want to fix a particular fiducial in our map to be at the origin, we would not want the optimization to optimize that extrinsics variable. By default, all variables are **not** optimized unless specified. Further details are explained below in the parameter interface to `array_calibrator_node`.
 
-## Initializing Variables
+## Statically Initializing Variables
 If prior information is available or if a variable is not to be optimized, it is helpful to provide an initialization. Currently only extrinsics initializations are supported for array members, as well as pose initializations for target frames. 
 
 Note that a target pose initialization is applied at startup. This means that a dynamic target will have its first pose initialized at a very early time. If this time precedes any odometry messages for that target, later attempts to build the target odometry pose graph will fail, so it is currently not recommended to use pose initialization for dynamic targets.
+
+## Dynamically Initializing Variables
+A fiducial observation involves a closed pose chain:
+```
+camera_target_pose -> camera_extrinsics -> observation -> fiducial_extrinsics -> fiducial_target_pose
+```
+If only one of these elements in the chain is unknown, it can be estimated from the other known quantities. 
 
 ## Camera Intrinsics Model
 We use a rudimentary pinhole camera model with a separate focal lengths and a principal point. Thus, we recommend that you use normalized and undistorted fiducial detections.
@@ -69,6 +76,8 @@ Manycal uses private ROS parameters to read in an optimization specification. Th
 * `[target_name]/type`: (string, 'static', 'dynamic', or 'discontinuous') The motion mode of this target
 * `[target_name]/optimize_pose`: (bool, default False) Whether or not to optimize the target pose(s)
 * `[target_name]/initial_pose`: (Pose) If given, initializes the target pose at startup time
+* `[target_name]/create_prior_on_init`: (bool, default False) Whether or not to create a prior on initialization
+* `[target_name]/pose_prior_cov`: (6x6 matrix, required if create_prior_on_init) The prior covariance
 * `[target_name]/prefix_members`: (bool, default False) If enabled, prefixes target_name to each of the array member names
 * `[target_name]/cameras`: Nested camera specifications for all member cameras (see below)
 * `[target_name]/fiducials`: Nested fiducial specifications for all member fiducials (see below)
