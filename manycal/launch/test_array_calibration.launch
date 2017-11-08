@@ -1,0 +1,136 @@
+<launch>
+
+<node pkg="camplex" type="camera_node" name="camera0">
+    <remap from="~image_raw" to="image_raw"/>
+    <rosparam>
+        camera_name: elp0
+        device_path: /dev/video0
+        frame_rate: 31
+        camera_info_url: file:///home/humphreh/.ros/camera_info/elp0.yaml
+    </rosparam>
+</node>
+
+<node pkg="camplex" type="camera_node" name="camera1">
+    <remap from="~image_raw" to="image_raw"/>
+    <rosparam>
+        camera_name: elp1
+        device_path: /dev/video1
+        frame_rate: 31
+        camera_info_url: file:///home/humphreh/.ros/camera_info/elp1.yaml
+    </rosparam>
+</node>
+
+<node pkg="camplex" type="viewer_node" name="viewer0">
+    <remap from="image" to="image_raw"/>
+    <param name="~source_name" value="elp0"/>
+</node>
+
+<node pkg="camplex" type="viewer_node" name="viewer1">
+    <remap from="image" to="image_raw"/>
+    <param name="~source_name" value="elp1"/>
+</node>
+
+<node pkg="atags" type="detector_node" name="detector" output="screen">
+  <remap from="image" to="image_raw"/>
+  <remap from="~detections" to="detections"/>
+  <rosparam>
+        detector:
+            enable_undistortion: true
+            enable_normalization: true
+            tag_family: 36h11
+            max_skewness_ratio: 3.0
+            min_area_product: 4000
+        buffer_size: 2
+        num_threads: 2
+  </rosparam>
+</node>
+
+<node pkg="atags" type="atag_registrar_node" name="atags" output="screen">
+    <rosparam>
+        tag0:
+            family: 36h11
+            width: 0.082
+            id: 0
+        tag1:
+            family: 36h11
+            width: 0.082
+            id: 1
+        tag2:
+            family: 36h11
+            width: 0.082
+            id: 2
+        tag3:
+            family: 36h11
+            width: 0.082
+            id: 3
+    </rosparam>
+</node>
+
+<node pkg="manycal" type="dummy_odometry" name="dummy" output="screen">
+    <rosparam>
+        rate: 10.0
+        frame_id: board
+        covariance_rate: [1, 1, 1, 1, 1, 1]
+    </rosparam>
+</node>
+
+<node pkg="manycal" type="array_calibrator_node" name="calibrator" output="screen">
+    <rosparam>
+        save_path: /tmp/extrinsics.yaml
+        detection_topics: [detections]
+        max_detection_buffer_lag: 1.0
+        spin_lag: 1.0
+        spin_rate: 1.0
+        targets:
+            board:
+                type: dynamic
+                odom_topic: odom
+                optimize_pose: true
+                fiducials:
+                    apriltag_36h11_id0:
+                        optimize_extrinsics: false
+                        optimize_intrinsics: false
+                        initial_extrinsics:
+                            x: 0
+                            y: 0
+                            z: 0
+                            yaw: 0
+                            pitch: 0
+                            roll: 0
+                    apriltag_36h11_id1:
+                        optimize_extrinsics: true
+                        optimize_intrinsics: false
+                    apriltag_36h11_id2:
+                        optimize_extrinsics: true
+                        optimize_intrinsics: false
+                    apriltag_36h11_id3:
+                        optimize_extrinsics: true
+                        optimize_intrinsics: false
+            cams:
+                type: static
+                initial_pose:
+                    x: 0
+                    y: 0
+                    z: 0
+                    yaw: 0
+                    pitch: 0
+                    roll: 0
+                optimize_pose: false
+                cameras:
+                    elp0:
+                        optimize_extrinsics: false
+                        optimize_intrinsics: false
+                        initial_extrinsics:
+                            x: 0
+                            y: 0
+                            z: 0
+                            yaw: 0
+                            pitch: 0
+                            roll: 0
+                    elp1:
+                        optimize_extrinsics: true
+                        optimize_intrinsics: false
+    </rosparam>
+</node>
+
+</launch>
