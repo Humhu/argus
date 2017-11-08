@@ -77,6 +77,7 @@ Manycal uses private ROS parameters to read in an optimization specification. Th
 * `[target_name]/odom_topic`: (string) The odometry topic for this target
 * `[target_name]/integrator_buffer_len`: (float, default 10.0) How many seconds of odometry info to buffer
 * `[target_name]/odom_buffer_len`: (unsigned int, default 10) The odometry topic subscriber buffer length
+* `[target_name]/odom_cov_offset`: (6x6 matrix, default Zero) Offset added to integrated odometry covariance for conditioning
 
 ### Common to All Array Members
 * `[member_name]/optimize_extrinsics`: (bool, default False) Whether or not to optimize the extrinsic pose
@@ -105,6 +106,7 @@ The general array calibration node. Reads in an optimization specification throu
 * `~save_path`: (string) The output extrinsics YAML file path
 * `~spin_lag`: (float) The processing lag in seconds
 * `~spin_rate`: (float, default 1.0) The processing rate in Hz
+* `~detection_img_std`: (float, default 0.01) Standard deviation of expected fiducial detection errors in normalized image coordinates (0.01 means 1% of image size)
 
 # Tools
 ## udev-rules generator
