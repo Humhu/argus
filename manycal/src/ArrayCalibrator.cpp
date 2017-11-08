@@ -72,6 +72,11 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	GetParamRequired( ph, "spin_lag", spinLag );
 	_spinLag = ros::Duration( spinLag );
 
+	double imgStd;
+	GetParam( ph, "detection_img_std", imgStd, 0.01 );
+	_detectionImgVariance = imgStd * imgStd;
+	ROS_INFO_STREAM( "Using normalized image coordinate std dev " << imgStd );
+
 	double spinRate;
 	GetParam( ph, "spin_rate", spinRate, 1.0 );
 	_spinTimer = nh.createTimer( ros::Duration( 1.0 / spinRate ),
@@ -299,7 +304,8 @@ bool ArrayCalibrator::ProcessDetection( const std::string& sourceName,
 
 	// Otherwise everything is initialized
 	isam::FiducialFactor::Ptr factor;
-	MatrixType cov = MatrixType::Identity( 2 * det.points.size(), 2 * det.points.size() );
+	unsigned int N = 2 * det.points.size();
+	MatrixType cov = _detectionImgVariance * MatrixType::Identity( N, N );
 	factor = create_fiducial_factor( time,
 	                                 det,
 	                                 cov,

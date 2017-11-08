@@ -34,6 +34,8 @@ TargetRegistration::TargetRegistration( const std::string& n,
 		_velocityIntegrator.SetMaxBuffLen( tLen );
 		GetParam( ph, "odom_buffer_len", buffLen, (unsigned int) 10 );
 		GetParamRequired( ph, "odom_topic", topic );
+		GetParam( ph, "odom_cov_offset", _odomOffset,
+		          PoseSE3::CovarianceMatrix::Zero() );
 		_odomSub = nh.subscribe( topic,
 		                         buffLen,
 		                         &TargetRegistration::OdometryCallback,
@@ -134,6 +136,7 @@ isam::PoseSE3_Node* TargetRegistration::GetPoseNode( const ros::Time& t )
 			ROS_ERROR_STREAM( "Could not integrate odometry" );
 			return nullptr;
 		}
+		cov += _odomOffset;
 
 		PoseSE3 prevPose = IsamToPose( _poses->RetrieveNode( _lastTime )->value() );
 		_poses->CreateNode( t, prevPose * disp );
@@ -217,7 +220,6 @@ void ExtrinsicsRegistration::InitializeExtrinsics( const PoseSE3& pose,
 			_graph.RemoveFactor( _extrinsicsPrior );
 		}
 
-		// TODO Covariance argument
 		_extrinsicsPrior = std::make_shared<isam::PoseSE3_Prior>( _extrinsics.get(),
 		                                                          isam::PoseSE3( p ),
 		                                                          isam::Covariance( cov ) );

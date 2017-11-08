@@ -141,6 +141,8 @@ public:
 	const std::vector<CameraRegistration::Ptr>& GetCameras() const;
 	const std::vector<FiducialRegistration::Ptr>& GetFiducials() const;
 
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 private:
 
 	typedef PoseGraph<isam::PoseSE3, ros::Time> PoseGraphType;
@@ -155,6 +157,7 @@ private:
 
 	ros::Time _lastTime;
 	VelocityIntegratorSE3 _velocityIntegrator;
+	PoseSE3::CovarianceMatrix _odomOffset;
 
 	std::vector<CameraRegistration::Ptr> _cameras;
 	std::vector<FiducialRegistration::Ptr> _fiducials;

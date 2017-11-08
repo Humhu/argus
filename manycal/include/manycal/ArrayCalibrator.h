@@ -77,6 +77,7 @@ private:
 	std::vector<isam::FiducialFactor::Ptr> _observations;
 
 	PoseSE3::CovarianceMatrix _extInitCov;
+	double _detectionImgVariance;
 
 	void TimerCallback( const ros::TimerEvent& event );
 
