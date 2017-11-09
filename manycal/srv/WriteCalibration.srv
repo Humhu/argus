@@ -1,1 +1,4 @@
-string calibrationPath
+# WriteCalibration
+#
+# Requests that a final calibration be generated and stored
+---

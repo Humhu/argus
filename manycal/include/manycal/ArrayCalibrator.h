@@ -25,7 +25,6 @@
 
 namespace argus
 {
-
 // TODO Track the groundedness of the various extrinsics trees to inform users
 // when they don't have enough priors
 
@@ -50,7 +49,7 @@ private:
 	ros::Timer _spinTimer;
 	ros::Duration _spinLag;
 
-	Mutex _mutex;
+	Mutex _buffMutex;
 	std::vector<ros::Subscriber> _detSubs;
 
 	struct DetectionData
@@ -59,6 +58,7 @@ private:
 		ros::Time timestamp;
 		FiducialDetection detection;
 	};
+
 	typedef std::deque<DetectionData> DetectionsBuffer;
 	DetectionsBuffer _detBuffer;
 	ros::Time _buffTime;
@@ -69,16 +69,20 @@ private:
 	/*! \brief Stores subscriptions to odometry and detection inputs. */
 	typedef std::unordered_map<std::string, CameraRegistration::Ptr> CameraRegistry;
 	typedef std::unordered_map<std::string, FiducialRegistration::Ptr> FiducialRegistry;
-	
+
 	// NOTE Must be deque so that memory isn't moved and references don't break
 	std::deque<TargetRegistration> _targetRegistry;
 	CameraRegistry _cameraRegistry;
 	FiducialRegistry _fiducialRegistry;
 
+	Mutex _optMutex;	
 	GraphOptimizer _graph;
 	std::vector<isam::FiducialFactor::Ptr> _observations;
 
 	double _detectionImgVariance;
+
+	bool WriteHandler( manycal::WriteCalibration::Request& req,
+	                   manycal::WriteCalibration::Response& res );
 
 	void TimerCallback( const ros::TimerEvent& event );
 
