@@ -80,10 +80,22 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 ArrayCalibrator::~ArrayCalibrator()
 {
-	BOOST_FOREACH( const TargetRegistration& target, _targetRegistry )
+	BOOST_FOREACH( const TargetRegistration &target, _targetRegistry )
 	{
 		target.SaveExtrinsics();
 	}
+}
+
+bool ArrayCalibrator::WriteHandler( manycal::WriteCalibration::Request& req,
+                                    manycal::WriteCalibration::Response& res )
+{
+	WriteLock lock( _optMutex );	
+	_graph.GetOptimizer().batch_optimization();
+	BOOST_FOREACH( const TargetRegistration &target, _targetRegistry )
+	{
+		target.SaveExtrinsics();
+	}
+	return true;
 }
 
 void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
@@ -93,6 +105,7 @@ void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 	// _graph.GetOptimizer().write( std::cout );
 	Print();
 	// TODO Switch back to .update()?
+	WriteLock lock( _optMutex );
 	_graph.GetOptimizer().batch_optimization();
 }
 
@@ -117,7 +130,7 @@ void ArrayCalibrator::Print()
 
 void ArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetections::ConstPtr& msg )
 {
-	WriteLock lock( _mutex );
+	WriteLock lock( _buffMutex );
 	ImageFiducialDetections dets( *msg );
 	if( dets.detections.empty() ) { return; }
 
@@ -143,7 +156,7 @@ void ArrayCalibrator::ProcessUntil( const ros::Time& until )
 	}
 
 	// TODO Copy detections out with mutex, then process?
-	WriteLock lock( _mutex );
+	WriteLock lock( _buffMutex );
 	unsigned int numProcessed = 1;
 	DetectionsBuffer unprocessed( _detBuffer.size() );
 	while( numProcessed != 0 )
