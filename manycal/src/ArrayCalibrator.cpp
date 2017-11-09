@@ -80,6 +80,7 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 
 ArrayCalibrator::~ArrayCalibrator()
 {
+  _graph.GetOptimizer().batch_optimization();
 	BOOST_FOREACH( const TargetRegistration& target, _targetRegistry )
 	{
 		target.SaveExtrinsics();
@@ -92,8 +93,7 @@ void ArrayCalibrator::TimerCallback( const ros::TimerEvent& event )
 
 	// _graph.GetOptimizer().write( std::cout );
 	Print();
-	// TODO Switch back to .update()?
-	_graph.GetOptimizer().batch_optimization();
+	_graph.GetOptimizer().update();
 }
 
 void ArrayCalibrator::Print()
@@ -130,7 +130,7 @@ void ArrayCalibrator::DetectionCallback( const argus_msgs::ImageFiducialDetectio
 		_detBuffer.push_back( data );
 	}
 
-	ROS_INFO_STREAM( _detBuffer.size() << " detections buffered" );
+	//ROS_INFO_STREAM( _detBuffer.size() << " detections buffered" );
 }
 
 void ArrayCalibrator::ProcessUntil( const ros::Time& until )

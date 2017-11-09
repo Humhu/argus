@@ -32,6 +32,9 @@ isam::FiducialFactor::Ptr create_fiducial_factor( const ros::Time& time,
 		return nullptr;
 	}
 
+	if( !camParentNode->initialized() ) { ROS_ERROR_STREAM( "Camera parent node not initialized!" ); }
+	if( !fidParentNode->initialized() ) { ROS_ERROR_STREAM( "Fiducial parent node not initialized!" ); }
+
 	return std::make_shared<isam::FiducialFactor>( camParentNode,
 	                                               camera.GetIntrinsicsNode(),
 	                                               camera.GetExtrinsicsNode(),
