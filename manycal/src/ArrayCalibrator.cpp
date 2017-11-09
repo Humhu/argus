@@ -75,7 +75,9 @@ ArrayCalibrator::ArrayCalibrator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	GetParam( ph, "spin_rate", spinRate, 1.0 );
 	_spinTimer = nh.createTimer( ros::Duration( 1.0 / spinRate ),
 	                             &ArrayCalibrator::TimerCallback,
-	                             this );
+								 this );
+								 
+	_writeServer = ph.advertiseService( "write_calibration", &ArrayCalibrator::WriteHandler, this );
 }
 
 ArrayCalibrator::~ArrayCalibrator()
