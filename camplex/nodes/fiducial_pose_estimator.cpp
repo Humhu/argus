@@ -27,7 +27,7 @@ public:
 		_extrinsicsInterface( nh, ph )
 	{
 		GetParam<std::string>( ph, "reference_frame", _refFrame, "" );
-		GetParam<std::string>( ph, "robot_frame", _robotFrame, "base_link");
+		GetParam<std::string>( ph, "body_frame", _robotFrame, "base_link");
 
 		bool combineDetect;
 		GetParam( ph, "combine_detections", combineDetect, true);
