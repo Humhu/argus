@@ -169,9 +169,12 @@ isam::PoseSE3_Node* TargetRegistration::GetPoseNode( const ros::Time& t )
 			return nullptr;
 		}
 		cov += _odomOffset;
+		// HACK
+		// cov = (t - _lastTime).toSec() * _odomOffset;
 
 		PoseSE3 prevPose = IsamToPose( _poses->RetrieveNode( _lastTime )->value() );
 		_poses->CreateNode( t, prevPose * disp );
+		//ROS_INFO_STREAM( "Creating node for " << _name << " at " << t );
 		_poses->CreateEdge( _lastTime, t,
 		                    PoseToIsam( disp ), isam::Covariance( cov ) );
 	}
@@ -397,7 +400,7 @@ FiducialRegistration::FiducialRegistration( TargetRegistration& p,
 	}
 	else
 	{
-		ROS_WARN_STREAM( "Could not find fiducial intrinsics for " << n );
+		ROS_ERROR_STREAM( "Could not find fiducial intrinsics for " << n );
 	}
 }
 
