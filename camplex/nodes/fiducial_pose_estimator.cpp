@@ -122,7 +122,7 @@ private:
 		const std::string& cameraName = msg->header.frame_id;
 		const ros::Time& detTime = msg->header.stamp;
 
-		std::vector<Fiducial> fids;
+		std::vector<Fiducial> fids, arrayFids;
 		std::vector<FiducialDetection> detections;
 		std::vector<PoseSE3> fidExts;
 		// 1. Process all fiducials
@@ -134,6 +134,7 @@ private:
 
 			Fiducial fidTrans = fid.Transform( extrinsics );
 			fids.push_back( fid );
+			arrayFids.push_back( fidTrans );
 			fidExts.push_back( extrinsics );
 			detections.push_back( det );
 		}
@@ -143,7 +144,7 @@ private:
 			return;
 		}
 
-		PoseSE3 relPose = EstimateArrayPose( detections, fids );
+		PoseSE3 relPose = EstimateArrayPose( detections, arrayFids );
 
 		geometry_msgs::TransformStamped poseMsg;
 		poseMsg.header.stamp = msg->header.stamp;
