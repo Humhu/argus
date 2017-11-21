@@ -97,7 +97,7 @@ private:
 		{
 			if( !_fiducialManager.ReadMemberInfo( name, true ) )
 			{
-				ROS_INFO_STREAM( "Could not read intrinsics for " << name );
+				ROS_INFO_STREAM_THROTTLE( 30, "Could not read intrinsics for " << name );
 				return false;
 			}
 		}
@@ -112,7 +112,7 @@ private:
 		}
 		catch( ExtrinsicsException& ex )
 		{
-			ROS_INFO_STREAM( "Could not get extrinsics for " << name << std::endl << ex.what() );
+			ROS_INFO_STREAM_THROTTLE( 30, "Could not get extrinsics for " << name << std::endl << ex.what() );
 			return false;
 		}
 	}
