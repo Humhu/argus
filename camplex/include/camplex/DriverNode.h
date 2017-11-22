@@ -65,6 +65,7 @@ private:
 	StreamingMode _mode;
 
 	std::string _cameraName;
+	std::string _cameraFrame;
 	CameraDriver _driver;
 
 	std::deque<NumericParam> _numericParams;

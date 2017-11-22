@@ -35,6 +35,7 @@ DriverNode::DriverNode( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	// Name uniquely IDs camera and validates calibration file
 	GetParamRequired( ph, "camera_name", _cameraName );
 	_cameraInfoManager->setCameraName( _cameraName );
+        GetParam( ph, "camera_frame", _cameraFrame, _cameraName );
 
 	std::string calibFile;
 	if( GetParam( ph, "camera_info_url", calibFile ) )
@@ -278,7 +279,7 @@ void DriverNode::Spin()
 {
 	cv::Mat frame;
 	std_msgs::Header header;
-	header.frame_id = _cameraName;
+	header.frame_id = _cameraFrame;
 
 	while( !ros::isShuttingDown() )
 	{
