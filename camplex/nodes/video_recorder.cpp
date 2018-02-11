@@ -17,6 +17,14 @@ public:
 		imageSub = imagePort.subscribe( "image", 5, &VideoRecorder::ImageCallback, this );	
 		
 		ROS_INFO_STREAM( "Recording video to output: " << outputName );
+
+		std::string ccCode;
+		ph.param<std::string>( "encoding", ccCode, "XVID" );
+		if( ccCode.size() != 4 )
+		{
+			throw std::invalid_argument("Encoding must be length 4 but got " + ccCode );
+		}
+		fourCC = cv::VideoWriter::fourcc(ccCode[0], ccCode[1], ccCode[2], ccCode[3] );
 	}
 	
 	void ImageCallback( const sensor_msgs::ImageConstPtr& msg )
@@ -34,8 +42,7 @@ public:
 		
 		if( !vidWriter.isOpened() )
 		{
-			vidWriter.open( outputName, cv::VideoWriter::fourcc('X','V','I','D'),
-			                framerate, frame->image.size() );
+			vidWriter.open( outputName, fourCC, framerate, frame->image.size() );
 		}
 		
 		vidWriter.write( frame->image );
@@ -48,6 +55,7 @@ private:
 	image_transport::Subscriber imageSub;
 	cv::VideoWriter vidWriter;
 	
+	int fourCC;
 	std::string outputName;
 	int framerate;
 	
