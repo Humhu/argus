@@ -32,14 +32,13 @@ TargetRegistration::TargetRegistration( const std::string& n,
 		double tLen;
 		unsigned int buffLen;
 		std::string topic;
-		bool enable_odom_prior;
 		GetParam( ph, "integrator_buffer_len", tLen, 10.0 );
 		_velocityIntegrator.SetMaxBuffLen( tLen );
 		GetParam( ph, "odom_buffer_len", buffLen, (unsigned int) 10 );
 		GetParamRequired( ph, "odom_topic", topic );
 		GetParam( ph, "odom_cov_offset", _odomOffset,
 		          PoseSE3::CovarianceMatrix::Zero() );
-		GetParam( ph, "enable_odom_prior", enable_odom_prior, false);
+		GetParam( ph, "enable_odom_prior", _enableOdomPrior, false);
 		
 		_odomSub = nh.subscribe( topic,
 	        	                 buffLen,
@@ -47,19 +46,6 @@ TargetRegistration::TargetRegistration( const std::string& n,
 	                        	 this );
 		ROS_INFO_STREAM( "Target: " << _name << " subscribing to odometry on "
 		       	                    << topic );
-		if(enable_odom_prior)
-		{	
-			std::string odom_prior_topic;
-			GetParamRequired( ph, "odom_prior_topic", odom_prior_topic );
-			
-			_odomPriorSub = nh.subscribe( topic,
-						      buffLen,
-						      &TargetRegistration::OdometryPriorCallback,
-						      this );
-
-			ROS_INFO_STREAM( "Target: " << _name << " subscribing to odometry prior on "
-						    << odom_prior_topic );
-		}	
 
 		_poses = std::make_shared<OdomGraphType>( _graph, _optimizePose );
 	}
@@ -225,21 +211,24 @@ bool TargetRegistration::IsPoseInitialized( const ros::Time& time ) const
 
 void TargetRegistration::OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg )
 {
-	PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
-	PoseSE3::CovarianceMatrix cov;
-	ParseMatrix( msg->twist.covariance, cov ); // TODO Check return?
-	_velocityIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
-}
+	if(_enableOdomPrior)
+	{
+		ros::Time time = msg->header.stamp;
+		PoseSE3 prior = MsgToPose( msg->pose.pose );
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix ( msg->pose.covariance, cov ); 
 
-void TargetRegistration::OdometryPriorCallback( const nav_msgs::Odometry::ConstPtr& msg )
-{
-	ros::Time time = msg->header.stamp;
-	PoseSE3 prior = MsgToPose( msg->pose.pose );
-	PoseSE3::CovarianceMatrix cov;
-	ParseMatrix ( msg->pose.covariance, cov ); 
-
-	isam::PoseSE3 p = PoseToIsam( prior );
-	_poses->CreatePrior( time, p, isam::Covariance( cov ) );
+		isam::PoseSE3 p = PoseToIsam( prior );
+		_poses->CreatePrior( time, p, isam::Covariance( cov ) );
+			
+	}
+	else	
+	{
+		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
+		PoseSE3::CovarianceMatrix cov;
+		ParseMatrix( msg->twist.covariance, cov ); // TODO Check return?
+		_velocityIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
+	}
 }
 
 ExtrinsicsRegistration::ExtrinsicsRegistration( TargetRegistration& p,

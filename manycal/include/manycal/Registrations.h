@@ -176,9 +176,9 @@ private:
 
 	ros::Subscriber _detSub;
 	ros::Subscriber _odomSub;
-	ros::Subscriber _odomPriorSub;
 
 	ros::Time _lastTime;
+	bool _enableOdomPrior;
 	bool _isOdomInitialized;
 	VelocityIntegratorSE3 _velocityIntegrator;
 	PoseSE3::CovarianceMatrix _odomOffset;
@@ -196,7 +196,6 @@ private:
 	std::string _outputPath;
 
 	void OdometryCallback( const nav_msgs::Odometry::ConstPtr& msg );
-	void OdometryPriorCallback( const nav_msgs::Odometry::ConstPtr& msg);
 	// TODO Support more message types for velocity integration
 };
 }
