@@ -62,6 +62,7 @@ add_library( odoflow
 	src/FASTPointDetector.cpp
 	src/FixedPointDetector.cpp
 	src/LKPointTracker.cpp
+	src/MotionPredictor.cpp
 	src/OdoflowCommon.cpp
 	src/RigidEstimator.cpp
 )

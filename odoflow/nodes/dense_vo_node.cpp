@@ -7,13 +7,12 @@
 #include <nav_msgs/Odometry.h>
 
 #include "odoflow/ECCDenseTracker.h"
+#include "odoflow/MotionPredictor.h"
+
 #include "argus_utils/geometry/GeometryUtils.h"
 #include "argus_utils/utils/ParamUtils.h"
 #include "paraset/ParameterManager.hpp"
 #include "camplex/FiducialCommon.h"
-#include "extrinsics_array/ExtrinsicsInterface.h"
-#include "argus_utils/geometry/VelocityIntegrator.hpp"
-#include "argus_utils/random/MultivariateGaussian.hpp"
 
 using namespace argus;
 
@@ -24,71 +23,45 @@ EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 public:
 
 	DenseVONode( ros::NodeHandle& nh, ros::NodeHandle& ph )
-		: _imageTrans( nh ), _extrinsics( nh, ph ), _tracker( nh, ph )
+		: _imageTrans( nh ), _tracker( nh, ph ), _predictor( nh, ph )
 	{
-		_imageSub = _imageTrans.subscribe( "image",
-		                                   2,
-		                                   boost::bind( &DenseVONode::ImageCallback, this, _1 ) );
-		_twistPub = ph.advertise<geometry_msgs::TwistStamped>( "velocity_raw", 10 );
-
-		_pyramidDepth.InitializeAndRead( ph, 0, "pyramid_depth", "Number of image pyramids" );
+		// Initialize all runtime parameters
+		_pyramidDepth.InitializeAndRead( ph, 0, "pyramid_depth",
+		                                 "Number of image pyramids" );
 		_pyramidDepth.AddCheck<IntegerValued>();
 		_pyramidDepth.AddCheck<GreaterThanOrEqual>( 0 );
 
-		_maxDisplacement.InitializeAndRead( ph, 0.2, "max_displacement", "Max keyframe displacement as ratio of image dimension" );
+		_maxDisplacement.InitializeAndRead( ph, 0.2, "max_displacement",
+		                                    "Max keyframe displacement as ratio of image dimension" );
 		_maxDisplacement.AddCheck<GreaterThanOrEqual>( 0.0 );
 		_maxDisplacement.AddCheck<LessThanOrEqual>( 1.0 );
 
-		_maxPredictEntropy.InitializeAndRead( ph, 1.0, "max_predict_entropy", "Max predict uncertainty entropy" );
-
-		_minTimeDelta.InitializeAndRead( ph, 0.0, "min_time_delta", "Min time between frames to estimate velocity" );
+		_minTimeDelta.InitializeAndRead( ph, 0.0, "min_time_delta",
+		                                 "Min time between frames to estimate velocity" );
 		_minTimeDelta.AddCheck<GreaterThanOrEqual>( 0.0 );
 
-		GetParamRequired( ph, "scale", _scale );
-		GetParam( ph, "min_pixel_variance", _minPixelVariance, 10.0 );
+		_minPixelVariance.InitializeAndRead( ph, 10.0, "min_pixel_variance",
+		                                     "Minimum raw intensity variance across image" );
+		_minPixelVariance.AddCheck<GreaterThanOrEqual>( 0.0 );
 
-		GetParam( ph, "enable_prediction", _enablePrediction, false );
-		if( _enablePrediction )
-		{
-			std::string predictionMode;
-			GetParam<std::string>( ph, "prediction_mode", predictionMode, "odom" );
-			if( predictionMode == "odometry" )
-			{
-				_trueSub = nh.subscribe( "odom", 10, &DenseVONode::OdomCallback, this );			
-			}
-			else if( predictionMode == "twist_stamped" )
-			{
-				_trueSub = nh.subscribe( "odom", 10, &DenseVONode::TwistStampedCallback, this );			
-			}
-			else
-			{
-				throw std::invalid_argument("Unknown prediction mode");
-			}
-		}
+		GetParamRequired( ph, "scale", _scale );
+
+		_twistPub = ph.advertise<geometry_msgs::TwistStamped>( "velocity_raw", 10 );
+		unsigned int buffSize;
+		GetParam<unsigned int>( ph, "buffer_size", buffSize, 2 );
+		_imageSub = _imageTrans.subscribe( "image",
+		                                   buffSize,
+		                                   &DenseVONode::ImageCallback,
+		                                   this );
 
 		GetParam( ph, "debug", _debug, false );
 		if( _debug )
 		{
+			std::string debugTopicName = ph.resolveName( "image_debug" );
+			ROS_INFO_STREAM( "Displaying debug output on topic" << debugTopicName );
 			_debugPub = _imageTrans.advertise( "image_debug", 1 );
 			GetParam( ph, "vis_arrow_scale", _visArrowScale, 1.0 );
 		}
-	}
-
-	void OdomCallback( const nav_msgs::Odometry::ConstPtr& msg )
-	{
-		PoseSE3::TangentVector vel = MsgToTangent( msg->twist.twist );
-		PoseSE3::CovarianceMatrix cov;
-		ParseMatrix( msg->twist.covariance, cov );
-		_velIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
-		_odomFrame = msg->child_frame_id;
-	}
-
-	void TwistStampedCallback( const geometry_msgs::TwistStamped::ConstPtr& msg )
-	{
-		PoseSE3::TangentVector vel = MsgToTangent( msg->twist );
-		PoseSE3::CovarianceMatrix cov = PoseSE3::CovarianceMatrix::Zero();
-		_velIntegrator.BufferInfo( msg->header.stamp.toSec(), vel, cov );
-		_odomFrame = msg->header.frame_id;		
 	}
 
 	void ImageCallback( const sensor_msgs::ImageConstPtr& msg )
@@ -152,65 +125,6 @@ public:
 		_lastVelTime = time;
 	}
 
-	PoseSE2 PredictMotion( const ros::Time& currTime, const std::string& camFrame )
-	{
-		// Can't predict motion if we haven't received any odom messages
-		if( !_enablePrediction || _odomFrame.empty() )
-		{
-			// ROS_WARN_STREAM( "No odometry messages received" );
-			return PoseSE2();
-		}
-
-		PoseSE3 odomDisp;
-		PoseSE3::CovarianceMatrix odomCov;
-		if( !_velIntegrator.Integrate( _lastTime.toSec(), currTime.toSec(),
-		                               odomDisp, odomCov ) )
-		{
-			ROS_WARN_STREAM( "Could not predict motion from " << _keyTime << " to " << currTime );
-			odomDisp = PoseSE3(); // Unnecessary
-			odomCov = PoseSE3::CovarianceMatrix::Identity(); // TODO
-		}
-
-		PoseSE3 odomToCam;
-		PoseSE3 camDisp;
-		PoseSE3::CovarianceMatrix guessCov; // TODO Use the covariance?
-		try
-		{
-			odomToCam = _extrinsics.GetExtrinsics( _odomFrame,
-			                                       camFrame,
-			                                       currTime );
-		}
-		catch( ExtrinsicsException& e )
-		{
-			ROS_WARN_STREAM( "Could not get extrinsics: " << e.what() );
-			return PoseSE2();
-			// guessCov = odomCov;
-		}
-
-		camDisp = odomToCam * odomDisp * odomToCam.Inverse();
-		guessCov = TransformCovariance( odomCov, odomToCam );
-		// HACK
-		MatrixType subCov( 3, 3 );
-		std::vector<unsigned int> inds = {1, 2, 3};
-		GetSubmatrix( guessCov, subCov, inds, inds );
-		double entropy = GaussianEntropy( subCov );
-		if( entropy > _maxPredictEntropy )
-		{
-			ROS_WARN_STREAM( "Motion prediction entropy exceeds limit! Using default prior" );
-			return PoseSE2();
-		}
-
-		PoseSE2 ret;
-		StandardToCamera( camDisp, ret );
-
-		unsigned int imgWidth = _keyPyramid[0].size().width; // NOTE Hack?
-		PoseSE2::TangentVector logRet = PoseSE2::Log( ret );
-		logRet.head<2>() *= imgWidth / _scale;
-		ret = PoseSE2::Exp( logRet );
-
-		return ret;
-	}
-
 	void Visualize( const cv::Mat& curr, const std_msgs::Header& header )
 	{
 		if( !_debug || _keyPyramid.empty() ) { return; }
@@ -228,8 +142,8 @@ public:
 		cv::cvtColor( curr, visRight, cv::COLOR_GRAY2BGR );
 
 		FixedMatrixType<3, 4> corners;
-		corners << 1, 1, width-1, width-1,
-		1, height-1, height-1, 1,
+		corners << 1, 1, width - 1, width - 1,
+		1, height - 1, height - 1, 1,
 		1, 1, 1, 1;
 		FixedMatrixType<2, 4> warped = (_lastPose.ToMatrix() * corners).colwise().hnormalized();
 
@@ -242,8 +156,8 @@ public:
 		cv::line( visLeft, cornerPoints[1], cornerPoints[2], cv::Scalar( 0, 255, 0 ) );
 		cv::line( visLeft, cornerPoints[2], cornerPoints[3], cv::Scalar( 0, 255, 0 ) );
 		cv::line( visLeft, cornerPoints[3], cornerPoints[0], cv::Scalar( 0, 255, 0 ) );
-		
-		cv::Point2f center( height/2, width/2 );
+
+		cv::Point2f center( height / 2, width / 2 );
 		cv::Point2f arrowEnd = cv::Point2f( _lastVel[0], _lastVel[1] ) * _visArrowScale;
 		cv::arrowedLine( visRight, center, arrowEnd + center, cv::Scalar( 0, 255, 0 ) );
 
@@ -256,11 +170,11 @@ public:
 		// Check for image having too little variation
 		cv::Scalar mean, stddev;
 		cv::meanStdDev( img, mean, stddev );
-                if( stddev[0] < _minPixelVariance )
-		  {
-		    ROS_WARN_STREAM( "Pixel variance " << stddev[0] << " less than min " << _minPixelVariance );
-		    return;
-		  }
+		if( stddev[0] < _minPixelVariance )
+		{
+			ROS_WARN_STREAM( "Pixel variance " << stddev[0] << " less than min " << _minPixelVariance );
+			return;
+		}
 
 
 		std::vector<cv::Mat> currPyramid;
@@ -281,13 +195,17 @@ public:
 		if( dt < 0 )
 		{
 			ROS_WARN_STREAM( "Negative dt detected. Resetting keyframe..." );
-			_velIntegrator.Reset(); // Need to dump integration data
+			_predictor.Reset(); // Need to dump integration data
 			SetKeyframe( currPyramid, currTime );
 			Visualize( currPyramid[0], header );
 			return;
 		}
 
-		PoseSE2 disp = PredictMotion( currTime, header.frame_id );
+		double predScale = _keyPyramid[0].size().width / _scale;
+		PoseSE2 disp = _predictor.PredictMotion( _lastTime,
+		                                         currTime,
+		                                         header.frame_id,
+		                                         predScale );
 		PoseSE2 currToKey = _lastPose * disp;
 
 		// Check for field-of-view moving too far from keyframe
@@ -361,18 +279,12 @@ private:
 
 	image_transport::ImageTransport _imageTrans;
 	image_transport::Subscriber _imageSub;
+	ros::Publisher _twistPub;
 
 	bool _debug;
 	image_transport::Publisher _debugPub;
-  double _visArrowScale;
+	double _visArrowScale;
 
-	ros::Publisher _twistPub;
-
-	bool _enablePrediction;
-	ros::Subscriber _trueSub;
-	std::string _odomFrame;
-	VelocityIntegratorSE3 _velIntegrator;
-  double _minPixelVariance;
 
 	// Keyframe
 	std::vector<cv::Mat> _keyPyramid;
@@ -386,12 +298,11 @@ private:
 	double _scale;
 	NumericParam _pyramidDepth;
 	NumericParam _maxDisplacement;
-	NumericParam _maxPredictEntropy;
 	NumericParam _minTimeDelta;
-
-	ExtrinsicsInterface _extrinsics;
+	NumericParam _minPixelVariance;
 
 	ECCDenseTracker _tracker;
+	MotionPredictor _predictor;
 };
 
 int main( int argc, char** argv )
