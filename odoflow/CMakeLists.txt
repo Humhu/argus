@@ -64,15 +64,14 @@ add_library( odoflow
 	src/LKPointTracker.cpp
 	src/OdoflowCommon.cpp
 	src/RigidEstimator.cpp
-	src/VisualOdometryPipeline.cpp
 )
 target_link_libraries( odoflow
 	${OpenCV_LIBS}
 	${catkin_LIBRARIES}
 )
 
-add_executable( visual_odometry_node nodes/visual_odometry_node.cpp )
-target_link_libraries( visual_odometry_node
+add_executable( sparse_vo_node nodes/sparse_vo_node.cpp )
+target_link_libraries( sparse_vo_node
 					   odoflow 
 					   ${catkin_LIBRARIES} )
 
@@ -86,7 +85,7 @@ target_link_libraries( dense_vo_node
 #############
 
 ## Mark executables and/or libraries for installation
-install(TARGETS odoflow visual_odometry_node
+install(TARGETS odoflow sparse_vo_node dense_vo_node
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
