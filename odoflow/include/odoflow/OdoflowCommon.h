@@ -20,25 +20,21 @@ InterestPointsf DowncastInterestPoints( const InterestPoints& in );
 InterestPoints UpcastInterestPoints( const InterestPointsf& in );
 
 // TODO Move into a utils package for open cv? Shared functionality with fiducials package
-InterestPoints UndistortPoints( const InterestPoints& points, 
-                                const CameraCalibration& model,
-                                bool undistort, 
-                                bool normalize );
+InterestPoints UndistortPoints( const InterestPoints& points,
+                                const CameraCalibration& model );
+InterestPoints NormalizePoints( const InterestPoints& points,
+                                const CameraCalibration& model );
+InterestPoints UndistortAndNormalizePoints( const InterestPoints& points,
+                                            const CameraCalibration& model );
+
+/*! \brief Distort and unnormalize points that are normalized and undistorted */
+InterestPoints DistortPoints( const InterestPoints& points,
+                              const CameraCalibration& model );
+InterestPoints UnnormalizePoints( const InterestPoints& points,
+                                  const CameraCalibration& model );
+InterestPoints DistortAndUnnormalizePoints( const InterestPoints& points,
+                                            const CameraCalibration& model );
 
 InterestPoints TransformPoints( const InterestPoints& points,
                                 const PoseSE2& trans );
-
-struct FrameInterestPoints
-{
-	ros::Time time;
-	cv::Mat frame;
-	InterestPoints points;
-	CameraCalibration cameraModel;
-
-	FrameInterestPoints Undistort() const;
-	FrameInterestPoints Normalize() const;
-	FrameInterestPoints Unnormalize() const;
-	FrameInterestPoints UndistortAndNormalize() const;
-};
-
 }

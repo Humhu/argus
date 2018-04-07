@@ -7,16 +7,12 @@
 
 namespace argus
 {
-
 RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: MotionEstimator( nh, ph )
 {
-	GetParam( ph, "scale", _scale );
-
 	double logReprojThreshold;
-	GetParam( ph, "log_reprojection_threshold", logReprojThreshold);
-	_logReprojThreshold.Initialize( ph, logReprojThreshold, 
-	                                "log_reprojection_threshold", 
+	GetParam( ph, "log_reprojection_threshold", logReprojThreshold );
+	_logReprojThreshold.Initialize( ph, logReprojThreshold,
+	                                "log_reprojection_threshold",
 	                                "RANSAC reprojection inlier threshold" );
 
 	unsigned int maxIters;
@@ -27,27 +23,24 @@ RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_maxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 }
 
-bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
-                                     FrameInterestPoints& tar,
-                                     PoseSE3& transform )
+bool RigidEstimator::EstimateMotion( InterestPoints& key,
+                                     InterestPoints& tar,
+									 std::vector<unsigned int>& inlierInds,
+                                     PoseSE2& transform  )
 {
-	if( key.points.empty() || tar.points.empty() )
+	if( key.empty() || tar.empty() )
 	{
 		ROS_INFO_STREAM( "RigidEstimator: Received empty points." );
 		return false;
 	}
 
-
 	std::vector<char> inliers;
-	FrameInterestPoints keyNormalized = key.UndistortAndNormalize();
-	FrameInterestPoints tarNormalized = tar.UndistortAndNormalize();
-
 	// We want tar in frame of key, so this is the ordering
-	cv::Mat Hxest = cv::findHomography( tarNormalized.points, 
-	                                    keyNormalized.points, 
-	                                    cv::RANSAC, 
+	cv::Mat Hxest = cv::findHomography( tar,
+	                                    key,
+	                                    cv::RANSAC,
 	                                    std::pow( 10, _logReprojThreshold ),
-	                                    inliers, 
+	                                    inliers,
 	                                    _maxIters );
 	if( Hxest.empty() )
 	{
@@ -60,37 +53,22 @@ bool RigidEstimator::EstimateMotion( FrameInterestPoints& key,
 	{
 		if( inliers[i] )
 		{
-			keyInliers.push_back( key.points[i] );
-			tarInliers.push_back( tar.points[i] );
+			inlierInds.push_back(i);
 		}
 	}
-	key.points = keyInliers;
-	tar.points = tarInliers;
-
-	// cv::Mat Hest = cv::estimateRigidTransform( key, tar, false );
-	// if( Hest.size().height == 0 || Hest.size().width == 0 )
-	// {
-	// 	ROS_WARN_STREAM( "RigidEstimator: Could not estimate motion." );
-	// 	return false;
-	// }
 
 	Eigen::MatrixXd Ab = MatToEigen<double>( Hxest );
 
 	// Extract the rotation using Procrustes solution
-	Eigen::Matrix2d A = Ab.block<2,2>(0,0);
+	Eigen::Matrix2d A = Ab.block<2, 2>( 0, 0 );
 	Eigen::JacobiSVD<Eigen::Matrix2d> svd( A, Eigen::ComputeFullU | Eigen::ComputeFullV );
 	Eigen::Matrix2d R = svd.matrixU() * svd.matrixV().transpose();
-	
-	// ROS_INFO_STREAM( "Ab: " << std::endl << Ab );
-	// ROS_INFO_STREAM( "R: " << std::endl << R );
 
-	FixedMatrixType<4,4> H = FixedMatrixType<4,4>::Identity();
-	H.block<2,2>(1,1) = R;
-	H(1,3) = -Ab(0,2) * _scale; // Image x corresponds to camera -y
-	H(2,3) = -Ab(1,2) * _scale; // Image y corresponds to camera -z
-	transform = PoseSE3(H);
+	FixedMatrixType<3, 3> H = FixedMatrixType<3, 3>::Identity();
+	H.block<2, 2>( 1, 1 ) = R;
+	H( 1, 2 ) = -Ab( 0, 2 ); // Image x corresponds to camera -y
+	H( 2, 2 ) = -Ab( 1, 2 ); // Image y corresponds to camera -z
+	transform = PoseSE2( H );
 	return true;
-	
 }
-
 }

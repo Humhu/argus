@@ -9,25 +9,26 @@
 
 namespace argus
 {
-	
 class LKPointTracker
 	: public InterestPointTracker
 {
 public:
-	
+
 	typedef std::shared_ptr<LKPointTracker> Ptr;
-	
+
 	LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
-	
-	virtual bool TrackInterestPoints( FrameInterestPoints& key,
-	                                  FrameInterestPoints& tar );
-	
+
+	virtual bool TrackInterestPoints( const cv::Mat& key,
+	                                  InterestPoints& keyPoints,
+	                                  const cv::Mat& tar,
+	                                  InterestPoints& tarPoints );
+
 	void SetFlowCriteria( int maxIters, double epsilon );
 	void SetFlowWindow( int width, int height );
 	void SetFlowThreshold( double eig );
-	
+
 private:
-	
+
 	// Flow calculation parameters
 	NumericParam _pyramidLevel;
 	NumericParam _flowWindowDim;
@@ -39,7 +40,5 @@ private:
 	cv::TermCriteria _flowTermCriteria;
 
 	cv::Size _flowWindowSize;
-
 };
-
 } // end namespace argus

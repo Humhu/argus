@@ -65,6 +65,7 @@ add_library( odoflow
 	src/MotionPredictor.cpp
 	src/OdoflowCommon.cpp
 	src/RigidEstimator.cpp
+	src/VelocityPublisher.cpp
 )
 target_link_libraries( odoflow
 	${OpenCV_LIBS}
