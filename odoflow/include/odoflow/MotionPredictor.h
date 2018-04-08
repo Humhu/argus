@@ -13,6 +13,9 @@
 
 namespace argus
 {
+/*! \brief Subscribes to odometry/velocity messages to predict the
+ * displacement of the camera between two times.
+ */
 class MotionPredictor
 {
 public:
@@ -27,7 +30,8 @@ public:
 	                       const std::string& camFrame,
 	                       double scale );
 
-	/*! \brief Clears all buffers */
+	/*! \brief Clears all bufferered odometry/velocity messages.
+	*/
     void Reset();
 
 private:

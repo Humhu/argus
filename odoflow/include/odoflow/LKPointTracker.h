@@ -9,6 +9,9 @@
 
 namespace argus
 {
+/*! \brief Finds correspondences in images using the Lucas-Kanade
+ * optical flow algorithm.
+ */
 class LKPointTracker
 	: public InterestPointTracker
 {
@@ -22,10 +25,6 @@ public:
 	                                  InterestPoints& keyPoints,
 	                                  const cv::Mat& tar,
 	                                  InterestPoints& tarPoints );
-
-	void SetFlowCriteria( int maxIters, double epsilon );
-	void SetFlowWindow( int width, int height );
-	void SetFlowThreshold( double eig );
 
 private:
 

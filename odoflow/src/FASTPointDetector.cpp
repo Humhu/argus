@@ -7,37 +7,29 @@
 
 namespace argus
 {
-
 FASTPointDetector::FASTPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: InterestPointDetector( nh, ph )
+	: InterestPointDetector( nh, ph )
 {
-	unsigned int intensityThreshold;
-	GetParamRequired( ph, "intensity_threshold", intensityThreshold );
-	_intensityThreshold.Initialize( ph, intensityThreshold, "intensity_threshold",
-	                                "Minimum central pixel intensity difference" );
+	_intensityThreshold.InitializeAndRead( ph, 50, "intensity_threshold",
+	                                       "Minimum central pixel intensity difference" );
 	_intensityThreshold.AddCheck<GreaterThanOrEqual>( 0 );
 	_intensityThreshold.AddCheck<LessThanOrEqual>( 255 );
 	_intensityThreshold.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
-	bool useNMS;
-	GetParamRequired<bool>( ph, "enable_nonmax_suppression", useNMS );
-	_enableNMS.Initialize( ph, useNMS, "enable_nonmax_suppression", 
-	                       "Usage of non-maximum suppression" );
+	_enableNMS.InitializeAndRead( ph, true, "enable_nonmax_suppression",
+	                              "Usage of non-maximum suppression" );
 
-	unsigned int maxNumPoints;
-	GetParamRequired( ph, "max_num_points", maxNumPoints );
-	_maxNumPoints.Initialize( ph, maxNumPoints, "max_num_points",
-	                          "Maximum number of points to find" );
+	_maxNumPoints.InitializeAndRead( ph, 255, "max_num_points",
+	                                 "Maximum number of points to find" );
 	_maxNumPoints.AddCheck<GreaterThanOrEqual>( 0 );
 	_maxNumPoints.AddCheck<IntegerValued>( ROUND_CEIL );
 
-	std::string initType;
-	GetParamRequired<std::string>( ph, "detector_type", initType );
-	_detectorType.Initialize( ph, initType, "detector_type",
-	                          "FAST detector type" );
-	// TODO Set type at runtime?
+	_detectorType.InitializeAndRead( ph, "FAST_7_12", "detector_type",
+	                                 "FAST detector type" );
 }
 
+/*! \brief Comparator used for sorting keypoints by responses
+ */
 bool CompareKeypoints( const cv::KeyPoint& a, const cv::KeyPoint& b )
 {
 	return a.response < b.response;
@@ -46,14 +38,14 @@ bool CompareKeypoints( const cv::KeyPoint& a, const cv::KeyPoint& b )
 InterestPoints FASTPointDetector::FindInterestPoints( const cv::Mat& image )
 {
 	std::vector<cv::KeyPoint> keypoints;
-	cv::FAST( image, 
-	          keypoints, 
-	          _intensityThreshold, 
-	          _enableNMS, 
+	cv::FAST( image,
+	          keypoints,
+	          _intensityThreshold,
+	          _enableNMS,
 	          StringToDetector( _detectorType ) );
-	
+
 	std::sort( keypoints.begin(), keypoints.end(), CompareKeypoints );
-	
+
 	InterestPoints points;
 	unsigned int toCopy = std::min( keypoints.size(), (size_t) _maxNumPoints.GetValue() );
 	points.reserve( toCopy );
@@ -80,9 +72,8 @@ int FASTPointDetector::StringToDetector( const std::string& str )
 	}
 	else
 	{
-		throw std::runtime_error( "Invalid FAST detector " + str + 
+		throw std::runtime_error( "Invalid FAST detector " + str +
 		                          " specified. Must be FAST_5_8, FAST_7_12, or FAST_9_16" );
 	}
 }
-	
 }

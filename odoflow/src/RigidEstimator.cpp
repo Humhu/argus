@@ -9,15 +9,11 @@ namespace argus
 {
 RigidEstimator::RigidEstimator( ros::NodeHandle& nh, ros::NodeHandle& ph )
 {
-	double logReprojThreshold;
-	GetParam( ph, "log_reprojection_threshold", logReprojThreshold );
-	_logReprojThreshold.Initialize( ph, logReprojThreshold,
+	_logReprojThreshold.Initialize( ph, -2,
 	                                "log_reprojection_threshold",
-	                                "RANSAC reprojection inlier threshold" );
+	                                "RANSAC log10 reprojection inlier threshold" );
 
-	unsigned int maxIters;
-	GetParam( ph, "max_iters", maxIters );
-	_maxIters.Initialize( ph, maxIters, "max_iters",
+	_maxIters.Initialize( ph, 10, "max_iters",
 	                      "RANSAC max iterations" );
 	_maxIters.AddCheck<GreaterThan>( 0 );
 	_maxIters.AddCheck<IntegerValued>( ROUND_CEIL );
@@ -64,6 +60,7 @@ bool RigidEstimator::EstimateMotion( InterestPoints& key,
 	Eigen::JacobiSVD<Eigen::Matrix2d> svd( A, Eigen::ComputeFullU | Eigen::ComputeFullV );
 	Eigen::Matrix2d R = svd.matrixU() * svd.matrixV().transpose();
 
+	// NOTE We use standard coordinates (x-forward)
 	FixedMatrixType<3, 3> H = FixedMatrixType<3, 3>::Identity();
 	H.block<2, 2>( 1, 1 ) = R;
 	H( 1, 2 ) = -Ab( 0, 2 ); // Image x corresponds to camera -y

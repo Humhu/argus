@@ -7,17 +7,12 @@
 
 namespace argus
 {
-
 FixedPointDetector::FixedPointDetector( ros::NodeHandle& nh, ros::NodeHandle& ph )
-: InterestPointDetector( nh, ph ), 
-_cachedGridSize( 0, 0 )
+	: InterestPointDetector( nh, ph ), _cachedGridSize( 0, 0 )
 {
-
-	unsigned int gridDim;
-	GetParamRequired( privHandle, "grid_dim", gridDim );
-	_gridDim.Initialize( ph, gridDim, "grid_dim", 
-	                     "Interest point grid width and height." );
-	_gridDim.AddCheck<GreaterThan>( 0 );
+	_gridDim.InitializeAndRead( ph, 30, "grid_dim",
+	                            "Interest point grid width and height." );
+	_gridDim.AddCheck<GreaterThan>( 1 );
 	_gridDim.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	UpdateInterestPoints();
@@ -27,19 +22,23 @@ InterestPoints FixedPointDetector::FindInterestPoints( const cv::Mat& image )
 {
 	UpdateInterestPoints();
 
+	// NOTE We recompute the pixel coordinates using each image's size, as
+	// this might change
 	cv::Size imgSize = image.size();
 	InterestPoints scaledPoints;
 	scaledPoints.reserve( _cachedGrid.size() );
-	
-	BOOST_FOREACH( const InterestPoint& point, _cachedGrid )
+
+	BOOST_FOREACH( const InterestPoint &point, _cachedGrid )
 	{
-		InterestPoint p( point.x*imgSize.width, point.y*imgSize.height );
+		InterestPoint p( point.x * imgSize.width, point.y * imgSize.height );
 		scaledPoints.push_back( p );
 	}
-		
+
 	return scaledPoints;
 }
 
+/*! \brief Recompute the normalized interest point coordinates.
+ */
 void FixedPointDetector::UpdateInterestPoints()
 {
 	GridSize gridSize( _gridDim, _gridDim );
@@ -52,15 +51,14 @@ void FixedPointDetector::UpdateInterestPoints()
 	_cachedGrid.reserve( width * height );
 	for( unsigned int i = 0; i < width; i++ )
 	{
-		double x = (i+1)/((double) width + 1);
+		double x = (i + 1) / ( (double) width + 1);
 		for( unsigned int j = 0; j < height; j++ )
 		{
-			double y = (j+1)/((double) height + 1);
+			double y = (j + 1) / ( (double) height + 1);
 			_cachedGrid.emplace_back( x, y );
 		}
 	}
 
 	_cachedGridSize = gridSize;
 }
-
 }

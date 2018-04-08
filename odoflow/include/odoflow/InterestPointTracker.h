@@ -5,6 +5,9 @@
 
 namespace argus
 {
+/*! \brief Base for classes that find correspondences between
+ * two images.
+ */
 class InterestPointTracker
 {
 public:
@@ -16,8 +19,9 @@ public:
 
 	virtual ~InterestPointTracker() {}
 
-	/*! \brief Tracks points in first image to second image. If guess is empty,
-	 * firstPoints are used as initialization. */
+	/*! \brief Tracks points in first image to second image. If guess
+	 * is empty, firstPoints are used as initialization.
+	 */
 	virtual bool TrackInterestPoints( const cv::Mat& key,
 	                                  InterestPoints& keyPoints,
 	                                  const cv::Mat& tar,

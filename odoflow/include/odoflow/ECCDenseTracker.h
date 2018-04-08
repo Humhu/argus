@@ -9,25 +9,25 @@
 
 namespace argus
 {
-
 /*! \brief Uses OpenCV's findTransformECC to match two images using
-direct intensity values. 
-*/
+   direct intensity values.
+ */
 class ECCDenseTracker
 {
 public:
 
-    ECCDenseTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
+	ECCDenseTracker( ros::NodeHandle& nh, ros::NodeHandle& ph );
 
-    bool TrackImages( const cv::Mat& to, const cv::Mat& from,
-                      PoseSE2& pose );
+	/*! \brief Finds a transformation that matches from to to.
+	   Returns success.
+	 */
+	bool TrackImages( const cv::Mat& to, const cv::Mat& from,
+	                  PoseSE2& pose );
 
 private:
 
-    NumericParam _logMinEps;
-    NumericParam _maxIters;
-    NumericParam _logMinCorrelation;
-
+	NumericParam _logMinEps;
+	NumericParam _maxIters;
+	NumericParam _logMinCorrelation;
 };
-
 }

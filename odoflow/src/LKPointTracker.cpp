@@ -15,7 +15,7 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_solverMaxIters.AddCheck<IntegerValued>( ROUND_CEIL );
 
 	_solverMinLogEpsilon.InitializeAndRead( ph, -3, "log_min_eps",
-	                                        "Lucas-Kande solver log min epsilon." );
+	                                        "Lucas-Kande solver log10 min epsilon." );
 
 	_pyramidLevel.InitializeAndRead( ph, 0, "pyramid_level",
 	                                 "Lucas-Kanade max pyramid level." );
@@ -29,7 +29,7 @@ LKPointTracker::LKPointTracker( ros::NodeHandle& nh, ros::NodeHandle& ph )
 	_flowWindowDim.AddCheck<IntegerValued>( ROUND_CLOSEST );
 
 	_logFlowEigenThreshold.InitializeAndRead( ph, -4, "log_flow_eigenvalue_threshold",
-	                                          "Lucas-Kanade spatial gradient log eigenvalue threshold." );
+	                                          "Lucas-Kanade spatial gradient log10 eigenvalue threshold." );
 
 	_maxFlowError.InitializeAndRead( ph, 10, "flow_error_threshold",
 	                                 "Lucas-Kanade max solution error threshold." );
@@ -83,7 +83,6 @@ bool LKPointTracker::TrackInterestPoints( const cv::Mat& key,
 		}
 	}
 
-	// 2. Grab good matches
 	keypoints = UpcastInterestPoints( keyInliers );
 	tarpoints = UpcastInterestPoints( targetInliers );
 

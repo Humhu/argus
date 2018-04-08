@@ -81,7 +81,8 @@ PoseSE2 MotionPredictor::PredictMotion( const ros::Time& fromTime,
 
 	camDisp = odomToCam * odomDisp * odomToCam.Inverse();
 	guessCov = TransformCovariance( odomCov, odomToCam );
-	// HACK
+	// HACK Hard-coded indices corresponding to y, z, x_ang
+	// which in turn correspond to camera translation and roll for standard (x-forward) conventions
 	MatrixType subCov( 3, 3 );
 	std::vector<unsigned int> inds = {1, 2, 3};
 	GetSubmatrix( guessCov, subCov, inds, inds );
@@ -95,9 +96,8 @@ PoseSE2 MotionPredictor::PredictMotion( const ros::Time& fromTime,
 	PoseSE2 ret;
 	StandardToCamera( camDisp, ret );
 
-	//unsigned int imgWidth = _keyPyramid[0].size().width; // NOTE Hack?
 	PoseSE2::TangentVector logRet = PoseSE2::Log( ret );
-	logRet.head<2>() *= scale; //imgWidth / _scale;
+	logRet.head<2>() *= scale;
 	ret = PoseSE2::Exp( logRet );
 
 	return ret;

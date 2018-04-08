@@ -137,5 +137,4 @@ InterestPoints TransformPoints( const InterestPoints& points,
 	}
 	return transformed;
 }
-
 }
