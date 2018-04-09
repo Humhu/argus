@@ -166,6 +166,8 @@ private:
 	VelocityIntegratorSE3 _velIntegrator;
 	ros::Time _lastTime;
 
+	/*! \brief Callback for dynamic_reconfigure
+	*/
 	void ReconfigureCallback( dispair::DisparityVOConfig& config,
 	                          unsigned int level )
 	{

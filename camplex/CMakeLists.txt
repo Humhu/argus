@@ -86,11 +86,9 @@ include_directories( include
 
 add_library( camplex
 	src/CameraCalibration.cpp
-	# src/CameraCalibrator.cpp
 	src/CameraDriver.cpp
 	src/CamplexCommon.cpp
 	src/DriverNode.cpp
-	src/FiducialArray.cpp
 	src/FiducialCalibrationParsers.cpp
 	src/FiducialInfoManager.cpp
 	src/FiducialCommon.cpp
