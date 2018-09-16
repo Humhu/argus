@@ -178,6 +178,7 @@ private:
 	ros::Subscriber _odomSub;
 
 	ros::Time _lastTime;
+	bool _enableOdomPrior;
 	bool _isOdomInitialized;
 	VelocityIntegratorSE3 _velocityIntegrator;
 	PoseSE3::CovarianceMatrix _odomOffset;
